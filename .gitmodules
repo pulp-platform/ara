@@ -1,3 +1,25 @@
-[submodule "ariane"]
-	path = ariane
-	url = git@iis-git.ee.ethz.ch:msc18f4_vector/vector/ariane.git
+[submodule "deps/axi"]
+	path = deps/axi
+	url = https://github.com/pulp-platform/axi.git
+[submodule "deps/tech_cells_generic"]
+	path = deps/tech_cells_generic
+	url = https://github.com/pulp-platform/tech_cells_generic.git
+[submodule "deps/axi_mem_if"]
+	path = deps/axi_mem_if
+	url = https://iis-git.ee.ethz.ch/ara_public/axi_mem_if.git
+[submodule "deps/apb"]
+	path = deps/apb
+	url = https://github.com/pulp-platform/apb.git
+[submodule "deps/common_cells"]
+	path = deps/common_cells
+	url = https://github.com/pulp-platform/common_cells.git
+[submodule "deps/common_verification"]
+	path = deps/common_verification
+	url = https://github.com/pulp-platform/common_verification.git
+[submodule "deps/fpga-support"]
+	path = deps/fpga-support
+	url = https://github.com/pulp-platform/fpga-support.git
+[submodule "deps/ariane"]
+	path = deps/ariane
+	url = https://iis-git.ee.ethz.ch/ara_public/ariane.git
+	branch = fpu_update
