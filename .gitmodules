@@ -1,0 +1,3 @@
+[submodule "ariane"]
+	path = ariane
+	url = git@iis-git.ee.ethz.ch:msc18f4_vector/vector/ariane.git
