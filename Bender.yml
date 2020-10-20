@@ -1,15 +1,14 @@
 package:
   name: ara
-  authors: [ "Matheus Cavalcante <matheusd@iis.ee.ethz.ch>" ]
+  authors:
+    - "Matheus Cavalcante <matheusd@iis.ee.ethz.ch>"
+    - "Basile Bougenot <basileb@student.ethz.ch>"
 
 dependencies:
-  ariane: { git: "https://iis-git.ee.ethz.ch/ara_public/ariane.git", rev: fpu_update }
+  cva6: { git: "git@iis-git.ee.ethz.ch:ara_release/cva6.git", rev: ara }
 
 workspace:
-  checkout_dir: "./deps"
-
-export_include_dirs:
-  - ariane/src/common_cells/include/common_cells
+  checkout_dir: "deps"
 
 sources:
   - defines:
