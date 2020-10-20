@@ -1,0 +1,15 @@
+package:
+  name: axi_slice
+
+dependencies:
+  common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: 1.7.4 }
+
+sources:
+  - src/axi_single_slice.sv
+  - src/axi_ar_buffer.sv
+  - src/axi_aw_buffer.sv
+  - src/axi_b_buffer.sv
+  - src/axi_r_buffer.sv
+  - src/axi_slice.sv
+  - src/axi_w_buffer.sv
+  - src/axi_slice_wrap.sv

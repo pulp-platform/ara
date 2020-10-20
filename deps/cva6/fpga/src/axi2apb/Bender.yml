@@ -1,0 +1,14 @@
+package:
+  name: axi2apb
+  authors: [
+    "Davide Rossi <drossi@unibo.it>",
+    "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
+  ]
+
+dependencies:
+    axi: { git: "https://github.com/pulp-platform/axi.git", version: 0.4.5 }
+    apb: { git: "https://github.com/pulp-platform/apb.git", version: 0.1.0 }
+sources:
+  - src/axi2apb.sv
+  - src/axi2apb_64_32.sv
+  - src/axi2apb_wrap.sv

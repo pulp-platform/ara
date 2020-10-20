@@ -1,0 +1,5 @@
+apb_node:
+  files: [
+    src/apb_node.sv,
+    src/apb_node_wrap.sv,
+  ]

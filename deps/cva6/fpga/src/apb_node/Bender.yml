@@ -1,0 +1,10 @@
+package:
+  name: apb_node
+  authors: ["Florian Zaruba <zarubaf@iis.ee.ethz.ch>, Davide Rossi <davide.rossi@unibo.it>"]
+
+dependencies:
+    apb: { git: "https://github.com/pulp-platform/apb.git", version:  0.1.0 }
+
+sources:
+  - src/apb_node.sv
+  - src/apb_node_wrap.sv

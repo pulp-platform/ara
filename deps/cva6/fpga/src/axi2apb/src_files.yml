@@ -1,0 +1,6 @@
+axi2apb:
+  files: [
+    src/axi2apb.sv,
+    src/axi2apb_64_32.sv,
+    src/axi2apb_wrap.sv,
+  ]

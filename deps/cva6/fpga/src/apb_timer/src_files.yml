@@ -1,0 +1,5 @@
+apb_timer:
+  files: [
+    apb_timer.sv,
+    timer.sv,
+  ]
