@@ -27,3 +27,8 @@ To build this toolchain, run the following command in the project's root directo
 # Build the GCC toolchain
 make toolchain
 ```
+
+## Configuration
+
+Ara's parameters are centralized in the `config` folder, in the `config.mk` file.
+Please check `config/README.md` for more details.
