@@ -1,0 +1,25 @@
+diff --git a/bfd/elfxx-riscv.c b/bfd/elfxx-riscv.c
+index 5be7410544..0e3d17cfb7 100644
+--- a/bfd/elfxx-riscv.c
++++ b/bfd/elfxx-riscv.c
+@@ -1401,7 +1401,8 @@ static bfd_boolean
+ riscv_multi_letter_ext_valid_p (const char *ext,
+ 				const char *const *known_exts)
+ {
+-  for (size_t i = 0; known_exts[i]; ++i)
++  size_t i;
++  for (i = 0; known_exts[i]; ++i)
+     {
+       if (!strcmp (ext, known_exts[i]))
+ 	return TRUE;
+@@ -1489,8 +1490,8 @@ riscv_parse_subset (riscv_parse_subset_t *rps,
+     return FALSE;
+ 
+   /* Parse the different classes of extensions in the specified order.  */
+-
+-  for (size_t i = 0; i < ARRAY_SIZE (parse_config); ++i) {
++  size_t i;
++  for (i = 0; i < ARRAY_SIZE (parse_config); ++i) {
+     p = riscv_parse_prefixed_ext (rps, arch, p, &parse_config[i]);
+ 
+     if (p == NULL)
