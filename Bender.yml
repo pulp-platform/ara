@@ -8,40 +8,40 @@ dependencies:
   cva6: { git: "git@iis-git.ee.ethz.ch:ara_release/cva6.git", rev: ara }
 
 workspace:
-  checkout_dir: "deps"
+  checkout_dir: "hardware/deps"
 
 sources:
   - defines:
       WT_DCACHE: 1
     files:
     # Level 1
-    - include/ara_axi_pkg.sv
-    - include/ara_pkg.sv
-    - src/lane/vaccess_stage.sv
+    - hardware/include/ara_axi_pkg.sv
+    - hardware/include/ara_pkg.sv
+    - hardware/src/lane/vaccess_stage.sv
     # Level 2
-    - src/ara_sequencer.sv
-    - src/lane/lane_sequencer.sv
-    - src/lane/opqueue.sv
-    - src/lane/simd_alu.sv
-    - src/lane/simd_mul.sv
-    - src/lane/vrf_arbiter.sv
-    - src/slide/slide_unit.sv
-    - src/util/ara_axi_master_connect.sv
-    - src/util/ara_axi_slave_connect.sv
-    - src/vlsu/addrgen.sv
-    - src/vlsu/vldu.sv
-    - src/vlsu/vstu.sv
+    - hardware/src/ara_sequencer.sv
+    - hardware/src/lane/lane_sequencer.sv
+    - hardware/src/lane/opqueue.sv
+    - hardware/src/lane/simd_alu.sv
+    - hardware/src/lane/simd_mul.sv
+    - hardware/src/lane/vrf_arbiter.sv
+    - hardware/src/slide/slide_unit.sv
+    - hardware/src/util/ara_axi_master_connect.sv
+    - hardware/src/util/ara_axi_slave_connect.sv
+    - hardware/src/vlsu/addrgen.sv
+    - hardware/src/vlsu/vldu.sv
+    - hardware/src/vlsu/vstu.sv
     # Level 3
-    - src/lane/opreq_stage.sv
-    - src/lane/valu.sv
-    - src/lane/vmfpu.sv
-    - src/lane/vconv_stage.sv
-    - src/vlsu/vlsu.sv
+    - hardware/src/lane/opreq_stage.sv
+    - hardware/src/lane/valu.sv
+    - hardware/src/lane/vmfpu.sv
+    - hardware/src/lane/vconv_stage.sv
+    - hardware/src/vlsu/vlsu.sv
     # Level 4
-    - src/lane/vex_stage.sv
+    - hardware/src/lane/vex_stage.sv
     # Level 5
-    - src/lane/lane.sv
+    - hardware/src/lane/lane.sv
     # Level 6
-    - src/ara.sv
+    - hardware/src/ara.sv
     # Level 7
-    - src/ara_system.sv
+    - hardware/src/ara_system.sv
