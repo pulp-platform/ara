@@ -12,11 +12,11 @@
 module rand_synch_holdable_driver #(
   parameter type  data_t = logic,
   // Minimum number of clock cycles to wait between applying two consecutive values.
-  parameter int   MIN_WAIT_CYCLES = -1,
+  parameter int   MinWaitCycles = -1,
   // Maximum number of clock cycles to wait between applying two consecutive values.
-  parameter int   MAX_WAIT_CYCLES = -1,
+  parameter int   MaxWaitCycles = -1,
   // Application delay: time delay before output changes after an active clock edge.
-  parameter time  APPL_DELAY = 0ns
+  parameter time  ApplDelay = 0ps
 ) (
   input  logic    clk_i,
   input  logic    rst_ni,
@@ -25,9 +25,6 @@ module rand_synch_holdable_driver #(
   output data_t   data_o
 );
 
-  timeunit 1ns;
-  timeprecision 10ps;
-
   initial begin
     int unsigned rand_delay, rand_success;
     data_o = '0;
@@ -35,14 +32,14 @@ module rand_synch_holdable_driver #(
     @(posedge clk_i);
     forever begin
       rand_success = std::randomize(rand_delay) with {
-        rand_delay >= MIN_WAIT_CYCLES;
-        rand_delay <= MAX_WAIT_CYCLES;
+        rand_delay >= MinWaitCycles;
+        rand_delay <= MaxWaitCycles;
       };
       assert (rand_success) else $error("Failed to randomize wait cycles!");
       repeat(rand_delay) begin
         @(posedge clk_i);
       end
-      #(APPL_DELAY);
+      #(ApplDelay);
       if (!hold_i) begin
         void'(std::randomize(data_o));
       end
@@ -52,13 +49,13 @@ module rand_synch_holdable_driver #(
   // Validate parameters.
 `ifndef VERILATOR
   initial begin: validate_params
-    assert (MIN_WAIT_CYCLES >= 0)
+    assert (MinWaitCycles >= 0)
       else $fatal("The minimum number of wait cycles must be at least 0!");
-    assert (MAX_WAIT_CYCLES >= 0)
+    assert (MaxWaitCycles >= 0)
       else $fatal("The maximum number of wait cycles must be at least 0!");
-    assert (MAX_WAIT_CYCLES >= MIN_WAIT_CYCLES)
+    assert (MaxWaitCycles >= MinWaitCycles)
       else $fatal("The maximum number of wait cycles must be at least the minimum number of wait cycles!");
-    assert (APPL_DELAY > 0ns)
+    assert (ApplDelay > 0ps)
       else $fatal("The application delay must be greater than 0!");
   end
 `endif

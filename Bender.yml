@@ -5,9 +5,10 @@ package:
     - "Basile Bougenot <basileb@student.ethz.ch>"
 
 dependencies:
-  axi:          { git: "git@github.com:pulp-platform/axi.git",          version: 0.23.2 }
-  common_cells: { git: "git@github.com:pulp-platform/common_cells.git", version: 1.19.0 }
-  cva6:         { git: "git@iis-git.ee.ethz.ch:ara_release/cva6.git",   rev: ara        }
+  axi:                { git: "git@github.com:pulp-platform/axi.git",                version: 0.23.2 }
+  common_cells:       { git: "git@github.com:pulp-platform/common_cells.git",       version: 1.19.0 }
+  cva6:               { git: "git@iis-git.ee.ethz.ch:ara_release/cva6.git",         rev: ara        }
+  tech_cells_generic: { git: "git@github.com:pulp-platform/tech_cells_generic.git", version: 0.2.1  }
 
 workspace:
   checkout_dir: "hardware/deps"
@@ -17,7 +18,6 @@ sources:
       WT_DCACHE: 1
     files:
     # Level 1
-    - hardware/include/ara_axi_pkg.sv
     - hardware/include/ara_pkg.sv
     - hardware/src/lane/vaccess_stage.sv
     # Level 2

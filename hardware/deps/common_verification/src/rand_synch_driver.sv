@@ -12,11 +12,11 @@
 module rand_synch_driver #(
   parameter type  data_t = logic,
   // Minimum number of clock cycles to wait between applying two consecutive values.
-  parameter int   MIN_WAIT_CYCLES = -1,
+  parameter int   MinWaitCycles = -1,
   // Maximum number of clock cycles to wait between applying two consecutive values.
-  parameter int   MAX_WAIT_CYCLES = -1,
+  parameter int   MaxWaitCycles = -1,
   // Application delay: time delay before output changes after an active clock edge.
-  parameter time  APPL_DELAY = 0ns
+  parameter time  ApplDelay = 0ps
 ) (
   input  logic    clk_i,
   input  logic    rst_ni,
@@ -25,10 +25,10 @@ module rand_synch_driver #(
 );
 
   rand_synch_holdable_driver #(
-    .data_t           (data_t),
-    .MIN_WAIT_CYCLES  (MIN_WAIT_CYCLES),
-    .MAX_WAIT_CYCLES  (MAX_WAIT_CYCLES),
-    .APPL_DELAY       (APPL_DELAY)
+    .data_t         (data_t),
+    .MinWaitCycles  (MinWaitCycles),
+    .MaxWaitCycles  (MaxWaitCycles),
+    .ApplDelay      (ApplDelay)
   ) i_ready_driver (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),

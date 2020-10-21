@@ -2,14 +2,24 @@ package:
   name: tech_cells_generic
   description: "Technology-agnostic building blocks."
 
+dependencies:
+  common_verification: { git: "https://github.com/pulp-platform/common_verification.git", version: 0.2.0 }
+
 sources:
+  - target: rtl
+    files:
+      # level 0
+      - src/rtl/tc_sram.sv
+
   - target: all(fpga, xilinx)
     files:
       - src/deprecated/cluster_clk_cells_xilinx.sv
       - src/fpga/tc_clk_xilinx.sv
+      - src/fpga/tc_sram_xilinx.sv
 
   - target: not(all(fpga, xilinx))
     files:
+      # Level 0
       - src/deprecated/cluster_clk_cells.sv
       - src/deprecated/pulp_clk_cells.sv
       - src/rtl/tc_clk.sv
@@ -23,3 +33,7 @@ sources:
       - src/deprecated/pulp_buffer.sv
       - src/deprecated/pulp_pwr_cells.sv
       - src/tc_pwr.sv
+
+  - target: test
+    files:
+      - test/tb_tc_sram.sv

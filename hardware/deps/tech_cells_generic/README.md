@@ -33,9 +33,7 @@ Clock cells usually are care-fully designed cells which do not exhibit any glitc
 
 |    Name   |                       Description                        | Status |       Xilinx       |
 |-----------|----------------------------------------------------------|--------|--------------------|
-| `sp_sram` | Single-ported SRAM with bit-error injection capabilities | active | :white_check_mark: |
-| `dp_sram` | Dual-ported SRAM with bit-error injection capabilities   | active | :white_check_mark: |
-| `mp_sram` | Multi-ported SRAM with bit-error injection capabilities  | active |                    |
+| `tc_sram` | Configurable SRAM                                        | active | :white_check_mark: |
 
 ### Power Cells
 

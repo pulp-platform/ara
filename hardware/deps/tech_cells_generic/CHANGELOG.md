@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 0.2.1 - 2020-06-23
+### Added
+-`Bender:` Add `rtl/tc_sram` to target `rtl`, to prevent overwriting of target specific implementations.
+
+### Fixed
+- `tc_sram`: Drop string literal from parameter `SimInit` definition as synopsys throws an elaboration error.
+- `tc_clk:tc_clk_delay`: Add Verilator and synthesis guards.
+
+## 0.2.0 - 2020-03-18
+### Added
+- Add `tc_sram` and `tc_sram_xilinx`, with testbench for verifying technology specific implementations.
+
 ## 0.1.6 - 2019-11-18
 ### Added
 - Add Readme

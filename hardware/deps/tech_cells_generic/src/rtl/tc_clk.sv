@@ -83,7 +83,11 @@ module tc_clk_delay #(
   output logic out_o
 );
 
+// pragma translate_off
+`ifndef VERILATOR
   assign #(Delay) out_o = in_i;
+`endif
+// pragma translate_on
 
 endmodule
 `endif

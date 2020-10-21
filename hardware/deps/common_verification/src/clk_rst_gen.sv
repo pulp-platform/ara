@@ -10,15 +10,12 @@
 
 // Clock and Reset Generator
 module clk_rst_gen #(
-  parameter time          CLK_PERIOD = 0ns,
-  parameter int unsigned  RST_CLK_CYCLES = 0
+  parameter time          ClkPeriod = 0ps, // minimum: 2ps
+  parameter int unsigned  RstClkCycles = 0
 ) (
   output logic clk_o,
   output logic rst_no
 );
-
-  timeunit 1ns;
-  timeprecision 10ps;
 
   logic clk;
 
@@ -28,7 +25,7 @@ module clk_rst_gen #(
   end
   always begin
     clk = ~clk;
-    #(CLK_PERIOD / 2);
+    #(ClkPeriod / 2);
   end
   assign clk_o = clk;
 
@@ -36,7 +33,7 @@ module clk_rst_gen #(
   initial begin
     static int unsigned rst_cnt = 0;
     rst_no = 1'b0;
-    while (rst_cnt <= RST_CLK_CYCLES) begin
+    while (rst_cnt <= RstClkCycles) begin
       @(posedge clk);
       rst_cnt++;
     end
@@ -46,9 +43,11 @@ module clk_rst_gen #(
   // Validate parameters.
 `ifndef VERILATOR
   initial begin: validate_params
-    assert (CLK_PERIOD > 0ns)
-      else $fatal("The clock period must be greater than 0!");
-    assert (RST_CLK_CYCLES > 0)
+    assert (ClkPeriod >= 2ps)
+      else $fatal("The clock period must be at least 2ps!");
+      // Reason: Gets divided by two, and some simulators do not support non-integer time steps, so
+      // if the time unit is 1ps, this would fail.
+    assert (RstClkCycles > 0)
       else $fatal("The number of clock cycles in reset must be greater than 0!");
   end
 `endif
