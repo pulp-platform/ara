@@ -44,10 +44,9 @@ module ara_testharness #(
 
   typedef enum int unsigned {
     DRAM = 0,
-    UART = 1,
-    ROM  = 2
+    UART = 1
   } axi_slaves_t;
-  localparam NrAXISlaves = ROM + 1;
+  localparam NrAXISlaves = UART + 1;
 
   /*********
    *  AXI  *
@@ -102,74 +101,6 @@ module ara_testharness #(
   axi_wide_slv_resp_t   [NrAXISlaves-1:0] periph_wide_axi_resp;
   axi_narrow_slv_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
   axi_narrow_slv_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
-
-  /**************
-   *  Boot ROM  *
-   **************/
-
-  logic                          rom_req;
-  logic [AxiAddrWidth-1:0]       rom_addr;
-  logic [AxiNarrowDataWidth-1:0] rom_rdata;
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AxiAddrWidth      ),
-    .AXI_DATA_WIDTH(AxiNarrowDataWidth),
-    .AXI_ID_WIDTH  (AxiSlvIdWidth     ),
-    .AXI_USER_WIDTH(AxiUserWidth      )
-  ) axi_bootrom_narrow_slave ();
-
-  `AXI_ASSIGN_FROM_REQ(axi_bootrom_narrow_slave, periph_narrow_axi_req[ROM])
-  `AXI_ASSIGN_TO_RESP(periph_narrow_axi_resp[ROM], axi_bootrom_narrow_slave)
-
-  axi2mem #(
-    .AXI_ID_WIDTH  (AxiSlvIdWidth     ),
-    .AXI_ADDR_WIDTH(AxiAddrWidth      ),
-    .AXI_DATA_WIDTH(AxiNarrowDataWidth),
-    .AXI_USER_WIDTH(AxiUserWidth      )
-  ) i_axi2rom (
-    .clk_i (clk_i                   ),
-    .rst_ni(rst_ni                  ),
-    .slave (axi_bootrom_narrow_slave),
-    .req_o (rom_req                 ),
-    .we_o  (/* Unused */            ),
-    .addr_o(rom_addr                ),
-    .be_o  (/* Unused */            ),
-    .data_o(/* Unused */            ),
-    .data_i(rom_rdata               )
-  );
-
-  bootrom i_bootrom (
-    .clk_i  (clk_i    ),
-    .req_i  (rom_req  ),
-    .addr_i (rom_addr ),
-    .rdata_o(rom_rdata)
-  );
-
-  axi_dw_converter #(
-    .AxiSlvPortDataWidth(AxiWideDataWidth     ),
-    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
-    .AxiAddrWidth       (AxiAddrWidth         ),
-    .AxiIdWidth         (AxiSlvIdWidth        ),
-    .AxiMaxReads        (2                    ),
-    .ar_chan_t          (slv_ar_chan_t        ),
-    .mst_r_chan_t       (narrow_slv_r_chan_t  ),
-    .slv_r_chan_t       (wide_slv_r_chan_t    ),
-    .aw_chan_t          (slv_aw_chan_t        ),
-    .b_chan_t           (slv_b_chan_t         ),
-    .mst_w_chan_t       (narrow_w_chan_t      ),
-    .slv_w_chan_t       (wide_w_chan_t        ),
-    .axi_mst_req_t      (axi_narrow_slv_req_t ),
-    .axi_mst_resp_t     (axi_narrow_slv_resp_t),
-    .axi_slv_req_t      (axi_wide_slv_req_t   ),
-    .axi_slv_resp_t     (axi_wide_slv_resp_t  )
-  ) i_axi_slave_bootrom_dwc (
-    .clk_i     (clk_i                      ),
-    .rst_ni    (rst_ni                     ),
-    .slv_req_i (periph_wide_axi_req[ROM]   ),
-    .slv_resp_o(periph_wide_axi_resp[ROM]  ),
-    .mst_req_o (periph_narrow_axi_req[ROM] ),
-    .mst_resp_i(periph_narrow_axi_resp[ROM])
-  );
 
   /********
    *  L2  *
@@ -359,18 +290,15 @@ module ara_testharness #(
     NoAddrRules       : NrAXISlaves
   };
 
-  localparam logic[63:0] ROMLength  = 64'h10000;
   localparam logic[63:0] UARTLength = 64'h1000;
   localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
 
   typedef enum logic [63:0] {
-    ROMBase  = 64'h0001_0000,
     UARTBase = 64'h1000_0000,
     DRAMBase = 64'h8000_0000
   } soc_bus_start_t;
 
   axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
-    '{idx: ROM, start_addr: ROMBase, end_addr: ROMBase + ROMLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
     '{idx: DRAM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
 
@@ -415,7 +343,7 @@ module ara_testharness #(
   ) i_ariane (
     .clk_i       (clk_i                 ),
     .rst_ni      (rst_ni                ),
-    .boot_addr_i (ariane_soc::ROMBase   ), // start fetching from ROM
+    .boot_addr_i (DRAMBase              ), // start fetching from DRAM
     .hart_id_i   ('0                    ),
     .irq_i       ('0                    ),
     .ipi_i       ('0                    ),

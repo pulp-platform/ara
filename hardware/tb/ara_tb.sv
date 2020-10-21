@@ -51,7 +51,7 @@ module ara_tb;
 
   // Controlling the reset
   initial begin
-    clk   = 1'b1;
+    clk   = 1'b0;
     rst_n = 1'b0;
 
     repeat (5)
