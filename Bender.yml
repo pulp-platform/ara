@@ -5,7 +5,9 @@ package:
     - "Basile Bougenot <basileb@student.ethz.ch>"
 
 dependencies:
-  cva6: { git: "git@iis-git.ee.ethz.ch:ara_release/cva6.git", rev: ara }
+  axi:          { git: "git@github.com:pulp-platform/axi.git",          version: 0.23.2 }
+  common_cells: { git: "git@github.com:pulp-platform/common_cells.git", version: 1.19.0 }
+  cva6:         { git: "git@iis-git.ee.ethz.ch:ara_release/cva6.git",   rev: ara        }
 
 workspace:
   checkout_dir: "hardware/deps"
