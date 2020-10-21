@@ -29,7 +29,7 @@ module ara_testharness #(
     `else
     parameter bit InclSimDTM = 1'b1,
     `endif
-    parameter int unsigned NumWords = 2**25 // memory size
+    parameter int unsigned NumWords = 2**23 // memory size
   ) (
     input  logic        clk_i,
     input  logic        rst_ni,
@@ -140,9 +140,10 @@ module ara_testharness #(
     .data_i(rdata            )
   );
 
-  sram #(
-    .DATA_WIDTH(AxiWideDataWidth),
-    .NUM_WORDS (NumWords        )
+  tc_sram #(
+    .NumWords (NumWords        ),
+    .NumPorts (1               ),
+    .DataWidth(AxiWideDataWidth)
   ) i_sram (
     .clk_i  (clk_i                                                                         ),
     .rst_ni (rst_ni                                                                        ),

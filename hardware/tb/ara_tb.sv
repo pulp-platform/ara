@@ -39,6 +39,14 @@ module ara_tb;
 
   localparam ClockPeriod = 1ns;
 
+  localparam AxiAddrWidth       = 64;
+  localparam AxiNarrowDataWidth = 64;
+  localparam AxiWideDataWidth   = 64 * NrLanes / 2;
+  localparam AxiWideBeWidth     = AxiWideDataWidth / 8;
+  localparam AxiWideByteOffset  = $clog2(AxiWideBeWidth);
+
+  localparam DRAMAddrBase = 64'h8000_0000;
+
   /********************************
    *  Clock and Reset Generation  *
    ********************************/
@@ -67,15 +75,61 @@ module ara_tb;
   logic [31:0] exit;
 
   ara_testharness #(
-    .NrLanes           (NrLanes         ),
-    .VectorLength      (VectorLength    ),
-    .AxiWideDataWidth  (64 * NrLanes / 2),
-    .AxiNarrowDataWidth(64              )
+    .NrLanes           (NrLanes           ),
+    .VectorLength      (VectorLength      ),
+    .AxiAddrWidth      (AxiAddrWidth      ),
+    .AxiWideDataWidth  (AxiWideDataWidth  ),
+    .AxiNarrowDataWidth(AxiNarrowDataWidth)
   ) dut (
     .clk_i (clk  ),
     .rst_ni(rst_n),
     .exit_o(exit )
   );
+
+  /*************************
+   *  DRAM Initialization  *
+   *************************/
+
+  typedef logic [AxiAddrWidth-1:0] addr_t    ;
+  typedef logic [AxiWideDataWidth-1:0] data_t;
+
+  initial begin : dram_init
+    automatic data_t mem_row;
+    byte buffer []          ;
+    addr_t address          ;
+    addr_t length           ;
+    string binary           ;
+
+    // tc_sram is initialized with zeros. We need to overwrite this value.
+    repeat (2)
+      #ClockPeriod;
+
+    // Initialize memories
+    void'($value$plusargs("PRELOAD=%s", binary));
+    if (binary != "") begin
+      // Read ELF
+      void'(read_elf(binary))       ;
+      $display("Loading %s", binary);
+      while (get_section(address, length)) begin
+        // Read sections
+        automatic int nwords = (length + AxiWideBeWidth - 1)/AxiWideBeWidth;
+        $display("Loading section %x of length %x", address, length);
+        buffer = new[nwords * AxiWideBeWidth];
+        void'(read_section(address, buffer));
+        // Initializing memories
+        for (int w = 0; w < nwords; w++) begin
+          mem_row = '0;
+          for (int b = 0; b < AxiWideBeWidth; b++) begin
+            mem_row[8 * b +: 8] = buffer[w * AxiWideBeWidth + b];
+          end
+          if (address >= DRAMAddrBase && address < DRAMAddrBase)
+            dut.i_sram.sram[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
+          else
+            $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
+        end
+      end
+    end
+  end : dram_init
 
   /*********
    *  EOC  *
