@@ -36,16 +36,22 @@ endif
 all: toolchain riscv-isa-sim
 
 # Toolchain
-toolchain:
+.PHONY: toolchain
+toolchain: ${GCC_INSTALL_DIR}
+
+${GCC_INSTALL_DIR}:
 	mkdir -p $(GCC_INSTALL_DIR)
 	# Apply patch on riscv-binutils
 	cd $(CURDIR)/toolchain/riscv-gnu-toolchain/riscv-binutils && git reset --hard && git apply $(CURDIR)/patches/0001-riscv-binutils-patch
 	cd $(CURDIR)/toolchain/riscv-gnu-toolchain && rm -rf build && mkdir -p build && cd build && \
-	../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv32gcv --with-cmodel=medlow --enable-multilib && \
+	../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv64gcv --with-cmodel=medlow --enable-multilib && \
 	$(MAKE) MAKEINFO=true -j4
 
 # Spike
-riscv-isa-sim:
+.PHONY: riscv-isa-sim
+riscv-isa-sim: ${ISA_SIM_INSTALL_DIR}
+
+${ISA_SIM_INSTALL_DIR}:
 	cd toolchain/riscv-isa-sim && mkdir -p build && cd build; \
 	[ -d dtc ] || git clone git://git.kernel.org/pub/scm/utils/dtc/dtc.git && cd dtc; \
 	make install SETUP_PREFIX=$$(pwd)/install PREFIX=$$(pwd)/install && \
