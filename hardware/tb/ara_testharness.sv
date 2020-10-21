@@ -96,7 +96,7 @@ module ara_testharness #(
   axi_wide_req_t    ariane_axi_req;
   axi_wide_resp_t   ariane_axi_resp;
   axi_wide_req_t    ara_axi_req;
-  axi_wide_req_t    ara_axi_resp;
+  axi_wide_resp_t   ara_axi_resp;
 
   axi_wide_slv_req_t    [NrAXISlaves-1:0] periph_wide_axi_req;
   axi_wide_slv_resp_t   [NrAXISlaves-1:0] periph_wide_axi_resp;
@@ -150,6 +150,7 @@ module ara_testharness #(
     .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
     .AxiAddrWidth       (AxiAddrWidth         ),
     .AxiIdWidth         (AxiSlvIdWidth        ),
+    .AxiMaxReads        (2                    ),
     .ar_chan_t          (slv_ar_chan_t        ),
     .mst_r_chan_t       (narrow_slv_r_chan_t  ),
     .slv_r_chan_t       (wide_slv_r_chan_t    ),
@@ -157,10 +158,10 @@ module ara_testharness #(
     .b_chan_t           (slv_b_chan_t         ),
     .mst_w_chan_t       (narrow_w_chan_t      ),
     .slv_w_chan_t       (wide_w_chan_t        ),
-    .axi_mst_req_t      (axi_wide_slv_req_t   ),
-    .axi_mst_resp_t     (axi_wide_slv_resp_t  ),
-    .axi_slv_req_t      (axi_narrow_slv_req_t ),
-    .axi_slv_resp_t     (axi_narrow_slv_resp_t)
+    .axi_mst_req_t      (axi_narrow_slv_req_t ),
+    .axi_mst_resp_t     (axi_narrow_slv_resp_t),
+    .axi_slv_req_t      (axi_wide_slv_req_t   ),
+    .axi_slv_resp_t     (axi_wide_slv_resp_t  )
   ) i_axi_slave_bootrom_dwc (
     .clk_i     (clk_i                      ),
     .rst_ni    (rst_ni                     ),
@@ -319,6 +320,7 @@ module ara_testharness #(
     .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
     .AxiAddrWidth       (AxiAddrWidth         ),
     .AxiIdWidth         (AxiSlvIdWidth        ),
+    .AxiMaxReads        (2                    ),
     .ar_chan_t          (slv_ar_chan_t        ),
     .mst_r_chan_t       (narrow_slv_r_chan_t  ),
     .slv_r_chan_t       (wide_slv_r_chan_t    ),
@@ -326,10 +328,10 @@ module ara_testharness #(
     .b_chan_t           (slv_b_chan_t         ),
     .mst_w_chan_t       (narrow_w_chan_t      ),
     .slv_w_chan_t       (wide_w_chan_t        ),
-    .axi_mst_req_t      (axi_wide_slv_req_t   ),
-    .axi_mst_resp_t     (axi_wide_slv_resp_t  ),
-    .axi_slv_req_t      (axi_narrow_slv_req_t ),
-    .axi_slv_resp_t     (axi_narrow_slv_resp_t)
+    .axi_mst_req_t      (axi_narrow_slv_req_t ),
+    .axi_mst_resp_t     (axi_narrow_slv_resp_t),
+    .axi_slv_req_t      (axi_wide_slv_req_t   ),
+    .axi_slv_resp_t     (axi_wide_slv_resp_t  )
   ) i_axi_slave_uart_dwc (
     .clk_i     (clk_i                       ),
     .rst_ni    (rst_ni                      ),
@@ -350,8 +352,8 @@ module ara_testharness #(
     MaxSlvTrans       : 4,
     FallThrough       : 1'b0,
     LatencyMode       : axi_pkg::CUT_MST_PORTS,
-    AxiIdWidthSlvPorts: AxiSlvIdWidth,
-    AxiIdUsedSlvPorts : AxiSlvIdWidth,
+    AxiIdWidthSlvPorts: AxiIdWidth,
+    AxiIdUsedSlvPorts : AxiIdWidth,
     AxiAddrWidth      : AxiAddrWidth,
     AxiDataWidth      : AxiWideDataWidth,
     NoAddrRules       : NrAXISlaves
@@ -367,7 +369,7 @@ module ara_testharness #(
     DRAMBase = 64'h8000_0000
   } soc_bus_start_t;
 
-  axi_pkg::xbar_rule_32_t [NrAXISlaves-1:0] routing_rules = '{
+  axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
     '{idx: ROM, start_addr: ROMBase, end_addr: ROMBase + ROMLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
     '{idx: DRAM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
@@ -387,7 +389,7 @@ module ara_testharness #(
     .slv_resp_t   (axi_wide_resp_t        ),
     .mst_req_t    (axi_wide_slv_req_t     ),
     .mst_resp_t   (axi_wide_slv_resp_t    ),
-    .rule_t       (axi_pkg::xbar_rule_32_t)
+    .rule_t       (axi_pkg::xbar_rule_64_t)
   ) i_tesbench_xbar (
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
@@ -424,21 +426,22 @@ module ara_testharness #(
   );
 
   axi_dw_converter #(
-    .AxiSlvPortDataWidth(AxiNarrowDataWidth   ),
-    .AxiMstPortDataWidth(AxiWideDataWidth     ),
-    .AxiAddrWidth       (AxiAddrWidth         ),
-    .AxiIdWidth         (AxiIdWidth           ),
-    .ar_chan_t          (ar_chan_t            ),
-    .mst_r_chan_t       (wide_r_chan_t        ),
-    .slv_r_chan_t       (narrow_r_chan_t      ),
-    .aw_chan_t          (aw_chan_t            ),
-    .b_chan_t           (b_chan_t             ),
-    .mst_w_chan_t       (wide_w_chan_t        ),
-    .slv_w_chan_t       (narrow_w_chan_t      ),
-    .axi_mst_req_t      (axi_wide_slv_req_t   ),
-    .axi_mst_resp_t     (axi_wide_slv_resp_t  ),
-    .axi_slv_req_t      (axi_narrow_slv_req_t ),
-    .axi_slv_resp_t     (axi_narrow_slv_resp_t)
+    .AxiSlvPortDataWidth(AxiNarrowDataWidth),
+    .AxiMstPortDataWidth(AxiWideDataWidth  ),
+    .AxiAddrWidth       (AxiAddrWidth      ),
+    .AxiIdWidth         (AxiIdWidth        ),
+    .AxiMaxReads        (4                 ),
+    .ar_chan_t          (ar_chan_t         ),
+    .mst_r_chan_t       (wide_r_chan_t     ),
+    .slv_r_chan_t       (narrow_r_chan_t   ),
+    .aw_chan_t          (aw_chan_t         ),
+    .b_chan_t           (b_chan_t          ),
+    .mst_w_chan_t       (wide_w_chan_t     ),
+    .slv_w_chan_t       (narrow_w_chan_t   ),
+    .axi_mst_req_t      (axi_wide_req_t    ),
+    .axi_mst_resp_t     (axi_wide_resp_t   ),
+    .axi_slv_req_t      (axi_narrow_req_t  ),
+    .axi_slv_resp_t     (axi_narrow_resp_t )
   ) i_ariane_axi_dwc (
     .clk_i     (clk_i                 ),
     .rst_ni    (rst_ni                ),
