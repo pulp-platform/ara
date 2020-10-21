@@ -45,5 +45,10 @@ sources:
     - hardware/src/lane/lane.sv
     # Level 6
     - hardware/src/ara.sv
-    # Level 7
-    - hardware/src/ara_system.sv
+
+  - target: ara_test
+    files:
+      # Level 1
+      - hardware/tb/ara_testharness.sv
+      # Level 2
+      - hardware/tb/ara_tb.sv
