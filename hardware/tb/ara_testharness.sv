@@ -401,33 +401,26 @@ module ara_testharness #(
     .default_mst_port_i   ('0                             )
   );
 
-  /**********
-   *  CORE  *
-   **********/
+  /*********
+   *  DUT  *
+   *********/
 
-  ara_system #(
-    `ifdef PITON_ARIANE
-    .SwapEndianess(0                                              ),
-    .CachedAddrEnd((ariane_soc::DRAMBase + ariane_soc::DRAMLength)),
-    `endif
-    .CachedAddrBeg(ariane_soc::DRAMBase )
-  ) i_ara_system (
-    .clk_i         (clk_i                 ),
-    .rst_ni        (rst_ni                ),
-    .testmode_i    (1'b0                  ),
-    .scan_enable_i (1'b0                  ),
-    .scan_data_i   (1'b0                  ),
-    .scan_data_o   (/* Unused */          ),
-    .boot_addr_i   (ariane_soc::ROMBase   ), // start fetching from ROM
-    .hart_id_i     ('0                    ),
-    .irq_i         ('0                    ),
-    .ipi_i         ('0                    ),
-    .time_irq_i    ('0                    ),
-    .debug_req_i   ('0                    ),
-    .axi_req_o     (ariane_narrow_axi_req ),
-    .axi_resp_i    (ariane_narrow_axi_resp),
-    .ara_axi_req_o (ara_axi_req           ),
-    .ara_axi_resp_i(ara_axi_resp          )
+  // TODO: Integrate Ara
+  assign ara_axi_req = '0;
+
+  ariane #(
+    .ArianeCfg(ariane_pkg::ArianeDefaultConfig)
+  ) i_ariane (
+    .clk_i       (clk_i                 ),
+    .rst_ni      (rst_ni                ),
+    .boot_addr_i (ariane_soc::ROMBase   ), // start fetching from ROM
+    .hart_id_i   ('0                    ),
+    .irq_i       ('0                    ),
+    .ipi_i       ('0                    ),
+    .time_irq_i  ('0                    ),
+    .debug_req_i ('0                    ),
+    .axi_req_o   (ariane_narrow_axi_req ),
+    .axi_resp_i  (ariane_narrow_axi_resp)
   );
 
   axi_dw_converter #(
