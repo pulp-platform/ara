@@ -26,13 +26,13 @@ module ara_tb;
   timeprecision 1ps;
 
   `ifdef NR_LANES
-  localparam NR_LANES = `NR_LANES;
+  localparam NrLanes = `NR_LANES;
   `else
   localparam NR_LANES = 0;
   `endif
 
   `ifdef VLEN
-  localparam VLEN = `VLEN;
+  localparam VectorLength = `VLEN;
   `else
   localparam VLEN = 0;
   `endif
@@ -66,7 +66,12 @@ module ara_tb;
 
   logic [31:0] exit;
 
-  ara_testharness dut (
+  ara_testharness #(
+    .NrLanes           (NR_LANES         ),
+    .VectorLength      (VLEN             ),
+    .AxiWideDataWidth  (64 * NR_LANES / 2),
+    .AxiNarrowDataWidth(64               )
+  ) dut (
     .clk_i (clk  ),
     .rst_ni(rst_n),
     .exit_o(exit )

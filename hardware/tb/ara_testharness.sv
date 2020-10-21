@@ -9,341 +9,133 @@
 // specific language governing permissions and limitations under the License.
 //
 // Author: Florian Zaruba, ETH Zurich
+//         Matheus Cavalcante, ETH Zurich
 // Date: 19.03.2017
-// Description: Test-harness for Ara
-//              Instantiates an AXI-Bus and memories
-
-`include "probe.svh"
+// Description: Test harness for Ara.
+//              This is loosely based on CVA6's test harness.
+//              Instantiates an AXI-Bus and memories.
 
 module ara_testharness #(
-    parameter int unsigned AXI_ID_WIDTH          = 4   ,
-    parameter int unsigned AXI_USER_WIDTH        = 1   ,
-    parameter int unsigned AXI_ADDRESS_WIDTH     = 64  ,
-    parameter int unsigned AXI_DATA_WIDTH        = 64  ,
-    parameter int unsigned AXI_NARROW_DATA_WIDTH = 64  ,
-    parameter bit InclSimDTM                     = 1'b1,
-    parameter int unsigned NUM_WORDS             = 2**25 // memory size
+    parameter int unsigned AxiUserWidth       = 1,
+    parameter int unsigned AxiIdWidth         = 4,
+    parameter int unsigned AxiAddrWidth       = 64,
+    parameter int unsigned AxiWideDataWidth   = 64,
+    parameter int unsigned AxiNarrowDataWidth = 64,
+    // Ara-specific parameters
+    parameter int unsigned NrLanes            = 0,
+    parameter int unsigned VectorLength       = 0,
+    `ifdef DROMAJO
+    parameter bit InclSimDTM = 1'b0,
+    `else
+    parameter bit InclSimDTM = 1'b1,
+    `endif
+    parameter int unsigned NumWords = 2**25 // memory size
   ) (
     input  logic        clk_i,
-    input  logic        rtc_i,
     input  logic        rst_ni,
     output logic [31:0] exit_o
   );
 
-  // disable test-enable
-  logic test_en;
-  logic ndmreset;
-  logic ndmreset_n;
-  logic debug_req_core;
+  /********************
+   *  Memory Regions  *
+   ********************/
 
-  int          jtag_enable;
-  logic        init_done;
-  logic [31:0] jtag_exit, dmi_exit;
+  localparam NrAXIMasters = 2; // Actually masters, but slaves on the crossbar
 
-  logic jtag_TCK;
-  logic jtag_TMS;
-  logic jtag_TDI;
-  logic jtag_TRSTn;
-  logic jtag_TDO_data;
-  logic jtag_TDO_driven;
-
-  logic debug_req_valid;
-  logic debug_req_ready;
-  logic debug_resp_valid;
-  logic debug_resp_ready;
-
-  logic        jtag_req_valid;
-  logic [6:0]  jtag_req_bits_addr;
-  logic [1:0]  jtag_req_bits_op;
-  logic [31:0] jtag_req_bits_data;
-  logic        jtag_resp_ready;
-  logic        jtag_resp_valid;
-
-  logic dmi_req_valid;
-  logic dmi_resp_ready;
-  logic dmi_resp_valid;
-
-  dm::dmi_req_t jtag_dmi_req;
-  dm::dmi_req_t dmi_req     ;
-
-  dm::dmi_req_t debug_req  ;
-  dm::dmi_resp_t debug_resp;
-
-  assign test_en = 1'b0;
-
-  localparam NB_SLAVE = 3;
-
-  localparam AXI_ID_WIDTH_SLAVES = AXI_ID_WIDTH + $clog2(NB_SLAVE);
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH),
-    .AXI_DATA_WIDTH(AXI_DATA_WIDTH   ),
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH     ),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH   )
-  ) slave [NB_SLAVE-1:0] ();
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH  ),
-    .AXI_DATA_WIDTH(AXI_DATA_WIDTH     ),
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH_SLAVES),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH     )
-  ) master [ariane_soc::NB_PERIPHERALS-1:0] ();
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH    ),
-    .AXI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH         ),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH       )
-  ) narrow_slave [NB_SLAVE-1:0] ();
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH    ),
-    .AXI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH_SLAVES  ),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH       )
-  ) narrow_master [ariane_soc::NB_PERIPHERALS-1:0] ();
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH),
-    .AXI_DATA_WIDTH(AXI_DATA_WIDTH   ),
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH     ),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH   )
-  ) ara_cuts [NB_SLAVE-1:0] ();
-
-  rstgen i_rstgen_main (
-    .clk_i      ( clk_i               ),
-    .rst_ni     ( rst_ni & (~ndmreset)),
-    .test_mode_i( test_en             ),
-    .rst_no     ( ndmreset_n          ),
-    .init_no    (                     ) // keep open
-  );
-
-  /***********
-   *  DEBUG  *
-   ***********/
-
-  assign init_done = rst_ni;
-
-  initial begin
-    if (!$value$plusargs("jtag_rbb_enable=%b", jtag_enable)) jtag_enable = 'h0;
-  end
-
-  // debug if MUX
-  assign debug_req_valid  = (jtag_enable[0]) ? jtag_req_valid   : dmi_req_valid   ;
-  assign debug_resp_ready = (jtag_enable[0]) ? jtag_resp_ready  : dmi_resp_ready  ;
-  assign debug_req        = (jtag_enable[0]) ? jtag_dmi_req     : dmi_req         ;
-  assign exit_o           = (jtag_enable[0]) ? jtag_exit        : dmi_exit        ;
-  assign jtag_resp_valid  = (jtag_enable[0]) ? debug_resp_valid : 1'b0            ;
-  assign dmi_resp_valid   = (jtag_enable[0]) ? 1'b0             : debug_resp_valid;
-
-  // SiFive's SimJTAG Module
-  // Converts to DPI calls
-  SimJTAG i_SimJTAG (
-    .clock          (clk_i          ),
-    .reset          (~rst_ni        ),
-    .enable         (jtag_enable[0] ),
-    .init_done      (init_done      ),
-    .jtag_TCK       (jtag_TCK       ),
-    .jtag_TMS       (jtag_TMS       ),
-    .jtag_TDI       (jtag_TDI       ),
-    .jtag_TRSTn     (jtag_TRSTn     ),
-    .jtag_TDO_data  (jtag_TDO_data  ),
-    .jtag_TDO_driven(jtag_TDO_driven),
-    .exit           (jtag_exit      )
-  );
-
-  dmi_jtag i_dmi_jtag (
-    .clk_i           ( clk_i          ),
-    .rst_ni          ( rst_ni         ),
-    .testmode_i      ( test_en        ),
-    .dmi_req_o       ( jtag_dmi_req   ),
-    .dmi_req_valid_o ( jtag_req_valid ),
-    .dmi_req_ready_i ( debug_req_ready),
-    .dmi_resp_i      ( debug_resp     ),
-    .dmi_resp_ready_o( jtag_resp_ready),
-    .dmi_resp_valid_i( jtag_resp_valid),
-    .dmi_rst_no      (                ), // not connected
-    .tck_i           ( jtag_TCK       ),
-    .tms_i           ( jtag_TMS       ),
-    .trst_ni         ( jtag_TRSTn     ),
-    .td_i            ( jtag_TDI       ),
-    .td_o            ( jtag_TDO_data  ),
-    .tdo_oe_o        ( jtag_TDO_driven)
-  );
-
-  // SiFive's SimDTM Module
-  // Converts to DPI calls
-  logic [1:0] debug_req_bits_op;
-  assign dmi_req.op = dm::dtm_op_t'(debug_req_bits_op );
-
-  if (InclSimDTM) begin
-    SimDTM i_SimDTM (
-      .clk                 (clk_i            ),
-      .reset               (~rst_ni          ),
-      .debug_req_valid     (dmi_req_valid    ),
-      .debug_req_ready     (debug_req_ready  ),
-      .debug_req_bits_addr (dmi_req.addr     ),
-      .debug_req_bits_op   (debug_req_bits_op),
-      .debug_req_bits_data (dmi_req.data     ),
-      .debug_resp_valid    (dmi_resp_valid   ),
-      .debug_resp_ready    (dmi_resp_ready   ),
-      .debug_resp_bits_resp(debug_resp.resp  ),
-      .debug_resp_bits_data(debug_resp.data  ),
-      .exit                (dmi_exit         )
-    );
-  end else begin
-    assign dmi_req_valid     = '0  ;
-    assign debug_req_bits_op = '0  ;
-    assign dmi_exit          = 1'b0;
-  end
-
-  ariane_axi::req_t dm_axi_m_req  , dm_axi_s_req ;
-  ariane_axi::resp_t dm_axi_m_resp, dm_axi_s_resp;
-
-  logic            dm_slave_req;
-  logic            dm_slave_we;
-  logic [64-1:0]   dm_slave_addr;
-  logic [64/8-1:0] dm_slave_be;
-  logic [64-1:0]   dm_slave_wdata;
-  logic [64-1:0]   dm_slave_rdata;
-
-  logic            dm_master_req;
-  logic [64-1:0]   dm_master_add;
-  logic            dm_master_we;
-  logic [64-1:0]   dm_master_wdata;
-  logic [64/8-1:0] dm_master_be;
-  logic            dm_master_gnt;
-  logic            dm_master_r_valid;
-  logic [64-1:0]   dm_master_r_rdata;
-
-
-  // debug module
-  dm_top #(
-    .NrHarts         (1                    ),
-    .BusWidth        (AXI_NARROW_DATA_WIDTH),
-    .Selectable_Harts(1'b1                 )
-  ) i_dm_top (
-    .clk_i           ( clk_i            ),
-    .rst_ni          ( rst_ni           ), // PoR
-    .testmode_i      ( test_en          ),
-    .ndmreset_o      ( ndmreset         ),
-    .dmactive_o      (                  ), // active debug session
-    .debug_req_o     ( debug_req_core   ),
-    .unavailable_i   ( '0               ),
-    .slave_req_i     ( dm_slave_req     ),
-    .slave_we_i      ( dm_slave_we      ),
-    .slave_addr_i    ( dm_slave_addr    ),
-    .slave_be_i      ( dm_slave_be      ),
-    .slave_wdata_i   ( dm_slave_wdata   ),
-    .slave_rdata_o   ( dm_slave_rdata   ),
-    .master_req_o    ( dm_master_req    ),
-    .master_add_o    ( dm_master_add    ),
-    .master_we_o     ( dm_master_we     ),
-    .master_wdata_o  ( dm_master_wdata  ),
-    .master_be_o     ( dm_master_be     ),
-    .master_gnt_i    ( dm_master_gnt    ),
-    .master_r_valid_i( dm_master_r_valid),
-    .master_r_rdata_i( dm_master_r_rdata),
-    .dmi_rst_ni      ( rst_ni           ),
-    .dmi_req_valid_i ( debug_req_valid  ),
-    .dmi_req_ready_o ( debug_req_ready  ),
-    .dmi_req_i       ( debug_req        ),
-    .dmi_resp_valid_o( debug_resp_valid ),
-    .dmi_resp_ready_i( debug_resp_ready ),
-    .dmi_resp_o      ( debug_resp       )
-  );
-
-  axi2mem #(
-    .AXI_ID_WIDTH  (ariane_soc::IdWidthSlave),
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH       ),
-    .AXI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH   ),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH          )
-  ) i_dm_axi2mem (
-    .clk_i (clk_i                           ),
-    .rst_ni(rst_ni                          ),
-    .slave (narrow_master[ariane_soc::Debug]),
-    .req_o (dm_slave_req                    ),
-    .we_o  (dm_slave_we                     ),
-    .addr_o(dm_slave_addr                   ),
-    .be_o  (dm_slave_be                     ),
-    .data_o(dm_slave_wdata                  ),
-    .data_i(dm_slave_rdata                  )
-  );
-
-  axi_master_connect i_dm_axi_master_connect (
-    .axi_req_i (dm_axi_m_req   ),
-    .axi_resp_o(dm_axi_m_resp  ),
-    .master    (narrow_slave[2])
-  );
-
-  axi_adapter #(.DATA_WIDTH(AXI_NARROW_DATA_WIDTH)) i_dm_axi_master (
-    .clk_i                ( clk_i                 ),
-    .rst_ni               ( rst_ni                ),
-    .req_i                ( dm_master_req         ),
-    .type_i               ( ariane_axi::SINGLE_REQ),
-    .gnt_o                ( dm_master_gnt         ),
-    .gnt_id_o             (                       ),
-    .addr_i               ( dm_master_add         ),
-    .we_i                 ( dm_master_we          ),
-    .wdata_i              ( dm_master_wdata       ),
-    .be_i                 ( dm_master_be          ),
-    .size_i               ( 2'b11                 ), // always do 64bit here and use byte enables to gate
-    .id_i                 ( '0                    ),
-    .valid_o              ( dm_master_r_valid     ),
-    .rdata_o              ( dm_master_r_rdata     ),
-    .id_o                 (                       ),
-    .critical_word_o      (                       ),
-    .critical_word_valid_o(                       ),
-    .axi_req_o            ( dm_axi_m_req          ),
-    .axi_resp_i           ( dm_axi_m_resp         )
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .MI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .ID_WIDTH     (AXI_ID_WIDTH         ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_master_dm_dwc (
-    .clk_i ,
-    .rst_ni ,
-    .slv (narrow_slave[2]),
-    .mst (slave[2]       )
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_slave_dm_dwc (
-    .clk_i ,
-    .rst_ni ,
-    .slv (master[ariane_soc::Debug]       ),
-    .mst (narrow_master[ariane_soc::Debug])
-  );
+  typedef enum int unsigned {
+    DRAM = 0,
+    UART = 1,
+    ROM  = 2
+  } axi_slaves_t;
+  localparam NrAXISlaves = ROM + 1;
 
   /*********
-   *  ROM  *
+   *  AXI  *
    *********/
-  logic                             rom_req;
-  logic [AXI_ADDRESS_WIDTH-1:0]     rom_addr;
-  logic [AXI_NARROW_DATA_WIDTH-1:0] rom_rdata;
+
+  `include "axi/assign.svh"
+  `include "axi/typedef.svh"
+
+  localparam AxiSlvIdWidth = AxiIdWidth + $clog2(NrAXIMasters);
+
+  // Axi Typedefs
+  typedef logic [AxiAddrWidth-1:0] axi_addr_t               ;
+  typedef logic [AxiNarrowDataWidth-1:0] axi_narrow_data_t  ;
+  typedef logic [AxiNarrowDataWidth/8-1:0] axi_narrow_strb_t;
+  typedef logic [AxiWideDataWidth-1:0] axi_wide_data_t      ;
+  typedef logic [AxiWideDataWidth/8-1:0] axi_wide_strb_t    ;
+  typedef logic [AxiIdWidth-1:0] axi_id_t                   ;
+  typedef logic [AxiSlvIdWidth-1:0] axi_slv_id_t            ;
+  typedef logic [AxiUserWidth-1:0] axi_user_t               ;
+
+  `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, axi_addr_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(slv_ar_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(narrow_r_chan_t, axi_narrow_data_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(narrow_slv_r_chan_t, axi_narrow_data_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(wide_r_chan_t, axi_wide_data_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(wide_slv_r_chan_t, axi_wide_data_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_AW_CHAN_T(slv_aw_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T(narrow_w_chan_t, axi_narrow_data_t, axi_narrow_strb_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T(wide_w_chan_t, axi_wide_data_t, axi_wide_strb_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(b_chan_t, axi_id_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(slv_b_chan_t, axi_slv_id_t, axi_user_t)
+
+  `AXI_TYPEDEF_REQ_T(axi_narrow_req_t, aw_chan_t, narrow_w_chan_t, ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_narrow_resp_t, b_chan_t, narrow_r_chan_t)
+  `AXI_TYPEDEF_REQ_T(axi_narrow_slv_req_t, slv_aw_chan_t, narrow_w_chan_t, slv_ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_narrow_slv_resp_t, slv_b_chan_t, narrow_slv_r_chan_t)
+  `AXI_TYPEDEF_REQ_T(axi_wide_req_t, aw_chan_t, wide_w_chan_t, ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_wide_resp_t, b_chan_t, wide_r_chan_t)
+  `AXI_TYPEDEF_REQ_T(axi_wide_slv_req_t, slv_aw_chan_t, wide_w_chan_t, slv_ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_wide_slv_resp_t, slv_b_chan_t, wide_slv_r_chan_t)
+
+  // Buses
+  axi_narrow_req_t  ariane_narrow_axi_req;
+  axi_narrow_resp_t ariane_narrow_axi_resp;
+  axi_wide_req_t    ariane_axi_req;
+  axi_wide_resp_t   ariane_axi_resp;
+  axi_wide_req_t    ara_axi_req;
+  axi_wide_req_t    ara_axi_resp;
+
+  axi_wide_slv_req_t    [NrAXISlaves-1:0] periph_wide_axi_req;
+  axi_wide_slv_resp_t   [NrAXISlaves-1:0] periph_wide_axi_resp;
+  axi_narrow_slv_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
+  axi_narrow_slv_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
+
+  /**************
+   *  Boot ROM  *
+   **************/
+
+  logic                          rom_req;
+  logic [AxiAddrWidth-1:0]       rom_addr;
+  logic [AxiNarrowDataWidth-1:0] rom_rdata;
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH(AxiAddrWidth      ),
+    .AXI_DATA_WIDTH(AxiNarrowDataWidth),
+    .AXI_ID_WIDTH  (AxiSlvIdWidth     ),
+    .AXI_USER_WIDTH(AxiUserWidth      )
+  ) axi_bootrom_narrow_slave ();
+
+  `AXI_ASSIGN_FROM_REQ(axi_bootrom_narrow_slave, periph_narrow_axi_req[ROM])
+  `AXI_ASSIGN_TO_RESP(periph_narrow_axi_resp[ROM], axi_bootrom_narrow_slave)
 
   axi2mem #(
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH_SLAVES  ),
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH    ),
-    .AXI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH       )
+    .AXI_ID_WIDTH  (AxiSlvIdWidth     ),
+    .AXI_ADDR_WIDTH(AxiAddrWidth      ),
+    .AXI_DATA_WIDTH(AxiNarrowDataWidth),
+    .AXI_USER_WIDTH(AxiUserWidth      )
   ) i_axi2rom (
-    .clk_i ( clk_i                         ),
-    .rst_ni( ndmreset_n                    ),
-    .slave ( narrow_master[ariane_soc::ROM]),
-    .req_o ( rom_req                       ),
-    .we_o  (                               ),
-    .addr_o( rom_addr                      ),
-    .be_o  (                               ),
-    .data_o(                               ),
-    .data_i( rom_rdata                     )
+    .clk_i (clk_i                   ),
+    .rst_ni(rst_ni                  ),
+    .slave (axi_bootrom_narrow_slave),
+    .req_o (rom_req                 ),
+    .we_o  (/* Unused */            ),
+    .addr_o(rom_addr                ),
+    .be_o  (/* Unused */            ),
+    .data_o(/* Unused */            ),
+    .data_i(rom_rdata               )
   );
 
   bootrom i_bootrom (
@@ -353,253 +145,265 @@ module ara_testharness #(
     .rdata_o(rom_rdata)
   );
 
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
+  axi_dw_converter #(
+    .AxiSlvPortDataWidth(AxiWideDataWidth     ),
+    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
+    .AxiAddrWidth       (AxiAddrWidth         ),
+    .AxiIdWidth         (AxiSlvIdWidth        ),
+    .ar_chan_t          (slv_ar_chan_t        ),
+    .mst_r_chan_t       (narrow_slv_r_chan_t  ),
+    .slv_r_chan_t       (wide_slv_r_chan_t    ),
+    .aw_chan_t          (slv_aw_chan_t        ),
+    .b_chan_t           (slv_b_chan_t         ),
+    .mst_w_chan_t       (narrow_w_chan_t      ),
+    .slv_w_chan_t       (wide_w_chan_t        ),
+    .axi_mst_req_t      (axi_wide_slv_req_t   ),
+    .axi_mst_resp_t     (axi_wide_slv_resp_t  ),
+    .axi_slv_req_t      (axi_narrow_slv_req_t ),
+    .axi_slv_resp_t     (axi_narrow_slv_resp_t)
   ) i_axi_slave_bootrom_dwc (
-    .clk_i ,
-    .rst_ni ,
-    .slv (master[ariane_soc::ROM]       ),
-    .mst (narrow_master[ariane_soc::ROM])
+    .clk_i     (clk_i                      ),
+    .rst_ni    (rst_ni                     ),
+    .slv_req_i (periph_wide_axi_req[ROM]   ),
+    .slv_resp_o(periph_wide_axi_resp[ROM]  ),
+    .mst_req_o (periph_narrow_axi_req[ROM] ),
+    .mst_resp_i(periph_narrow_axi_resp[ROM])
   );
 
   /********
    *  L2  *
    ********/
 
-  logic                         req ;
-  logic                         we ;
-  logic [AXI_ADDRESS_WIDTH-1:0] addr ;
-  logic [AXI_DATA_WIDTH/8-1:0]  be ;
-  logic [AXI_DATA_WIDTH-1:0]    wdata;
-  logic [AXI_DATA_WIDTH-1:0]    rdata;
+  logic                          req;
+  logic                          we;
+  logic [AxiAddrWidth-1:0]       addr;
+  logic [AxiWideDataWidth/8-1:0] be;
+  logic [AxiWideDataWidth-1:0]   wdata;
+  logic [AxiWideDataWidth-1:0]   rdata;
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH(AxiAddrWidth    ),
+    .AXI_DATA_WIDTH(AxiWideDataWidth),
+    .AXI_ID_WIDTH  (AxiSlvIdWidth   ),
+    .AXI_USER_WIDTH(AxiUserWidth    )
+  ) axi_l2_wide_slave ();
+
+  `AXI_ASSIGN_FROM_REQ(axi_l2_wide_slave, periph_wide_axi_req[DRAM])
+  `AXI_ASSIGN_TO_RESP(periph_wide_axi_resp[DRAM], axi_l2_wide_slave)
 
   axi2mem #(
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH_SLAVES),
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH  ),
-    .AXI_DATA_WIDTH(AXI_DATA_WIDTH     ),
-    .AXI_USER_WIDTH(AXI_USER_WIDTH     )
+    .AXI_ID_WIDTH  (AxiSlvIdWidth   ),
+    .AXI_ADDR_WIDTH(AxiAddrWidth    ),
+    .AXI_DATA_WIDTH(AxiWideDataWidth),
+    .AXI_USER_WIDTH(AxiUserWidth    )
   ) i_axi2mem (
-    .clk_i (clk_i                   ),
-    .rst_ni(ndmreset_n              ),
-    .slave (master[ariane_soc::DRAM]),
-    .req_o (req                     ),
-    .we_o  (we                      ),
-    .addr_o(addr                    ),
-    .be_o  (be                      ),
-    .data_o(wdata                   ),
-    .data_i(rdata                   )
+    .clk_i (clk_i            ),
+    .rst_ni(rst_ni           ),
+    .slave (axi_l2_wide_slave),
+    .req_o (req              ),
+    .we_o  (we               ),
+    .addr_o(addr             ),
+    .be_o  (be               ),
+    .data_o(wdata            ),
+    .data_i(rdata            )
   );
 
   sram #(
-    .DATA_WIDTH(AXI_DATA_WIDTH),
-    .NUM_WORDS (NUM_WORDS     )
+    .DATA_WIDTH(AxiWideDataWidth),
+    .NUM_WORDS (NumWords        )
   ) i_sram (
-    .clk_i  (clk_i                                                                      ),
-    .rst_ni (rst_ni                                                                     ),
-    .req_i  (req                                                                        ),
-    .we_i   (we                                                                         ),
-    .addr_i (addr[$clog2(NUM_WORDS)-1+$clog2(AXI_DATA_WIDTH/8):$clog2(AXI_DATA_WIDTH/8)]),
-    .wdata_i(wdata                                                                      ),
-    .be_i   (be                                                                         ),
-    .rdata_o(rdata                                                                      )
+    .clk_i  (clk_i                                                                         ),
+    .rst_ni (rst_ni                                                                        ),
+    .req_i  (req                                                                           ),
+    .we_i   (we                                                                            ),
+    .addr_i (addr[$clog2(NumWords)-1+$clog2(AxiWideDataWidth/8):$clog2(AxiWideDataWidth/8)]),
+    .wdata_i(wdata                                                                         ),
+    .be_i   (be                                                                            ),
+    .rdata_o(rdata                                                                         )
+  );
+
+  /**********
+   *  UART  *
+   **********/
+
+  logic        uart_penable;
+  logic        uart_pwrite;
+  logic [31:0] uart_paddr;
+  logic        uart_psel;
+  logic [31:0] uart_pwdata;
+  logic [31:0] uart_prdata;
+  logic        uart_pready;
+  logic        uart_pslverr;
+
+  axi2apb_64_32 #(
+    .AXI4_ADDRESS_WIDTH(AxiAddrWidth      ),
+    .AXI4_RDATA_WIDTH  (AxiNarrowDataWidth),
+    .AXI4_WDATA_WIDTH  (AxiNarrowDataWidth),
+    .AXI4_ID_WIDTH     (AxiSlvIdWidth     ),
+    .AXI4_USER_WIDTH   (AxiUserWidth      ),
+    .BUFF_DEPTH_SLAVE  (2                 ),
+    .APB_ADDR_WIDTH    (32                )
+  ) i_axi2apb_64_32_uart (
+    .ACLK      (clk_i                                ),
+    .ARESETn   (rst_ni                               ),
+    .test_en_i (1'b0                                 ),
+    .AWID_i    (periph_narrow_axi_req[UART].aw.id    ),
+    .AWADDR_i  (periph_narrow_axi_req[UART].aw.addr  ),
+    .AWLEN_i   (periph_narrow_axi_req[UART].aw.len   ),
+    .AWSIZE_i  (periph_narrow_axi_req[UART].aw.size  ),
+    .AWBURST_i (periph_narrow_axi_req[UART].aw.burst ),
+    .AWLOCK_i  (periph_narrow_axi_req[UART].aw.lock  ),
+    .AWCACHE_i (periph_narrow_axi_req[UART].aw.cache ),
+    .AWPROT_i  (periph_narrow_axi_req[UART].aw.prot  ),
+    .AWREGION_i(periph_narrow_axi_req[UART].aw.region),
+    .AWUSER_i  (periph_narrow_axi_req[UART].aw.user  ),
+    .AWQOS_i   (periph_narrow_axi_req[UART].aw.qos   ),
+    .AWVALID_i (periph_narrow_axi_req[UART].aw_valid ),
+    .AWREADY_o (periph_narrow_axi_resp[UART].aw_ready),
+    .WDATA_i   (periph_narrow_axi_req[UART].w.data   ),
+    .WSTRB_i   (periph_narrow_axi_req[UART].w.strb   ),
+    .WLAST_i   (periph_narrow_axi_req[UART].w.last   ),
+    .WUSER_i   (periph_narrow_axi_req[UART].w.user   ),
+    .WVALID_i  (periph_narrow_axi_req[UART].w_valid  ),
+    .WREADY_o  (periph_narrow_axi_resp[UART].w_ready ),
+    .BID_o     (periph_narrow_axi_resp[UART].b.id    ),
+    .BRESP_o   (periph_narrow_axi_resp[UART].b.resp  ),
+    .BVALID_o  (periph_narrow_axi_resp[UART].b_valid ),
+    .BUSER_o   (periph_narrow_axi_resp[UART].b.user  ),
+    .BREADY_i  (periph_narrow_axi_req[UART].b_ready  ),
+    .ARID_i    (periph_narrow_axi_req[UART].ar.id    ),
+    .ARADDR_i  (periph_narrow_axi_req[UART].ar.addr  ),
+    .ARLEN_i   (periph_narrow_axi_req[UART].ar.len   ),
+    .ARSIZE_i  (periph_narrow_axi_req[UART].ar.size  ),
+    .ARBURST_i (periph_narrow_axi_req[UART].ar.burst ),
+    .ARLOCK_i  (periph_narrow_axi_req[UART].ar.lock  ),
+    .ARCACHE_i (periph_narrow_axi_req[UART].ar.cache ),
+    .ARPROT_i  (periph_narrow_axi_req[UART].ar.prot  ),
+    .ARREGION_i(periph_narrow_axi_req[UART].ar.region),
+    .ARUSER_i  (periph_narrow_axi_req[UART].ar.user  ),
+    .ARQOS_i   (periph_narrow_axi_req[UART].ar.qos   ),
+    .ARVALID_i (periph_narrow_axi_req[UART].ar_valid ),
+    .ARREADY_o (periph_narrow_axi_resp[UART].ar_ready),
+    .RID_o     (periph_narrow_axi_resp[UART].r.id    ),
+    .RDATA_o   (periph_narrow_axi_resp[UART].r.data  ),
+    .RRESP_o   (periph_narrow_axi_resp[UART].r.resp  ),
+    .RLAST_o   (periph_narrow_axi_resp[UART].r.last  ),
+    .RUSER_o   (periph_narrow_axi_resp[UART].r.user  ),
+    .RVALID_o  (periph_narrow_axi_resp[UART].r_valid ),
+    .RREADY_i  (periph_narrow_axi_req[UART].r_ready  ),
+    .PENABLE   (uart_penable                         ),
+    .PWRITE    (uart_pwrite                          ),
+    .PADDR     (uart_paddr                           ),
+    .PSEL      (uart_psel                            ),
+    .PWDATA    (uart_pwdata                          ),
+    .PRDATA    (uart_prdata                          ),
+    .PREADY    (uart_pready                          ),
+    .PSLVERR   (uart_pslverr                         )
+  );
+
+  mock_uart i_mock_uart (
+    .clk_i     ( clk_i        ),
+    .rst_ni    ( rst_ni       ),
+    .penable_i ( uart_penable ),
+    .pwrite_i  ( uart_pwrite  ),
+    .paddr_i   ( uart_paddr   ),
+    .psel_i    ( uart_psel    ),
+    .pwdata_i  ( uart_pwdata  ),
+    .prdata_o  ( uart_prdata  ),
+    .pready_o  ( uart_pready  ),
+    .pslverr_o ( uart_pslverr )
+  );
+
+  axi_dw_converter #(
+    .AxiSlvPortDataWidth(AxiWideDataWidth     ),
+    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
+    .AxiAddrWidth       (AxiAddrWidth         ),
+    .AxiIdWidth         (AxiSlvIdWidth        ),
+    .ar_chan_t          (slv_ar_chan_t        ),
+    .mst_r_chan_t       (narrow_slv_r_chan_t  ),
+    .slv_r_chan_t       (wide_slv_r_chan_t    ),
+    .aw_chan_t          (slv_aw_chan_t        ),
+    .b_chan_t           (slv_b_chan_t         ),
+    .mst_w_chan_t       (narrow_w_chan_t      ),
+    .slv_w_chan_t       (wide_w_chan_t        ),
+    .axi_mst_req_t      (axi_wide_slv_req_t   ),
+    .axi_mst_resp_t     (axi_wide_slv_resp_t  ),
+    .axi_slv_req_t      (axi_narrow_slv_req_t ),
+    .axi_slv_resp_t     (axi_narrow_slv_resp_t)
+  ) i_axi_slave_uart_dwc (
+    .clk_i     (clk_i                       ),
+    .rst_ni    (rst_ni                      ),
+    .slv_req_i (periph_wide_axi_req[UART]   ),
+    .slv_resp_o(periph_wide_axi_resp[UART]  ),
+    .mst_req_o (periph_narrow_axi_req[UART] ),
+    .mst_resp_i(periph_narrow_axi_resp[UART])
   );
 
   /**************
-   *  AXI XBAR  *
+   *  Crossbar  *
    **************/
 
-  axi_node_intf_wrap #(
-    .NB_SLAVE       ( NB_SLAVE                   ),
-    .NB_MASTER      ( ariane_soc::NB_PERIPHERALS ),
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH          ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH             ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH             ),
-    .AXI_ID_WIDTH   ( AXI_ID_WIDTH               )
-  ) i_axi_xbar (
-    .clk       ( clk_i      ),
-    .rst_n     ( ndmreset_n ),
-    .test_en_i ( test_en    ),
-    .slave     ( slave      ),
-    .master    ( master     ),
-    .start_addr_i ({
-        ariane_soc::DebugBase   ,
-        ariane_soc::ROMBase     ,
-        ariane_soc::CLINTBase   ,
-        ariane_soc::PLICBase    ,
-        ariane_soc::UARTBase    ,
-        ariane_soc::SPIBase     ,
-        ariane_soc::EthernetBase,
-        ariane_soc::GPIOBase    ,
-        ariane_soc::DRAMBase
-      }),
-    .end_addr_i ({
-        ariane_soc::DebugBase + ariane_soc::DebugLength - 1      ,
-        ariane_soc::ROMBase + ariane_soc::ROMLength - 1          ,
-        ariane_soc::CLINTBase + ariane_soc::CLINTLength - 1      ,
-        ariane_soc::PLICBase + ariane_soc::PLICLength - 1        ,
-        ariane_soc::UARTBase + ariane_soc::UARTLength - 1        ,
-        ariane_soc::SPIBase + ariane_soc::SPILength - 1          ,
-        ariane_soc::EthernetBase + ariane_soc::EthernetLength - 1,
-        ariane_soc::GPIOBase + ariane_soc::GPIOLength - 1        ,
-        ariane_soc::DRAMBase + ariane_soc::DRAMLength - 1
-      }),
-    .valid_rule_i (ariane_soc::ValidRule)
-  );
+  localparam axi_pkg::xbar_cfg_t XBarCfg = '{
+    NoSlvPorts        : NrAXIMasters,
+    NoMstPorts        : NrAXISlaves,
+    MaxMstTrans       : 4,
+    MaxSlvTrans       : 4,
+    FallThrough       : 1'b0,
+    LatencyMode       : axi_pkg::CUT_MST_PORTS,
+    AxiIdWidthSlvPorts: AxiSlvIdWidth,
+    AxiIdUsedSlvPorts : AxiSlvIdWidth,
+    AxiAddrWidth      : AxiAddrWidth,
+    AxiDataWidth      : AxiWideDataWidth,
+    NoAddrRules       : NrAXISlaves
+  };
 
-  /***********
-   *  CLINT  *
-   ***********/
+  localparam logic[63:0] ROMLength  = 64'h10000;
+  localparam logic[63:0] UARTLength = 64'h1000;
+  localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
 
-  logic ipi;
-  logic timer_irq;
+  typedef enum logic [63:0] {
+    ROMBase  = 64'h0001_0000,
+    UARTBase = 64'h1000_0000,
+    DRAMBase = 64'h8000_0000
+  } soc_bus_start_t;
 
-  ariane_axi::req_t axi_clint_req  ;
-  ariane_axi::resp_t axi_clint_resp;
+  axi_pkg::xbar_rule_32_t [NrAXISlaves-1:0] routing_rules = '{
+    '{idx: ROM, start_addr: ROMBase, end_addr: ROMBase + ROMLength},
+    '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
+    '{idx: DRAM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
 
-  clint #(
-    .AXI_ADDR_WIDTH(AXI_ADDRESS_WIDTH    ),
-    .AXI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .AXI_ID_WIDTH  (AXI_ID_WIDTH_SLAVES  ),
-    .NR_CORES      (1                    )
-  ) i_clint (
-    .clk_i      (clk_i         ),
-    .rst_ni     (ndmreset_n    ),
-    .testmode_i (test_en       ),
-    .axi_req_i  (axi_clint_req ),
-    .axi_resp_o (axi_clint_resp),
-    .rtc_i      (rtc_i         ),
-    .timer_irq_o(timer_irq     ),
-    .ipi_o      (ipi           )
-  );
-
-  axi_slave_connect i_axi_slave_connect_clint (
-    .axi_req_o (axi_clint_req                   ),
-    .axi_resp_i(axi_clint_resp                  ),
-    .slave     (narrow_master[ariane_soc::CLINT])
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_slave_clint_dwc (
-    .clk_i  (clk_i                           ) ,
-    .rst_ni (rst_ni                          ),
-    .slv    (master[ariane_soc::CLINT]       ),
-    .mst    (narrow_master[ariane_soc::CLINT])
-  );
-
-  /*****************
-   *  PERIPHERALS  *
-   *****************/
-
-  logic       tx, rx;
-  logic [1:0] irqs;
-
-  ariane_peripherals #(
-    .AxiAddrWidth(AXI_ADDRESS_WIDTH    ),
-    .AxiDataWidth(AXI_NARROW_DATA_WIDTH),
-    .AxiIdWidth  (AXI_ID_WIDTH_SLAVES  ),
-    .InclUART    (1'b0                 ),
-    .InclSPI     (1'b0                 ),
-    .InclEthernet(1'b0                 )
-  ) i_ariane_peripherals (
-    .clk_i    ( clk_i                              ),
-    .rst_ni   ( ndmreset_n                         ),
-    .plic     ( narrow_master[ariane_soc::PLIC]    ),
-    .uart     ( narrow_master[ariane_soc::UART]    ),
-    .spi      ( narrow_master[ariane_soc::SPI]     ),
-    .ethernet ( narrow_master[ariane_soc::Ethernet]),
-    .irq_o    ( irqs                               ),
-    .rx_i     ( rx                                 ),
-    .tx_o     ( tx                                 ),
-    .eth_txck (                                    ),
-    .eth_rxck (                                    ),
-    .eth_rxctl(                                    ),
-    .eth_rxd  (                                    ),
-    .eth_rst_n(                                    ),
-    .eth_tx_en(                                    ),
-    .eth_txd  (                                    ),
-    .phy_mdio (                                    ),
-    .eth_mdc  (                                    ),
-    .mdio     (                                    ),
-    .mdc      (                                    ),
-    .spi_clk_o(                                    ),
-    .spi_mosi (                                    ),
-    .spi_miso (                                    ),
-    .spi_ss   (                                    )
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_slave_plic_dwc (
-    .clk_i  (clk_i                          ),
-    .rst_ni (rst_ni                         ),
-    .slv    (master[ariane_soc::PLIC]       ),
-    .mst    (narrow_master[ariane_soc::PLIC])
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_slave_uart_dwc (
-    .clk_i  (clk_i                          ),
-    .rst_ni (rst_ni                         ),
-    .slv    (master[ariane_soc::UART]       ),
-    .mst    (narrow_master[ariane_soc::UART])
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_slave_spi_dwc (
-    .clk_i  (clk_i                         ),
-    .rst_ni (rst_ni                        ),
-    .slv    (master[ariane_soc::SPI]       ),
-    .mst    (narrow_master[ariane_soc::SPI])
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .MI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .ID_WIDTH     (AXI_ID_WIDTH_SLAVES  ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_slave_ethernet_dwc (
-    .clk_i  (clk_i                              ),
-    .rst_ni (rst_ni                             ),
-    .slv    (master[ariane_soc::Ethernet]       ),
-    .mst    (narrow_master[ariane_soc::Ethernet])
-  );
-
-  uart_bus #(
-    .BAUD_RATE(115200),
-    .PARITY_EN(0     )
-  ) i_uart_bus (
-    .rx   (tx  ),
-    .tx   (rx  ),
-    .rx_en(1'b1)
+  axi_xbar #(
+    .Cfg          (XBarCfg                ),
+    .slv_aw_chan_t(aw_chan_t              ),
+    .mst_aw_chan_t(slv_aw_chan_t          ),
+    .w_chan_t     (wide_w_chan_t          ),
+    .slv_b_chan_t (b_chan_t               ),
+    .mst_b_chan_t (slv_b_chan_t           ),
+    .slv_ar_chan_t(ar_chan_t              ),
+    .mst_ar_chan_t(slv_ar_chan_t          ),
+    .slv_r_chan_t (wide_r_chan_t          ),
+    .mst_r_chan_t (wide_slv_r_chan_t      ),
+    .slv_req_t    (axi_wide_req_t         ),
+    .slv_resp_t   (axi_wide_resp_t        ),
+    .mst_req_t    (axi_wide_slv_req_t     ),
+    .mst_resp_t   (axi_wide_slv_resp_t    ),
+    .rule_t       (axi_pkg::xbar_rule_32_t)
+  ) i_tesbench_xbar (
+    .clk_i                (clk_i                          ),
+    .rst_ni               (rst_ni                         ),
+    .test_i               (1'b0                           ),
+    .slv_ports_req_i      ({ariane_axi_req, ara_axi_req}  ),
+    .slv_ports_resp_o     ({ariane_axi_resp, ara_axi_resp}),
+    .mst_ports_req_o      (periph_wide_axi_req            ),
+    .mst_ports_resp_i     (periph_wide_axi_resp           ),
+    .addr_map_i           (routing_rules                  ),
+    .en_default_mst_port_i('0                             ),
+    .default_mst_port_i   ('0                             )
   );
 
   /**********
    *  CORE  *
    **********/
-
-  ariane_axi::req_t axi_ariane_req  ;
-  ariane_axi::resp_t axi_ariane_resp;
-
-  ara_axi_pkg::axi_req_t axi_ara_req  ;
-  ara_axi_pkg::axi_resp_t axi_ara_resp;
 
   ara_system #(
     `ifdef PITON_ARIANE
@@ -608,66 +412,47 @@ module ara_testharness #(
     `endif
     .CachedAddrBeg(ariane_soc::DRAMBase )
   ) i_ara_system (
-    .clk_i         (clk_i              ),
-    .rst_ni        (ndmreset_n         ),
-    .boot_addr_i   (ariane_soc::ROMBase), // start fetching from ROM
-    .hart_id_i     ('0                 ),
-    .irq_i         (irqs               ),
-    .ipi_i         (ipi                ),
-    .time_irq_i    (timer_irq          ),
-    .debug_req_i   (debug_req_core     ),
-    .axi_req_o     (axi_ariane_req     ),
-    .axi_resp_i    (axi_ariane_resp    ),
-    .ara_axi_req_o (axi_ara_req        ),
-    .ara_axi_resp_i(axi_ara_resp       )
+    .clk_i         (clk_i                 ),
+    .rst_ni        (rst_ni                ),
+    .testmode_i    (1'b0                  ),
+    .scan_enable_i (1'b0                  ),
+    .scan_data_i   (1'b0                  ),
+    .scan_data_o   (/* Unused */          ),
+    .boot_addr_i   (ariane_soc::ROMBase   ), // start fetching from ROM
+    .hart_id_i     ('0                    ),
+    .irq_i         ('0                    ),
+    .ipi_i         ('0                    ),
+    .time_irq_i    ('0                    ),
+    .debug_req_i   ('0                    ),
+    .axi_req_o     (ariane_narrow_axi_req ),
+    .axi_resp_i    (ariane_narrow_axi_resp),
+    .ara_axi_req_o (ara_axi_req           ),
+    .ara_axi_resp_i(ara_axi_resp          )
   );
 
-  ara_axi_master_connect i_axi_master_connect_ara (
-    .axi_req_i (axi_ara_req ),
-    .axi_resp_o(axi_ara_resp),
-    .master    (ara_cuts[1] )
+  axi_dw_converter #(
+    .AxiSlvPortDataWidth(AxiNarrowDataWidth   ),
+    .AxiMstPortDataWidth(AxiWideDataWidth     ),
+    .AxiAddrWidth       (AxiAddrWidth         ),
+    .AxiIdWidth         (AxiIdWidth           ),
+    .ar_chan_t          (ar_chan_t            ),
+    .mst_r_chan_t       (wide_r_chan_t        ),
+    .slv_r_chan_t       (narrow_r_chan_t      ),
+    .aw_chan_t          (aw_chan_t            ),
+    .b_chan_t           (b_chan_t             ),
+    .mst_w_chan_t       (wide_w_chan_t        ),
+    .slv_w_chan_t       (narrow_w_chan_t      ),
+    .axi_mst_req_t      (axi_wide_slv_req_t   ),
+    .axi_mst_resp_t     (axi_wide_slv_resp_t  ),
+    .axi_slv_req_t      (axi_narrow_slv_req_t ),
+    .axi_slv_resp_t     (axi_narrow_slv_resp_t)
+  ) i_ariane_axi_dwc (
+    .clk_i     (clk_i                 ),
+    .rst_ni    (rst_ni                ),
+    .slv_req_i (ariane_narrow_axi_req ),
+    .slv_resp_o(ariane_narrow_axi_resp),
+    .mst_req_o (ariane_axi_req        ),
+    .mst_resp_i(ariane_axi_resp       )
   );
-
-  axi_master_connect i_axi_master_connect_ariane (
-    .axi_req_i (axi_ariane_req ),
-    .axi_resp_o(axi_ariane_resp),
-    .master    (narrow_slave[0])
-  );
-
-  axi_data_width_converter #(
-    .SI_DATA_WIDTH(AXI_NARROW_DATA_WIDTH),
-    .MI_DATA_WIDTH(AXI_DATA_WIDTH       ),
-    .ID_WIDTH     (AXI_ID_WIDTH         ),
-    .USER_WIDTH   (AXI_USER_WIDTH       )
-  ) i_axi_master_ariane_dwc (
-    .clk_i  (clk_i          ),
-    .rst_ni (rst_ni         ),
-    .slv    (narrow_slave[0]),
-    .mst    (ara_cuts[0]    )
-  );
-
-  for (genvar i = 0; i < NB_SLAVE-1; i++) begin: gen_cuts
-    axi_multicut #(
-      .ADDR_WIDTH(AXI_ADDRESS_WIDTH),
-      .DATA_WIDTH(AXI_DATA_WIDTH   ),
-      .ID_WIDTH  (AXI_ID_WIDTH     ),
-      .USER_WIDTH(AXI_USER_WIDTH   ),
-      .NUM_CUTS  (1                )
-    ) i_cut (
-      .clk_i (clk_i      ),
-      .rst_ni(rst_ni     ),
-      .in    (ara_cuts[i]),
-      .out   (slave[i]   )
-    );
-  end : gen_cuts
-
-  // PROBES
-  `ifdef PROBES
-
-  `ARA_PROBE(axi_ara_resp.r_valid, "VLD")
-  `ARA_PROBE(axi_ara_req.w_valid, "VST")
-  `ARA_PROBE(i_ara_system.i_ara.lane[0].i_lane.i_vex_stage.fpu_result_gnt_i, "VFPU")
-
-  `endif
 
 endmodule : ara_testharness
