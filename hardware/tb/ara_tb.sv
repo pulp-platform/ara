@@ -28,13 +28,13 @@ module ara_tb;
   `ifdef NR_LANES
   localparam NrLanes = `NR_LANES;
   `else
-  localparam NR_LANES = 0;
+  localparam NrLanes = 0;
   `endif
 
   `ifdef VLEN
   localparam VectorLength = `VLEN;
   `else
-  localparam VLEN = 0;
+  localparam VectorLength = 0;
   `endif
 
   localparam ClockPeriod = 1ns;
@@ -67,10 +67,10 @@ module ara_tb;
   logic [31:0] exit;
 
   ara_testharness #(
-    .NrLanes           (NR_LANES         ),
-    .VectorLength      (VLEN             ),
-    .AxiWideDataWidth  (64 * NR_LANES / 2),
-    .AxiNarrowDataWidth(64               )
+    .NrLanes           (NrLanes         ),
+    .VectorLength      (VectorLength    ),
+    .AxiWideDataWidth  (64 * NrLanes / 2),
+    .AxiNarrowDataWidth(64              )
   ) dut (
     .clk_i (clk  ),
     .rst_ni(rst_n),
