@@ -1,4 +1,4 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
+// Copyright 2020 ETH Zurich and University of Bologna.
 // Copyright and related rights are licensed under the Solderpad Hardware
 // License, Version 0.51 (the "License"); you may not use this file except in
 // compliance with the License.  You may obtain a copy of the License at
@@ -8,68 +8,86 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 //
-// Author: Florian Zaruba, ETH Zurich
-// Date: 15/04/2017
-// Description: Top level testbench module. Instantiates the top level DUT, configures
-//              the virtual interfaces and starts the test passed by +UVM_TEST+
+// Author: Matheus Cavalcante, ETH Zurich
+// Date: 21/10/2020
+// Description: Top level testbench module.
 
-
-import ariane_pkg::*;
-import uvm_pkg::*;
-
-`include "uvm_macros.svh"
+import "DPI-C" function void read_elf (input string filename)                                ;
+import "DPI-C" function byte get_section (output longint address, output longint len)        ;
+import "DPI-C" context function byte read_section(input longint address, inout byte buffer[]);
 
 module ara_tb;
 
-    // static uvm_cmdline_processor uvcl = uvm_cmdline_processor::get_inst();
+  /*****************
+   *  Definitions  *
+   *****************/
 
-    localparam int unsigned CLOCK_PERIOD = 20ns;
+  timeunit      1ns;
+  timeprecision 1ps;
 
-    logic clk_i;
-    logic rst_ni;
+  `ifdef NR_LANES
+  localparam NR_LANES = `NR_LANES;
+  `else
+  localparam NR_LANES = 0;
+  `endif
 
-    longint unsigned cycles;
-    longint unsigned max_cycles;
+  `ifdef VLEN
+  localparam VLEN = `VLEN;
+  `else
+  localparam VLEN = 0;
+  `endif
 
-    logic [31:0] exit_o;
+  localparam ClockPeriod = 1ns;
 
-    ara_testharness dut (
-        .clk_i                   ( clk_i                        ),
-        .rst_ni                  ( rst_ni                       ),
-        .exit_o                  ( exit_o                       )
-    );
+  /********************************
+   *  Clock and Reset Generation  *
+   ********************************/
 
-    // Clock process
-    initial begin
-        clk_i = 1'b0;
-        rst_ni = 1'b0;
-        repeat(8)
-            #(CLOCK_PERIOD/2) clk_i = ~clk_i;
-        rst_ni = 1'b1;
-        forever begin
-            #(CLOCK_PERIOD/2) clk_i = 1'b1;
-            #(CLOCK_PERIOD/2) clk_i = 1'b0;
+  logic clk;
+  logic rst_n;
 
-            //if (cycles > max_cycles)
-            //    $fatal(1, "Simulation reached maximum cycle count of %d", max_cycles);
+  // Toggling the clock
+  always #(ClockPeriod/2) clk = !clk;
 
-            cycles++;
-        end
+  // Controlling the reset
+  initial begin
+    clk   = 1'b1;
+    rst_n = 1'b0;
+
+    repeat (5)
+      #(ClockPeriod);
+
+    rst_n = 1'b1;
+  end
+
+  /*********
+   *  DUT  *
+   *********/
+
+  logic [31:0] exit;
+
+  ara_testharness dut (
+    .clk_i (clk  ),
+    .rst_ni(rst_n),
+    .exit_o(exit )
+  );
+
+  /*********
+   *  EOC  *
+   *********/
+
+  initial begin
+    forever begin
+      wait (exit[0]);
+
+      if (exit >> 1) begin
+        $warning("Core Test", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
+      end else begin
+        $info("Core Test", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
+      end
+
+      $finish(exit >> 1);
     end
+  end
 
-    initial begin
-        forever begin
-
-            wait (exit_o[0]);
-
-            if ((exit_o >> 1)) begin
-                `uvm_error( "Core Test",  $sformatf("*** FAILED *** (tohost = %0d)", (exit_o >> 1)))
-            end else begin
-                `uvm_info( "Core Test",  $sformatf("*** SUCCESS *** (tohost = %0d)", (exit_o >> 1)), UVM_LOW)
-            end
-
-            $finish();
-        end
-    end
-
-endmodule
+endmodule : ara_tb
