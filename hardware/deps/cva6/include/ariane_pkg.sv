@@ -273,6 +273,24 @@ package ariane_pkg;
                                                     | riscv::SSTATUS_FS
                                                     | riscv::SSTATUS_SUM
                                                     | riscv::SSTATUS_MXR;
+
+    // ----------------------
+    // Accelerator Interface
+    // ----------------------
+
+    typedef struct packed {
+      riscv::instruction_t      insn;
+      riscv::xlen_t             rs1;
+      riscv::xlen_t             rs2;
+      logic [TRANS_ID_BITS-1:0] trans_id;
+    } accelerator_req_t;
+
+    typedef struct packed {
+      riscv::xlen_t             result;
+      logic [TRANS_ID_BITS-1:0] trans_id;
+      logic                     error;
+    } accelerator_resp_t;
+
     // ---------------
     // Fetch Stage
     // ---------------
