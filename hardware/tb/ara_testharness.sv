@@ -235,16 +235,16 @@ module ara_testharness #(
   );
 
   mock_uart i_mock_uart (
-    .clk_i     ( clk_i        ),
-    .rst_ni    ( rst_ni       ),
-    .penable_i ( uart_penable ),
-    .pwrite_i  ( uart_pwrite  ),
-    .paddr_i   ( uart_paddr   ),
-    .psel_i    ( uart_psel    ),
-    .pwdata_i  ( uart_pwdata  ),
-    .prdata_o  ( uart_prdata  ),
-    .pready_o  ( uart_pready  ),
-    .pslverr_o ( uart_pslverr )
+    .clk_i    (clk_i       ),
+    .rst_ni   (rst_ni      ),
+    .penable_i(uart_penable),
+    .pwrite_i (uart_pwrite ),
+    .paddr_i  (uart_paddr  ),
+    .psel_i   (uart_psel   ),
+    .pwdata_i (uart_pwdata ),
+    .prdata_o (uart_prdata ),
+    .pready_o (uart_pready ),
+    .pslverr_o(uart_pslverr)
   );
 
   axi_dw_converter #(

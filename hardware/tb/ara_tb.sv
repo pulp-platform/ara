@@ -46,6 +46,7 @@ module ara_tb;
   localparam AxiWideByteOffset  = $clog2(AxiWideBeWidth);
 
   localparam DRAMAddrBase = 64'h8000_0000;
+  localparam DRAMLength   = 64'h4000_0000; // 1GByte of DDR (split between two chips on Genesys2)
 
   /********************************
    *  Clock and Reset Generation  *
@@ -122,8 +123,8 @@ module ara_tb;
           for (int b = 0; b < AxiWideBeWidth; b++) begin
             mem_row[8 * b +: 8] = buffer[w * AxiWideBeWidth + b];
           end
-          if (address >= DRAMAddrBase && address < DRAMAddrBase)
-            dut.i_sram.sram[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
+          if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength)
+            dut.i_sram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
           else
             $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
         end
