@@ -67,18 +67,13 @@ reset_vector:
     call    main
 
 eoc:
-    la t0, eoc_address
+    la t0, eoc_address_reg
     sw a0, 0(t0)
     jal x0, eoc
 
 fail:
-    la t0, eoc_address
+    la t0, eoc_address_reg
     sw a0, 0(t0)
     jal x0, eoc
-
-.section ".eoc_address","aw",@progbits
-.align 6
-.globl eoc_address
-eoc_address: .dword 0
 
 .section .data

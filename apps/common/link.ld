@@ -34,7 +34,4 @@ SECTIONS {
   __bss_end = .;
 
   fake_uart = 0xC0000000;
-
-  . = 0xD0000000;
-  .eoc_address (NOLOAD): { *(.eoc_address) }
 }
