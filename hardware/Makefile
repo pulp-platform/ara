@@ -39,6 +39,8 @@ questa_cmd     ?= questa-$(questa_version)
 questa_args    ?=
 # Path to the binaries
 app_path       ?= $(abspath $(ROOT_DIR)/../apps/bin)
+# (Default) app
+app            ?= hello_world
 
 # Check if the specified QuestaSim version exists
 ifeq (, $(shell which $(questa_cmd)))
@@ -80,7 +82,6 @@ bender:
 	(command -v bender >/dev/null 2>&1 && ln -sf $$(command -v bender) ./bender || \
 	curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
 		| bash -s -- 0.19.0)
-	@touch bender
 	@echo "$$(./bender --version) available."
 
 # Library
@@ -91,7 +92,7 @@ $(buildpath)/$(library):
 
 # Compilation
 .PHONY: compile
-compile: dpi lib $(buildpath) $(buildpath)/compile.tcl
+compile: dpi lib $(buildpath) $(buildpath)/compile.tcl | bender
 $(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find tb -type f) $(shell find deps -type f)
 	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t test > $(buildpath)/compile.tcl
 	echo "exit" >> $(buildpath)/compile.tcl
@@ -126,3 +127,4 @@ $(buildpath)/$(dpi_library)/ara_dpi.so: $(dpi)
 .PHONY: clean
 clean:
 	rm -rf $(buildpath)
+	rm -f bender
