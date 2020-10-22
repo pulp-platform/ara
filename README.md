@@ -32,3 +32,31 @@ make toolchain
 
 Ara's parameters are centralized in the `config` folder, in the `config.mk` file.
 Please check `config/README.md` for more details.
+
+## Software
+
+### Build Applications
+
+The `apps` folder contains example applications that work on Ara. Run the following command to build an application. E.g., `hello_world`:
+
+```bash
+cd apps
+make bin/hello_world
+```
+
+## RTL Simulation
+
+To simulate the Ara system with ModelSim, go to the `hardware` folder, which contains all the SystemVerilog files. Use the following command to run your simulation:
+
+```bash
+# Go to the hardware folder
+cd hardware
+# Only compile the hardware without running the simulation.
+make build
+# Run the simulation with the *hello_world* binary loaded
+app=hello_world make sim
+# Run the simulation with the *some_binary* binary. This allows specifying the full path to the binary
+preload=/some_path/some_binary make sim
+# Run the simulation without starting the gui
+app=hello_world make simc
+```
