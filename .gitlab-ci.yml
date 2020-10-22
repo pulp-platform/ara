@@ -1,0 +1,31 @@
+before_script:
+  - export GCC_INSTALL_DIR=/usr/scratch/kneiff/paulsc/opt/riscv-vector
+
+stages:
+  - build
+  - test
+
+build_apps:
+  stage: build
+  script:
+    - make -C apps
+  artifacts:
+    paths:
+      - apps/bin
+
+build_vsim:
+  stage: build
+  script:
+    - make -C hardware compile
+  artifacts:
+    paths:
+      - hardware/build
+
+hello_world:
+  stage: test
+  script:
+    - make -C hardware app=${CI_JOB_NAME} simc
+  artifacts:
+    paths:
+      - hardware/build/trace_hart_*.log
+      - hardware/build/transcript
