@@ -24,16 +24,11 @@ module ara_testharness #(
     // Ara-specific parameters
     parameter int unsigned NrLanes            = 0,
     parameter int unsigned VectorLength       = 0,
-    `ifdef DROMAJO
-    parameter bit InclSimDTM = 1'b0,
-    `else
-    parameter bit InclSimDTM = 1'b1,
-    `endif
-    parameter int unsigned NumWords = 2**23 // memory size
+    parameter int unsigned NumWords           = 2**23 // memory size
   ) (
     input  logic        clk_i,
     input  logic        rst_ni,
-    output logic [31:0] exit_o
+    output logic [63:0] exit_o
   );
 
   /********************
@@ -44,9 +39,10 @@ module ara_testharness #(
 
   typedef enum int unsigned {
     DRAM = 0,
-    UART = 1
+    UART = 1,
+    CTRL = 2
   } axi_slaves_t;
-  localparam NrAXISlaves = UART + 1;
+  localparam NrAXISlaves = CTRL + 1;
 
   /*********
    *  AXI  *
@@ -88,6 +84,14 @@ module ara_testharness #(
   `AXI_TYPEDEF_RESP_T(axi_wide_resp_t, b_chan_t, wide_r_chan_t)
   `AXI_TYPEDEF_REQ_T(axi_wide_slv_req_t, slv_aw_chan_t, wide_w_chan_t, slv_ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_wide_slv_resp_t, slv_b_chan_t, wide_slv_r_chan_t)
+
+  `AXI_LITE_TYPEDEF_AW_CHAN_T(axi_lite_narrow_slv_aw_t, axi_addr_t)
+  `AXI_LITE_TYPEDEF_W_CHAN_T(axi_lite_narrow_slv_w_t, axi_narrow_data_t, axi_narrow_strb_t)
+  `AXI_LITE_TYPEDEF_B_CHAN_T(axi_lite_narrow_slv_b_t)
+  `AXI_LITE_TYPEDEF_AR_CHAN_T(axi_lite_narrow_slv_ar_t, axi_addr_t)
+  `AXI_LITE_TYPEDEF_R_CHAN_T(axi_lite_narrow_slv_r_t, axi_narrow_data_t)
+  `AXI_LITE_TYPEDEF_REQ_T(axi_lite_narrow_slv_req_t, axi_lite_narrow_slv_aw_t, axi_lite_narrow_slv_w_t, axi_lite_narrow_slv_ar_t)
+  `AXI_LITE_TYPEDEF_RESP_T(axi_lite_narrow_slv_resp_t, axi_lite_narrow_slv_b_t, axi_lite_narrow_slv_r_t)
 
   // Buses
   axi_narrow_req_t  ariane_narrow_axi_req;
@@ -291,15 +295,18 @@ module ara_testharness #(
     NoAddrRules       : NrAXISlaves
   };
 
+  localparam logic[63:0] CTRLLength = 64'h1000;
   localparam logic[63:0] UARTLength = 64'h1000;
   localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
 
   typedef enum logic [63:0] {
-    UARTBase = 64'h1000_0000,
+    CTRLBase = 64'hD000_0000,
+    UARTBase = 64'hC000_0000,
     DRAMBase = 64'h8000_0000
   } soc_bus_start_t;
 
   axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
+    '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
     '{idx: DRAM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
 
@@ -332,6 +339,77 @@ module ara_testharness #(
     .default_mst_port_i   ('0                             )
   );
 
+  /***********************
+   *  Control registers  *
+   ***********************/
+
+  axi_lite_narrow_slv_req_t  axi_lite_ctrl_registers_req;
+  axi_lite_narrow_slv_resp_t axi_lite_ctrl_registers_resp;
+
+  axi_to_axi_lite #(
+    .AxiAddrWidth   (AxiAddrWidth              ),
+    .AxiDataWidth   (AxiNarrowDataWidth        ),
+    .AxiIdWidth     (AxiSlvIdWidth             ),
+    .AxiUserWidth   (AxiUserWidth              ),
+    .AxiMaxReadTxns (1                         ),
+    .AxiMaxWriteTxns(1                         ),
+    .FallThrough    (1'b0                      ),
+    .full_req_t     (axi_narrow_slv_req_t      ),
+    .full_resp_t    (axi_narrow_slv_resp_t     ),
+    .lite_req_t     (axi_lite_narrow_slv_req_t ),
+    .lite_resp_t    (axi_lite_narrow_slv_resp_t)
+  ) i_axi_to_axi_lite (
+    .clk_i     (clk_i                        ),
+    .rst_ni    (rst_ni                       ),
+    .test_i    (1'b0                         ),
+    .slv_req_i (periph_narrow_axi_req[CTRL]  ),
+    .slv_resp_o(periph_narrow_axi_resp[CTRL] ),
+    .mst_req_o (axi_lite_ctrl_registers_req  ),
+    .mst_resp_i(axi_lite_ctrl_registers_resp )
+  );
+
+  ctrl_registers #(
+    .DRAMBaseAddr   (DRAMBase                  ),
+    .DRAMLength     (DRAMLength                ),
+    .DataWidth      (AxiNarrowDataWidth        ),
+    .AddrWidth      (AxiAddrWidth              ),
+    .axi_lite_req_t (axi_lite_narrow_slv_req_t ),
+    .axi_lite_resp_t(axi_lite_narrow_slv_resp_t)
+  ) i_ctrl_registers (
+    .clk_i                (clk_i                       ),
+    .rst_ni               (rst_ni                      ),
+    .axi_lite_slave_req_i (axi_lite_ctrl_registers_req ),
+    .axi_lite_slave_resp_o(axi_lite_ctrl_registers_resp),
+    .dram_base_addr_o     (/* Unused */                ),
+    .dram_end_addr_o      (/* Unused */                ),
+    .exit_o               (exit_o                      )
+  );
+
+  axi_dw_converter #(
+    .AxiSlvPortDataWidth(AxiWideDataWidth     ),
+    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
+    .AxiAddrWidth       (AxiAddrWidth         ),
+    .AxiIdWidth         (AxiSlvIdWidth        ),
+    .AxiMaxReads        (2                    ),
+    .ar_chan_t          (slv_ar_chan_t        ),
+    .mst_r_chan_t       (narrow_slv_r_chan_t  ),
+    .slv_r_chan_t       (wide_slv_r_chan_t    ),
+    .aw_chan_t          (slv_aw_chan_t        ),
+    .b_chan_t           (slv_b_chan_t         ),
+    .mst_w_chan_t       (narrow_w_chan_t      ),
+    .slv_w_chan_t       (wide_w_chan_t        ),
+    .axi_mst_req_t      (axi_narrow_slv_req_t ),
+    .axi_mst_resp_t     (axi_narrow_slv_resp_t),
+    .axi_slv_req_t      (axi_wide_slv_req_t   ),
+    .axi_slv_resp_t     (axi_wide_slv_resp_t  )
+  ) i_axi_slave_ctrl_dwc (
+    .clk_i     (clk_i                       ),
+    .rst_ni    (rst_ni                      ),
+    .slv_req_i (periph_wide_axi_req[CTRL]   ),
+    .slv_resp_o(periph_wide_axi_resp[CTRL]  ),
+    .mst_req_o (periph_narrow_axi_req[CTRL] ),
+    .mst_resp_i(periph_narrow_axi_resp[CTRL])
+  );
   /*********
    *  DUT  *
    *********/

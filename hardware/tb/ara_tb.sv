@@ -73,7 +73,7 @@ module ara_tb;
    *  DUT  *
    *********/
 
-  logic [31:0] exit;
+  logic [63:0] exit;
 
   ara_testharness #(
     .NrLanes           (NrLanes           ),
@@ -141,9 +141,9 @@ module ara_tb;
       wait (exit[0]);
 
       if (exit >> 1) begin
-        $warning("Core Test", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
+        $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
       end else begin
-        $info("Core Test", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
+        $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end
 
       $finish(exit >> 1);
