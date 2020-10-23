@@ -26,10 +26,10 @@ ISA_SIM_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim
 # CC and CXX are Makefile default variables that are always defined in a Makefile. Hence, overwrite
 # the variable if it is only defined by the Makefile (its origin in the Makefile's default).
 ifeq ($(origin CC),default)
-CC     = gcc-8.2.0
+CC     = gcc-7.2.0
 endif
 ifeq ($(origin CXX),default)
-CXX    = g++-8.2.0
+CXX    = g++-7.2.0
 endif
 
 # Default target
