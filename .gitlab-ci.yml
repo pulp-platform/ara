@@ -15,12 +15,53 @@
 # Author: Paul Scheffler, ETH Zurich
 #         Matheus Cavalcante, ETH Zurich
 
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+workflow:
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_REF_NAME
+
 before_script:
-  - export GCC_INSTALL_DIR=/usr/scratch/kneiff/paulsc/opt/riscv-vector
+  - env
+  - git submodule sync --recursive
+  - git submodule foreach --recursive git reset --hard
+  # Clean up some stuff that the CI misses
+
+after_script:
+  - env
 
 stages:
+  - toolchain
   - build
   - test
+
+tc-gcc:
+  stage: toolchain
+  script:
+    - git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+    - make toolchain
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  artifacts:
+    paths:
+      - install/riscv-gcc
+    expire_in: 1 day
+
+tc-isa-sim:
+  stage: toolchain
+  script:
+    - git submodule update --init --recursive -- toolchain/riscv-isa-sim
+    - git submodule foreach --recursive git reset --hard
+    - make riscv-isa-sim
+  variables:
+    GIT_SUBMODULE_STRATEGY: none
+  artifacts:
+    paths:
+      - install/riscv-isa-sim
+    expire_in: 1 day
 
 build_apps:
   stage: build
@@ -29,6 +70,9 @@ build_apps:
   artifacts:
     paths:
       - apps/bin
+  needs: ["tc-gcc"]
+  dependencies:
+    - tc-gcc
 
 build_vsim:
   stage: build
