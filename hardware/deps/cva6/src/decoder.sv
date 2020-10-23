@@ -35,6 +35,7 @@ module decoder import ariane_pkg::*; (
     input  logic               debug_mode_i,            // we are in debug mode
     input  riscv::xs_t         fs_i,                    // floating point extension status
     input  logic [2:0]         frm_i,                   // floating-point dynamic rounding mode
+    input  riscv::xs_t         vs_i,                    // vector extension status
     input  logic               tvm_i,                   // trap virtual memory
     input  logic               tw_i,                    // timeout wait
     input  logic               tsr_i,                   // trap sret

@@ -167,6 +167,13 @@ package ariane_pkg;
 `endif
     localparam bit RVA = 1'b1; // Is A extension enabled
 
+    // Vector extension configuration
+`ifdef VECTOR_EXTENSION_ARIANE
+    localparam bit RVV = 1'b1; // Is V extension enabled
+`else
+    localparam bit RVV = 1'b0; // Is V extension enabled
+`endif
+
     // Transprecision floating-point extensions configuration
     localparam bit XF16    = 1'b0; // Is half-precision float extension (Xf16) enabled
     localparam bit XF16ALT = 1'b0; // Is alternative half-precision float extension (Xf16alt) enabled
@@ -215,6 +222,7 @@ package ariane_pkg;
                                      | (0   << 13)  // N - User level interrupts supported
                                      | (1   << 18)  // S - Supervisor mode implemented
                                      | (1   << 20)  // U - User mode implemented
+                                     | (RVV << 21)  // V - Vector extension
                                      | (NSX << 23)  // X - Non-standard extensions present
                                      | ((riscv::XLEN == 64 ? 2 : 1) << riscv::XLEN-2);  // MXL
 

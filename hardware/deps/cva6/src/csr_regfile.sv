@@ -54,6 +54,8 @@ module csr_regfile import ariane_pkg::*; #(
     output logic [4:0]            fflags_o,                   // Floating-Point Accured Exceptions
     output logic [2:0]            frm_o,                      // Floating-Point Dynamic Rounding Mode
     output logic [6:0]            fprec_o,                    // Floating-Point Precision Control
+    // Vector extension
+    output riscv::xs_t            vs_o,                       // Vector extension status
     // Decoder
     output irq_ctrl_t             irq_ctrl_o,                 // interrupt management to id stage
     // MMU
@@ -152,6 +154,7 @@ module csr_regfile import ariane_pkg::*; #(
     // ----------------
     assign csr_addr = riscv::csr_t'(csr_addr_i);
     assign fs_o = mstatus_q.fs;
+    assign vs_o = mstatus_q.vs;
     // ----------------
     // CSR Read logic
     // ----------------
@@ -462,6 +465,10 @@ module csr_regfile import ariane_pkg::*; #(
                     if (!FP_PRESENT) begin
                         mstatus_d.fs = riscv::Off;
                     end
+                    // hardwire to zero if vector extension is not present
+                    if (!RVV) begin
+                        mstatus_d.vs = riscv::Off;
+                    end
                     // this instruction has side-effects
                     flush_o = 1'b1;
                 end
@@ -506,6 +513,10 @@ module csr_regfile import ariane_pkg::*; #(
                     mstatus_d.xs   = riscv::Off;
                     if (!FP_PRESENT) begin
                         mstatus_d.fs = riscv::Off;
+                    end
+                    // hardwire to zero if vector extension is not present
+                    if (!RVV) begin
+                        mstatus_d.vs = riscv::Off;
                     end
                     mstatus_d.upie = 1'b0;
                     mstatus_d.uie  = 1'b0;

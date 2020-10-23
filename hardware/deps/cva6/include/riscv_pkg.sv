@@ -83,7 +83,7 @@ package riscv;
         xs_t          xs;     // extension register - hardwired to zero
         xs_t          fs;     // floating point extension register
         priv_lvl_t    mpp;    // holds the previous privilege mode up to machine
-        logic [1:0]   wpri2;  // writes preserved reads ignored
+        xs_t          vs;     // vector extension register
         logic         spp;    // holds the previous privilege mode up to supervisor
         logic         mpie;   // machine interrupts enable bit active prior to trap
         logic         wpri1;  // writes preserved reads ignored
