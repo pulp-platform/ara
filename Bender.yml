@@ -16,6 +16,7 @@ workspace:
 sources:
   defines:
     WT_DCACHE: 1
+    VECTOR_EXTENSION_ARIANE: 1
 
   files:
     #files:
