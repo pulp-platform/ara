@@ -21,6 +21,9 @@
 .section .text;
 .section .text.init;
 
+#define MSTATUS_FS          0x00006000
+#define MSTATUS_VS          0x00000600
+
 _start:
     // Initialize global pointer
     .option push
@@ -62,8 +65,17 @@ reset_vector:
     li      x29, 0
     li      x30, 0
     li      x31, 0
-    la      sp, dram_end_address_reg // Initialize stack at the end of the DRAM region
+    // Activate FP Extension
+    li      sp, (MSTATUS_FS & (MSTATUS_FS >> 1))
+    csrs    mstatus, sp
+    csrwi   fcsr, 0
+    // Activate Vector Extension
+    li      sp, (MSTATUS_VS & (MSTATUS_VS >> 1))
+    csrs    mstatus, sp
+    // Initialize stack at the end of the DRAM region
+    la      sp, dram_end_address_reg
     ld      sp, 0(sp)
+    // Call main
     call    main
 
 eoc:
