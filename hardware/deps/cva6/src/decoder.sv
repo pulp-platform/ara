@@ -65,6 +65,32 @@ module decoder import ariane_pkg::*; (
     riscv::xlen_t imm_uj_type;
     riscv::xlen_t imm_bi_type;
 
+    // ---------------------------------------
+    // Vector instruction first-pass decoder
+    // ---------------------------------------
+    logic is_rvv;
+    logic is_rs1;
+    logic is_rs2;
+    logic is_rd;
+
+    if (RVV) begin: gen_rvv_decoder
+        // This module is responsible for a light-weight decoding of RVV instructions,
+        // identifying them, but also whether they read/write scalar registers.
+        // Check Ara for the definition of this module.
+        rvv_first_pass_decoder i_rvv_decoder (
+            .instruction_i(instruction_i),
+            .is_rvv_o(is_rvv),
+            .is_rs1_o(is_rs1),
+            .is_rs2_o(is_rs2),
+            .is_rd_o(is_rd)
+        );
+    end: gen_rvv_decoder else begin: gen_no_rvv_support
+        assign is_rvv = 1'b0;
+        assign is_rs1 = 1'b0;
+        assign is_rs2 = 1'b0;
+        assign is_rd  = 1'b0;
+    end: gen_no_rvv_support
+
     always_comb begin : decoder
 
         imm_select                  = NOIMM;
@@ -1006,6 +1032,26 @@ module decoder import ariane_pkg::*; (
 
                 default: illegal_instr = 1'b1;
             endcase
+        end
+
+        // Vector extension.
+        // These can overwrite the previous decoding entirely.
+        if (RVV && vs_i != riscv::Off) begin // only generate decoder if the vector extension is enabled (static)
+            if (is_rvv) begin
+                // Send vector instructions to the accelerator
+                instruction_o.fu  = ACCEL;
+                instruction_o.rs1 = is_rs1 ? instr.rtype.rs1 : {REG_ADDR_SIZE{1'b0}};
+                instruction_o.rs2 = is_rs2 ? instr.rtype.rs2 : {REG_ADDR_SIZE{1'b0}};
+                instruction_o.rd  = is_rd ? instr.rtype.rd : {REG_ADDR_SIZE{1'b0}};
+
+                // Ensure the decoding is sane
+                is_control_flow_instr_o = 1'b0;
+                check_fprm = 1'b0;
+                imm_select = NOIMM;
+
+                // At this step, consider the vector instructions are not illegal
+                illegal_instr = 1'b0;
+            end
         end
     end
 

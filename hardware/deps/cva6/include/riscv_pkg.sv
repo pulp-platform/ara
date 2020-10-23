@@ -179,6 +179,19 @@ package riscv;
         logic [6:0]   opcode;
     } atype_t;
 
+    // vector memory instructions
+    typedef struct packed {
+        logic [31:29] nf;
+        logic         mew;
+        logic [27:26] mop;
+        logic         vm;
+        logic [24:20] rs2;
+        logic [19:15] rs1;
+        logic [14:12] width;
+        logic [11:7]  vd;
+        logic [6:0]   opcode;
+    } vmemtype_t;
+
     typedef union packed {
         logic [31:0]   instr;
         rtype_t        rtype;
@@ -189,6 +202,7 @@ package riscv;
         stype_t        stype;
         utype_t        utype;
         atype_t        atype;
+        vmemtype_t     vmemtype;
     } instruction_t;
 
     // --------------------
@@ -217,7 +231,7 @@ package riscv;
     localparam OpcodeNmsub     = 7'b10_010_11;
     localparam OpcodeNmadd     = 7'b10_011_11;
     localparam OpcodeOpFp      = 7'b10_100_11;
-    localparam OpcodeRsrvd1    = 7'b10_101_11;
+    localparam OpcodeVec       = 7'b10_101_11;
     localparam OpcodeCustom2   = 7'b10_110_11;
     // Quadrant 3
     localparam OpcodeBranch    = 7'b11_000_11;

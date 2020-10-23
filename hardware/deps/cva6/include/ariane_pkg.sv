@@ -383,7 +383,8 @@ package ariane_pkg;
         MULT,      // 5
         CSR,       // 6
         FPU,       // 7
-        FPU_VEC    // 8
+        FPU_VEC,   // 8
+        ACCEL      // 9
     } fu_t;
 
     localparam EXC_OFF_RST      = 8'h80;
