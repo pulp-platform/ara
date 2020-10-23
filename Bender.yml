@@ -19,6 +19,9 @@ sources:
     VECTOR_EXTENSION_ARIANE: 1
 
   files:
+    # Level 1
+    - hardware/src/rvv_first_pass_decoder.sv
+
     #files:
     # Level 1
     #- hardware/include/ara_pkg.sv
@@ -49,11 +52,11 @@ sources:
     # Level 6
     #- hardware/src/ara.sv
 
-  - target: ara_test
-    files:
-      # Level 1
-      - hardware/tb/ctrl_registers.sv
-      # Level 2
-      - hardware/tb/ara_testharness.sv
-      # Level 3
-      - hardware/tb/ara_tb.sv
+    - target: ara_test
+      files:
+        # Level 1
+        - hardware/tb/ctrl_registers.sv
+        # Level 2
+        - hardware/tb/ara_testharness.sv
+        # Level 3
+        - hardware/tb/ara_tb.sv
