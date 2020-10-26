@@ -28,13 +28,16 @@ BINARIES := $(addprefix bin/,$(APPS))
 all: $(BINARIES)
 
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
-
 .PHONY: $(BINARIES)
-$(BINARIES): bin/%: %/main.c.o $(RUNTIME)
-	mkdir -p $(shell dirname $@)
-	$(RISCV_CC) -Iinclude $(RISCV_LDFLAGS) -o $@ $^ -T$(CURDIR)/common/link.ld
-	$(RISCV_OBJDUMP) $(RISCV_OBJDUMP_FLAGS) -D $@ > $@.dump
-	$(RISCV_STRIP) $@ -S --strip-unneeded
+
+define app_compile_template
+$(addprefix bin/, $1): $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME)
+	mkdir -p bin/
+	$$(RISCV_CC) -Iinclude $$(RISCV_LDFLAGS) -o $$@ $$^ -T$$(CURDIR)/common/link.ld
+	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+	$$(RISCV_STRIP) $$@ -S --strip-unneeded
+endef
+$(foreach app,$(APPS),$(eval $(call app_compile_template, $(app))))
 
 .PHONY: clean
 clean:
