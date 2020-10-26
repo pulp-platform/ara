@@ -24,7 +24,10 @@ module rvv_first_pass_decoder import rvv_pkg::*; (
     output logic        is_rvv_o,      // is a vector extension
     output logic        is_rs1_o,
     output logic        is_rs2_o,
-    output logic        is_rd_o
+    output logic        is_rd_o,
+    output logic        is_fs1_o,
+    output logic        is_fs2_o,
+    output logic        is_fd_o
   );
 
   // Cast instruction into the `rvv_instruction_t` struct
@@ -37,6 +40,9 @@ module rvv_first_pass_decoder import rvv_pkg::*; (
     is_rs1_o = 1'b0;
     is_rs2_o = 1'b0;
     is_rd_o  = 1'b0;
+    is_fs1_o = 1'b0;
+    is_fs2_o = 1'b0;
+    is_fd_o  = 1'b0;
 
     // Decode based on the opcode
     case (instr.i_type.opcode)
@@ -45,10 +51,10 @@ module rvv_first_pass_decoder import rvv_pkg::*; (
       riscv::OpcodeVec: begin
         is_rvv_o = 1'b1;
         case (instr.varith_type.func3)
-          OPFVV: is_rd_o  = instr.varith_type.func6 == 6'b010_000; // VFWUNARY0
+          OPFVV: is_fd_o  = instr.varith_type.func6 == 6'b010_000; // VFWUNARY0
           OPMVV: is_rd_o  = instr.varith_type.func6 == 6'b010_000; // VWXUNARY0
           OPIVX: is_rs1_o = 1'b1                                 ;
-          OPFVF: is_rs1_o = 1'b1                                 ;
+          OPFVF: is_fs1_o = 1'b1                                 ;
           OPMVX: is_rs1_o = 1'b1                                 ;
           OPCFG: begin
             is_rs1_o = 1'b1                                  ;
