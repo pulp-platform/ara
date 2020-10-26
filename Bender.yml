@@ -14,10 +14,6 @@ workspace:
   checkout_dir: "hardware/deps"
 
 sources:
-  defines:
-    WT_DCACHE: 1
-    VECTOR_EXTENSION_ARIANE: 1
-
   files:
     # Level 1
     - hardware/src/rvv_pkg.sv

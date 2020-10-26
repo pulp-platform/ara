@@ -67,7 +67,7 @@ dpi   := $(patsubst tb/dpi/%.cpp,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/d
 vlog_args += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233
 vlog_args += -work $(library)
 # Defines
-vlog_args += +define+NR_LANES=$(nr_lanes) +define+VLEN=$(vlen)
+vlog_args += +define+NR_LANES=$(nr_lanes) +define+VLEN=$(vlen) +define+VECTOR_EXTENSION_ARIANE=1
 
 # Default target
 all: compile
