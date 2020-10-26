@@ -179,19 +179,6 @@ package riscv;
         logic [6:0]   opcode;
     } atype_t;
 
-    // vector memory instructions
-    typedef struct packed {
-        logic [31:29] nf;
-        logic         mew;
-        logic [27:26] mop;
-        logic         vm;
-        logic [24:20] rs2;
-        logic [19:15] rs1;
-        logic [14:12] width;
-        logic [11:7]  vd;
-        logic [6:0]   opcode;
-    } vmemtype_t;
-
     typedef union packed {
         logic [31:0]   instr;
         rtype_t        rtype;
@@ -202,7 +189,6 @@ package riscv;
         stype_t        stype;
         utype_t        utype;
         atype_t        atype;
-        vmemtype_t     vmemtype;
     } instruction_t;
 
     // --------------------

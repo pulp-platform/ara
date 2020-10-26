@@ -589,21 +589,6 @@ package ariane_pkg;
         endcase
     endfunction
 
-    function automatic logic is_vector_csr (riscv::csr_reg_t csr);
-        case (csr)
-            riscv::CSR_VSTART,
-            riscv::CSR_VXSAT,
-            riscv::CSR_VXRM,
-            riscv::CSR_VCSR,
-            riscv::CSR_VL,
-            riscv::CSR_VTYPE,
-            riscv::CSR_VLENB: begin
-                return 1'b1;
-            end
-            default: return 1'b0;
-        endcase
-    endfunction
-
     typedef struct packed {
         logic                     valid;
         logic [riscv::VLEN-1:0]   vaddr;
