@@ -19,7 +19,7 @@
 //              instruction, whether it reads scalar registers, and whether
 //              it writes to a destination scalar register
 
-module rvv_first_pass_decoder (
+module rvv_first_pass_decoder import rvv_pkg::*; (
     input  logic [31:0] instruction_i, // instruction from IF
     output logic        is_rvv_o,      // is a vector extension
     output logic        is_rs1_o,
@@ -27,21 +27,9 @@ module rvv_first_pass_decoder (
     output logic        is_rd_o
   );
 
-  // Cast instruction into the `instruction_t` struct
-  riscv::instruction_t instr;
-  assign instr = riscv::instruction_t'(instruction_i);
-
-  // Funct3 values of the OpcodeVec instructions
-  typedef enum logic [2:0] {
-    OPIVV = 3'b000,
-    OPFVV = 3'b001,
-    OPMVV = 3'b010,
-    OPIVI = 3'b011,
-    OPIVX = 3'b100,
-    OPFVF = 3'b101,
-    OPMVX = 3'b110,
-    OPCFG = 3'b111
-  } opcodevec_funct3_e;
+  // Cast instruction into the `rvv_instruction_t` struct
+  rvv_instruction_t instr;
+  assign instr = rvv_instruction_t'(instruction_i);
 
   always_comb begin
     // Default values
@@ -51,21 +39,21 @@ module rvv_first_pass_decoder (
     is_rd_o  = 1'b0;
 
     // Decode based on the opcode
-    case (instr.rtype.opcode)
+    case (instr.i_type.opcode)
 
       // Arithmetic vector operations
       riscv::OpcodeVec: begin
         is_rvv_o = 1'b1;
-        case (opcodevec_funct3_e'(instr.rtype.funct3))
-          OPFVV: is_rd_o  = instr.rtype.funct7 == 7'b010_000?; // VFWUNARY0
-          OPMVV: is_rd_o  = instr.rtype.funct7 == 7'b010_000?; // VWXUNARY0
-          OPIVX: is_rs1_o = 1'b1                             ;
-          OPFVF: is_rs1_o = 1'b1                             ;
-          OPMVX: is_rs1_o = 1'b1                             ;
+        case (instr.varith_type.func3)
+          OPFVV: is_rd_o  = instr.varith_type.func6 == 6'b010_000; // VFWUNARY0
+          OPMVV: is_rd_o  = instr.varith_type.func6 == 6'b010_000; // VWXUNARY0
+          OPIVX: is_rs1_o = 1'b1                                 ;
+          OPFVF: is_rs1_o = 1'b1                                 ;
+          OPMVX: is_rs1_o = 1'b1                                 ;
           OPCFG: begin
-            is_rs1_o = 1'b1                             ;
-            is_rs2_o = instr.rtype.funct7 == 7'b100_0000; // vsetvl
-            is_rd_o  = 1'b1                             ;
+            is_rs1_o = 1'b1                                  ;
+            is_rs2_o = instr.vsetvl_type.func7 == 7'b100_0000; // vsetvl
+            is_rd_o  = 1'b1                                  ;
           end
         endcase
       end
@@ -73,7 +61,7 @@ module rvv_first_pass_decoder (
       // Memory vector operations
       riscv::OpcodeLoadFp,
       riscv::OpcodeStoreFp: begin
-        case ({instr.vmemtype.mew, instr.vmemtype.width})
+        case ({instr.vmem_type.mew, instr.vmem_type.width})
           4'b0000, //VLxE8/VSxE8
           4'b0101, //VLxE16/VSxE16
           4'b0110, //VLxE32/VSxE32
@@ -82,16 +70,16 @@ module rvv_first_pass_decoder (
           4'b1101, //VLxE256/VSxE256
           4'b1110, //VLxE512/VSxE512
           4'b1111: begin //VLxE1024/VSxE1024
-            is_rvv_o = 1'b1                       ;
-            is_rs1_o = 1'b1                       ;
-            is_rs2_o = instr.vmemtype.mop == 2'b10; // Strided operation
+            is_rvv_o = 1'b1                        ;
+            is_rs1_o = 1'b1                        ;
+            is_rs2_o = instr.vmem_type.mop == 2'b10; // Strided operation
           end
         endcase
       end
 
       // Atomic vector operations
       riscv::OpcodeAmo: begin
-        case (instr.atype.funct3)
+        case (instr.vamo_type.width)
           3'b000, //VAMO*EI8.V
           3'b101, //VAMO*EI16.V
           3'b110, //VAMO*EI32.V
@@ -104,17 +92,17 @@ module rvv_first_pass_decoder (
 
       // CSRR/W instructions into vector CSRs
       riscv::OpcodeSystem: begin
-        case (instr.itype.funct3)
+        case (instr.i_type.funct3)
           3'b001, //CSRRW
           3'b010, //CSRRS,
           3'b011, //CSRRC,
           3'b101, //CSRRWI
           3'b110, //CSRRSI
           3'b111: begin //CSRRCI
-            is_rvv_o = ariane_pkg::is_vector_csr(riscv::csr_reg_t'(instr.itype.imm));
-            is_rs1_o = ariane_pkg::is_vector_csr(riscv::csr_reg_t'(instr.itype.imm));
-            is_rs2_o = ariane_pkg::is_vector_csr(riscv::csr_reg_t'(instr.itype.imm));
-            is_rd_o  = ariane_pkg::is_vector_csr(riscv::csr_reg_t'(instr.itype.imm));
+            is_rvv_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_rs1_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_rs2_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_rd_o  = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
           end
         endcase
 

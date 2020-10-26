@@ -20,6 +20,8 @@ sources:
 
   files:
     # Level 1
+    - hardware/src/rvv_pkg.sv
+    # Level 1
     - hardware/src/rvv_first_pass_decoder.sv
 
     #files:
