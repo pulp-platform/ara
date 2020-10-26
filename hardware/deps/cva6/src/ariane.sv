@@ -38,6 +38,16 @@ module ariane import ariane_pkg::*; #(
   // Timer facilities
   input  logic                         time_irq_i,   // timer interrupt in (async)
   input  logic                         debug_req_i,  // debug request (async)
+`ifdef VECTOR_EXTENSION_ARIANE
+  // Accelerator request port
+  output accelerator_req_t             acc_req_o,
+  output logic                         acc_req_valid_o,
+  input logic                          acc_req_ready_i,
+  // Accelerator response port
+  input accelerator_resp_t             acc_resp_i,
+  input  logic                         acc_resp_valid_i,
+  output logic                         acc_resp_ready_o,
+`endif
 `ifdef FIRESIM_TRACE
   // firesim trace port
   output traced_instr_pkg::trace_port_t trace_o,
@@ -130,6 +140,13 @@ module ariane import ariane_pkg::*; #(
   riscv::xlen_t             fpu_result_ex_id;
   logic                     fpu_valid_ex_id;
   exception_t               fpu_exception_ex_id;
+  // Accelerator
+  logic                     acc_ready_ex_id;
+  logic                     acc_valid_id_ex;
+  logic [TRANS_ID_BITS-1:0] acc_trans_id_ex_id;
+  riscv::xlen_t             acc_result_ex_id;
+  logic                     acc_valid_ex_id;
+  exception_t               acc_exception_ex_id;
   // CSR
   logic                     csr_valid_id_ex;
   // --------------
@@ -338,12 +355,15 @@ module ariane import ariane_pkg::*; #(
     .fpu_rm_o                   ( fpu_rm_id_ex                 ),
     // CSR
     .csr_valid_o                ( csr_valid_id_ex              ),
+    // Accelerator
+    .acc_ready_i                ( acc_ready_ex_id              ),
+    .acc_valid_o                ( acc_valid_id_ex              ),
     // Commit
     .resolved_branch_i          ( resolved_branch              ),
-    .trans_id_i                 ( {flu_trans_id_ex_id,  load_trans_id_ex_id,  store_trans_id_ex_id,   fpu_trans_id_ex_id }),
-    .wbdata_i                   ( {flu_result_ex_id,    load_result_ex_id,    store_result_ex_id,       fpu_result_ex_id }),
-    .ex_ex_i                    ( {flu_exception_ex_id, load_exception_ex_id, store_exception_ex_id, fpu_exception_ex_id }),
-    .wt_valid_i                 ( {flu_valid_ex_id,     load_valid_ex_id,     store_valid_ex_id,         fpu_valid_ex_id }),
+    .trans_id_i                 ( {flu_trans_id_ex_id,  load_trans_id_ex_id,  store_trans_id_ex_id,   fpu_trans_id_ex_id,  acc_trans_id_ex_id }),
+    .wbdata_i                   ( {flu_result_ex_id,    load_result_ex_id,    store_result_ex_id,       fpu_result_ex_id,    acc_result_ex_id }),
+    .ex_ex_i                    ( {flu_exception_ex_id, load_exception_ex_id, store_exception_ex_id, fpu_exception_ex_id, acc_exception_ex_id }),
+    .wt_valid_i                 ( {flu_valid_ex_id,     load_valid_ex_id,     store_valid_ex_id,         fpu_valid_ex_id,     acc_valid_ex_id }),
 
     .waddr_i                    ( waddr_commit_id              ),
     .wdata_i                    ( wdata_commit_id              ),
@@ -421,6 +441,21 @@ module ariane import ariane_pkg::*; #(
     .amo_valid_commit_i     ( amo_valid_commit            ),
     .amo_req_o              ( amo_req                     ),
     .amo_resp_i             ( amo_resp                    ),
+    // Accelerator
+    `ifdef VECTOR_EXTENSION_ARIANE
+    .acc_req_o              ( acc_req_o                   ),
+    .acc_req_valid_o        ( acc_req_valid_o             ),
+    .acc_req_ready_i        ( acc_req_ready_i             ),
+    .acc_resp_i             ( acc_resp_i                  ),
+    .acc_resp_valid_i       ( acc_resp_valid_i            ),
+    .acc_resp_ready_o       ( acc_resp_ready_o            ),
+    `endif
+    .acc_ready_o            ( acc_ready_ex_id             ),
+    .acc_valid_i            ( acc_valid_id_ex             ),
+    .acc_trans_id_o         ( acc_trans_id_ex_id          ),
+    .acc_result_o           ( acc_result_ex_id            ),
+    .acc_valid_o            ( acc_valid_ex_id             ),
+    .acc_exception_o        ( acc_exception_ex_id         ),
     // Performance counters
     .itlb_miss_o            ( itlb_miss_ex_perf           ),
     .dtlb_miss_o            ( dtlb_miss_ex_perf           ),

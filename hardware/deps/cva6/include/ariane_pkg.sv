@@ -228,7 +228,7 @@ package ariane_pkg;
 
     // 32 registers + 1 bit for re-naming = 6
     localparam REG_ADDR_SIZE = 6;
-    localparam NR_WB_PORTS = 4;
+    localparam NR_WB_PORTS = 5;
 
     // static debug hartinfo
     localparam dm::hartinfo_t DebugHartInfo = '{

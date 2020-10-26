@@ -56,6 +56,9 @@ module issue_stage import ariane_pkg::*; #(
 
     output logic                                     csr_valid_o,
 
+    input  logic                                     acc_ready_i,
+    output logic                                     acc_valid_o,
+
     // write back port
     input logic [NR_WB_PORTS-1:0][TRANS_ID_BITS-1:0] trans_id_i,
     input bp_resolve_t                               resolved_branch_i,

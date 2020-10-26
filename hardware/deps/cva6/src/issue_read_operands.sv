@@ -62,6 +62,9 @@ module issue_read_operands import ariane_pkg::*; #(
     output logic [2:0]                             fpu_rm_o,         // FP rm field from instr.
     // CSR
     output logic                                   csr_valid_o,      // Output is valid
+    // Accelerator
+    input  logic                                   acc_ready_i,      // FU is ready
+    output logic                                   acc_valid_o,      // Output is valid
     // commit port
     input  logic [NR_COMMIT_PORTS-1:0][4:0]        waddr_i,
     input  logic [NR_COMMIT_PORTS-1:0][riscv::XLEN-1:0] wdata_i,
@@ -89,6 +92,7 @@ module issue_read_operands import ariane_pkg::*; #(
     logic          lsu_valid_q;
     logic          csr_valid_q;
     logic       branch_valid_q;
+    logic          acc_valid_q;
 
     logic [TRANS_ID_BITS-1:0] trans_id_n, trans_id_q;
     fu_op operator_n, operator_q; // operation to perform
@@ -120,6 +124,7 @@ module issue_read_operands import ariane_pkg::*; #(
     assign fpu_valid_o         = fpu_valid_q;
     assign fpu_fmt_o           = fpu_fmt_q;
     assign fpu_rm_o            = fpu_rm_q;
+    assign acc_valid_o         = acc_valid_q;
     // ---------------
     // Issue Stage
     // ---------------
@@ -136,6 +141,8 @@ module issue_read_operands import ariane_pkg::*; #(
                 fu_busy = ~fpu_ready_i;
             LOAD, STORE:
                 fu_busy = ~lsu_ready_i;
+            ACCEL:
+                fu_busy = ~acc_ready_i;
             default:
                 fu_busy = 1'b0;
         endcase
@@ -246,6 +253,7 @@ module issue_read_operands import ariane_pkg::*; #(
         fpu_rm_q       <= 3'b0;
         csr_valid_q    <= 1'b0;
         branch_valid_q <= 1'b0;
+        acc_valid_q    <= 1'b0;
       end else begin
         alu_valid_q    <= 1'b0;
         lsu_valid_q    <= 1'b0;
@@ -255,6 +263,7 @@ module issue_read_operands import ariane_pkg::*; #(
         fpu_rm_q       <= 3'b0;
         csr_valid_q    <= 1'b0;
         branch_valid_q <= 1'b0;
+        acc_valid_q    <= 1'b0;
         // Exception pass through:
         // If an exception has occurred simply pass it through
         // we do not want to issue this instruction
@@ -280,6 +289,8 @@ module issue_read_operands import ariane_pkg::*; #(
                     lsu_valid_q    <= 1'b1;
                 CSR:
                     csr_valid_q    <= 1'b1;
+                ACCEL:
+                    acc_valid_q    <= 1'b1;
                 default:;
             endcase
         end
@@ -292,6 +303,7 @@ module issue_read_operands import ariane_pkg::*; #(
             fpu_valid_q    <= 1'b0;
             csr_valid_q    <= 1'b0;
             branch_valid_q <= 1'b0;
+            acc_valid_q    <= 1'b0;
         end
       end
     end
