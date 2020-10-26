@@ -495,7 +495,9 @@ package ariane_pkg;
                                // Floating-Point Classify Instruction
                                FCLASS,
                                // Vectorial Floating-Point Instructions that don't directly map onto the scalar ones
-                               VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFEQ, VFNE, VFLT, VFGE, VFLE, VFGT, VFCPKAB_S, VFCPKCD_S, VFCPKAB_D, VFCPKCD_D
+                               VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFEQ, VFNE, VFLT, VFGE, VFLE, VFGT, VFCPKAB_S, VFCPKCD_S, VFCPKAB_D, VFCPKCD_D,
+                               // Vector operations
+                               VECOP, VECOP_FS1, VECOP_FD
                              } fu_op;
 
     typedef struct packed {
@@ -527,7 +529,8 @@ package ariane_pkg;
                 FMV_F2X,                         // FPR-GPR Moves
                 FCMP,                            // Comparisons
                 FCLASS,                          // Classifications
-                [VFMIN:VFCPKCD_D] : return 1'b1; // Additional Vectorial FP ops
+                [VFMIN:VFCPKCD_D],               // Additional Vectorial FP ops
+                VECOP_FS1         : return 1'b1; // Vector instructions that use fs1
                 default           : return 1'b0; // all other ops
             endcase
         end else
@@ -573,7 +576,8 @@ package ariane_pkg;
                 FSGNJ,                               // Sign Injections
                 FMV_X2F,                             // GPR-FPR Moves
                 [VFMIN:VFSGNJX],                     // Vectorial MIN/MAX and SGNJ
-                [VFCPKAB_S:VFCPKCD_D] : return 1'b1; // Vectorial FP cast and pack ops
+                [VFCPKAB_S:VFCPKCD_D],               // Vectorial FP cast and pack ops
+                VECOP_FD              : return 1'b1; // Vector instructions that write to fd
                 default               : return 1'b0; // all other ops
             endcase
         end else

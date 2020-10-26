@@ -72,6 +72,9 @@ module decoder import ariane_pkg::*; (
     logic is_rs1;
     logic is_rs2;
     logic is_rd;
+    logic is_fs1;
+    logic is_fs2;
+    logic is_fd;
 
     if (RVV) begin: gen_rvv_decoder
         // This module is responsible for a light-weight decoding of RVV instructions,
@@ -82,13 +85,19 @@ module decoder import ariane_pkg::*; (
             .is_rvv_o(is_rvv),
             .is_rs1_o(is_rs1),
             .is_rs2_o(is_rs2),
-            .is_rd_o(is_rd)
+            .is_rd_o(is_rd),
+            .is_fs1_o(is_fs1),
+            .is_fs2_o(is_fs2),
+            .is_fd_o(is_fd)
         );
     end: gen_rvv_decoder else begin: gen_no_rvv_support
         assign is_rvv = 1'b0;
         assign is_rs1 = 1'b0;
         assign is_rs2 = 1'b0;
         assign is_rd  = 1'b0;
+        assign is_fs1 = 1'b0;
+        assign is_fs2 = 1'b0;
+        assign is_fd  = 1'b0;
     end: gen_no_rvv_support
 
     always_comb begin : decoder
@@ -1043,6 +1052,13 @@ module decoder import ariane_pkg::*; (
                 instruction_o.rs1 = is_rs1 ? instr.rtype.rs1 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rs2 = is_rs2 ? instr.rtype.rs2 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rd  = is_rd ? instr.rtype.rd : {REG_ADDR_SIZE{1'b0}};
+
+                // Decode the vector operation
+                unique case ({is_fs1, is_fs2, is_fd})
+                    3'b100: instruction_o.op = VECOP_FS1;
+                    3'b001: instruction_o.op = VECOP_FD;
+                    3'b000: instruction_o.op = VECOP;
+                endcase
 
                 // Ensure the decoding is sane
                 is_control_flow_instr_o = 1'b0;
