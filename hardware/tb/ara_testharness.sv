@@ -410,26 +410,46 @@ module ara_testharness #(
     .mst_req_o (periph_narrow_axi_req[CTRL] ),
     .mst_resp_i(periph_narrow_axi_resp[CTRL])
   );
+
   /*********
    *  DUT  *
    *********/
 
+  // Accelerator ports
+  ariane_pkg::accelerator_req_t acc_req;
+  logic acc_req_valid;
+  logic acc_req_ready;
+  ariane_pkg::accelerator_resp_t acc_resp;
+  logic acc_resp_valid;
+  logic acc_resp_ready;
+
+
   // TODO: Integrate Ara
   assign ara_axi_req = '0;
+  assign acc_req_ready = 1'b1;
+  assign acc_resp = '0;
+  assign acc_resp_valid = 1'b0;
 
   ariane #(
     .ArianeCfg(ariane_pkg::ArianeDefaultConfig)
   ) i_ariane (
-    .clk_i       (clk_i                 ),
-    .rst_ni      (rst_ni                ),
-    .boot_addr_i (DRAMBase              ), // start fetching from DRAM
-    .hart_id_i   ('0                    ),
-    .irq_i       ('0                    ),
-    .ipi_i       ('0                    ),
-    .time_irq_i  ('0                    ),
-    .debug_req_i ('0                    ),
-    .axi_req_o   (ariane_narrow_axi_req ),
-    .axi_resp_i  (ariane_narrow_axi_resp)
+    .clk_i           (clk_i                 ),
+    .rst_ni          (rst_ni                ),
+    .boot_addr_i     (DRAMBase              ), // start fetching from DRAM
+    .hart_id_i       ('0                    ),
+    .irq_i           ('0                    ),
+    .ipi_i           ('0                    ),
+    .time_irq_i      ('0                    ),
+    .debug_req_i     ('0                    ),
+    .axi_req_o       (ariane_narrow_axi_req ),
+    .axi_resp_i      (ariane_narrow_axi_resp),
+    // Accelerator ports
+    .acc_req_o       (acc_req               ),
+    .acc_req_valid_o (acc_req_valid         ),
+    .acc_req_ready_i (acc_req_ready         ),
+    .acc_resp_i      (acc_resp              ),
+    .acc_resp_valid_i(acc_resp_valid        ),
+    .acc_resp_ready_o(acc_resp_ready        )
   );
 
   axi_dw_converter #(
