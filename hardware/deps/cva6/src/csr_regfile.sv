@@ -40,6 +40,7 @@ module csr_regfile import ariane_pkg::*; #(
     output logic[riscv::XLEN-1:0] csr_rdata_o,                // Read data out
     input  logic                  dirty_fp_state_i,           // Mark the FP sate as dirty
     input  logic                  csr_write_fflags_i,         // Write fflags register e.g.: we are retiring a floating point instruction
+    input  logic                  dirty_v_state_i,            // Mark the V state as dirty
     input  logic  [riscv::VLEN-1:0]  pc_i,                    // PC of instruction accessing the CSR
     output exception_t            csr_exception_o,            // attempts to access a CSR without appropriate privilege
                                                               // level or to write  a read-only register also
@@ -645,6 +646,11 @@ module csr_regfile import ariane_pkg::*; #(
         if (FP_PRESENT && (dirty_fp_state_csr || dirty_fp_state_i)) begin
             mstatus_d.fs = riscv::Dirty;
         end
+        // mark the vector extension register as dirty
+        if (RVV && dirty_v_state_i) begin
+            mstatus_d.vs = riscv::Dirty;
+        end
+
         // hardwired extension registers
         mstatus_d.sd   = (mstatus_q.xs == riscv::Dirty) | (mstatus_q.fs == riscv::Dirty);
 

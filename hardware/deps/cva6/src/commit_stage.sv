@@ -22,6 +22,7 @@ module commit_stage import ariane_pkg::*; #(
     input  logic                                    flush_dcache_i,     // request to flush dcache -> also flush the pipeline
     output exception_t                              exception_o,        // take exception to controller
     output logic                                    dirty_fp_state_o,   // mark the F state as dirty
+    output logic                                    dirty_v_state_o,    // mark the V state as dirty
     input  logic                                    single_step_i,      // we are in single step debug mode
     // from scoreboard
     input  scoreboard_entry_t [NR_COMMIT_PORTS-1:0] commit_instr_i,     // the instruction we want to commit
@@ -78,6 +79,14 @@ module commit_stage import ariane_pkg::*; #(
       dirty_fp_state_o = 1'b0;
       for (int i = 0; i < NR_COMMIT_PORTS; i++) begin
         dirty_fp_state_o |= commit_ack_o[i] & (commit_instr_i[i].fu inside {FPU, FPU_VEC} || is_rd_fpr(commit_instr_i[i].op));
+      end
+    end
+
+    // Dirty the V state if we are committing anything related to the vector accelerator
+    always_comb begin : dirty_v_state
+      dirty_v_state_o = 1'b0;
+      for (int i = 0; i < NR_COMMIT_PORTS; i++) begin
+        dirty_v_state_o |= commit_ack_o[i] & (commit_instr_i[i].fu == ACCEL);
       end
     end
 

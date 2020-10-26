@@ -138,6 +138,7 @@ module ariane import ariane_pkg::*; #(
   // CSR Commit
   logic                     csr_commit_commit_ex;
   logic                     dirty_fp_state;
+  logic                     dirty_v_state;
   // LSU Commit
   logic                     lsu_commit_commit_ex;
   logic                     lsu_commit_ready_ex_commit;
@@ -462,6 +463,7 @@ module ariane import ariane_pkg::*; #(
     .flush_dcache_i         ( dcache_flush_ctrl_cache       ),
     .exception_o            ( ex_commit                     ),
     .dirty_fp_state_o       ( dirty_fp_state                ),
+    .dirty_v_state_o        ( dirty_v_state                 ),
     .single_step_i          ( single_step_csr_commit        ),
     .commit_instr_i         ( commit_instr_id_commit        ),
     .commit_ack_o           ( commit_ack                    ),
@@ -508,6 +510,7 @@ module ariane import ariane_pkg::*; #(
     .csr_op_i               ( csr_op_commit_csr             ),
     .csr_write_fflags_i     ( csr_write_fflags_commit_cs    ),
     .dirty_fp_state_i       ( dirty_fp_state                ),
+    .dirty_v_state_i        ( dirty_v_state                 ),
     .csr_addr_i             ( csr_addr_ex_csr               ),
     .csr_wdata_i            ( csr_wdata_commit_csr          ),
     .csr_rdata_o            ( csr_rdata_csr_commit          ),
