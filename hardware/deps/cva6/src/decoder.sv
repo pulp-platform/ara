@@ -55,7 +55,7 @@ module decoder import ariane_pkg::*; (
     // Immediate select
     // --------------------
     enum logic[3:0] {
-        NOIMM, IIMM, SIMM, SBIMM, UIMM, JIMM, RS3
+        NOIMM, IIMM, SIMM, SBIMM, UIMM, JIMM, RS3, INSN
     } imm_select;
 
     riscv::xlen_t imm_i_type;
@@ -1047,7 +1047,9 @@ module decoder import ariane_pkg::*; (
                 // Ensure the decoding is sane
                 is_control_flow_instr_o = 1'b0;
                 check_fprm = 1'b0;
-                imm_select = NOIMM;
+
+                // Forward the undecoded instruction in the `result` field
+                imm_select = INSN;
 
                 // At this step, consider the vector instructions are not illegal
                 illegal_instr = 1'b0;
@@ -1093,6 +1095,10 @@ module decoder import ariane_pkg::*; (
                 // result holds address of fp operand rs3
                 instruction_o.result = {{riscv::XLEN-5{1'b0}}, instr.r4type.rs3};
                 instruction_o.use_imm = 1'b0;
+            end
+            INSN : begin
+                // result holds the undecoded instruction
+                instruction_o.result = { {riscv::XLEN-32{1'b0}}, instruction_i[31:0] };
             end
             default: begin
                 instruction_o.result = {riscv::XLEN{1'b0}};
