@@ -114,7 +114,7 @@ APPS_DIR := $(abspath $(ROOT_DIR)/../apps)
 TESTS_DIR := $(APPS_DIR)/riscv-tests/isa
 include $(APPS_DIR)/common/riscv_tests.mk
 
-tests := $(cva6_tests) $(ara_tests)
+tests := $(cva6_tests) #$(ara_tests)
 
 .PHONY: riscv_tests_simc
 riscv_tests_simc: $(tests)
