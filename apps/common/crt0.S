@@ -80,13 +80,11 @@ reset_vector:
     // Call main
     call    main
 
-    .align 2
 _eoc:
     la t0, eoc_address_reg
     sw a0, 0(t0)
     jal x0, _eoc
 
-    .align 2
 _fail:
     la t0, eoc_address_reg
     sw a0, 0(t0)
