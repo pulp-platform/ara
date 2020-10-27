@@ -44,6 +44,15 @@ cd apps
 make bin/hello_world
 ```
 
+### RISC-V Tests
+
+The `apps` folder also contains the RISC-V tests repository, including a few unit tests for the vector instructions. Run the following command to build the unit tests:
+
+```bash
+cd apps
+make riscv_tests
+```
+
 ## RTL Simulation
 
 To simulate the Ara system with ModelSim, go to the `hardware` folder, which contains all the SystemVerilog files. Use the following command to run your simulation:
@@ -60,3 +69,14 @@ preload=/some_path/some_binary make sim
 # Run the simulation without starting the gui
 app=hello_world make simc
 ```
+
+It is also possible to simulate the unit tests compiled in the `apps` folder. Use the following command to run the simulation:
+
+```bash
+# Go to the hardware folder
+cd hardware
+# Run the tests
+make riscv_tests_simc
+```
+
+Alternatively, you can also use the `riscv_tests` target at Ara's top-level Makefile to both compile the RISC-V tests and run their simulation.
