@@ -8,28 +8,28 @@
 //-----------------------------------------------------------------------
 
 #define RVTEST_RV64U                                                    \
-  .macro init;                                                          \
-  .endm
+  .globl main;                                                          \
+  main:
 
 #define RVTEST_RV64UF                                                   \
-  .macro init;                                                          \
-  RVTEST_FP_ENABLE;                                                     \
-  .endm
+  .globl main;                                                          \
+  main:                                                                 \
+  RVTEST_FP_ENABLE;
 
 #define RVTEST_RV64UV                                                   \
-  .macro init;                                                          \
-  RVTEST_VECTOR_ENABLE;                                                 \
-  .endm
+  .globl main;                                                          \
+  main:                                                                 \
+  RVTEST_VECTOR_ENABLE;
 
 #define RVTEST_RV64M                                                    \
-  .macro init;                                                          \
-  RVTEST_ENABLE_MACHINE;                                                \
-  .endm
+  .globl main;                                                          \
+  main:                                                                 \
+  RVTEST_ENABLE_MACHINE;
 
 #define RVTEST_RV64S                                                    \
-  .macro init;                                                          \
-  RVTEST_ENABLE_SUPERVISOR;                                             \
-  .endm
+  .globl main;                                                          \
+  main:                                                                 \
+  RVTEST_ENABLE_SUPERVISOR;
 
 #if __riscv_xlen == 64
 # define CHECK_XLEN li a0, 1; slli a0, a0, 31; bgez a0, 1f; RVTEST_PASS; 1:
@@ -130,9 +130,7 @@
 
 #define INTERRUPT_HANDLER j other_exception /* No interrupts should occur */
 
-#define RVTEST_CODE_BEGIN                                               \
-        .globl main;                                                    \
-main:
+#define RVTEST_CODE_BEGIN
 
 //-----------------------------------------------------------------------
 // End Macro
