@@ -38,9 +38,9 @@ module ara_testharness #(
   localparam NrAXIMasters = 2; // Actually masters, but slaves on the crossbar
 
   typedef enum int unsigned {
-    DRAM = 0,
-    UART = 1,
-    CTRL = 2
+    L2MEM = 0,
+    UART  = 1,
+    CTRL  = 2
   } axi_slaves_t;
   localparam NrAXISlaves = CTRL + 1;
 
@@ -110,6 +110,9 @@ module ara_testharness #(
    *  L2  *
    ********/
 
+  axi_wide_slv_req_t  l2mem_wide_axi_req_wo_atomics;
+  axi_wide_slv_resp_t l2mem_wide_axi_resp_wo_atomics;
+
   logic                          req;
   logic                          we;
   logic [AxiAddrWidth-1:0]       addr;
@@ -124,8 +127,23 @@ module ara_testharness #(
     .AXI_USER_WIDTH(AxiUserWidth    )
   ) axi_l2_wide_slave ();
 
-  `AXI_ASSIGN_FROM_REQ(axi_l2_wide_slave, periph_wide_axi_req[DRAM])
-  `AXI_ASSIGN_TO_RESP(periph_wide_axi_resp[DRAM], axi_l2_wide_slave)
+  `AXI_ASSIGN_FROM_REQ(axi_l2_wide_slave, l2mem_wide_axi_req_wo_atomics)
+  `AXI_ASSIGN_TO_RESP(l2mem_wide_axi_resp_wo_atomics, axi_l2_wide_slave)
+
+  // The L2 memory does not support atomics
+  axi_atop_filter #(
+    .AxiIdWidth     (AxiSlvIdWidth      ),
+    .AxiMaxWriteTxns(4                  ),
+    .req_t          (axi_wide_slv_req_t ),
+    .resp_t         (axi_wide_slv_resp_t)
+  ) i_l2mem_atop_filter (
+    .clk_i     (clk_i                         ),
+    .rst_ni    (rst_ni                        ),
+    .slv_req_i (periph_wide_axi_req[L2MEM]    ),
+    .slv_resp_o(periph_wide_axi_resp[L2MEM]   ),
+    .mst_req_o (l2mem_wide_axi_req_wo_atomics ),
+    .mst_resp_i(l2mem_wide_axi_resp_wo_atomics)
+  );
 
   axi2mem #(
     .AXI_ID_WIDTH  (AxiSlvIdWidth   ),
@@ -308,7 +326,7 @@ module ara_testharness #(
   axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
     '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
-    '{idx: DRAM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
+    '{idx: L2MEM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
 
   axi_xbar #(
     .Cfg          (XBarCfg                ),
