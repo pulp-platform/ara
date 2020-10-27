@@ -74,6 +74,19 @@ build_apps:
   dependencies:
     - tc-gcc
 
+build_riscv_tests:
+  stage: build
+  script:
+    - git submodule update --init --recursive -- toolchain/riscv-isa-sim
+    - git submodule update --init --recursive -- apps/riscv-tests
+    - make -C apps riscv_tests
+  artifacts:
+    paths:
+      - apps/bin
+  needs: ["tc-gcc"]
+  dependencies:
+    - tc-gcc
+
 build_vsim:
   stage: build
   script:
@@ -90,3 +103,14 @@ hello_world:
     paths:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
+
+riscv_tests:
+  stage: test
+  script:
+    - make -C hardware riscv_tests_simc
+  artifacts:
+    paths:
+      - hardware/build/rv*.trace
+  needs: ["build_riscv_tests"]
+  dependencies:
+    - build_riscv_tests
