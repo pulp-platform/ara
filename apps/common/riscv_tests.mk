@@ -24,11 +24,13 @@ rv64mi_ara_tests := $(addprefix rv64mi-ara-, $(rv64mi_sc_tests))
 
 cva6_tests := $(rv64ui_ara_tests) \
 							$(rv64um_ara_tests) \
-							$(rv64ua_ara_tests) \
 							$(rv64uc_ara_tests) \
 							$(rv64uf_ara_tests) \
 							$(rv64ud_ara_tests) \
 							$(rv64si_ara_tests) \
 							$(rv64mi_ara_tests)
+
+# Atomics are messy, since there is currently no memory region capable of handling them
+#							$(rv64ua_ara_tests) \
 
 ara_tests := $(rv64uv_ara_tests)
