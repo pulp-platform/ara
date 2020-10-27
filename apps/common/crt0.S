@@ -23,8 +23,12 @@
 .section .text;
 .section .text.init;
 
-#define MSTATUS_FS          0x00006000
-#define MSTATUS_VS          0x00000600
+#include "encoding.h"
+
+// For the riscv-tests environment
+.weak mtvec_handler
+.weak stvec_handler
+.weak rvtest_init
 
 _start:
     // Initialize global pointer
@@ -67,24 +71,64 @@ reset_vector:
     li      x29, 0
     li      x30, 0
     li      x31, 0
-    // Activate FP Extension
-    li      sp, (MSTATUS_FS & (MSTATUS_FS >> 1))
-    csrs    mstatus, sp
-    csrwi   fcsr, 0
-    // Activate Vector Extension
-    li      sp, (MSTATUS_VS & (MSTATUS_VS >> 1))
-    csrs    mstatus, sp
     // Initialize stack at the end of the DRAM region
-    la      sp, dram_end_address_reg
-    ld      sp, 0(sp)
+    la      t0, dram_end_address_reg
+    ld      sp, 0(t0)
+    // Set up a PMP to permit all accesses
+    li t0, (1 << (31 + (__riscv_xlen / 64) * (53 - 31))) - 1
+    csrw pmpaddr0, t0
+    li t0, PMP_NAPOT | PMP_R | PMP_W | PMP_X
+    csrw pmpcfg0, t0
+    // Delegate no traps
+    csrwi   mie, 0
+    la      t0, trap_vector
+    csrw    mtvec, t0
+    csrwi   medeleg, 0
+    csrwi   mideleg, 0
+    // If an stvec_handler is defined, delegate exceptions to it
+    la t0, stvec_handler
+    beqz t0, 1f
+    csrw stvec, t0
+    li t0, (1 << CAUSE_LOAD_PAGE_FAULT) |  \
+           (1 << CAUSE_STORE_PAGE_FAULT) | \
+           (1 << CAUSE_FETCH_PAGE_FAULT) | \
+           (1 << CAUSE_MISALIGNED_FETCH) | \
+           (1 << CAUSE_USER_ECALL) |       \
+           (1 << CAUSE_BREAKPOINT)
+    csrw medeleg, t0
+    .align 2
+1:  csrwi mstatus, 0
+    // Enable FP Extension
+    li      t0, (MSTATUS_FS & (MSTATUS_FS >> 1))
+    csrs    mstatus, t0
+    csrwi   fcsr, 0
+    // Enable Vector Extension
+    li      t0, (MSTATUS_VS & (MSTATUS_VS >> 1))
+    csrs    mstatus, t0
+    // Call the RISC-V Test initialization function, if it exists
+    la t0, rvtest_init
+    beqz t0, 1f
+    jalr t0
+1:  // Return to _eoc
+    la      ra, _eoc
     // Call main
-    call    main
+    la      t0, main
+    csrw    mepc, t0
+    mret
 
+    .align 2
+trap_vector:
+    // Jump to the mtvec_handler
+    la t5, mtvec_handler
+    jr t5
+
+    .align 2
 _eoc:
     la t0, eoc_address_reg
     sw a0, 0(t0)
     jal x0, _eoc
 
+    .align 2
 _fail:
     la t0, eoc_address_reg
     sw a0, 0(t0)
