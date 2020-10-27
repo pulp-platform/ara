@@ -39,8 +39,6 @@ questa_cmd     ?= questa-$(questa_version)
 questa_args    ?=
 # Path to the binaries
 app_path       ?= $(abspath $(ROOT_DIR)/../apps/bin)
-# (Default) app
-app            ?= hello_world
 
 # Check if the specified QuestaSim version exists
 ifeq (, $(shell which $(questa_cmd)))
@@ -51,7 +49,7 @@ endif
 
 QUESTASIM_HOME ?= /usr/pack/questa-$(questa_version)-kgf/questasim
 
-questa_args += -voptargs=+acc
+questa_args += +UVM_NO_RELNOTES
 ifdef app
 	preload ?= "$(app_path)/$(app)"
 endif
@@ -102,7 +100,7 @@ $(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f
 .PHONY: sim
 sim: compile
 	cd $(buildpath) && \
-	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do ../scripts/run.do
+	$(questa_cmd) vsim $(questa_args) -voptargs=+acc $(library).$(top_level) -do ../scripts/run.do
 	./scripts/return_status.sh $(buildpath)/transcript
 
 .PHONY: simc
@@ -110,6 +108,22 @@ simc: compile
 	cd $(buildpath) && \
 	$(questa_cmd) vsim -c $(questa_args) $(library).$(top_level) -do "run -a"
 	./scripts/return_status.sh $(buildpath)/transcript
+
+# RISC-V Tests simulation
+APPS_DIR := $(abspath $(ROOT_DIR)/../apps)
+TESTS_DIR := $(APPS_DIR)/riscv-tests/isa
+include $(APPS_DIR)/common/riscv_tests.mk
+
+tests := $(cva6_tests) $(ara_tests)
+
+.PHONY: riscv_tests_simc
+riscv_tests_simc: $(tests)
+
+$(tests): rv%: $(app_path)/rv% compile
+	cd $(buildpath) && \
+	$(questa_cmd) vsim -c $(questa_args) +PRELOAD=$< $(library).$(top_level) -do "run -a"
+	./scripts/return_status.sh $(buildpath)/transcript
+	cp $(buildpath)/trace_hart_0.log $(buildpath)/$@.trace
 
 # DPIs
 .PHONY: dpi

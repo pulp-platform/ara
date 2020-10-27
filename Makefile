@@ -58,6 +58,11 @@ ${ISA_SIM_INSTALL_DIR}:
 	PATH=$$(pwd)/install/bin:$$PATH; cd ..; \
 	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make && make install
 
+# RISC-V Tests
+riscv_tests:
+	make -C apps -j4 riscv_tests && \
+	make -C hardware riscv_tests_simc
+
 # Helper targets
 .PHONY: clean
 
