@@ -18,6 +18,8 @@
 //         Matheus Cavalcante, ETH Zurich
 
 .globl _start
+.globl _eoc
+.globl _fail
 .section .text;
 .section .text.init;
 
@@ -78,14 +80,14 @@ reset_vector:
     // Call main
     call    main
 
-eoc:
+_eoc:
     la t0, eoc_address_reg
     sw a0, 0(t0)
-    jal x0, eoc
+    jal x0, _eoc
 
-fail:
+_fail:
     la t0, eoc_address_reg
     sw a0, 0(t0)
-    jal x0, eoc
+    jal x0, _eoc
 
 .section .data
