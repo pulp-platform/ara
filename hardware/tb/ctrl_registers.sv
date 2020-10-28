@@ -29,6 +29,8 @@ module ctrl_registers #(
     output logic           [DataWidth-1:0] dram_end_addr_o
   );
 
+  `include "common_cells/registers.svh"
+
   /*****************
    *  Definitions  *
    *****************/
@@ -59,7 +61,7 @@ module ctrl_registers #(
    *  Registers  *
    ***************/
 
-  logic [RegNumBytes-1:0] wr_active;
+  logic [RegNumBytes-1:0] wr_active_d, wr_active_q;
 
   logic [DataWidth-1:0] dram_base_address;
   logic [DataWidth-1:0] dram_end_address;
@@ -78,19 +80,21 @@ module ctrl_registers #(
     .rst_ni     (rst_ni                                     ),
     .axi_req_i  (axi_lite_slave_req_i                       ),
     .axi_resp_o (axi_lite_slave_resp_o                      ),
-    .wr_active_o(wr_active                                  ),
+    .wr_active_o(wr_active_d                                ),
     .rd_active_o(/* Unused */                               ),
     .reg_d_i    ('0                                         ),
     .reg_load_i ('0                                         ),
     .reg_q_o    ({dram_end_address, dram_base_address, exit})
   );
 
+  `FF(wr_active_q, wr_active_d, '0);
+
   /***************
    *   Signals   *
    ***************/
 
-  assign dram_base_addr_o = dram_base_address                   ;
-  assign dram_end_addr_o  = dram_end_address                    ;
-  assign exit_o           = {exit << 1, logic'(|wr_active[7:0])};
+  assign dram_base_addr_o = dram_base_address;
+  assign dram_end_addr_o  = dram_end_address;
+  assign exit_o           = {exit, logic'(|wr_active_q[7:0])};
 
 endmodule : ctrl_registers
