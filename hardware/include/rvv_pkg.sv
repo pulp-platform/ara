@@ -40,13 +40,13 @@ package rvv_pkg;
 
   // Vector type register
   typedef struct packed {
-    logic vill            ;
+    logic vill;
     logic [XLEN-2:8] wpri0;
-    logic vma             ;
-    logic vta             ;
-    logic vlmul2          ;
-    vew_e vsew            ;
-    logic [1:0] vlmul     ;
+    logic vma;
+    logic vta;
+    logic vlmul2;
+    vew_e vsew;
+    logic [1:0] vlmul;
   } vtype_t;
 
   // Func3 values for vector arithmetics instructions under OpcodeV
@@ -86,64 +86,64 @@ package rvv_pkg;
    ******************************/
 
   typedef struct packed {
-    logic [31:29] nf   ;
-    logic mew          ;
-    logic [27:26] mop  ;
-    logic vm           ;
-    logic [24:20] rs2  ;
-    logic [19:15] rs1  ;
+    logic [31:29] nf;
+    logic mew;
+    logic [27:26] mop;
+    logic vm;
+    logic [24:20] rs2;
+    logic [19:15] rs1;
     logic [14:12] width;
-    logic [11:7] rd    ;
-    logic [6:0] opcode ;
+    logic [11:7] rd;
+    logic [6:0] opcode;
   } vmem_type_t;
 
   typedef struct packed {
     logic [31:27] amoop;
-    logic wd           ;
-    logic vm           ;
-    logic [24:20] rs2  ;
-    logic [19:15] rs1  ;
+    logic wd;
+    logic vm;
+    logic [24:20] rs2;
+    logic [19:15] rs1;
     logic [14:12] width;
-    logic [11:7] rd    ;
-    logic [6:0] opcode ;
+    logic [11:7] rd;
+    logic [6:0] opcode;
   } vamo_type_t;
 
   typedef struct packed {
-    logic [31:26] func6  ;
-    logic vm             ;
-    logic [24:20] rs2    ;
-    logic [19:15] rs1    ;
+    logic [31:26] func6;
+    logic vm;
+    logic [24:20] rs2;
+    logic [19:15] rs1;
     opcodev_func3_e func3;
-    logic [11:7] rd      ;
-    logic [6:0] opcode   ;
+    logic [11:7] rd;
+    logic [6:0] opcode;
   } varith_type_t;
 
   typedef struct packed {
-    logic func1          ;
-    logic [30:20] zimm10 ;
-    logic [19:15] rs1    ;
+    logic func1;
+    logic [30:20] zimm10;
+    logic [19:15] rs1;
     opcodev_func3_e func3;
-    logic [11:7] rd      ;
-    logic [6:0] opcode   ;
+    logic [11:7] rd;
+    logic [6:0] opcode;
   } vsetvli_type_t;
 
   typedef struct packed {
-    logic [31:25] func7  ;
-    logic [24:20] rs2    ;
-    logic [19:15] rs1    ;
+    logic [31:25] func7;
+    logic [24:20] rs2;
+    logic [19:15] rs1;
     opcodev_func3_e func3;
-    logic [11:7] rd      ;
-    logic [6:0] opcode   ;
+    logic [11:7] rd;
+    logic [6:0] opcode;
   } vsetvl_type_t;
 
   typedef union packed {
-    logic [31:0] instr         ;
-    riscv::itype_t i_type      ; // For CSR instructions
-    vmem_type_t vmem_type      ;
-    vamo_type_t vamo_type      ;
-    varith_type_t varith_type  ;
+    logic [31:0] instr ;
+    riscv::itype_t i_type; // For CSR instructions
+    vmem_type_t vmem_type;
+    vamo_type_t vamo_type;
+    varith_type_t varith_type;
     vsetvli_type_t vsetvli_type;
-    vsetvl_type_t vsetvl_type  ;
+    vsetvl_type_t vsetvl_type;
   } rvv_instruction_t;
 
 endpackage : rvv_pkg
