@@ -17,6 +17,7 @@ sources:
   files:
     # Headers
     - hardware/include/rvv_pkg.sv
+    - hardware/include/ara_pkg.sv
 
     # Sources
     # Level 1
