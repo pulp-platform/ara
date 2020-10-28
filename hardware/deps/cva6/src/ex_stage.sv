@@ -82,17 +82,18 @@ module ex_stage import ariane_pkg::*; #(
 `ifdef VECTOR_EXTENSION_ARIANE
     output accelerator_req_t                       acc_req_o,
     output logic                                   acc_req_valid_o,
-    input logic                                    acc_req_ready_i,
-    input accelerator_resp_t                       acc_resp_i,
+    input  logic                                   acc_req_ready_i,
+    input  accelerator_resp_t                      acc_resp_i,
     input  logic                                   acc_resp_valid_i,
     output logic                                   acc_resp_ready_o,
 `endif
     output logic                                   acc_ready_o,      // FU is ready
-    input logic                                    acc_valid_i,      // Output is valid
+    input  logic                                   acc_valid_i,      // Output is valid
     output logic [TRANS_ID_BITS-1:0]               acc_trans_id_o,
     output riscv::xlen_t                           acc_result_o,
     output logic                                   acc_valid_o,
     output exception_t                             acc_exception_o,
+    input  logic                                   speculative_i,    // Avoids issuing speculative instructions to the accelerator
     // Memory Management
     input  logic                                   enable_translation_i,
     input  logic                                   en_ld_st_translation_i,
@@ -349,8 +350,9 @@ module ex_stage import ariane_pkg::*; #(
             rs2: acc_data.operand_b,
             trans_id: acc_data.trans_id
         };
-        assign acc_req_valid_o = acc_valid_i;
-        assign acc_ready_o = acc_req_ready_i;
+        // Filter the accelerator requests if the instruction is speculative
+        assign acc_req_valid_o = ~speculative_i & acc_valid_i;
+        assign acc_ready_o = ~speculative_i & acc_req_ready_i;
 
         // Unpack the accelerator response
         assign acc_trans_id_o = acc_resp_i.trans_id;

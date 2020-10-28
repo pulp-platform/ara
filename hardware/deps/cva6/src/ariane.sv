@@ -85,6 +85,10 @@ module ariane import ariane_pkg::*; #(
   fetch_entry_t             fetch_entry_if_id;
   logic                     fetch_valid_if_id;
   logic                     fetch_ready_id_if;
+  // --------------
+  // IF <-> EX
+  // --------------
+  logic                     speculative_id_ex;
 
   // --------------
   // ID <-> ISSUE
@@ -270,6 +274,7 @@ module ariane import ariane_pkg::*; #(
     .resolved_branch_i   ( resolved_branch               ),
     .pc_commit_i         ( pc_commit                     ),
     .set_pc_commit_i     ( set_pc_ctrl_pcgen             ),
+    .speculative_o       ( speculative_id_ex             ),
     .set_debug_pc_i      ( set_debug_pc                  ),
     .epc_i               ( epc_commit_pcgen              ),
     .eret_i              ( eret                          ),
@@ -456,6 +461,7 @@ module ariane import ariane_pkg::*; #(
     .acc_result_o           ( acc_result_ex_id            ),
     .acc_valid_o            ( acc_valid_ex_id             ),
     .acc_exception_o        ( acc_exception_ex_id         ),
+    .speculative_i          ( speculative_id_ex           ),
     // Performance counters
     .itlb_miss_o            ( itlb_miss_ex_perf           ),
     .dtlb_miss_o            ( dtlb_miss_ex_perf           ),

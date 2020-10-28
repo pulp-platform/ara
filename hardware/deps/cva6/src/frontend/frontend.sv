@@ -31,6 +31,8 @@ module frontend import ariane_pkg::*; #(
   // from commit, when flushing the whole pipeline
   input  logic               set_pc_commit_i,    // Take the PC from commit stage
   input  logic [riscv::VLEN-1:0] pc_commit_i,        // PC of instruction in commit stage
+  // To EX, if we are in an speculative regime
+  output logic               speculative_o,
   // CSR input
   input  logic [riscv::VLEN-1:0] epc_i,              // exception PC which we need to return to
   input  logic               eret_i,             // return from exception
@@ -256,6 +258,7 @@ module frontend import ariane_pkg::*; #(
     logic speculative_q,speculative_d;
     assign speculative_d = (speculative_q && !resolved_branch_i.valid || |is_branch || |is_return || |is_jalr) && !flush_i;
     assign icache_dreq_o.spec = speculative_d;
+    assign speculative_o = speculative_q;
 
     assign bht_update.valid = resolved_branch_i.valid
                                 & (resolved_branch_i.cf_type == ariane_pkg::Branch);
