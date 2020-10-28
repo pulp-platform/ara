@@ -23,7 +23,6 @@ module ara_testharness #(
     parameter int unsigned AxiNarrowDataWidth = 64,
     // Ara-specific parameters
     parameter int unsigned NrLanes            = 0,
-    parameter int unsigned VectorLength       = 0,
     parameter int unsigned NumWords           = 2**23 // memory size
   ) (
     input  logic        clk_i,
@@ -465,7 +464,6 @@ module ara_testharness #(
 
   ara #(
     .NrLanes     (NrLanes         ),
-    .VectorLength(VectorLength    ),
     .AxiDataWidth(AxiWideDataWidth),
     .axi_ar_t    (ar_chan_t       ),
     .axi_r_t     (wide_r_chan_t   ),

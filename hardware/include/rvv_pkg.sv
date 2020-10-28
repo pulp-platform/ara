@@ -41,7 +41,6 @@ package rvv_pkg;
   // Vector type register
   typedef struct packed {
     logic vill;
-    logic [XLEN-2:8] wpri0;
     logic vma;
     logic vta;
     logic vlmul2;

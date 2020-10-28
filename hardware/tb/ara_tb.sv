@@ -31,12 +31,6 @@ module ara_tb;
   localparam NrLanes = 0;
   `endif
 
-  `ifdef VLEN
-  localparam VectorLength = `VLEN;
-  `else
-  localparam VectorLength = 0;
-  `endif
-
   localparam ClockPeriod = 1ns;
 
   localparam AxiAddrWidth       = 64;
@@ -77,7 +71,6 @@ module ara_tb;
 
   ara_testharness #(
     .NrLanes           (NrLanes           ),
-    .VectorLength      (VectorLength      ),
     .AxiAddrWidth      (AxiAddrWidth      ),
     .AxiWideDataWidth  (AxiWideDataWidth  ),
     .AxiNarrowDataWidth(AxiNarrowDataWidth)

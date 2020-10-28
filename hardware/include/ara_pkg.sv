@@ -26,10 +26,24 @@ package ara_pkg;
 
   // Maximum size of a single vector element, in bits.
   // Ara only supports vector elements up to 64 bits.
-  localparam int unsigned ELEN = 64;
+  localparam int unsigned ELEN  = 64;
+  // Maximum size of a single vector element, in bytes.
+  localparam int unsigned ELENB = ELEN / 8;
+  // Number of bits in a vector register.
+  localparam int unsigned VLEN  = `ifdef VLEN `VLEN `else 0 `endif;
+  // Number of bytes in a vector register.
+  localparam int unsigned VLENB = VLEN / 8;
   // Striping distance.
   // For Ara, this corresponds to the lane width, in bits.
-  localparam int unsigned SLEN = 64;
+  localparam int unsigned SLEN  = 64;
+  // Maximum vector length (in elements).
+  localparam int unsigned MAXVL = VLEN; // SEW = EW8, LMUL = 8. VL = 8 * VLEN / 8 = VLEN.
+
+  /*****************
+   *  Definitions  *
+   *****************/
+
+  typedef logic [$clog2(MAXVL)-1:0] vlen_t;
 
   /***************************
    *  Accelerator interface  *

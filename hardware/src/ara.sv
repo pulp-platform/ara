@@ -21,7 +21,6 @@
 module ara import ara_pkg::*; #(
     // RVV Parameters
     parameter int  unsigned NrLanes      = 0,     // Number of parallel vector lanes.
-    parameter int  unsigned VectorLength = 0,     // Number of bits in a vector register.
     // AXI Interface
     parameter int  unsigned AxiDataWidth = 0,
     parameter type          axi_ar_t     = logic,
@@ -114,19 +113,19 @@ module ara import ara_pkg::*; #(
   if (NrLanes == 0)
     $fatal(1, "[ara] Ara needs to have at least one lane.");
 
-  if (VectorLength == 0)
+  if (ara_pkg::VLEN == 0)
     $fatal(1, "[ara] The vector length must be greater than zero.");
 
-  if (VectorLength < ELEN)
+  if (ara_pkg::VLEN < ELEN)
     $fatal(1, "[ara] The vector length must be greater or equal than the maximum size of a single vector element");
 
-  if (VectorLength != 2**$clog2(VectorLength))
+  if (ara_pkg::VLEN != 2**$clog2(ara_pkg::VLEN))
     $fatal(1, "[ara] The vector length must be a power of two.");
 
-  if (SLEN * (VectorLength / SLEN) != VectorLength)
+  if (SLEN * (ara_pkg::VLEN / SLEN) != ara_pkg::VLEN)
     $fatal(1, "[ara] The vector length must be a multiple of the lane datapath width.");
 
-  if (VectorLength < SLEN * NrLanes)
+  if (ara_pkg::VLEN < SLEN * NrLanes)
     $fatal(1, "[ara] There must be at least one element of a vector register at each vector lane.");
 
 endmodule : ara
