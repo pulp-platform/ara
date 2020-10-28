@@ -47,6 +47,52 @@ module ara import ara_pkg::*; #(
     input  axi_resp_t         axi_resp_i
   );
 
+  /********************************
+   *  Ariane interface registers  *
+   ********************************/
+
+  // Request
+  accelerator_req_t acc_req;
+  logic             acc_req_valid;
+  logic             acc_req_ready;
+  spill_register #(
+    .T(accelerator_req_t)
+  ) i_acc_req_register (
+    .clk_i  (clk_i          ),
+    .rst_ni (rst_ni         ),
+    .data_i (acc_req_i      ),
+    .valid_i(acc_req_valid_i),
+    .ready_o(acc_req_ready_o),
+    .data_o (acc_req        ),
+    .valid_o(acc_req_valid  ),
+    .ready_i(acc_req_ready  )
+  );
+
+  // Response
+  accelerator_resp_t acc_resp;
+  logic              acc_resp_valid;
+  logic              acc_resp_ready;
+  spill_register #(
+    .T(accelerator_resp_t)
+  ) i_acc_resp_register (
+    .clk_i  (clk_i           ),
+    .rst_ni (rst_ni          ),
+    .data_i (acc_resp        ),
+    .valid_i(acc_resp_valid  ),
+    .ready_o(acc_resp_ready  ),
+    .data_o (acc_resp_o      ),
+    .valid_o(acc_resp_valid_o),
+    .ready_i(acc_resp_ready_i)
+  );
+
+  // TODO: Integrate rest of the system
+  assign acc_req_ready  = 1'b0;
+  assign acc_resp       = '0;
+  assign acc_resp_valid = 1'b0;
+
+  // TODO: Connect the AXI interface
+  assign axi_req_o = '0;
+
   /****************
    *  Assertions  *
    ****************/

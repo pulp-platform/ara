@@ -54,14 +54,14 @@ module ara_testharness #(
   localparam AxiSlvIdWidth = AxiIdWidth + $clog2(NrAXIMasters);
 
   // Axi Typedefs
-  typedef logic [AxiAddrWidth-1:0] axi_addr_t               ;
-  typedef logic [AxiNarrowDataWidth-1:0] axi_narrow_data_t  ;
+  typedef logic [AxiAddrWidth-1:0] axi_addr_t;
+  typedef logic [AxiNarrowDataWidth-1:0] axi_narrow_data_t;
   typedef logic [AxiNarrowDataWidth/8-1:0] axi_narrow_strb_t;
-  typedef logic [AxiWideDataWidth-1:0] axi_wide_data_t      ;
-  typedef logic [AxiWideDataWidth/8-1:0] axi_wide_strb_t    ;
-  typedef logic [AxiIdWidth-1:0] axi_id_t                   ;
-  typedef logic [AxiSlvIdWidth-1:0] axi_slv_id_t            ;
-  typedef logic [AxiUserWidth-1:0] axi_user_t               ;
+  typedef logic [AxiWideDataWidth-1:0] axi_wide_data_t;
+  typedef logic [AxiWideDataWidth/8-1:0] axi_wide_strb_t;
+  typedef logic [AxiIdWidth-1:0] axi_id_t;
+  typedef logic [AxiSlvIdWidth-1:0] axi_slv_id_t;
+  typedef logic [AxiUserWidth-1:0] axi_user_t;
 
   `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, axi_addr_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_AR_CHAN_T(slv_ar_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
@@ -441,13 +441,6 @@ module ara_testharness #(
   logic acc_resp_valid;
   logic acc_resp_ready;
 
-
-  // TODO: Integrate Ara
-  assign ara_axi_req = '0;
-  assign acc_req_ready = 1'b1;
-  assign acc_resp = '0;
-  assign acc_resp_valid = 1'b0;
-
   ariane #(
     .ArianeCfg(ariane_pkg::ArianeDefaultConfig)
   ) i_ariane (
@@ -468,6 +461,30 @@ module ara_testharness #(
     .acc_resp_i      (acc_resp              ),
     .acc_resp_valid_i(acc_resp_valid        ),
     .acc_resp_ready_o(acc_resp_ready        )
+  );
+
+  ara #(
+    .NrLanes     (NrLanes         ),
+    .VectorLength(VectorLength    ),
+    .AxiDataWidth(AxiWideDataWidth),
+    .axi_ar_t    (ar_chan_t       ),
+    .axi_r_t     (wide_r_chan_t   ),
+    .axi_aw_t    (aw_chan_t       ),
+    .axi_w_t     (wide_w_chan_t   ),
+    .axi_b_t     (b_chan_t        ),
+    .axi_req_t   (axi_wide_req_t  ),
+    .axi_resp_t  (axi_wide_resp_t )
+  ) i_ara (
+    .clk_i           (clk_i         ),
+    .rst_ni          (rst_ni        ),
+    .acc_req_i       (acc_req       ),
+    .acc_req_valid_i (acc_req_valid ),
+    .acc_req_ready_o (acc_req_ready ),
+    .acc_resp_o      (acc_resp      ),
+    .acc_resp_valid_o(acc_resp_valid),
+    .acc_resp_ready_i(acc_resp_ready),
+    .axi_req_o       (ara_axi_req   ),
+    .axi_resp_i      (ara_axi_resp  )
   );
 
   axi_dw_converter #(
