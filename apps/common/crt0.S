@@ -118,20 +118,23 @@ reset_vector:
 
     .align 2
 trap_vector:
-    // Jump to the mtvec_handler
+    // Jump to the mtvec_handler, if it exists
     la t5, mtvec_handler
+    beqz t5, 1f
     jr t5
+1:  csrr a0, mcause
+    j _fail
 
     .align 2
 _eoc:
     la t0, eoc_address_reg
-    sw a0, 0(t0)
+    sd a0, 0(t0)
     jal x0, _eoc
 
     .align 2
 _fail:
     la t0, eoc_address_reg
-    sw a0, 0(t0)
+    sd a0, 0(t0)
     jal x0, _eoc
 
 .section .data
