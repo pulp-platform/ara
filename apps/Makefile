@@ -21,6 +21,10 @@ APPS_DIR := $(ROOT_DIR)
 COMMON_DIR := $(ROOT_DIR)/common
 TESTS_DIR := $(ROOT_DIR)/riscv-tests/isa
 
+INSTALL_DIR         ?= $(ROOT_DIR)/../../install
+GCC_INSTALL_DIR     ?= ${INSTALL_DIR}/riscv-gcc/bin
+ISA_SIM_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim/bin
+
 # This will overwrite the ROOT_DIR variable from the included makefile
 include $(COMMON_DIR)/runtime.mk
 include $(COMMON_DIR)/riscv_tests.mk
@@ -67,8 +71,21 @@ $(foreach extension, $(CVA6_EXTENSIONS), $(eval $(call rvtest_compile_template,$
 # Ara tests are written in C
 $(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template,$(extension),c)))
 
+# Run Spike tests
+.PHONY: riscv_tests_spike
+riscv_tests_spike:
+	# Compile the tests
+	PATH=$(GCC_INSTALL_DIR):${PATH} make -j4 -C riscv-tests/isa
+	# Run the tests
+	PATH=$(ISA_SIM_INSTALL_DIR):${PATH} make -C riscv-tests/isa run
+
+# Clean Spike simulation
+.PHONY: riscv_tests_spike_clean
+riscv_tests_spike_clean:
+	make -C riscv-tests/isa clean
+
 .PHONY: clean
-clean:
+clean: riscv_tests_spike_clean
 	rm -vf $(BINARIES)
 	rm -vf $(CVA6_BINARIES)
 	rm -vf $(ARA_BINARIES)
