@@ -114,3 +114,16 @@ riscv_tests:
   needs: ["build_riscv_tests"]
   dependencies:
     - build_riscv_tests
+
+riscv_tests_spike:
+  stage: test
+  script:
+    - make -C apps riscv_tests_spike
+  artifacts:
+    paths:
+      - apps/riscv-tests/isa/*.dump
+      - apps/riscv-tests/isa/*.out32
+  needs: ["tc-isa-sim", "tc-gcc"]
+  dependencies:
+    - tc-isa-sim
+    - tc-gcc
