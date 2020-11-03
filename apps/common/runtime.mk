@@ -23,8 +23,9 @@ ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$ARA_DIR)
 # Include configuration
 include $(ARA_DIR)/config/config.mk
 
-INSTALL_DIR        ?= $(ARA_DIR)/install
-GCC_INSTALL_DIR    ?= $(INSTALL_DIR)/riscv-gcc
+INSTALL_DIR         ?= $(ARA_DIR)/install
+GCC_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-gcc
+ISA_SIM_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim
 
 RISCV_XLEN    ?= 64
 RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv
