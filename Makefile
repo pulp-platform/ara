@@ -52,11 +52,15 @@ ${GCC_INSTALL_DIR}:
 riscv-isa-sim: ${ISA_SIM_INSTALL_DIR}
 
 ${ISA_SIM_INSTALL_DIR}:
+	# Apply patch on riscv-isa-sim
+	cd $(CURDIR)/toolchain/riscv-isa-sim && git reset --hard && git apply $(CURDIR)/patches/0002-riscv-isa-sim-patch
+	# There are linking issues with the standard libraries when using newer CC/CXX versions to compile Spike.
+	# Therefore, here we resort to older versions of the compilers.
 	cd toolchain/riscv-isa-sim && mkdir -p build && cd build; \
 	[ -d dtc ] || git clone git://git.kernel.org/pub/scm/utils/dtc/dtc.git && cd dtc; \
 	make install SETUP_PREFIX=$$(pwd)/install PREFIX=$$(pwd)/install && \
 	PATH=$$(pwd)/install/bin:$$PATH; cd ..; \
-	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make && make install
+	CC=gcc-4.8.3 CXX=g++-4.8.3 ../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
 
 # RISC-V Tests
 riscv_tests:
