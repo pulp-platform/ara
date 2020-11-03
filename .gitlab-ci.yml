@@ -55,6 +55,7 @@ tc-isa-sim:
   script:
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
     - git submodule foreach --recursive git reset --hard
+    - rm -rf toolchain/riscv-isa-sim/build
     - make riscv-isa-sim
   variables:
     GIT_SUBMODULE_STRATEGY: none
