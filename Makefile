@@ -58,8 +58,8 @@ ${ISA_SIM_INSTALL_DIR}:
 	# Therefore, here we resort to older versions of the compilers.
 	cd toolchain/riscv-isa-sim && mkdir -p build && cd build; \
 	[ -d dtc ] || git clone git://git.kernel.org/pub/scm/utils/dtc/dtc.git && cd dtc; \
-	make install SETUP_PREFIX=$$(pwd)/install PREFIX=$$(pwd)/install && \
-	PATH=$$(pwd)/install/bin:$$PATH; cd ..; \
+	make install SETUP_PREFIX=$(ISA_SIM_INSTALL_DIR) PREFIX=$(ISA_SIM_INSTALL_DIR) && \
+	PATH=$(ISA_SIM_INSTALL_DIR)/bin:$$PATH; cd ..; \
 	CC=gcc-4.8.3 CXX=g++-4.8.3 ../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
 
 # RISC-V Tests
