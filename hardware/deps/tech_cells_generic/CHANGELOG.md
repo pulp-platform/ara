@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 0.2.2 - 2020-11-11
+### Fixed
+- `Bender:` Add deprecated `pulp_clock_gating_async` for compatibility to `udma_core`.
+
 ## 0.2.1 - 2020-06-23
 ### Added
--`Bender:` Add `rtl/tc_sram` to target `rtl`, to prevent overwriting of target specific implementations.
+- `Bender:` Add `rtl/tc_sram` to target `rtl`, to prevent overwriting of target specific implementations.
 
 ### Fixed
 - `tc_sram`: Drop string literal from parameter `SimInit` definition as synopsys throws an elaboration error.

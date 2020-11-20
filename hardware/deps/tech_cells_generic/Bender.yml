@@ -37,3 +37,4 @@ sources:
   - target: test
     files:
       - test/tb_tc_sram.sv
+  - src/deprecated/pulp_clock_gating_async.sv
