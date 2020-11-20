@@ -85,10 +85,24 @@ module ara import ara_pkg::*; #(
     .ready_i(acc_resp_ready_i)
   );
 
-  // TODO: Integrate rest of the system
-  assign acc_req_ready  = 1'b0;
-  assign acc_resp       = '0;
-  assign acc_resp_valid = 1'b0;
+  /****************
+   *  Dispatcher  *
+   ****************/
+
+  ara_dispatcher i_dispatcher (
+    .clk_i           (clk_i         ),
+    .rst_ni          (rst_ni        ),
+    .acc_req_i       (acc_req       ),
+    .acc_req_valid_i (acc_req_valid ),
+    .acc_req_ready_o (acc_req_ready ),
+    .acc_resp_o      (acc_resp      ),
+    .acc_resp_valid_o(acc_resp_valid),
+    .acc_resp_ready_i(acc_resp_ready)
+  );
+
+  /****************************
+   *  Vector Load/Store Unit  *
+   ****************************/
 
   // TODO: Connect the AXI interface
   assign axi_req_o = '0;
