@@ -15,8 +15,10 @@ workspace:
 
 sources:
   files:
-    # Level 0
-    - hardware/src/rvv_pkg.sv
+    # Headers
+    - hardware/include/rvv_pkg.sv
+
+    # Sources
     # Level 1
     - hardware/src/cva6_accel_first_pass_decoder.sv
 
