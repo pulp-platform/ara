@@ -33,13 +33,21 @@ for depth in 0 1 2; do
 done
 
 for num in 1 4 7; do
-  call_vsim rr_arb_tree_tb -GNumInp=$num -coverage -voptargs="+acc +cover=bcesfx"
+  call_vsim rr_arb_tree_tb -GNumInp=$num -coverage -voptargs="+acc +cover=bcesfx" -suppress vsim-3009
 done
 
 for spill_reg in 0 1; do
   for num_inp in 1 4 18; do
     for num_out in 1 4 18; do
-      call_vsim stream_xbar_tb -GNumInp=$num_inp -GNumOut=$num_out -GSpillReg=$spill_reg -coverage -voptargs="+acc +cover=bcesfx"
+      call_vsim stream_xbar_tb -gNumInp=$num_inp -gNumOut=$num_out -gSpillReg=$spill_reg -coverage -voptargs="+acc +cover=bcesfx"
+    done
+  done
+done
+
+for radix in 2 4 8; do
+  for num_inp in 1 2 17 64; do
+    for num_out in 1 2 4 16 17 64; do
+      call_vsim stream_omega_net_tb -gDutNumInp=$num_inp -gDutNumOut=$num_out -gDutRadix=$radix -coverage -voptargs="+acc +cover=bcesfx"
     done
   done
 done

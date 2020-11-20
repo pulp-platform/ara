@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 1.20.0 - 2020-11-04
+### Added
+- assertions: Assertion include header with macros (from lowrisc)
+
+### Changed
+- `sram.sv`: Deprecated as it has been moved to `tech_cells_generic`
+
+### Fixed
+- `stream_register`: Fix `DATA_WIDTH` of instantiated FIFO.
+- `stream_xbar`: Add missing argument in assertion error string.
+- Lint style fixes
+- `stream_omega`: Fix parse issue with verible.
+- `src_files.yml`: Fix compile order and missing modules.
+
 ## 1.19.0 - 2020-05-25
 ### Added
 - stream_to_mem: Allows to use memories with flow control (req/gnt) for requests but
@@ -21,6 +35,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `Bender`: Change levels of modules affected by depending on `cf_math_pkg::idx_width()`.
 - `stream_xbar`: Fully connected stream bassed interconnect with variable number of inputs and outputs.
 - `stream_xbar`: Fully connected stream-bassed interconnect with a variable number of inputs and outputs.
+- `stream_omega_net`: Stream-based network implementing an omega topology. Variable number of inputs,
+  outputs and radix. Topology is isomorphic to a butterfly network.
 
 ### Fixed
 - Improve tool compatibility.
