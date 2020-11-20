@@ -48,6 +48,7 @@ ariane:
     src/store_buffer.sv,
     src/store_unit.sv,
     src/tlb.sv,
+    src/acc_dispatcher.sv,
     src/debug/dm_csrs.sv,
     src/debug/dm_mem.sv,
     src/debug/dm_top.sv,

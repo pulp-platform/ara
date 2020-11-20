@@ -59,6 +59,7 @@ sources:
     - src/mult.sv
     - src/load_unit.sv
     - src/issue_read_operands.sv
+    - src/acc_dispatcher.sv
     - src/pmp/src/pmp_entry.sv
     - src/pmp/src/pmp.sv
     - src/fpu/src/fpnew_fma.sv

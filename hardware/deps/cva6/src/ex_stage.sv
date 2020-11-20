@@ -79,21 +79,20 @@ module ex_stage import ariane_pkg::*; #(
     output logic                                   fpu_valid_o,
     output exception_t                             fpu_exception_o,
     // Accelerator
-`ifdef VECTOR_EXTENSION_ARIANE
     output accelerator_req_t                       acc_req_o,
     output logic                                   acc_req_valid_o,
-    input  logic                                   acc_req_ready_i,
-    input  accelerator_resp_t                      acc_resp_i,
+    input logic                                    acc_req_ready_i,
+    input accelerator_resp_t                       acc_resp_i,
     input  logic                                   acc_resp_valid_i,
     output logic                                   acc_resp_ready_o,
-`endif
+
     output logic                                   acc_ready_o,      // FU is ready
-    input  logic                                   acc_valid_i,      // Output is valid
+    input logic                                    acc_valid_i,      // Output is valid
+    input logic                                    acc_commit_i,
     output logic [TRANS_ID_BITS-1:0]               acc_trans_id_o,
     output riscv::xlen_t                           acc_result_o,
     output logic                                   acc_valid_o,
     output exception_t                             acc_exception_o,
-    input  logic                                   speculative_i,    // Avoids issuing speculative instructions to the accelerator
     // Memory Management
     input  logic                                   enable_translation_i,
     input  logic                                   en_ld_st_translation_i,
@@ -339,39 +338,40 @@ module ex_stage import ariane_pkg::*; #(
     // Accelerator
     // ----------------
 
-    if (RVV) begin: gen_rvv_accelerator
+    if (ENABLE_ACCELERATOR) begin: gen_accelerator
         fu_data_t acc_data;
         assign acc_data = acc_valid_i ? fu_data_i : '0;
 
-        // Unpack fu_data_t into accelerator_req_t
-        assign acc_req_o = '{
-            insn: acc_data.imm[31:0], // Instruction is forwarded as an immediate
-            rs1: acc_data.operand_a,
-            rs2: acc_data.operand_b,
-            trans_id: acc_data.trans_id
-        };
-        // Filter the accelerator requests if the instruction is speculative
-        assign acc_req_valid_o = ~speculative_i & acc_valid_i;
-        assign acc_ready_o = ~speculative_i & acc_req_ready_i;
+        acc_dispatcher i_acc_dispatcher (
+          .clk_i                (clk_i           ),
+          .rst_ni               (rst_ni          ),
+          .acc_data_i           (acc_data        ),
+          .acc_ready_o          (acc_ready_o     ),
+          .acc_valid_i          (acc_valid_i     ),
+          .acc_commit_i         (acc_commit_i    ),
+          .acc_commit_trans_id_i(commit_tran_id_i),
+          .acc_trans_id_o       (acc_trans_id_o  ),
+          .acc_result_o         (acc_result_o    ),
+          .acc_valid_o          (acc_valid_o     ),
+          .acc_exception_o      (acc_exception_o ),
+          .acc_req_o            (acc_req_o       ),
+          .acc_req_valid_o      (acc_req_valid_o ),
+          .acc_req_ready_i      (acc_req_ready_i ),
+          .acc_resp_i           (acc_resp_i      ),
+          .acc_resp_valid_i     (acc_resp_valid_i),
+          .acc_resp_ready_o     (acc_resp_ready_o)
+        );
+    end : gen_accelerator else begin: gen_no_accelerator
+        assign acc_req_o        = '0;
+        assign acc_req_valid_o  = 1'b0;
+        assign acc_resp_ready_o = 1'b0;
 
-        // Unpack the accelerator response
-        assign acc_trans_id_o = acc_resp_i.trans_id;
-        assign acc_result_o = acc_resp_i.result;
-        assign acc_valid_o = acc_resp_valid_i;
-        assign acc_exception_o = '{
-            cause: riscv::ILLEGAL_INSTR,
-            tval: '0,
-            valid: acc_resp_i.error
-        };
-        assign acc_resp_ready_o = 1'b1; // Always ready to receive responses
-    end : gen_rvv_accelerator else begin: gen_no_rvv_accelerator
         assign acc_ready_o     = '0;
         assign acc_trans_id_o  = '0;
         assign acc_result_o    = '0;
         assign acc_valid_o     = '0;
         assign acc_exception_o = '0;
-        assign acc_resp_ready_o = 1'b0;
-    end: gen_no_rvv_accelerator
+    end: gen_no_accelerator
 
 	always_ff @(posedge clk_i or negedge rst_ni) begin
 	    if (~rst_ni) begin

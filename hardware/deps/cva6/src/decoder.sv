@@ -66,9 +66,9 @@ module decoder import ariane_pkg::*; (
     riscv::xlen_t imm_bi_type;
 
     // ---------------------------------------
-    // Vector instruction first-pass decoder
+    // Accelerator instructions' first-pass decoder
     // ---------------------------------------
-    logic is_rvv;
+    logic is_accel;
     logic is_rs1;
     logic is_rs2;
     logic is_rd;
@@ -76,13 +76,13 @@ module decoder import ariane_pkg::*; (
     logic is_fs2;
     logic is_fd;
 
-    if (RVV) begin: gen_rvv_decoder
-        // This module is responsible for a light-weight decoding of RVV instructions,
+    if (ENABLE_ACCELERATOR) begin: gen_accel_decoder
+        // This module is responsible for a light-weight decoding of accelerator instructions,
         // identifying them, but also whether they read/write scalar registers.
-        // Check Ara for the definition of this module.
-        rvv_first_pass_decoder i_rvv_decoder (
+        // Accelerators are supposed to define this module.
+        cva6_accel_first_pass_decoder i_accel_decoder (
             .instruction_i(instruction_i),
-            .is_rvv_o(is_rvv),
+            .is_accel_o(is_accel),
             .is_rs1_o(is_rs1),
             .is_rs2_o(is_rs2),
             .is_rd_o(is_rd),
@@ -90,15 +90,15 @@ module decoder import ariane_pkg::*; (
             .is_fs2_o(is_fs2),
             .is_fd_o(is_fd)
         );
-    end: gen_rvv_decoder else begin: gen_no_rvv_support
-        assign is_rvv = 1'b0;
-        assign is_rs1 = 1'b0;
-        assign is_rs2 = 1'b0;
-        assign is_rd  = 1'b0;
-        assign is_fs1 = 1'b0;
-        assign is_fs2 = 1'b0;
-        assign is_fd  = 1'b0;
-    end: gen_no_rvv_support
+    end: gen_accel_decoder else begin
+        assign is_accel = 1'b0;
+        assign is_rs1   = 1'b0;
+        assign is_rs2   = 1'b0;
+        assign is_rd    = 1'b0;
+        assign is_fs1   = 1'b0;
+        assign is_fs2   = 1'b0;
+        assign is_fd    = 1'b0;
+    end
 
     always_comb begin : decoder
 
@@ -650,7 +650,7 @@ module decoder import ariane_pkg::*; (
                         3'b000: instruction_o.op  = ariane_pkg::SB;
                         3'b001: instruction_o.op  = ariane_pkg::SH;
                         3'b010: instruction_o.op  = ariane_pkg::SW;
-                        3'b011: if (riscv::XLEN==64) instruction_o.op  = ariane_pkg::SD; 
+                        3'b011: if (riscv::XLEN==64) instruction_o.op  = ariane_pkg::SD;
                                 else illegal_instr = 1'b1;
                         default: illegal_instr = 1'b1;
                     endcase
@@ -669,7 +669,7 @@ module decoder import ariane_pkg::*; (
                         3'b100: instruction_o.op  = ariane_pkg::LBU;
                         3'b101: instruction_o.op  = ariane_pkg::LHU;
                         3'b110: instruction_o.op  = ariane_pkg::LWU;
-                        3'b011: if (riscv::XLEN==64) instruction_o.op  = ariane_pkg::LD; 
+                        3'b011: if (riscv::XLEN==64) instruction_o.op  = ariane_pkg::LD;
                                 else illegal_instr = 1'b1;
                         default: illegal_instr = 1'b1;
                     endcase
@@ -1043,11 +1043,12 @@ module decoder import ariane_pkg::*; (
             endcase
         end
 
-        // Vector extension.
+        // Accelerator instructions.
         // These can overwrite the previous decoding entirely.
-        if (RVV && vs_i != riscv::Off) begin // only generate decoder if the vector extension is enabled (static)
-            if (is_rvv) begin
-                // Send vector instructions to the accelerator
+        if (ENABLE_ACCELERATOR) begin // only generate decoder if accelerators are enabled (static)
+            if (is_accel && vs_i != riscv::Off) begin // trigger illegal instruction if the vector extension is turned off
+                // TODO: Instruction going to other accelerators might need to distinguish whether the value of vs_i is needed or not.
+                // Send accelerator instructions to the coprocessor
                 instruction_o.fu  = ACCEL;
                 instruction_o.rs1 = is_rs1 ? instr.rtype.rs1 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rs2 = is_rs2 ? instr.rtype.rs2 : {REG_ADDR_SIZE{1'b0}};
@@ -1055,9 +1056,9 @@ module decoder import ariane_pkg::*; (
 
                 // Decode the vector operation
                 unique case ({is_fs1, is_fs2, is_fd})
-                    3'b100: instruction_o.op = VECOP_FS1;
-                    3'b001: instruction_o.op = VECOP_FD;
-                    3'b000: instruction_o.op = VECOP;
+                    3'b100: instruction_o.op = ACCEL_OP_FS1;
+                    3'b001: instruction_o.op = ACCEL_OP_FD;
+                    3'b000: instruction_o.op = ACCEL_OP;
                 endcase
 
                 // Ensure the decoding is sane
@@ -1067,7 +1068,7 @@ module decoder import ariane_pkg::*; (
                 // Forward the undecoded instruction in the `result` field
                 imm_select = INSN;
 
-                // At this step, consider the vector instructions are not illegal
+                // At this step, consider the accelerator instructions are not illegal
                 illegal_instr = 1'b0;
             end
         end

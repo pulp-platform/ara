@@ -38,7 +38,6 @@ module ariane import ariane_pkg::*; #(
   // Timer facilities
   input  logic                         time_irq_i,   // timer interrupt in (async)
   input  logic                         debug_req_i,  // debug request (async)
-`ifdef VECTOR_EXTENSION_ARIANE
   // Accelerator request port
   output accelerator_req_t             acc_req_o,
   output logic                         acc_req_valid_o,
@@ -47,7 +46,6 @@ module ariane import ariane_pkg::*; #(
   input accelerator_resp_t             acc_resp_i,
   input  logic                         acc_resp_valid_i,
   output logic                         acc_resp_ready_o,
-`endif
 `ifdef FIRESIM_TRACE
   // firesim trace port
   output traced_instr_pkg::trace_port_t trace_o,
@@ -167,6 +165,8 @@ module ariane import ariane_pkg::*; #(
   logic                     no_st_pending_ex;
   logic                     no_st_pending_commit;
   logic                     amo_valid_commit;
+  // ACCEL Commit
+  logic                     acc_commit_commit_ex;
   // --------------
   // ID <-> COMMIT
   // --------------
@@ -447,21 +447,19 @@ module ariane import ariane_pkg::*; #(
     .amo_req_o              ( amo_req                     ),
     .amo_resp_i             ( amo_resp                    ),
     // Accelerator
-    `ifdef VECTOR_EXTENSION_ARIANE
     .acc_req_o              ( acc_req_o                   ),
     .acc_req_valid_o        ( acc_req_valid_o             ),
     .acc_req_ready_i        ( acc_req_ready_i             ),
     .acc_resp_i             ( acc_resp_i                  ),
     .acc_resp_valid_i       ( acc_resp_valid_i            ),
     .acc_resp_ready_o       ( acc_resp_ready_o            ),
-    `endif
     .acc_ready_o            ( acc_ready_ex_id             ),
     .acc_valid_i            ( acc_valid_id_ex             ),
+    .acc_commit_i           ( acc_commit_commit_ex        ),
     .acc_trans_id_o         ( acc_trans_id_ex_id          ),
     .acc_result_o           ( acc_result_ex_id            ),
     .acc_valid_o            ( acc_valid_ex_id             ),
     .acc_exception_o        ( acc_exception_ex_id         ),
-    .speculative_i          ( speculative_id_ex           ),
     // Performance counters
     .itlb_miss_o            ( itlb_miss_ex_perf           ),
     .dtlb_miss_o            ( dtlb_miss_ex_perf           ),
@@ -516,6 +514,7 @@ module ariane import ariane_pkg::*; #(
     .commit_lsu_o           ( lsu_commit_commit_ex          ),
     .commit_lsu_ready_i     ( lsu_commit_ready_ex_commit    ),
     .commit_tran_id_o       ( lsu_commit_trans_id           ),
+    .commit_acc_o           ( acc_commit_commit_ex          ),
     .amo_valid_commit_o     ( amo_valid_commit              ),
     .amo_resp_i             ( amo_resp                      ),
     .commit_csr_o           ( csr_commit_commit_ex          ),

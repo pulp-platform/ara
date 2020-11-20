@@ -689,6 +689,13 @@ module ariane_testharness #(
     .irq_i                ( irqs                ),
     .ipi_i                ( ipi                 ),
     .time_irq_i           ( timer_irq           ),
+// Accelerator port
+    .acc_req_o            ( /* Unused */        ),
+    .acc_req_valid_o      ( /* Unused */        ),
+    .acc_req_ready_i      ( 1'b0                ),
+    .acc_resp_i           ( '0                  ),
+    .acc_resp_valid_i     ( 1'b0                ),
+    .acc_resp_ready_o     ( /* Unused */        ),
 // Disable Debug when simulating with Spike
 `ifdef SPIKE_TANDEM
     .debug_req_i          ( 1'b0                ),

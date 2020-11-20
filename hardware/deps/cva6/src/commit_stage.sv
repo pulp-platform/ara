@@ -46,6 +46,7 @@ module commit_stage import ariane_pkg::*; #(
     output logic                                    commit_lsu_o,       // commit the pending store
     input  logic                                    commit_lsu_ready_i, // commit buffer of LSU is ready
     output logic [TRANS_ID_BITS-1:0]                commit_tran_id_o,   // transaction id of first commit port
+    output logic                                    commit_acc_o,       // commit the pending accelerator instruction
     output logic                                    amo_valid_commit_o, // valid AMO in commit stage
     input  logic                                    no_st_pending_i,    // there is no store pending
     output logic                                    commit_csr_o,       // commit the pending CSR instruction
@@ -110,6 +111,7 @@ module commit_stage import ariane_pkg::*; #(
         we_fpr_o           = '{default: 1'b0};
         commit_lsu_o       = 1'b0;
         commit_csr_o       = 1'b0;
+        commit_acc_o       = 1'b0;
         // amos will commit on port 0
         wdata_o[0]      = (amo_resp_i.ack) ? amo_resp_i.result[riscv::XLEN-1:0] : commit_instr_i[0].result;
         wdata_o[1]      = commit_instr_i[1].result;
@@ -170,6 +172,14 @@ module commit_stage import ariane_pkg::*; #(
                   we_gpr_o[0] = 1'b0;
                 end
             end
+            // -----------
+            // ACCEL Issue
+            // -----------
+            // Instruction can be issued to the (in-order) back-end if
+            // it reached the top of the scoreboard and it hasn't been
+            // issued yet
+            if (!commit_instr_i[0].valid && commit_instr_i[0].fu == ACCEL)
+                commit_acc_o = 1'b1;
             // ------------------
             // SFENCE.VMA Logic
             // ------------------

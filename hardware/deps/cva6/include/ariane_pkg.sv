@@ -167,12 +167,14 @@ package ariane_pkg;
 `endif
     localparam bit RVA = 1'b1; // Is A extension enabled
 
-    // Vector extension configuration
-`ifdef VECTOR_EXTENSION_ARIANE
-    localparam bit RVV = 1'b1; // Is V extension enabled
+`ifdef RVV_ARIANE
+    localparam bit RVV = `RVV_ARIANE;
 `else
-    localparam bit RVV = 1'b0; // Is V extension enabled
+    localparam bit RVV = 1'b0;
 `endif
+
+    // Is there an accelerator enabled?
+    localparam bit ENABLE_ACCELERATOR = RVV;
 
     // Transprecision floating-point extensions configuration
     localparam bit XF16    = 1'b0; // Is half-precision float extension (Xf16) enabled
@@ -496,8 +498,8 @@ package ariane_pkg;
                                FCLASS,
                                // Vectorial Floating-Point Instructions that don't directly map onto the scalar ones
                                VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFEQ, VFNE, VFLT, VFGE, VFLE, VFGT, VFCPKAB_S, VFCPKCD_S, VFCPKAB_D, VFCPKCD_D,
-                               // Vector operations
-                               VECOP, VECOP_FS1, VECOP_FD
+                               // Accelerator operations
+                               ACCEL_OP, ACCEL_OP_FS1, ACCEL_OP_FD
                              } fu_op;
 
     typedef struct packed {
@@ -530,7 +532,7 @@ package ariane_pkg;
                 FCMP,                            // Comparisons
                 FCLASS,                          // Classifications
                 [VFMIN:VFCPKCD_D],               // Additional Vectorial FP ops
-                VECOP_FS1         : return 1'b1; // Vector instructions that use fs1
+                ACCEL_OP_FS1      : return 1'b1; // Accelerator instructions
                 default           : return 1'b0; // all other ops
             endcase
         end else
@@ -577,7 +579,7 @@ package ariane_pkg;
                 FMV_X2F,                             // GPR-FPR Moves
                 [VFMIN:VFSGNJX],                     // Vectorial MIN/MAX and SGNJ
                 [VFCPKAB_S:VFCPKCD_D],               // Vectorial FP cast and pack ops
-                VECOP_FD              : return 1'b1; // Vector instructions that write to fd
+                ACCEL_OP_FD           : return 1'b1; // Accelerator instructions
                 default               : return 1'b0; // all other ops
             endcase
         end else
