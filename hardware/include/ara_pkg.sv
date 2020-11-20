@@ -27,15 +27,19 @@ package ara_pkg;
   // Maximum size of a single vector element, in bits.
   // Ara only supports vector elements up to 64 bits.
   localparam int unsigned ELEN = 64;
-  // Number of bits in a vector register.
-  // VLEN >= ELEN. Must be a power of two.
-  // It must also be divisible by the number of vector lanes.
-  localparam int unsigned VLEN = `ifdef VLEN `VLEN `else 64 `endif;
   // Striping distance.
   // For Ara, this corresponds to the lane width, in bits.
   localparam int unsigned SLEN = 64;
 
-  // Number of parallel vector lanes.
-  localparam int unsigned NrLanes = `ifdef NR_LANES `NR_LANES `else 0 `endif;
+  /***************************
+   *  Accelerator interface  *
+   ***************************/
+
+  // Use Ariane's accelerator interface.
+  import ariane_pkg::accelerator_req_t;
+  export ariane_pkg::accelerator_req_t;
+
+  import ariane_pkg::accelerator_resp_t;
+  export ariane_pkg::accelerator_resp_t;
 
 endpackage : ara_pkg

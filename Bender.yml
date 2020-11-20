@@ -22,7 +22,8 @@ sources:
     # Sources
     # Level 1
     - hardware/src/cva6_accel_first_pass_decoder.sv
-
+    # Level 2
+    - hardware/src/ara.sv
     #files:
     # Level 1
     #- hardware/include/ara_pkg.sv
