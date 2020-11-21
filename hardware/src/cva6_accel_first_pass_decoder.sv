@@ -21,7 +21,7 @@
 
 module cva6_accel_first_pass_decoder import rvv_pkg::*; (
     input  logic [31:0] instruction_i, // instruction from IF
-    output logic        is_rvv_o,      // is a vector extension
+    output logic        is_accel_o,    // is a vector instruction
     output logic        is_rs1_o,
     output logic        is_rs2_o,
     output logic        is_rd_o,
@@ -36,30 +36,30 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
 
   always_comb begin
     // Default values
-    is_rvv_o = 1'b0;
-    is_rs1_o = 1'b0;
-    is_rs2_o = 1'b0;
-    is_rd_o  = 1'b0;
-    is_fs1_o = 1'b0;
-    is_fs2_o = 1'b0;
-    is_fd_o  = 1'b0;
+    is_accel_o = 1'b0;
+    is_rs1_o   = 1'b0;
+    is_rs2_o   = 1'b0;
+    is_rd_o    = 1'b0;
+    is_fs1_o   = 1'b0;
+    is_fs2_o   = 1'b0;
+    is_fd_o    = 1'b0;
 
     // Decode based on the opcode
     case (instr.i_type.opcode)
 
       // Arithmetic vector operations
       riscv::OpcodeVec: begin
-        is_rvv_o = 1'b1;
+        is_accel_o = 1'b1;
         case (instr.varith_type.func3)
           OPFVV: is_fd_o  = instr.varith_type.func6 == 6'b010_000; // VFWUNARY0
           OPMVV: is_rd_o  = instr.varith_type.func6 == 6'b010_000; // VWXUNARY0
-          OPIVX: is_rs1_o = 1'b1                                 ;
-          OPFVF: is_fs1_o = 1'b1                                 ;
-          OPMVX: is_rs1_o = 1'b1                                 ;
+          OPIVX: is_rs1_o = 1'b1 ;
+          OPFVF: is_fs1_o = 1'b1 ;
+          OPMVX: is_rs1_o = 1'b1 ;
           OPCFG: begin
-            is_rs1_o = 1'b1                                  ;
+            is_rs1_o = 1'b1 ;
             is_rs2_o = instr.vsetvl_type.func7 == 7'b100_0000; // vsetvl
-            is_rd_o  = 1'b1                                  ;
+            is_rd_o  = 1'b1 ;
           end
         endcase
       end
@@ -76,9 +76,9 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
           4'b1101, //VLxE256/VSxE256
           4'b1110, //VLxE512/VSxE512
           4'b1111: begin //VLxE1024/VSxE1024
-            is_rvv_o = 1'b1                        ;
-            is_rs1_o = 1'b1                        ;
-            is_rs2_o = instr.vmem_type.mop == 2'b10; // Strided operation
+            is_accel_o = 1'b1 ;
+            is_rs1_o   = 1'b1 ;
+            is_rs2_o   = instr.vmem_type.mop == 2'b10; // Strided operation
           end
         endcase
       end
@@ -90,8 +90,8 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
           3'b101, //VAMO*EI16.V
           3'b110, //VAMO*EI32.V
           3'b111: begin //VAMO*EI64.V
-            is_rvv_o = 1'b1;
-            is_rs1_o = 1'b1;
+            is_accel_o = 1'b1;
+            is_rs1_o   = 1'b1;
           end
         endcase
       end
@@ -105,10 +105,10 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
           3'b101, //CSRRWI
           3'b110, //CSRRSI
           3'b111: begin //CSRRCI
-            is_rvv_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
-            is_rs1_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
-            is_rs2_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
-            is_rd_o  = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_accel_o = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_rs1_o   = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_rs2_o   = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
+            is_rd_o    = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
           end
         endcase
 
