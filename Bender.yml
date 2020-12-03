@@ -23,7 +23,20 @@ sources:
     # Level 1
     - hardware/src/cva6_accel_first_pass_decoder.sv
     - hardware/src/ara_dispatcher.sv
+    - hardware/src/ara_sequencer.sv
+    - hardware/src/lane/lane_sequencer.sv
+    - hardware/src/lane/operand_queue.sv
+    - hardware/src/lane/operand_requester.sv
+    - hardware/src/lane/vector_regfile.sv
+    - hardware/src/vlsu/addrgen.sv
+    - hardware/src/vlsu/vldu.sv
     # Level 2
+    - hardware/src/lane/operand_queues_stage.sv
+    - hardware/src/lane/vector_fus_stage.sv
+    - hardware/src/vlsu/vlsu.sv
+    # Level 3
+    - hardware/src/lane/lane.sv
+    # Level 4
     - hardware/src/ara.sv
     #files:
     # Level 1
