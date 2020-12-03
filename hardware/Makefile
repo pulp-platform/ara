@@ -57,7 +57,7 @@ ifdef preload
 	questa_args += +PRELOAD=$(preload)
 endif
 questa_args += -sv_lib $(dpi_library)/ara_dpi -work $(library)
-questa_args += -suppress vsim-3009
+questa_args += -suppress vsim-3009 -suppress vopt-7033
 
 # DPI source files
 dpi   := $(patsubst tb/dpi/%.cpp,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/dpi/*.cpp))
