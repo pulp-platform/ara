@@ -39,6 +39,8 @@ add wave -noupdate -group CVA6 -group ex_stage -group lsu -group load_unit /ara_
 add wave -noupdate -group CVA6 -group ex_stage -group branch_unit /ara_tb/dut/i_ariane/ex_stage_i/branch_unit_i/*
 
 add wave -noupdate -group CVA6 -group ex_stage -group csr_buffer /ara_tb/dut/i_ariane/ex_stage_i/csr_buffer_i/*
+
+add wave -noupdate -group CVA6 -group ex_stage -group dispatcher /ara_tb/dut/i_ariane/ex_stage_i/gen_accelerator/i_acc_dispatcher/*
 add wave -noupdate -group CVA6 -group ex_stage /ara_tb/dut/i_ariane/ex_stage_i/*
 
 add wave -noupdate -group CVA6 -group commit_stage /ara_tb/dut/i_ariane/commit_stage_i/*
