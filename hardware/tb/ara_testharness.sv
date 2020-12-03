@@ -465,6 +465,7 @@ module ara_testharness #(
   ara #(
     .NrLanes     (NrLanes         ),
     .AxiDataWidth(AxiWideDataWidth),
+    .AxiAddrWidth(AxiAddrWidth    ),
     .axi_ar_t    (ar_chan_t       ),
     .axi_r_t     (wide_r_chan_t   ),
     .axi_aw_t    (aw_chan_t       ),

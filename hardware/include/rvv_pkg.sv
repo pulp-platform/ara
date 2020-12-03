@@ -145,4 +145,12 @@ package rvv_pkg;
     vsetvl_type_t vsetvl_type;
   } rvv_instruction_t;
 
+
+  /**************************
+   *  Vector mask register  *
+   **************************/
+
+  // The mask register is always vreg[0]
+  localparam VMASK = 5'b00000;
+
 endpackage : rvv_pkg
