@@ -15,6 +15,7 @@
 module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     input  logic                                  clk_i,
     input  logic                                  rst_ni,
+    input  logic                                  flush_i,
     // Interface with the issue stage
     input  fu_data_t                              acc_data_i,
     output logic                                  acc_ready_o,          // FU is ready
@@ -58,23 +59,43 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     .ready_i(acc_req_ready_i)
   );
 
+  // Create a vld/rdy handshake with the scoreboard
+  fu_data_t acc_data;
+  logic     acc_valid;
+  logic     acc_ready;
+
+  fall_through_register #(
+    .T(fu_data_t)
+  ) i_acc_register (
+    .clk_i     (clk_i      ),
+    .rst_ni    (rst_ni     ),
+    .clr_i     (flush_i    ),
+    .testmode_i(1'b0       ),
+    .data_i    (acc_data_i ),
+    .valid_i   (acc_valid_i),
+    .ready_o   (acc_ready_o),
+    .data_o    (acc_data   ),
+    .valid_o   (acc_valid  ),
+    .ready_i   (acc_ready  )
+  );
+
   always_comb begin: accelerator_req_dispatcher
     // Default values
     acc_req       = '0;
     acc_req_valid = 1'b0;
-    acc_ready_o   = 1'b0;
+    acc_ready     = 1'b0;
 
-    if (acc_commit_i && acc_commit_trans_id_i == acc_data_i.trans_id) begin
+    if (acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id) begin
       // Unpack fu_data_t into accelerator_req_t
       acc_req = '{
         // Instruction is forwarded from the decoder as an immediate
-        insn    : acc_data_i.imm[31:0],
-        rs1     : acc_data_i.operand_a,
-        rs2     : acc_data_i.operand_b,
-        trans_id: acc_data_i.trans_id
+        insn    : acc_data.imm[31:0],
+        rs1     : acc_data.operand_a,
+        rs2     : acc_data.operand_b,
+        trans_id: acc_data.trans_id
       };
-      acc_req_valid = acc_valid_i;
-      acc_ready_o   = acc_req_ready;
+      acc_req_valid = acc_valid;
+      acc_ready     = acc_req_ready;
     end
   end
 
