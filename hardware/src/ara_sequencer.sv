@@ -101,7 +101,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   logic    pe_req_valid_d;
 
   // This function determines the VFU responsiple for handling this operation.
-  function automatic vfu(ara_op_e op);
+  function automatic vfu_e vfu(ara_op_e op);
     case (op) inside
       [VADD:VXOR]: vfu = VFU_Alu;
       [VLE:VLXE] : vfu = VFU_LoadUnit;
@@ -165,7 +165,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               id           : vinsn_next_id,
               op           : ara_req_i.op,
               vm           : ara_req_i.vm,
-              vfu          : vfu_e'(vfu(ara_req_i.op)),
+              vfu          : vfu(ara_req_i.op),
               vs1          : ara_req_i.vs1,
               use_vs1      : ara_req_i.use_vs1,
               vs2          : ara_req_i.vs2,
