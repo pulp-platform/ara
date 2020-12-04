@@ -183,6 +183,19 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_gnt_i       (ldu_result_gnt_i         )
   );
 
+  /****************
+   *  Assertions  *
+   ****************/
+
+  if (AxiDataWidth == 0)
+    $error("[vlsu] The data width of the AXI bus cannot be zero.");
+
+  if (AxiAddrWidth == 0)
+    $error("[vlsu] The address width of the AXI bus cannot be zero.");
+
+  if (NrLanes == 0)
+    $error("[vlsu] Ara needs to have at least one lane.");
+
 /**********************
  *  INTERNAL SIGNALS  *
  **********************/
