@@ -351,7 +351,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
           commit_cnt_d = '0;
       end
 
-    // Finished committing the results of a vector instructoin
+    // Finished committing the results of a vector instruction
     if (vinsn_commit_valid && commit_cnt_d == '0) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;

@@ -108,10 +108,6 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   logic             ldu_axi_addrgen_req_ready;
   logic             stu_axi_addrgen_req_ready;
 
-  assign stu_axi_addrgen_req_ready = 1'b0;
-  assign pe_req_ready_o[1]         = '1;
-  assign pe_resp_o[1]              = '0;
-
   addrgen #(
     .NrLanes     (NrLanes     ),
     .AxiDataWidth(AxiDataWidth),
@@ -143,10 +139,6 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready),
     .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready)
   );
-
-  assign axi_req.w       = '0;
-  assign axi_req.w_valid = 1'b0;
-  assign axi_req.b_ready = 1'b1;
 
   /**********************
    *  Vector Load Unit  *
@@ -183,6 +175,42 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_gnt_i       (ldu_result_gnt_i         )
   );
 
+  /***********************
+   *  Vector Store Unit  *
+   ***********************/
+
+  vstu #(
+    .AxiAddrWidth(AxiAddrWidth),
+    .AxiDataWidth(AxiDataWidth),
+    .axi_w_t     (axi_w_t     ),
+    .axi_b_t     (axi_b_t     ),
+    .NrLanes     (NrLanes     ),
+    .vaddr_t     (vaddr_t     )
+  ) i_vstu (
+    .clk_i                  (clk_i                    ),
+    .rst_ni                 (rst_ni                   ),
+    // AXI Memory Interface
+    .axi_w_o                (axi_req.w                ),
+    .axi_w_valid_o          (axi_req.w_valid          ),
+    .axi_w_ready_i          (axi_resp.w_ready         ),
+    .axi_b_i                (axi_resp.b               ),
+    .axi_b_valid_i          (axi_resp.b_valid         ),
+    .axi_b_ready_o          (axi_req.b_ready          ),
+    // Interface with the main sequencer
+    .pe_req_i               (pe_req_i                 ),
+    .pe_req_valid_i         (pe_req_valid_i           ),
+    .pe_req_ready_o         (pe_req_ready_o[1]        ),
+    .pe_resp_o              (pe_resp_o[1]             ),
+    // Interface with the address generator
+    .axi_addrgen_req_i      (axi_addrgen_req          ),
+    .axi_addrgen_req_valid_i(axi_addrgen_req_valid    ),
+    .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready),
+    // Interface with the lanes
+    .stu_operand_i          (stu_operand_i            ),
+    .stu_operand_valid_i    (stu_operand_valid_i      ),
+    .stu_operand_ready_o    (stu_operand_ready_o      )
+  );
+
   /****************
    *  Assertions  *
    ****************/
@@ -196,60 +224,4 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   if (NrLanes == 0)
     $error("[vlsu] Ara needs to have at least one lane.");
 
-/**********************
- *  INTERNAL SIGNALS  *
- **********************/
-/*
- axi_req_t ara_axi_req_vldu ;
- axi_req_t ara_axi_req_vstu ;
- axi_req_t ara_axi_req_addrgen;
-
- addr_t addr_addrgen ;
- logic  addr_valid_addrgen ;
- logic  addr_ready_vldu_addrgen;
- logic  addr_ready_vstu_addrgen;
-
- logic ld_addr_valid_addrgen;
- logic st_addr_valid_addrgen;
-
- assign ld_addr_valid_addrgen = addr_valid_addrgen & addr_addrgen.is_load ;
- assign st_addr_valid_addrgen = addr_valid_addrgen & !addr_addrgen.is_load;
-
- vldu i_vldu (
- .clk_i              (clk_i                  ) ,
- .rst_ni             (rst_ni                 ),
- .ara_axi_req_o      (ara_axi_req_vldu       ),
- .ara_axi_resp_i     (ara_axi_resp_i         ) ,
- .operation_i        (operation_i            ) ,
- .resp_o             (resp_o[VFU_LD]         ),
- .ld_operand_i       (ld_operand_i           ) ,
- .ld_operand_ready_o (ld_operand_ready_o     ),
- .addr_i             (addr_addrgen           ),
- .addr_valid_i       (ld_addr_valid_addrgen  ),
- .addr_ready_o       (addr_ready_vldu_addrgen),
- .ld_result_o        (ld_result_o            ) ,
- .ld_result_gnt_i    (ld_result_gnt_i        )
- );
-
- assign ara_axi_req_o.r_ready = ara_axi_req_vldu.r_ready;
-
- vstu i_vstu (
- .clk_i              (clk_i                  ),
- .rst_ni             (rst_ni                 ) ,
- .ara_axi_req_o      (ara_axi_req_vstu       ),
- .ara_axi_resp_i     (ara_axi_resp_i         ),
- .operation_i        (operation_i            ) ,
- .resp_o             (resp_o[VFU_ST]         ),
- .st_operand_i       (st_operand_i           ) ,
- .st_operand_ready_o (st_operand_ready_o     ),
- .addr_i             (addr_addrgen           ),
- .addr_valid_i       (st_addr_valid_addrgen  ),
- .addr_ready_o       (addr_ready_vstu_addrgen)
- );
-
- assign ara_axi_req_o.w       = ara_axi_req_vstu.w ;
- assign ara_axi_req_o.w_valid = ara_axi_req_vstu.w_valid;
- assign ara_axi_req_o.b_ready = ara_axi_req_vstu.b_ready;
-
- */
 endmodule : vlsu
