@@ -365,7 +365,8 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
    *****************/
 
   // Comparison instructions that use signed operands
-  logic       is_signed = op_i inside {VMAX, VMIN};
+  logic is_signed;
+  assign is_signed = op_i inside {VMAX, VMIN};
   // Compare operands.
   // For vew_i = EW8, all bits are valid.
   // For vew_i = EW16, bits 0, 2, 4, and 6 are valid.
