@@ -51,6 +51,7 @@ module ara_testharness #(
   `include "axi/typedef.svh"
 
   localparam AxiSlvIdWidth = AxiIdWidth + $clog2(NrAXIMasters);
+  localparam AxiLlcIdWidth = AxiSlvIdWidth + 1;
 
   // Axi Typedefs
   typedef logic [AxiAddrWidth-1:0] axi_addr_t;
@@ -60,20 +61,25 @@ module ara_testharness #(
   typedef logic [AxiWideDataWidth/8-1:0] axi_wide_strb_t;
   typedef logic [AxiIdWidth-1:0] axi_id_t;
   typedef logic [AxiSlvIdWidth-1:0] axi_slv_id_t;
+  typedef logic [AxiLlcIdWidth-1:0] axi_llc_id_t;
   typedef logic [AxiUserWidth-1:0] axi_user_t;
 
   `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, axi_addr_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_AR_CHAN_T(slv_ar_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(llc_ar_chan_t, axi_addr_t, axi_llc_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(narrow_r_chan_t, axi_narrow_data_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(narrow_slv_r_chan_t, axi_narrow_data_t, axi_slv_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(wide_r_chan_t, axi_wide_data_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(wide_slv_r_chan_t, axi_wide_data_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(llc_r_chan_t, axi_wide_data_t, axi_llc_id_t, axi_user_t)
   `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_AW_CHAN_T(slv_aw_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_AW_CHAN_T(llc_aw_chan_t, axi_addr_t, axi_llc_id_t, axi_user_t)
   `AXI_TYPEDEF_W_CHAN_T(narrow_w_chan_t, axi_narrow_data_t, axi_narrow_strb_t, axi_user_t)
   `AXI_TYPEDEF_W_CHAN_T(wide_w_chan_t, axi_wide_data_t, axi_wide_strb_t, axi_user_t)
   `AXI_TYPEDEF_B_CHAN_T(b_chan_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_B_CHAN_T(slv_b_chan_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(llc_b_chan_t, axi_llc_id_t, axi_user_t)
 
   `AXI_TYPEDEF_REQ_T(axi_narrow_req_t, aw_chan_t, narrow_w_chan_t, ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_narrow_resp_t, b_chan_t, narrow_r_chan_t)
@@ -83,6 +89,8 @@ module ara_testharness #(
   `AXI_TYPEDEF_RESP_T(axi_wide_resp_t, b_chan_t, wide_r_chan_t)
   `AXI_TYPEDEF_REQ_T(axi_wide_slv_req_t, slv_aw_chan_t, wide_w_chan_t, slv_ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_wide_slv_resp_t, slv_b_chan_t, wide_slv_r_chan_t)
+  `AXI_TYPEDEF_REQ_T(axi_wide_llc_req_t, llc_aw_chan_t, wide_w_chan_t, llc_ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_wide_llc_resp_t, llc_b_chan_t, llc_r_chan_t)
 
   `AXI_LITE_TYPEDEF_AW_CHAN_T(axi_lite_narrow_slv_aw_t, axi_addr_t)
   `AXI_LITE_TYPEDEF_W_CHAN_T(axi_lite_narrow_slv_w_t, axi_narrow_data_t, axi_narrow_strb_t)
@@ -105,29 +113,23 @@ module ara_testharness #(
   axi_narrow_slv_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
   axi_narrow_slv_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
 
+  // Memory Map
+  localparam logic[63:0] CTRLLength = 64'h1000;
+  localparam logic[63:0] UARTLength = 64'h1000;
+  localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
+
+  typedef enum logic [63:0] {
+    CTRLBase = 64'hD000_0000,
+    UARTBase = 64'hC000_0000,
+    DRAMBase = 64'h8000_0000
+  } soc_bus_start_t;
+
   /********
    *  L2  *
    ********/
 
   axi_wide_slv_req_t  l2mem_wide_axi_req_wo_atomics;
   axi_wide_slv_resp_t l2mem_wide_axi_resp_wo_atomics;
-
-  logic                          req;
-  logic                          we;
-  logic [AxiAddrWidth-1:0]       addr;
-  logic [AxiWideDataWidth/8-1:0] be;
-  logic [AxiWideDataWidth-1:0]   wdata;
-  logic [AxiWideDataWidth-1:0]   rdata;
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AxiAddrWidth    ),
-    .AXI_DATA_WIDTH(AxiWideDataWidth),
-    .AXI_ID_WIDTH  (AxiSlvIdWidth   ),
-    .AXI_USER_WIDTH(AxiUserWidth    )
-  ) axi_l2_wide_slave ();
-
-  `AXI_ASSIGN_FROM_REQ(axi_l2_wide_slave, l2mem_wide_axi_req_wo_atomics)
-  `AXI_ASSIGN_TO_RESP(l2mem_wide_axi_resp_wo_atomics, axi_l2_wide_slave)
 
   // The L2 memory does not support atomics
   axi_atop_filter #(
@@ -144,21 +146,83 @@ module ara_testharness #(
     .mst_resp_i(l2mem_wide_axi_resp_wo_atomics)
   );
 
+  axi_wide_llc_req_t  dram_wide_axi_req;
+  axi_wide_llc_resp_t dram_wide_axi_resp;
+
+  localparam axi_llc_pkg::llc_axi_cfg_t LlcAxiCfg = '{
+    SlvPortIdWidth:    AxiSlvIdWidth,
+    AddrWidthFull:     AxiAddrWidth,
+    DataWidthFull:     AxiWideDataWidth,
+    LitePortAddrWidth: AxiAddrWidth,
+    LitePortDataWidth: AxiNarrowDataWidth
+  };
+
+  axi_llc_top #(
+    .SetAssociativity ( 8                          ),
+    .NumLines         ( 1024                       ),
+    .NumBlocks        ( 8                          ),
+    .AxiIdWidth       ( AxiSlvIdWidth              ),
+    .AxiAddrWidth     ( AxiAddrWidth               ),
+    .AxiDataWidth     ( AxiWideDataWidth           ),
+    .AxiUserWidth     ( AxiUserWidth               ),
+    .AxiLiteAddrWidth ( AxiAddrWidth               ),
+    .AxiLiteDataWidth ( AxiNarrowDataWidth         ),
+    .slv_req_t        ( axi_wide_slv_req_t         ),
+    .slv_resp_t       ( axi_wide_slv_resp_t        ),
+    .mst_req_t        ( axi_wide_llc_req_t         ),
+    .mst_resp_t       ( axi_wide_llc_resp_t        ),
+    .lite_req_t       ( axi_lite_narrow_slv_req_t  ),
+    .lite_resp_t      ( axi_lite_narrow_slv_resp_t ),
+    .rule_full_t      ( axi_pkg::xbar_rule_64_t    ),
+    .axi_addr_t       ( axi_addr_t  )
+  ) i_l2 (
+    .clk_i               ( clk_i                          ),
+    .rst_ni              ( rst_ni                         ),
+    .test_i              ( '0                             ),
+    .slv_req_i           ( l2mem_wide_axi_req_wo_atomics  ),
+    .slv_resp_o          ( l2mem_wide_axi_resp_wo_atomics ),
+    .mst_req_o           ( dram_wide_axi_req              ),
+    .mst_resp_i          ( dram_wide_axi_resp             ),
+    .conf_req_i          ( '0                             ),
+    .conf_resp_o         (                                ),
+    .cached_start_addr_i ( DRAMBase                       ),
+    .cached_end_addr_i   ( DRAMBase   + DRAMLength        ),
+    .spm_start_addr_i    ( '0                             ),
+    .axi_llc_events_o    (                                )
+  );
+
+  logic                          req;
+  logic                          we;
+  logic [AxiAddrWidth-1:0]       addr;
+  logic [AxiWideDataWidth/8-1:0] be;
+  logic [AxiWideDataWidth-1:0]   wdata;
+  logic [AxiWideDataWidth-1:0]   rdata;
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH(AxiAddrWidth    ),
+    .AXI_DATA_WIDTH(AxiWideDataWidth),
+    .AXI_ID_WIDTH  (AxiLlcIdWidth   ),
+    .AXI_USER_WIDTH(AxiUserWidth    )
+  ) axi_dram_wide_slave ();
+
+  `AXI_ASSIGN_FROM_REQ(axi_dram_wide_slave, dram_wide_axi_req)
+  `AXI_ASSIGN_TO_RESP(dram_wide_axi_resp, axi_dram_wide_slave)
+
   axi2mem #(
-    .AXI_ID_WIDTH  (AxiSlvIdWidth   ),
+    .AXI_ID_WIDTH  (AxiLlcIdWidth   ),
     .AXI_ADDR_WIDTH(AxiAddrWidth    ),
     .AXI_DATA_WIDTH(AxiWideDataWidth),
     .AXI_USER_WIDTH(AxiUserWidth    )
   ) i_axi2mem (
-    .clk_i (clk_i            ),
-    .rst_ni(rst_ni           ),
-    .slave (axi_l2_wide_slave),
-    .req_o (req              ),
-    .we_o  (we               ),
-    .addr_o(addr             ),
-    .be_o  (be               ),
-    .data_o(wdata            ),
-    .data_i(rdata            )
+    .clk_i (clk_i              ),
+    .rst_ni(rst_ni             ),
+    .slave (axi_dram_wide_slave),
+    .req_o (req                ),
+    .we_o  (we                 ),
+    .addr_o(addr               ),
+    .be_o  (be                 ),
+    .data_o(wdata              ),
+    .data_i(rdata              )
   );
 
   tc_sram #(
@@ -305,22 +369,13 @@ module ara_testharness #(
     MaxSlvTrans       : 4,
     FallThrough       : 1'b0,
     LatencyMode       : axi_pkg::CUT_MST_PORTS,
+    PipelineStages    : 0,
     AxiIdWidthSlvPorts: AxiIdWidth,
     AxiIdUsedSlvPorts : AxiIdWidth,
     AxiAddrWidth      : AxiAddrWidth,
     AxiDataWidth      : AxiWideDataWidth,
     NoAddrRules       : NrAXISlaves
   };
-
-  localparam logic[63:0] CTRLLength = 64'h1000;
-  localparam logic[63:0] UARTLength = 64'h1000;
-  localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
-
-  typedef enum logic [63:0] {
-    CTRLBase = 64'hD000_0000,
-    UARTBase = 64'hC000_0000,
-    DRAMBase = 64'h8000_0000
-  } soc_bus_start_t;
 
   axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
     '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
