@@ -50,6 +50,8 @@ module ara import ara_pkg::*; #(
     input  axi_resp_t         axi_resp_i
   );
 
+  import cf_math_pkg::idx_width;
+
   /*****************
    *  Definitions  *
    ****************/
@@ -58,7 +60,7 @@ module ara import ara_pkg::*; #(
   localparam int unsigned MaxVLenBPerLane = VLENB / NrLanes;      // In bytes
   localparam int unsigned VRFSizePerLane  = MaxVLenPerLane * 32;  // In bits
   localparam int unsigned VRFBSizePerLane = MaxVLenBPerLane * 32; // In bytes
-  typedef logic [cf_math_pkg::idx_width(VRFBSizePerLane)-1:0] vaddr_t; // Address of an element in each lane's VRF
+  typedef logic [idx_width(VRFBSizePerLane)-1:0] vaddr_t; // Address of an element in each lane's VRF
 
   localparam int unsigned DataWidth = $bits(elen_t);
   localparam int unsigned StrbWidth = DataWidth / 8;
@@ -177,36 +179,36 @@ module ara import ara_pkg::*; #(
     lane #(
       .NrLanes(NrLanes)
     ) i_lane (
-      .clk_i                  (clk_i                                    ),
-      .rst_ni                 (rst_ni                                   ),
-      .lane_id_i              (lane[cf_math_pkg::idx_width(NrLanes)-1:0]),
+      .clk_i                  (clk_i                       ),
+      .rst_ni                 (rst_ni                      ),
+      .lane_id_i              (lane[idx_width(NrLanes)-1:0]),
       // Interface with the sequencer
-      .pe_req_i               (pe_req                                   ),
-      .pe_req_valid_i         (pe_req_valid                             ),
-      .pe_req_ready_o         (pe_req_ready[lane]                       ),
-      .pe_resp_o              (pe_resp[lane]                            ),
+      .pe_req_i               (pe_req                      ),
+      .pe_req_valid_i         (pe_req_valid                ),
+      .pe_req_ready_o         (pe_req_ready[lane]          ),
+      .pe_resp_o              (pe_resp[lane]               ),
       // Interface with the slide unit
-      .sldu_result_req_i      (1'b0                                     ),
-      .sldu_result_addr_i     ('0                                       ),
-      .sldu_result_id_i       ('0                                       ),
-      .sldu_result_wdata_i    ('0                                       ),
-      .sldu_result_be_i       ('0                                       ),
-      .sldu_result_gnt_o      (/* Unused */                             ),
+      .sldu_result_req_i      (1'b0                        ),
+      .sldu_result_addr_i     ('0                          ),
+      .sldu_result_id_i       ('0                          ),
+      .sldu_result_wdata_i    ('0                          ),
+      .sldu_result_be_i       ('0                          ),
+      .sldu_result_gnt_o      (/* Unused */                ),
       // Interface with the load unit
-      .ldu_result_req_i       (ldu_result_req[lane]                     ),
-      .ldu_result_addr_i      (ldu_result_addr[lane]                    ),
-      .ldu_result_id_i        (ldu_result_id[lane]                      ),
-      .ldu_result_wdata_i     (ldu_result_wdata[lane]                   ),
-      .ldu_result_be_i        (ldu_result_be[lane]                      ),
-      .ldu_result_gnt_o       (ldu_result_gnt[lane]                     ),
+      .ldu_result_req_i       (ldu_result_req[lane]        ),
+      .ldu_result_addr_i      (ldu_result_addr[lane]       ),
+      .ldu_result_id_i        (ldu_result_id[lane]         ),
+      .ldu_result_wdata_i     (ldu_result_wdata[lane]      ),
+      .ldu_result_be_i        (ldu_result_be[lane]         ),
+      .ldu_result_gnt_o       (ldu_result_gnt[lane]        ),
       // Interface with the store unit
-      .stu_operand_o          (stu_operand[lane]                        ),
-      .stu_operand_valid_o    (stu_operand_valid[lane]                  ),
-      .stu_operand_ready_i    (stu_operand_ready                        ),
+      .stu_operand_o          (stu_operand[lane]           ),
+      .stu_operand_valid_o    (stu_operand_valid[lane]     ),
+      .stu_operand_ready_i    (stu_operand_ready           ),
       // Interface with the address generation unit
-      .addrgen_operand_o      (addrgen_operand[lane]                    ),
-      .addrgen_operand_valid_o(addrgen_operand_valid[lane]              ),
-      .addrgen_operand_ready_i(addrgen_operand_ready                    )
+      .addrgen_operand_o      (addrgen_operand[lane]       ),
+      .addrgen_operand_valid_o(addrgen_operand_valid[lane] ),
+      .addrgen_operand_ready_i(addrgen_operand_ready       )
     );
   end: gen_lanes
 
@@ -269,15 +271,15 @@ module ara import ara_pkg::*; #(
    ****************/
 
   if (NrLanes == 0)
-    $fatal(1, "[ara] Ara needs to have at least one lane.");
+    $error("[ara] Ara needs to have at least one lane.");
 
   if (ara_pkg::VLEN == 0)
-    $fatal(1, "[ara] The vector length must be greater than zero.");
+    $error("[ara] The vector length must be greater than zero.");
 
   if (ara_pkg::VLEN < ELEN)
-    $fatal(1, "[ara] The vector length must be greater or equal than the maximum size of a single vector element");
+    $error("[ara] The vector length must be greater or equal than the maximum size of a single vector element");
 
   if (ara_pkg::VLEN != 2**$clog2(ara_pkg::VLEN))
-    $fatal(1, "[ara] The vector length must be a power of two.");
+    $error("[ara] The vector length must be a power of two.");
 
 endmodule : ara

@@ -305,6 +305,6 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
    ****************/
 
   if (NrLanes == 0)
-    $fatal(1, "[lane] Ara needs to have at least one lane.");
+    $error("[lane] Ara needs to have at least one lane.");
 
 endmodule : lane
