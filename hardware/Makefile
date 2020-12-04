@@ -91,7 +91,7 @@ $(buildpath)/$(library):
 # Compilation
 .PHONY: compile
 compile: dpi lib $(buildpath) $(buildpath)/compile.tcl | bender
-$(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find tb -type f) $(shell find deps -type f)
+$(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t test > $(buildpath)/compile.tcl
 	echo "exit" >> $(buildpath)/compile.tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile.tcl
