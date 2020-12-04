@@ -187,42 +187,42 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Store the request
             requester_d = '{
               addr   : vaddr(operand_request_i[requester].id, NrLanes) + (operand_request_i[requester].vstart >> (int'(EW64) - int'(operand_request_i[requester].vtype.vsew))),
-              len    : operand_request_i[requester].vl >> (int'(EW64) - int'(operand_request_i[requester].vtype.vsew)),
+              len    : cf_math_pkg::ceil_div(operand_request_i[requester].vl, 1 << (int'(EW64) - int'(operand_request_i[requester].vtype.vsew))),
               vew    : operand_request_i[requester].vtype.vsew,
               hazard : operand_request_i[requester].hazard,
               default: '0
             };
           end
+        end
 
-          REQUESTING: begin
-            if (operand_queue_ready_i[requester]) begin
-              // Bank we are currently requesting
-              automatic int bank = requester_q.addr[idx_width(NrBanks)-1:0];
+        REQUESTING: begin
+          if (operand_queue_ready_i[requester]) begin
+            // Bank we are currently requesting
+            automatic int bank = requester_q.addr[idx_width(NrBanks)-1:0];
 
-              // Operand request
-              operand_req[bank][requester] = stall;
-              operand_payload[requester]   = '{
-                addr   : requester_q.addr >> $clog2(NrBanks),
-                opqueue: opqueue_e'(requester),
-                default: '0
-              };
+            // Operand request
+            operand_req[bank][requester] = !stall;
+            operand_payload[requester]   = '{
+              addr   : requester_q.addr >> $clog2(NrBanks),
+              opqueue: opqueue_e'(requester),
+              default: '0
+            };
 
-              // Received a grant. Bump the address pointers.
-              if (|operand_requester_gnt) begin
-                // We read less than 64 bits worth of elements
-                if (requester_q.len < (int'(EW64) - int'(requester_q.vew)))
-                  requester_d.len = 0;
-                else
-                  requester_d.len = requester_q.len - (int'(EW64) - int'(requester_q.vew));
-              end
-
-              // Update hazards
-              requester_d.hazard = requester_q.hazard & vinsn_running_i;
-
-              // Finished requesting all the elements
-              if (requester_d.len == '0)
-                state_d = IDLE;
+            // Received a grant. Bump the address pointers.
+            if (|operand_requester_gnt) begin
+              // We read less than 64 bits worth of elements
+              if (requester_q.len < (int'(EW64) - int'(requester_q.vew)))
+                requester_d.len = 0;
+              else
+                requester_d.len = requester_q.len - (int'(EW64) - int'(requester_q.vew));
             end
+
+            // Update hazards
+            requester_d.hazard = requester_q.hazard & vinsn_running_i;
+
+            // Finished requesting all the elements
+            if (requester_d.len == '0)
+              state_d = IDLE;
           end
         end
       endcase
