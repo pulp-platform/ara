@@ -27,9 +27,11 @@ sources:
     - hardware/src/lane/lane_sequencer.sv
     - hardware/src/lane/operand_queue.sv
     - hardware/src/lane/operand_requester.sv
+    - hardware/src/lane/valu.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/vlsu/addrgen.sv
     - hardware/src/vlsu/vldu.sv
+    - hardware/src/vlsu/vstu.sv
     # Level 2
     - hardware/src/lane/operand_queues_stage.sv
     - hardware/src/lane/vector_fus_stage.sv
