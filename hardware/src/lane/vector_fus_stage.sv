@@ -58,18 +58,37 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                         mfpu_result_gnt_i
   );
 
-  assign alu_ready_o          = 1'b0;
-  assign alu_vinsn_done_o     = '0;
-  assign alu_operand_ready_o  = '0;
+  /****************
+   *  Vector ALU  *
+   ****************/
+
+  valu #(
+    .vaddr_t(vaddr_t)
+  ) i_valu (
+    .clk_i                (clk_i                ),
+    .rst_ni               (rst_ni               ),
+    // Interface with the lane sequencer
+    .vfu_operation_i      (vfu_operation_i      ),
+    .vfu_operation_valid_i(vfu_operation_valid_i),
+    .alu_ready_o          (alu_ready_o          ),
+    .alu_vinsn_done_o     (alu_vinsn_done_o     ),
+    // Interface with the operand queues
+    .alu_operand_i        (alu_operand_i        ),
+    .alu_operand_valid_i  (alu_operand_valid_i  ),
+    .alu_operand_ready_o  (alu_operand_ready_o  ),
+    // Interface with the vector register file
+    .alu_result_req_o     (alu_result_req_o     ),
+    .alu_result_addr_o    (alu_result_addr_o    ),
+    .alu_result_id_o      (alu_result_id_o      ),
+    .alu_result_wdata_o   (alu_result_wdata_o   ),
+    .alu_result_be_o      (alu_result_be_o      ),
+    .alu_result_gnt_i     (alu_result_gnt_i     )
+  );
+
   assign mfpu_ready_o         = 1'b0;
   assign mfpu_vinsn_done_o    = '0;
   assign mfpu_operand_ready_o = '0;
 
-  assign alu_result_req_o   = '0;
-  assign alu_result_id_o    = '0;
-  assign alu_result_addr_o  = '0;
-  assign alu_result_wdata_o = '0;
-  assign alu_result_be_o    = '0;
   assign mfpu_result_req_o   = '0;
   assign mfpu_result_id_o    = '0;
   assign mfpu_result_addr_o  = '0;
