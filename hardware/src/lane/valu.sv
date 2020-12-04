@@ -133,9 +133,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // Is the result queue full?
   logic result_queue_full;
   assign result_queue_full = (result_queue_cnt_q == ResultQueueDepth);
-  // Is the result queue empty?
-  logic result_queue_empty;
-  assign result_queue_empty = (result_queue_cnt_q == '0);
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_result_queue_ff
     if (!rst_ni) begin
