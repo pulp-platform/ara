@@ -300,6 +300,89 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           end
         end
 
+        /*******************
+         *  Vector Stores  *
+         *******************/
+
+        riscv::OpcodeStoreFp: begin
+          // Instruction is of one of the RVV types
+          automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+
+          // Wait before acknowledging this instruction
+          acc_req_ready_o = 1'b0;
+
+          // These generate a request to Ara's backend
+          ara_req_d.vs1       = insn.vmem_type.rd; // vs3 is encoded in the same position as rd
+          ara_req_d.use_vs1   = 1'b1;
+          ara_req_d.vm        = insn.vmem_type.vm;
+          ara_req_d.scalar_op = acc_req_i.rs1;
+          ara_req_valid_d     = 1'b1;
+
+          // Decode the addressing mode
+          case (insn.vmem_type.mop)
+            2'b00: begin
+              ara_req_d.op = VSE;
+
+              // Decode the sumop field
+              case (insn.vmem_type.rs2)
+                5'b00000:;      // Unit-strided
+                5'b01000:;      // Unit-strided, whole registers
+                default: begin // Reserved
+                  acc_req_ready_o  = 1'b1;
+                  acc_resp_o.error = 1'b1;
+                  acc_resp_valid_o = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              endcase
+            end
+            2'b10: begin
+              ara_req_d.op     = VSSE;
+              ara_req_d.stride = acc_req_i.rs2;
+            end
+            2'b01, // Indexed-unordered
+            2'b11: begin // Indexed-orderd
+              ara_req_d.op      = VSXE;
+              // These also read vs2
+              ara_req_d.vs2     = insn.vmem_type.rs2;
+              ara_req_d.use_vs2 = 1'b1;
+            end
+          endcase
+
+          // Decode the element width
+          case ({insn.vmem_type.mew, insn.vmem_type.width})
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
+            default: begin // Invalid. Element is too wide, or encoding is non-existant.
+              acc_req_ready_o  = 1'b1;
+              acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
+          endcase
+
+          // Vector register register stores are encoded as loads of length VLENB, and element
+          // width EW8. They overwrite all this decoding.
+          if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
+            ara_req_d.vtype.vsew = EW8;
+            ara_req_d.vl         = VLENB;
+
+            acc_req_ready_o  = 1'b1;
+            acc_resp_o.error = 1'b0;
+            acc_resp_valid_o = 1'b0;
+            ara_req_valid_d  = 1'b0;
+          end
+
+          // Wait until the back-end answers to acknowledge those instructions
+          if (ara_resp_valid_i) begin
+            acc_req_ready_o  = 1'b1;
+            acc_resp_o.error = ara_resp_i.error;
+            acc_resp_valid_o = 1'b1;
+            ara_req_valid_d  = 1'b0;
+          end
+        end
+
         /**************************
          *  CSR Reads and Writes  *
          **************************/
