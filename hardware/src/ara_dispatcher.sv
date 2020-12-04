@@ -211,6 +211,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // Instruction is of one of the RVV types
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
+          // Wait before acknowledging this instruction
+          acc_req_ready_o = 1'b0;
+
           // These generate a request to Ara's backend
           ara_req_d.vs1       = insn.vmem_type.rs1;
           ara_req_d.use_vs1   = 1'b1;
@@ -231,11 +234,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 5'b01000:;      // Unit-strided, whole registers
                 5'b10000: begin // Unit-strided, fault-only first
                   // TODO: Not implemented
+                  acc_req_ready_o  = 1'b1;
                   acc_resp_o.error = 1'b1;
                   acc_resp_valid_o = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
                 default: begin // Reserved
+                  acc_req_ready_o  = 1'b1;
                   acc_resp_o.error = 1'b1;
                   acc_resp_valid_o = 1'b1;
                   ara_req_valid_d  = 1'b0;
@@ -243,6 +248,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               endcase
             end
             2'b01: begin // Invalid
+              acc_req_ready_o  = 1'b1;
               acc_resp_o.error = 1'b1;
               acc_resp_valid_o = 1'b1;
               ara_req_valid_d  = 1'b0;
@@ -266,6 +272,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             4'b0110: ara_req_d.vtype.vsew = EW32;
             4'b0111: ara_req_d.vtype.vsew = EW64;
             default: begin // Invalid. Element is too wide, or encoding is non-existant.
+              acc_req_ready_o  = 1'b1;
               acc_resp_o.error = 1'b1;
               acc_resp_valid_o = 1'b1;
               ara_req_valid_d  = 1'b0;
@@ -278,15 +285,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             ara_req_d.vtype.vsew = EW8;
             ara_req_d.vl         = VLENB;
 
+            acc_req_ready_o  = 1'b1;
             acc_resp_o.error = 1'b0;
             acc_resp_valid_o = 1'b0;
             ara_req_valid_d  = 1'b0;
           end
 
-          // Decode the type of
-
           // Wait until the back-end answers to acknowledge those instructions
           if (ara_resp_valid_i) begin
+            acc_req_ready_o  = 1'b1;
             acc_resp_o.error = ara_resp_i.error;
             acc_resp_valid_o = 1'b1;
           end

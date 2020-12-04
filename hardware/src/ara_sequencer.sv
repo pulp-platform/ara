@@ -150,8 +150,15 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_ready_o = 1'b1;
 
             // Remember that the vector instruction is running
-            for (int l = 0; l < NrLanes; l++)
-              pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
+            case (vfu(ara_req_i.op))
+              VFU_LoadUnit : pe_vinsn_running_d[NrLanes]     = 1'b1;
+              VFU_StoreUnit: pe_vinsn_running_d[NrLanes + 1] = 1'b1;
+              VFU_SlideUnit: pe_vinsn_running_d[NrLanes + 2] = 1'b1;
+              default: // Instruction is running on the lanes
+                for (int l = 0; l < NrLanes; l++)
+                  pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
+            endcase
+
 
             // Some instructions need to wait for an acknowledgment
             // before being committed with Ariane
@@ -243,6 +250,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           if (addrgen_ack_i) begin
             state_d          = IDLE;
             ara_req_ready_o  = 1'b1;
+            ara_resp_valid_o = 1'b1;
             ara_resp_o.error = addrgen_error_i;
           end
 
