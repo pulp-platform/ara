@@ -12,8 +12,8 @@
 // Date: 21/10/2020
 // Description: Top level testbench module.
 
-import "DPI-C" function void read_elf (input string filename)                                ;
-import "DPI-C" function byte get_section (output longint address, output longint len)        ;
+import "DPI-C" function void read_elf (input string filename);
+import "DPI-C" function byte get_section (output longint address, output longint len);
 import "DPI-C" context function byte read_section(input longint address, inout byte buffer[]);
 
 module ara_tb;
@@ -84,15 +84,15 @@ module ara_tb;
    *  DRAM Initialization  *
    *************************/
 
-  typedef logic [AxiAddrWidth-1:0] addr_t    ;
+  typedef logic [AxiAddrWidth-1:0] addr_t;
   typedef logic [AxiWideDataWidth-1:0] data_t;
 
   initial begin : dram_init
     automatic data_t mem_row;
-    byte buffer []          ;
-    addr_t address          ;
-    addr_t length           ;
-    string binary           ;
+    byte buffer [];
+    addr_t address;
+    addr_t length;
+    string binary;
 
     // tc_sram is initialized with zeros. We need to overwrite this value.
     repeat (2)
@@ -102,7 +102,7 @@ module ara_tb;
     void'($value$plusargs("PRELOAD=%s", binary));
     if (binary != "") begin
       // Read ELF
-      void'(read_elf(binary))       ;
+      read_elf(binary);
       $display("Loading %s", binary);
       while (get_section(address, length)) begin
         // Read sections
