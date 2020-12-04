@@ -263,6 +263,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
    *****************************/
 
   vector_fus_stage #(
+    .NrLanes(NrLanes),
     .vaddr_t(vaddr_t)
   ) i_vfus (
     .clk_i                (clk_i              ),

@@ -20,6 +20,7 @@
 // of each lane, namely the ALU and the Multiplier/FPU.
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
+    parameter int  unsigned NrLanes   = 0,
     // Type used to address vector register file elements
     parameter type          vaddr_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
@@ -63,6 +64,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
    ****************/
 
   valu #(
+    .NrLanes(NrLanes),
     .vaddr_t(vaddr_t)
   ) i_valu (
     .clk_i                (clk_i                ),

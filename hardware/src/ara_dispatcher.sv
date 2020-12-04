@@ -296,6 +296,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             acc_req_ready_o  = 1'b1;
             acc_resp_o.error = ara_resp_i.error;
             acc_resp_valid_o = 1'b1;
+            ara_req_valid_d  = 1'b0;
           end
         end
 

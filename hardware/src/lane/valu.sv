@@ -20,6 +20,7 @@
 // in a SIMD fashion, always operating on 64 bits.
 
 module valu import ara_pkg::*; import rvv_pkg::*; #(
+    parameter int  unsigned NrLanes   = 0,
     // Type used to address vector register file elements
     parameter type          vaddr_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
@@ -83,14 +84,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue;
-  logic    vinsn_issue_valid;
+  vfu_operation_t vinsn_issue;
+  logic           vinsn_issue_valid;
   assign vinsn_issue       = vinsn_queue_q.vinsn[vinsn_queue_q.issue_pnt];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
   // Do we have a vector instruction with results being committed?
-  pe_req_t vinsn_commit;
-  logic    vinsn_commit_valid;
+  vfu_operation_t vinsn_commit;
+  logic           vinsn_commit_valid;
   assign vinsn_commit       = vinsn_queue_q.vinsn[vinsn_queue_q.commit_pnt];
   assign vinsn_commit_valid = (vinsn_queue_q.commit_cnt != '0);
 
@@ -194,6 +195,57 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // Do not acknowledge any operands
     alu_operand_ready_o = '0;
 
+    /**************************************
+     *  Write data into the result queue  *
+     **************************************/
+
+    // There is a vector instruction ready to be issued
+    if (vinsn_issue_valid && !result_queue_full) begin
+      // Do we have all the operands necessary for this instruction?
+      automatic logic alu_operand_valid;
+      case (vinsn_issue.op)
+        // All instructions need the two operands
+        default: begin
+          alu_operand_valid   = alu_operand_valid_i[1] && alu_operand_valid_i[0];
+          alu_operand_ready_o = {2{alu_operand_valid}};
+        end
+      endcase
+
+      if (alu_operand_valid) begin
+        // Store the result in the result queue
+        result_queue_d[result_queue_write_pnt_q] = '{
+          wdata: valu_result,
+          be   : '1, //TODO
+          addr : vaddr(vinsn_issue.vd, NrLanes) + (vinsn_issue.vl - issue_cnt_q),
+          id   : vinsn_issue.id
+        };
+        result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+
+        // Bump pointers and counters of the result queue
+        result_queue_cnt_d += 1;
+        if (result_queue_write_pnt_q == ResultQueueDepth-1)
+          result_queue_write_pnt_d = 0;
+        else
+          result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+        issue_cnt_d = issue_cnt_q - (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+        if (issue_cnt_q < (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew))))
+          issue_cnt_d = '0;
+
+        // Finished issuing the micro-operations of this vector instruction
+        if (vinsn_issue_valid && issue_cnt_d == '0) begin
+          // Bump issue counter and pointers
+          vinsn_queue_d.issue_cnt -= 1;
+          if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+            vinsn_queue_d.issue_pnt = '0;
+          else
+            vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+          if (vinsn_queue_d.issue_pnt != 0)
+            issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+        end
+      end
+    end
+
     /********************************
      *  Write results into the VRF  *
      ********************************/
@@ -271,81 +323,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       commit_cnt_q <= commit_cnt_d;
     end
   end
-
-/*
-
-
-
- always_comb begin
- automatic logic operand_valid = 1'b0;
-
-
- if (issue_valid)
- // Valid input operands?
- case (operation_issue_q.op)
- // This instruction only use one operand
- VPOPC:
- operand_valid = (alu_operand_i[0].valid || operation_issue_q.mask == riscv::NOMASK) & alu_operand_i[1].valid;
- default:
- operand_valid = (alu_operand_i[0].valid || operation_issue_q.mask == riscv::NOMASK) & alu_operand_i[1].valid & (alu_operand_i[2].valid || operation_issue_q.use_imm);
- endcase
-
- // Input interface
- if (!obuf_full)
- if (operand_valid) begin
- // Activate ALUs
- alu_in_valid = '1;
-
- // Acknowledge operand
- alu_operand_ready_o = 1'b1;
-
- // Store intermediate results
- obuf_d.result[obuf_q.write_pnt] = result_int;
-
- // Bump issue pointer
- issue_cnt_d -= 8;
-
- // Filled up a word.
- obuf_d.cnt += 1'b1;
- obuf_d.write_pnt = obuf_q.write_pnt + 1'b1;
- if (obuf_q.write_pnt == OBUF_DEPTH - 1)
- obuf_d.write_pnt = 0;
- end
-
- // Output interface
- if (!obuf_empty) begin
- alu_result_o.req   = 1'b1 ;
- alu_result_o.prio  = 1'b1 ;
- alu_result_o.we    = 1'b1 ;
- alu_result_o.addr  = operation_commit_q.addr ;
- alu_result_o.id    = operation_commit_q.id ;
- alu_result_o.wdata = obuf_q.result[obuf_q.read_pnt];
-
- if (alu_result_gnt_i) begin
- opqueue_d.insn[opqueue_q.commit_pnt].addr = increment_addr(operation_commit_q.addr, operation_commit_q.vid);
- commit_cnt_d -= 8;
- obuf_d.result[obuf_q.read_pnt] = '0;
-
- obuf_d.cnt -= 1'b1;
- obuf_d.read_pnt = obuf_q.read_pnt + 1'b1;
- if (obuf_q.read_pnt == OBUF_DEPTH - 1)
- obuf_d.read_pnt = 0;
- end
- end
-
- // Finished issuing micro-operations
- if (issue_valid && $signed(issue_cnt_d) <= 0) begin
- opqueue_d.issue_cnt -= 1;
- opqueue_d.issue_pnt += 1;
-
- if (opqueue_d.issue_cnt != 0)
- issue_cnt_d = opqueue_q.insn[opqueue_d.issue_pnt].length;
- end
-
-
- end
-
- */
 
 endmodule : valu
 
