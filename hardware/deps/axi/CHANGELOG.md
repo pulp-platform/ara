@@ -8,10 +8,48 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Unreleased
 
 ### Added
+- `axi_to_mem`: AXI4+ATOP slave to control on chip memory.
+- `axi_to_mem_banked`:  AXI4+ATOP slave to control on chip memory, with banking support, higher
+                        throughput than `axi_to_mem`.
+- `Bender`: Add dependency `tech_cells_generic` `v0.2.2` for generic SRAM macro for simulation.
+- `axi_llc_top`: AXI4+ATOP last level cache.
+  - Configurable in set-associativity, number of cache lines and number of blocks.
+  - Data-flow driven design, simultaneous read, write, eviction and refill.
+  - Each set can be configured to be directly addressable as scratch pad memory. This
+    can be configured, dynamically while the rest is used as cache.
+  - User triggered flush.
+  - Bypass when not accessing the cached or SPM mapped address regions.
+  - Integrated marchX test for SRAM used for the tag storage.
 
 ### Changed
+- `tb_axi_xbar`: Add parameters, test wider range of configurations in CI.
+- `axi_demux`: Replace FIFO between AW and W channel by a register plus a counter.  This prevents
+  AWs from being issued to one master port while Ws from another burst are ongoing to another
+  master port.  This is required to prevents deadlocks due to circular waits downstream.
+- `axi_xbar`:
+  - Add parameter `PipelineStages`.  This adds `axi_multicuts` in the crossed connections in the
+    xbar between the demuxes and muxes.
+  - `axi_pkg`: Add documentation to `xbar_cfg_t`.
+- `axi_test:axi_rand_slave:` Add a mapped mode, where the salve will generate random data
+    if the memory location was never accessed previously, and then answer like a memory.
 
 ### Fixed
+- `axi_test:rand_axi_master`: Fix W strobe signal on narrow bursts.
+- `axi_lite_regs`: Fix undefined sizing concatenation warning.
+- `axi_pkg` Fix undefined sizing concatenation warning.
+
+
+## 0.24.1 - 2020-11-04
+
+### Changed
+- Update `common_cells` dependency to `1.20.0` to fix file order in IPApproX.
+
+### Fixed
+- `doc/axi_lite_mailbox`: Fix position of `RFIFOL` and `WFIFOL` in `STATUS` register.
+- IPApproX:
+  - Add missing link against `common_cells_lib`.
+  - Fix include path for `common_cells`.
+  - Fix version specification of `common_verification`.
 
 
 ## 0.24.0 - 2020-10-27
