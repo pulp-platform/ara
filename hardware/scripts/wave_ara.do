@@ -10,4 +10,5 @@ for {set lane 0}  {$lane < [examine -radix dec ara_tb.NrLanes]} {incr lane} {
 
 add wave -noupdate -group ARA -group vlsu -group addrgen /ara_tb/dut/i_ara/i_vlsu/i_addrgen/*
 add wave -noupdate -group ARA -group vlsu -group vldu /ara_tb/dut/i_ara/i_vlsu/i_vldu/*
+add wave -noupdate -group ARA -group vlsu -group vstu /ara_tb/dut/i_ara/i_vlsu/i_vstu/*
 add wave -noupdate -group ARA -group vlsu /ara_tb/dut/i_ara/i_vlsu/*

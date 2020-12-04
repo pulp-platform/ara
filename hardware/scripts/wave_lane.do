@@ -14,6 +14,7 @@ add wave -noupdate -group ARA -group Lane[$1] -group operand_queues -group st_a 
 add wave -noupdate -group ARA -group Lane[$1] -group operand_queues -group addrgen_a /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_operand_queues/i_operand_queue_addrgen_a/*
 add wave -noupdate -group ARA -group Lane[$1] -group operand_queues /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_operand_queues/*
 
+add wave -noupdate -group ARA -group Lane[$1] -group vector_functional_units -group valu /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_valu/*
 add wave -noupdate -group ARA -group Lane[$1] -group vector_functional_units /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_vfus/*
 
 add wave -noupdate -group ARA -group Lane[$1] /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/*
