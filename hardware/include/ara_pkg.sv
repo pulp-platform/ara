@@ -39,6 +39,9 @@ package ara_pkg;
   // Number of vector instructions that can run in parallel.
   localparam int unsigned NrVInsn = 8;
 
+  // Maximum number of lanes that Ara can support.
+  localparam int unsigned MaxNrLanes = 16;
+
   /*****************
    *  Definitions  *
    *****************/
@@ -166,6 +169,84 @@ package ara_pkg;
     // Each set bit indicates that the corresponding vector loop has finished execution
     logic [NrVInsn-1:0] vinsn_done;
   } pe_resp_t;
+
+  // The VRF data is stored into the lanes in a shuffled way, similar to how it was done
+  // in version 0.9 of the RISC-V Vector Specification, when SLEN < VLEN. In fact, VRF
+  // data is organized in lanes as in section 4.3 of the RVV Specification v0.9, with
+  // the striping distance set to SLEN = 64, the lane width.
+  //
+  // As an example, with four lanes, the elements of a vector register are organized
+  // as follows.
+  //
+  // Byte:      1F 1E 1D 1C 1B 1A 19 18 | 17 16 15 14 13 12 11 10 | 0F 0E 0D 0C 0B 0A 09 08 | 07 06 05 04 03 02 01 00 |
+  //                                    |                         |                         |                         |
+  // SEW = 64:                        3 |                       2 |                       1 |                       0 |
+  // SEW = 32:            7           3 |           6           2 |           5           1 |           4           0 |
+  // SEW = 16:      F     7     B     3 |     E     6     A     2 |     D     5     9     1 |     C     4     8     0 |
+  // SEW = 8:   1F  F 17  7 1B  B 13  3 | 1E  E 16  6 1A  A 12  2 | 1D  D 15  5 19  9 11  1 | 1C  C 14  4 18  8 10  0 |
+  //
+  // Data coming from/going to the lanes must be reshuffled, in order to be organized
+  // in a natural way (i.e., with the bits packed simply from the least-significant
+  // to the most-significant). This operation is done by the shuffle (natural packing
+  // to the lane's organization) and deshuffle (lane's organization to the natural
+  // packing) functions.
+
+  function automatic vlen_t shuffle_index(vlen_t byte_index, int NrLanes, rvv_pkg::vew_e ew);
+    automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;
+
+    // Generate the shuffling of the table above
+    unique case (ew)
+      rvv_pkg::EW64:
+        for (vlen_t element = 0; element < NrLanes; element++)
+          for (int b = 0; b < 8; b++)
+            element_shuffle_index[8*element + b] = 8*(element >> 0) + b;
+      rvv_pkg::EW32:
+        for (vlen_t element = 0; element < 2*NrLanes; element++)
+          for (int b = 0; b < 4; b++)
+            element_shuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
+      rvv_pkg::EW16:
+        for (vlen_t element = 0; element < 4*NrLanes; element++)
+          for (int b = 0; b < 2; b++)
+            element_shuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
+      rvv_pkg::EW8:
+        for (vlen_t element = 0; element < 8*NrLanes; element++)
+          for (int b = 0; b < 1; b++)
+            element_shuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
+    endcase
+
+    return element_shuffle_index[byte_index];
+  endfunction: shuffle_index
+
+  function automatic vlen_t deshuffle_index(vlen_t byte_index, int NrLanes, rvv_pkg::vew_e ew);
+    automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;
+    automatic vlen_t [8*MaxNrLanes-1:0] element_deshuffle_index;
+
+    // Generate the shuffling of the table above
+    unique case (ew)
+      rvv_pkg::EW64:
+        for (vlen_t element = 0; element < NrLanes; element++)
+          for (int b = 0; b < 8; b++)
+            element_shuffle_index[8*element + b] = 8*(element >> 0) + b;
+      rvv_pkg::EW32:
+        for (vlen_t element = 0; element < 2*NrLanes; element++)
+          for (int b = 0; b < 4; b++)
+            element_shuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
+      rvv_pkg::EW16:
+        for (vlen_t element = 0; element < 4*NrLanes; element++)
+          for (int b = 0; b < 2; b++)
+            element_shuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
+      rvv_pkg::EW8:
+        for (vlen_t element = 0; element < 8*NrLanes; element++)
+          for (int b = 0; b < 1; b++)
+            element_shuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
+    endcase
+
+    // Generate the inverse map
+    for (vlen_t b = 0; b < 8*NrLanes; b++)
+      element_deshuffle_index[element_shuffle_index[b]] = b;
+
+    return element_deshuffle_index[byte_index];
+  endfunction: deshuffle_index
 
   /**********************
    *  Lane definitions  *
