@@ -150,6 +150,26 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  /********************
+   *  Scalar operand  *
+   ********************/
+
+  elen_t scalar_op;
+
+  // Replicate the scalar operand on the 64-bit word, depending
+  // on the element width.
+  always_comb begin
+    // Default assignment
+    scalar_op = '0;
+
+    case (vinsn_issue.vtype.vsew)
+      EW64: scalar_op = {1{vinsn_issue.scalar_op[63:0]}};
+      EW32: scalar_op = {2{vinsn_issue.scalar_op[31:0]}};
+      EW16: scalar_op = {4{vinsn_issue.scalar_op[15:0]}};
+      EW8 : scalar_op = {8{vinsn_issue.scalar_op[ 7:0]}};
+    endcase
+  end
+
   /*********************
    *  SIMD Vector ALU  *
    *********************/
@@ -157,11 +177,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t valu_result;
 
   simd_valu i_simd_valu (
-    .operand_a_i(alu_operand_i[0]                                                    ),
-    .operand_b_i(vinsn_issue.use_scalar_op ? vinsn_issue.scalar_op : alu_operand_i[1]),
-    .op_i       (vinsn_issue.op                                                      ),
-    .vew_i      (vinsn_issue.vtype.vsew                                              ),
-    .result_o   (valu_result                                                         )
+    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]),
+    .operand_b_i(alu_operand_i[1]                                        ),
+    .op_i       (vinsn_issue.op                                          ),
+    .vew_i      (vinsn_issue.vtype.vsew                                  ),
+    .result_o   (valu_result                                             )
   );
 
   /*************
@@ -199,20 +219,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid && !result_queue_full) begin
       // Do we have all the operands necessary for this instruction?
-      automatic logic alu_operand_valid;
-      case (vinsn_issue.op)
-        // All instructions need the two operands
-        default: begin
-          alu_operand_valid   = alu_operand_valid_i[1] && alu_operand_valid_i[0];
-          alu_operand_ready_o = {2{alu_operand_valid}};
-        end
-      endcase
-
-      if (alu_operand_valid) begin
+      if ((alu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue.use_vs1)) begin
         // How many elements are we committing with this word?
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
         if (element_cnt > issue_cnt_q)
           element_cnt = issue_cnt_q;
+
+        // Acknowledge the operands of this instruction
+        alu_operand_ready_o = {vinsn_issue.use_vs2, vinsn_issue.use_vs1};
 
         // Store the result in the result queue
         result_queue_d[result_queue_write_pnt_q] = '{
