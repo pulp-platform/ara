@@ -192,6 +192,91 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               // Decode based on the func6 field
               case (insn.varith_type.func6)
                 6'b000000: ara_req_d.op = ara_pkg::VADD;
+                6'b000010: ara_req_d.op = ara_pkg::VSUB;
+                6'b000100: ara_req_d.op = ara_pkg::VMINU;
+                6'b000101: ara_req_d.op = ara_pkg::VMIN;
+                6'b000110: ara_req_d.op = ara_pkg::VMAXU;
+                6'b000111: ara_req_d.op = ara_pkg::VMAX;
+                6'b001001: ara_req_d.op = ara_pkg::VAND;
+                6'b001010: ara_req_d.op = ara_pkg::VOR;
+                6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              endcase
+
+              // Instruction is invalid if the vtype is invalid
+              if (vtype_q.vill) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            end
+
+            OPIVX: begin
+              // These generate a request to Ara's backend
+              ara_req_d.scalar_op     = acc_req_i.rs1;
+              ara_req_d.use_scalar_op = 1'b1;
+              ara_req_d.vs2           = insn.varith_type.rs2;
+              ara_req_d.use_vs2       = 1'b1;
+              ara_req_d.vd            = insn.varith_type.rd;
+              ara_req_d.use_vd        = 1'b1;
+              ara_req_d.vm            = insn.varith_type.vm;
+              ara_req_valid_d         = 1'b1;
+
+              // Decode based on the func6 field
+              case (insn.varith_type.func6)
+                6'b000000: ara_req_d.op = ara_pkg::VADD;
+                6'b000010: ara_req_d.op = ara_pkg::VSUB;
+                6'b000011: ara_req_d.op = ara_pkg::VRSUB;
+                6'b000100: ara_req_d.op = ara_pkg::VMINU;
+                6'b000101: ara_req_d.op = ara_pkg::VMIN;
+                6'b000110: ara_req_d.op = ara_pkg::VMAXU;
+                6'b000111: ara_req_d.op = ara_pkg::VMAX;
+                6'b001001: ara_req_d.op = ara_pkg::VAND;
+                6'b001010: ara_req_d.op = ara_pkg::VOR;
+                6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              endcase
+
+              // Instruction is invalid if the vtype is invalid
+              if (vtype_q.vill) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            end
+
+            OPIVI: begin
+              // These generate a request to Ara's backend
+              // Sign-extend this by default.
+              // Instructions that need the immediate to be zero-extended
+              // (vrgather, shifts, clips, slides) should do overwrite this.
+              ara_req_d.scalar_op     = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+              ara_req_d.use_scalar_op = 1'b1;
+              ara_req_d.vs2           = insn.varith_type.rs2;
+              ara_req_d.use_vs2       = 1'b1;
+              ara_req_d.vd            = insn.varith_type.rd;
+              ara_req_d.use_vd        = 1'b1;
+              ara_req_d.vm            = insn.varith_type.vm;
+              ara_req_valid_d         = 1'b1;
+
+              // Decode based on the func6 field
+              case (insn.varith_type.func6)
+                6'b000000: ara_req_d.op = ara_pkg::VADD;
+                6'b000011: ara_req_d.op = ara_pkg::VRSUB;
+                6'b001001: ara_req_d.op = ara_pkg::VAND;
+                6'b001010: ara_req_d.op = ara_pkg::VOR;
+                6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -323,8 +408,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
               // Decode the sumop field
               case (insn.vmem_type.rs2)
-                5'b00000:;      // Unit-strided
-                5'b01000:;      // Unit-strided, whole registers
+                5'b00000:;     // Unit-strided
+                5'b01000:;     // Unit-strided, whole registers
                 default: begin // Reserved
                   acc_req_ready_o  = 1'b1;
                   acc_resp_o.error = 1'b1;
