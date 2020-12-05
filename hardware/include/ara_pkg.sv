@@ -267,7 +267,6 @@ package ara_pkg;
     vid_t id; // ID of the vector instruction
 
     logic [4:0] vs; // Vector register operand
-    logic use_vs;
 
     // Vector machine metadata
     vlen_t vl;
@@ -285,8 +284,11 @@ package ara_pkg;
     ara_op_e op; // Operation
     logic vm;    // Masked instruction
 
+    logic use_vs1; // This operation uses vs1
+    logic use_vs2; // This operation uses vs1
+
     elen_t scalar_op; // Scalar operand
-    logic use_scalar_op;
+    logic use_scalar_op; // This operation uses the scalar operand
 
     vfu_e vfu; // VFU responsible for this instruction
 
