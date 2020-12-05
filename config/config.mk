@@ -20,5 +20,5 @@
 # Number of vector lanes
 nr_lanes ?= 4
 
-# Length of each vector register (in bytes)
+# Length of each vector register (in bits)
 vlen ?= 4096
