@@ -176,8 +176,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         if (axi_byte >= lower_byte && axi_byte <= upper_byte) begin
           // Map axy_byte to the corresponding byte in the VRF word (sequential)
           automatic int vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
-          // And then deshuffle it
-          automatic int vrf_byte     = deshuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+          // And then shuffle it
+          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
           // Is this byte a valid byte in the VRF word?
           if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.vtype.vsew)) begin

@@ -199,51 +199,46 @@ package ara_pkg;
       rvv_pkg::EW64:
         for (vlen_t element = 0; element < NrLanes; element++)
           for (int b = 0; b < 8; b++)
-            element_shuffle_index[8*element + b] = 8*(element >> 0) + b;
+            element_shuffle_index[8*(element >> 0) + b] = 8*element + b;
       rvv_pkg::EW32:
         for (vlen_t element = 0; element < 2*NrLanes; element++)
           for (int b = 0; b < 4; b++)
-            element_shuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
+            element_shuffle_index[4*((element >> 1) + int'(element[0]) * NrLanes*1) + b] = 4*element + b;
       rvv_pkg::EW16:
         for (vlen_t element = 0; element < 4*NrLanes; element++)
           for (int b = 0; b < 2; b++)
-            element_shuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
+            element_shuffle_index[2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b] = 2*element + b;
       rvv_pkg::EW8:
         for (vlen_t element = 0; element < 8*NrLanes; element++)
           for (int b = 0; b < 1; b++)
-            element_shuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
+            element_shuffle_index[1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b] = 1*element + b;
     endcase
 
     return element_shuffle_index[byte_index];
   endfunction: shuffle_index
 
   function automatic vlen_t deshuffle_index(vlen_t byte_index, int NrLanes, rvv_pkg::vew_e ew);
-    automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;
     automatic vlen_t [8*MaxNrLanes-1:0] element_deshuffle_index;
 
-    // Generate the shuffling of the table above
+    // Generate the deshuffling table above
     unique case (ew)
       rvv_pkg::EW64:
         for (vlen_t element = 0; element < NrLanes; element++)
           for (int b = 0; b < 8; b++)
-            element_shuffle_index[8*element + b] = 8*(element >> 0) + b;
+            element_deshuffle_index[8*element + b] = 8*(element >> 0) + b;
       rvv_pkg::EW32:
         for (vlen_t element = 0; element < 2*NrLanes; element++)
           for (int b = 0; b < 4; b++)
-            element_shuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
+            element_deshuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
       rvv_pkg::EW16:
         for (vlen_t element = 0; element < 4*NrLanes; element++)
           for (int b = 0; b < 2; b++)
-            element_shuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
+            element_deshuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
       rvv_pkg::EW8:
         for (vlen_t element = 0; element < 8*NrLanes; element++)
           for (int b = 0; b < 1; b++)
-            element_shuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
+            element_deshuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
     endcase
-
-    // Generate the inverse map
-    for (vlen_t b = 0; b < 8*NrLanes; b++)
-      element_deshuffle_index[element_shuffle_index[b]] = b;
 
     return element_deshuffle_index[byte_index];
   endfunction: deshuffle_index
