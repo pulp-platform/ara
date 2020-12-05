@@ -1,6 +1,9 @@
 add wave -noupdate -group ARA -group Lane[$1] -group sequencer /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_lane_sequencer/*
 
 add wave -noupdate -group ARA -group Lane[$1] -group operand_requester /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_operand_requester/*
+for {set requester 0}  {$requester < [examine -radix dec ara_pkg::NrOperandQueues]} {incr requester} {
+    add wave -noupdate -group ARA -group Lane[$1] -group operand_requester -group requester[$requester] /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_operand_requester/gen_operand_requester[$requester]/*
+}
 
 add wave -noupdate -group ARA -group Lane[$1] -group vector_regfile /ara_tb/dut/i_ara/gen_lanes[$1]/i_lane/i_vrf/*
 
