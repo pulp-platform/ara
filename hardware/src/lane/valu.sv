@@ -379,7 +379,7 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
       EW8 : for (int b = 0; b < 8; b++) less[1*b] = $signed({is_signed & opa.w8 [b][ 7], opa.w8 [b]}) < $signed({is_signed & opb.w8 [b][ 7], opb.w8 [b]});
       EW16: for (int b = 0; b < 4; b++) less[2*b] = $signed({is_signed & opa.w16[b][15], opa.w16[b]}) < $signed({is_signed & opb.w16[b][15], opb.w16[b]});
       EW32: for (int b = 0; b < 2; b++) less[4*b] = $signed({is_signed & opa.w32[b][31], opa.w32[b]}) < $signed({is_signed & opb.w32[b][31], opb.w32[b]});
-      EW32: for (int b = 0; b < 1; b++) less[8*b] = $signed({is_signed & opa.w64[b][63], opa.w64[b]}) < $signed({is_signed & opb.w32[b][63], opb.w64[b]});
+      EW64: for (int b = 0; b < 1; b++) less[8*b] = $signed({is_signed & opa.w64[b][63], opa.w64[b]}) < $signed({is_signed & opb.w32[b][63], opb.w64[b]});
     endcase
   end: p_comparison
 
@@ -399,22 +399,22 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
 
       // Arithmetic instructions
       VADD: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = $signed(opa.w8 [b]) + $signed(opb.w8 [b]);
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opa.w16[b]) + $signed(opb.w16[b]);
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opa.w32[b]) + $signed(opb.w32[b]);
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opa.w64[b]) + $signed(opb.w64[b]);
+          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] + opb.w8 [b];
+          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] + opb.w16[b];
+          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] + opb.w32[b];
+          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] + opb.w64[b];
         endcase
       VSUB: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = $signed(opa.w8 [b]) - $signed(opb.w8 [b]);
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opa.w16[b]) - $signed(opb.w16[b]);
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opa.w32[b]) - $signed(opb.w32[b]);
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opa.w64[b]) - $signed(opb.w64[b]);
+          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] - opb.w8 [b];
+          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] - opb.w16[b];
+          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] - opb.w32[b];
+          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] - opb.w64[b];
         endcase
       VRSUB: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = $signed(opb.w8 [b]) - $signed(opa.w8 [b]);
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opb.w16[b]) - $signed(opa.w16[b]);
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opb.w32[b]) - $signed(opa.w32[b]);
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opb.w64[b]) - $signed(opa.w64[b]);
+          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] - opa.w8 [b];
+          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] - opa.w16[b];
+          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] - opa.w32[b];
+          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] - opa.w64[b];
         endcase
 
       // Comparison instructions
