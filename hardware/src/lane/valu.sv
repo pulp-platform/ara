@@ -422,16 +422,16 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
           EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] + opb.w64[b];
         endcase
       VSUB: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] - opb.w8 [b];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] - opb.w16[b];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] - opb.w32[b];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] - opb.w64[b];
-        endcase
-      VRSUB: unique case (vew_i)
           EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] - opa.w8 [b];
           EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] - opa.w16[b];
           EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] - opa.w32[b];
           EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] - opa.w64[b];
+        endcase
+      VRSUB: unique case (vew_i)
+          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] - opb.w8 [b];
+          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] - opb.w16[b];
+          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] - opb.w32[b];
+          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] - opb.w64[b];
         endcase
 
       // Comparison instructions
