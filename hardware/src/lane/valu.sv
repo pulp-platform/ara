@@ -209,10 +209,15 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       endcase
 
       if (alu_operand_valid) begin
+        // How many elements are we committing with this word?
+        automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+        if (element_cnt > issue_cnt_q)
+          element_cnt = issue_cnt_q;
+
         // Store the result in the result queue
         result_queue_d[result_queue_write_pnt_q] = '{
           wdata: valu_result,
-          be   : '1, //TODO
+          be   : be(element_cnt, vinsn_issue.vtype.vsew),
           addr : vaddr(vinsn_issue.vd, NrLanes) + (vinsn_issue.vl - issue_cnt_q),
           id   : vinsn_issue.id
         };
@@ -224,9 +229,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
           result_queue_write_pnt_d = 0;
         else
           result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
-        issue_cnt_d = issue_cnt_q - (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
-        if (issue_cnt_q < (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew))))
-          issue_cnt_d = '0;
+        issue_cnt_d = issue_cnt_q - element_cnt;
 
         // Finished issuing the micro-operations of this vector instruction
         if (vinsn_issue_valid && issue_cnt_d == '0) begin

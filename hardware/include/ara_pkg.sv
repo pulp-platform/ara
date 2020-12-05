@@ -304,6 +304,42 @@ package ara_pkg;
     rvv_pkg::vtype_t vtype;
   } vfu_operation_t;
 
+  // Due to the shuffled nature of the vector elements inside one lane, the byte enable
+  // signal must be generated differently depending on how many valid elements are there.
+  // Considering the lane 0 of the previous example, and vector elements of width 8 bits,
+  //
+  // Byte:      07 06 05 04 03 02 01 00
+  // SEW = 8:   1C  C 14  4 18  8 10  0
+  //
+  // If there are only three valid vector elements (0, 4, and 8), then the byte enable of
+  // that word should be 8'b00010101. The position of the i-th vector element inside one
+  // lane is is generated using the same shuffle function as shuffle_index, but considering
+  // NrLanes = 1.
+
+  // The following function generates a 8-bit wide byte enable signal, based on how many
+  // valid elements are there in that lane word, and the element width.
+
+  function automatic logic [ELEN/8-1:0] be(logic [3:0] cnt, rvv_pkg::vew_e ew);
+    case (ew)
+      rvv_pkg::EW8:
+        for (int el = 0; el < 8; el++)
+          for (int b = 0; b < 1; b++)
+            be[shuffle_index(1*el + b, 1, ew)] = el < cnt;
+      rvv_pkg::EW16:
+        for (int el = 0; el < 4; el++)
+          for (int b = 0; b < 2; b++)
+            be[shuffle_index(2*el + b, 1, ew)] = el < cnt;
+      rvv_pkg::EW32:
+        for (int el = 0; el < 2; el++)
+          for (int b = 0; b < 4; b++)
+            be[shuffle_index(4*el + b, 1, ew)] = el < cnt;
+      rvv_pkg::EW64:
+        for (int el = 0; el < 1; el++)
+          for (int b = 0; b < 8; b++)
+            be[shuffle_index(8*el + b, 1, ew)] = el < cnt;
+    endcase
+  endfunction: be
+
   /***************************************
    *  Vector Load/Store Unit definition  *
    ***************************************/
