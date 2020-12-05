@@ -20,30 +20,30 @@
 // instruction within one lane, interfacing with the internal functional units
 // and with the main sequencer.
 
-module lane_sequencer import ara_pkg::*; import rvv_pkg::*; #(
+module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter int unsigned NrLanes = 0
   ) (
-    input  logic                                                       clk_i,
-    input  logic                                                       rst_ni,
+    input  logic                                          clk_i,
+    input  logic                                          rst_ni,
     // Lane ID
-    input  logic                 [cf_math_pkg::idx_width(NrLanes)-1:0] lane_id_i,
+    input  logic                 [idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with the main sequencer
-    input  pe_req_t                                                    pe_req_i,
-    input  logic                                                       pe_req_valid_i,
-    output logic                                                       pe_req_ready_o,
-    output pe_resp_t                                                   pe_resp_o,
+    input  pe_req_t                                       pe_req_i,
+    input  logic                                          pe_req_valid_i,
+    output logic                                          pe_req_ready_o,
+    output pe_resp_t                                      pe_resp_o,
     // Interface with the operand requester
-    output operand_request_cmd_t [NrOperandQueues-1:0]                 operand_request_o,
-    output logic                 [NrOperandQueues-1:0]                 operand_request_valid_o,
-    input  logic                 [NrOperandQueues-1:0]                 operand_request_ready_i,
-    output logic                 [NrVInsn-1:0]                         vinsn_running_o,
+    output operand_request_cmd_t [NrOperandQueues-1:0]    operand_request_o,
+    output logic                 [NrOperandQueues-1:0]    operand_request_valid_o,
+    input  logic                 [NrOperandQueues-1:0]    operand_request_ready_i,
+    output logic                 [NrVInsn-1:0]            vinsn_running_o,
     // Interface with the lane's VFUs
-    output vfu_operation_t                                             vfu_operation_o,
-    output logic                                                       vfu_operation_valid_o,
-    input  logic                                                       alu_ready_i,
-    input  logic                 [NrVInsn-1:0]                         alu_vinsn_done_i,
-    input  logic                                                       mfpu_ready_i,
-    input  logic                 [NrVInsn-1:0]                         mfpu_vinsn_done_i
+    output vfu_operation_t                                vfu_operation_o,
+    output logic                                          vfu_operation_valid_o,
+    input  logic                                          alu_ready_i,
+    input  logic                 [NrVInsn-1:0]            alu_vinsn_done_i,
+    input  logic                                          mfpu_ready_i,
+    input  logic                 [NrVInsn-1:0]            mfpu_vinsn_done_i
   );
 
   /************************************
@@ -67,8 +67,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; #(
       operand_request_valid_d[queue] = operand_request_valid_o[queue];
 
       // Clear the request
-      if (operand_request_ready_i[queue])
+      if (operand_request_ready_i[queue]) begin
+        operand_request_d[queue]       = '0;
         operand_request_valid_d[queue] = 1'b0;
+      end
 
       // Got a new request
       if (operand_request_push[queue]) begin
@@ -158,15 +160,15 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; #(
         vfu_operation_valid_d = 1'b1;
 
         // Vector length calculation
-        vfu_operation_d.vl = pe_req_i.vl >> $clog2(NrLanes);
-        // If vl % NrLanes < lane_id_i, this lane has to execute one extra micro-operation.
-        if (pe_req_i.vl[cf_math_pkg::idx_width(NrLanes)-1:0] < lane_id_i)
+        vfu_operation_d.vl = pe_req_i.vl / NrLanes;
+        // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
+        if (lane_id_i < pe_req_i.vl[idx_width(NrLanes)-1:0])
           vfu_operation_d.vl += 1;
 
         // Vector start calculation
-        vfu_operation_d.vstart = pe_req_i.vstart >> $clog2(NrLanes);
-        // If vstart % NrLanes < lane_id_i, this lane needs to execute one micro-operation less.
-        if (pe_req_i.vstart[cf_math_pkg::idx_width(NrLanes)-1:0] < lane_id_i)
+        vfu_operation_d.vstart = pe_req_i.vstart / NrLanes;
+        // If lane_id_i < vstart % NrLanes, this lane needs to execute one micro-operation less.
+        if (lane_id_i < pe_req_i.vstart[idx_width(NrLanes)-1:0])
           vfu_operation_d.vstart -= 1;
 
         // Mark the vector instruction as running
@@ -232,7 +234,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               use_vs : pe_req_i.use_vs1,
-              vl     : vfu_operation_d.vl,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : pe_req_i.vl / NrLanes + $unsigned(|pe_req_i.vl[cf_math_pkg::idx_width(NrLanes)-1:0]),
               vstart : vfu_operation_d.vstart,
               vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs1,
