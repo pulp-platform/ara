@@ -50,9 +50,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
   logic  ibuf_pop;
 
   fifo_v3 #(
-    .DEPTH       (BufferDepth),
-    .DATA_WIDTH  (DataWidth  ),
-    .FALL_THROUGH(1'b1       )
+    .DEPTH     (BufferDepth),
+    .DATA_WIDTH(DataWidth  )
   ) i_input_buffer (
     .clk_i     (clk_i          ),
     .rst_ni    (rst_ni         ),
@@ -99,30 +98,17 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
    *  Operand output  *
    *******************/
 
-  elen_t obuf_operand;
-  logic  obuf_operand_valid;
-
   always_comb begin: obuf_control
     // Do not pop anything from the input buffer queue
     ibuf_pop = 1'b0;
 
     // Send the operand
-    obuf_operand       = ibuf_operand;
-    obuf_operand_valid = ibuf_operand_valid;
+    operand_o       = ibuf_operand;
+    operand_valid_o = ibuf_operand_valid;
 
     // Account for sent operands
     if (|operand_ready_i)
       ibuf_pop = 1'b1;
   end: obuf_control
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin: p_obuf_ff
-    if (!rst_ni) begin
-      operand_o       <= '0;
-      operand_valid_o <= 1'b0;
-    end else begin
-      operand_o       <= obuf_operand;
-      operand_valid_o <= obuf_operand_valid;
-    end
-  end
 
 endmodule : operand_queue
