@@ -257,7 +257,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       // Initialize id and addr fields of the result queue requests
       for (int lane = 0; lane < NrLanes; lane++) begin
         result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-        result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (vinsn_issue.vl - issue_cnt_q) >> NrLanes;
+        result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) / NrLanes);
       end
 
       // We have a word ready to be sent to the lanes
@@ -275,8 +275,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Reset the pointer in the VRF word
         vrf_pnt_d   = '0;
         // Account for the results that were issued
-        issue_cnt_d = issue_cnt_q - NrLanes << vinsn_issue.vtype.vsew;
-        if (issue_cnt_q < NrLanes << vinsn_issue.vtype.vsew)
+        issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
+        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
           issue_cnt_d = '0;
       end
 
@@ -319,7 +319,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
       ldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
-      ldu_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr >> $clog2(NrLanes);
+      ldu_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr;
       ldu_result_id_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].id;
       ldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
       ldu_result_be_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].be;
