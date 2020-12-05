@@ -215,8 +215,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           acc_req_ready_o = 1'b0;
 
           // These generate a request to Ara's backend
-          ara_req_d.vs1       = insn.vmem_type.rs1;
-          ara_req_d.use_vs1   = 1'b1;
           ara_req_d.vd        = insn.vmem_type.rd;
           ara_req_d.use_vd    = 1'b1;
           ara_req_d.vm        = insn.vmem_type.vm;
