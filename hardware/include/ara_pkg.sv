@@ -55,7 +55,7 @@ package ara_pkg;
    *  Operations  *
    ****************/
 
-  typedef enum logic [4:0] {
+  typedef enum logic [3:0] {
     // Arithmetic and logic instructions
     VADD, VSUB, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
     // Load instructions
@@ -263,7 +263,7 @@ package ara_pkg;
 
   // Find the starting address of a vector register vid
   function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB >> NrLanes);
+    vaddr = vid * (VLENB / NrLanes);
   endfunction: vaddr
 
   // This is the interface between the lane's sequencer and the operand request stage, which
