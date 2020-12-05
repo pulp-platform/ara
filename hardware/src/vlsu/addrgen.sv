@@ -234,7 +234,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         end
       end
       AXI_ADDRGEN_REQUESTING : begin
-        automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!axi_addrgen_q.is_load && !axi_aw_ready_i);
+        automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!axi_addrgen_q.is_load && axi_aw_ready_i);
 
         if (!axi_addrgen_queue_full && axi_ax_ready) begin
           if (axi_addrgen_q.is_burst) begin
