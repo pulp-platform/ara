@@ -10,7 +10,6 @@ include $(TESTS_DIR)/rv64uf/Makefrag
 include $(TESTS_DIR)/rv64ud/Makefrag
 include $(TESTS_DIR)/rv64uv/Makefrag
 include $(TESTS_DIR)/rv64si/Makefrag
-include $(TESTS_DIR)/rv64mi/Makefrag
 
 rv64ui_ara_tests := $(addprefix rv64ui-ara-, $(rv64ui_sc_tests))
 rv64um_ara_tests := $(addprefix rv64um-ara-, $(rv64um_sc_tests))
@@ -20,15 +19,13 @@ rv64uf_ara_tests := $(addprefix rv64uf-ara-, $(rv64uf_sc_tests))
 rv64ud_ara_tests := $(addprefix rv64ud-ara-, $(rv64ud_sc_tests))
 rv64uv_ara_tests := $(addprefix rv64uv-ara-, $(rv64uv_sc_tests))
 rv64si_ara_tests := $(addprefix rv64si-ara-, $(rv64si_sc_tests))
-rv64mi_ara_tests := $(addprefix rv64mi-ara-, $(rv64mi_sc_tests))
 
 cva6_tests := $(rv64ui_ara_tests) \
 							$(rv64um_ara_tests) \
 							$(rv64uc_ara_tests) \
 							$(rv64uf_ara_tests) \
 							$(rv64ud_ara_tests) \
-							$(rv64si_ara_tests) \
-							$(rv64mi_ara_tests)
+							$(rv64si_ara_tests)
 
 # Atomics are messy, since there is currently no memory region capable of handling them
 #							$(rv64ua_ara_tests) \

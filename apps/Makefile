@@ -28,7 +28,7 @@ include $(COMMON_DIR)/riscv_tests.mk
 APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -name "main.c"))
 BINARIES := $(addprefix bin/,$(APPS))
 
-CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si rv64mi
+CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si
 # Atomics are messy, since there is currently no memory region capable of handling them
 # CVA6_EXTENSIONS := rv64ua
 CVA6_BINARIES := $(addprefix bin/, $(cva6_tests))
