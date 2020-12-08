@@ -56,7 +56,7 @@ endif
 ifdef preload
 	questa_args += +PRELOAD=$(preload)
 endif
-questa_args += -sv_lib $(dpi_library)/ara_dpi -work $(library)
+questa_args += -sv_lib $(dpi_library)/ara_dpi -work $(library) -voptargs=+acc
 questa_args += -suppress vsim-3009 -suppress vopt-7033
 
 # DPI source files
@@ -100,7 +100,7 @@ $(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f
 .PHONY: sim
 sim: compile
 	cd $(buildpath) && \
-	$(questa_cmd) vsim $(questa_args) -voptargs=+acc $(library).$(top_level) -do ../scripts/run.do
+	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do ../scripts/run.do
 	./scripts/return_status.sh $(buildpath)/transcript
 
 .PHONY: simc
