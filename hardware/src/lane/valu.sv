@@ -109,7 +109,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
   localparam int unsigned ResultQueueDepth = 2;
 
-  // There is a result queue per lane, holding the results that were not
+  // There is a result queue per VFU, holding the results that were not
   // yet accepted by the corresponding lane.
   typedef struct packed {
     vid_t id;
