@@ -67,11 +67,6 @@ riscv_tests:
 	make -C apps -j4 riscv_tests && \
 	make -C hardware riscv_tests_simc
 
-# RISC-V Tests
-riscv_tests:
-	make -C apps -j4 riscv_tests && \
-	make -C hardware riscv_tests_simc
-
 # Helper targets
 .PHONY: clean
 
