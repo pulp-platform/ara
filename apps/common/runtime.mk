@@ -46,7 +46,7 @@ RISCV_STRIP   ?= $(RISCV_PREFIX)strip
 # Defines
 DEFINES :=
 
-RISCV_WARNINGS += -Wunused-variable -Wconversion -Wall -Wextra # -Werror
+RISCV_WARNINGS += -Wunused-variable -Wall -Wextra # -Werror
 RISCV_FLAGS    ?= -mcmodel=medany -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 
 RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
