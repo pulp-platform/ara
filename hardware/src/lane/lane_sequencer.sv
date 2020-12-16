@@ -99,7 +99,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
   // Running instructions
   logic [NrVInsn-1:0] vinsn_done_d, vinsn_done_q;
-  logic [NrVInsn-1:0] vinsn_runnind_d, vinsn_running_q;
+  logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
 
   assign vinsn_running_o = vinsn_running_q;
 
@@ -118,7 +118,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
   always_comb begin: sequencer
     // Running loops
-    vinsn_runnind_d = vinsn_running_q & pe_req_i.vinsn_running;
+    vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
 
     // Ready to accept a new request, by default
     pe_req_ready_o = 1'b1;
@@ -143,7 +143,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       pe_req_ready_o        = 1'b0;
     end else begin
       // We received a new vector instruction
-      if (pe_req_valid_i && !vinsn_running_q[pe_req_i.id]) begin
+      if (pe_req_valid_i && !vinsn_running_d[pe_req_i.id]) begin
         // Populate the VFU request
         vfu_operation_d = '{
           id           : pe_req_i.id,
@@ -174,7 +174,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           vfu_operation_d.vstart -= 1;
 
         // Mark the vector instruction as running
-        vinsn_runnind_d[pe_req_i.id] = 1'b1;
+        vinsn_running_d[pe_req_i.id] = 1'b1;
 
         /**********************
          *  Operand requests  *
@@ -247,7 +247,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         if (|(operand_request_push & operand_request_valid_o)) begin
           operand_request_push         = '0;
           vfu_operation_valid_d        = 1'b0;
-          vinsn_runnind_d[pe_req_i.id] = 1'b0;
+          vinsn_running_d[pe_req_i.id] = 1'b0;
           // We are not ready for another request.
           pe_req_ready_o               = 1'b0;
         end
@@ -264,7 +264,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       vfu_operation_valid_o <= 1'b0;
     end else begin
       vinsn_done_q    <= vinsn_done_d;
-      vinsn_running_q <= vinsn_runnind_d;
+      vinsn_running_q <= vinsn_running_d;
 
       vfu_operation_o       <= vfu_operation_d;
       vfu_operation_valid_o <= vfu_operation_valid_d;
