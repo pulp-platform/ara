@@ -151,9 +151,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
             // Remember that the vector instruction is running
             case (vfu(ara_req_i.op))
-              VFU_LoadUnit : pe_vinsn_running_d[NrLanes]     = 1'b1;
-              VFU_StoreUnit: pe_vinsn_running_d[NrLanes + 1] = 1'b1;
-              VFU_SlideUnit: pe_vinsn_running_d[NrLanes + 2] = 1'b1;
+              VFU_LoadUnit : pe_vinsn_running_d[NrLanes][vinsn_next_id]     = 1'b1;
+              VFU_StoreUnit: pe_vinsn_running_d[NrLanes + 1][vinsn_next_id] = 1'b1;
+              VFU_SlideUnit: pe_vinsn_running_d[NrLanes + 2][vinsn_next_id] = 1'b1;
               default: // Instruction is running on the lanes
                 for (int l = 0; l < NrLanes; l++)
                   pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
