@@ -41,62 +41,72 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
    *  Accelerator request  *
    *************************/
 
-  accelerator_req_t acc_req;
-  logic             acc_req_valid;
-  logic             acc_req_ready;
-
-  // Register all requests going to the accelerator
-  spill_register #(
-    .T(accelerator_req_t)
-  ) i_accelerator_req_register (
-    .clk_i  (clk_i          ),
-    .rst_ni (rst_ni         ),
-    .data_i (acc_req        ),
-    .valid_i(acc_req_valid  ),
-    .ready_o(acc_req_ready  ),
-    .data_o (acc_req_o      ),
-    .valid_o(acc_req_valid_o),
-    .ready_i(acc_req_ready_i)
-  );
-
-  // Create a vld/rdy handshake with the scoreboard
-  fu_data_t acc_data;
-  logic     acc_valid;
-  logic     acc_ready;
+  // Capture any requests for which we are currently not ready in the
+  // following fall-through register.
+  fu_data_t acc_busy_data;
+  logic     acc_busy_valid;
+  logic     acc_busy_ready;
 
   fall_through_register #(
     .T(fu_data_t)
+  ) i_acc_busy_register (
+    .clk_i     (clk_i          ),
+    .rst_ni    (rst_ni         ),
+    .clr_i     (flush_i        ),
+    .testmode_i(1'b0           ),
+    .data_i    (acc_data_i     ),
+    .valid_i   (acc_valid_i    ),
+    .ready_o   (/* Unused */   ),
+    .data_o    (acc_busy_data  ),
+    .valid_o   (acc_busy_valid ),
+    .ready_i   (acc_busy_ready )
+  );
+
+  //pragma translate_off
+  `ifndef verilator
+
+  acc_dispatcher_fu_data_accepted: assert property (
+      @(posedge clk_i) disable iff (~rst_ni) i_acc_busy_register.valid_i |-> i_acc_busy_register.ready_o)
+  else $error("[acc_dispatcher] Accelerator request from the scoreboard was lost.");
+
+  `endif
+  //pragma translate_on
+
+  // All requests from the scoreboard should be stored in the following register
+  fu_data_t acc_data;
+  logic     acc_valid;
+  logic     acc_ready;
+  // The scoreboard ready signal comes from this register
+  assign acc_ready_o = acc_busy_ready;
+
+  stream_register #(
+    .T(fu_data_t)
   ) i_acc_register (
-    .clk_i     (clk_i      ),
-    .rst_ni    (rst_ni     ),
-    .clr_i     (flush_i    ),
-    .testmode_i(1'b0       ),
-    .data_i    (acc_data_i ),
-    .valid_i   (acc_valid_i),
-    .ready_o   (acc_ready_o),
-    .data_o    (acc_data   ),
-    .valid_o   (acc_valid  ),
-    .ready_i   (acc_ready  )
+    .clk_i     (clk_i         ),
+    .rst_ni    (rst_ni        ),
+    .clr_i     (flush_i       ),
+    .testmode_i(1'b0          ),
+    .data_i    (acc_busy_data ),
+    .valid_i   (acc_busy_valid),
+    .ready_o   (acc_busy_ready),
+    .data_o    (acc_data      ),
+    .valid_o   (acc_valid     ),
+    .ready_i   (acc_ready     )
   );
 
   always_comb begin: accelerator_req_dispatcher
-    // Default values
-    acc_req       = '0;
-    acc_req_valid = 1'b0;
-    acc_ready     = 1'b0;
+    // Unpack fu_data_t into accelerator_req_t
+    acc_req_o = '{
+      // Instruction is forwarded from the decoder as an immediate
+      insn    : acc_data.imm[31:0],
+      rs1     : acc_data.operand_a,
+      rs2     : acc_data.operand_b,
+      trans_id: acc_data.trans_id
+    };
 
-    if (acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id) begin
-      // Unpack fu_data_t into accelerator_req_t
-      acc_req = '{
-        // Instruction is forwarded from the decoder as an immediate
-        insn    : acc_data.imm[31:0],
-        rs1     : acc_data.operand_a,
-        rs2     : acc_data.operand_b,
-        trans_id: acc_data.trans_id
-      };
-      acc_req_valid = acc_valid;
-      acc_ready     = acc_req_ready;
-    end
+    // Wait until we receive the acc_commit_i signal
+    acc_req_valid_o = acc_valid && acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id;
+    acc_ready       = acc_req_ready_i && acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id;
   end
 
   /**************************
