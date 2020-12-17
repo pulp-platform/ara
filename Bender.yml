@@ -41,6 +41,8 @@ sources:
     - hardware/src/lane/lane.sv
     # Level 4
     - hardware/src/ara.sv
+    # Level 5
+    - hardware/src/ara_soc.sv
     #files:
     # Level 1
     #- hardware/include/ara_pkg.sv
