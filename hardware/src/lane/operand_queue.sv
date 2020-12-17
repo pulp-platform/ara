@@ -69,7 +69,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
 
   // We used a credit based system, to ensure that the FIFO is always
   // able to accept a request.
-  logic [cf_math_pkg::idx_width(BufferDepth)-1:0] ibuf_usage_d, ibuf_usage_q;
+  logic [cf_math_pkg::idx_width(BufferDepth):0] ibuf_usage_d, ibuf_usage_q;
 
   always_comb begin: p_ibuf_usage
     // Maintain state

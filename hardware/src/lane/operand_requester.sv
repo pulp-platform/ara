@@ -163,6 +163,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       assign operand_requester_gnt[bank] = operand_gnt[bank][requester];
     end
 
+    // Did we issue a word to this operand queue?
+    assign operand_issued_o[requester] = |(operand_requester_gnt);
+
     always_comb begin: operand_requester
       // Maintain state
       state_d     = state_q;
@@ -235,13 +238,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       if (!rst_ni) begin
         state_q     <= IDLE;
         requester_q <= '0;
-
-        operand_issued_o[requester] <= 1'b0;
       end else begin
         state_q     <= state_d;
         requester_q <= requester_d;
-
-        operand_issued_o[requester] <= |(operand_requester_gnt);
       end
     end
   end: gen_operand_requester
