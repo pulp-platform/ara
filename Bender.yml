@@ -21,6 +21,7 @@ sources:
 
     # Sources
     # Level 1
+    - hardware/src/ctrl_registers.sv
     - hardware/src/cva6_accel_first_pass_decoder.sv
     - hardware/src/ara_dispatcher.sv
     - hardware/src/ara_sequencer.sv
@@ -73,8 +74,6 @@ sources:
     - target: ara_test
       files:
         # Level 1
-        - hardware/tb/ctrl_registers.sv
-        # Level 2
         - hardware/tb/ara_testharness.sv
-        # Level 3
+        # Level 2
         - hardware/tb/ara_tb.sv
