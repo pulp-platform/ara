@@ -187,7 +187,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Store the request
             requester_d = '{
               addr   : vaddr(operand_request_i[requester].vs, NrLanes) + (operand_request_i[requester].vstart >> (int'(EW64) - int'(operand_request_i[requester].vtype.vsew))),
-              len    : (operand_request_i[requester].vl + (1 << (int'(EW64) - int'(operand_request_i[requester].vtype.vsew))) - 1) >> (int'(EW64) - int'(operand_request_i[requester].vtype.vsew)),
+              len    : operand_request_i[requester].vl,
               vew    : operand_request_i[requester].vtype.vsew,
               hazard : operand_request_i[requester].hazard,
               default: '0
@@ -208,13 +208,16 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               default: '0
             };
 
-            // Received a grant. Bump the address pointers.
+            // Received a grant.
             if (|operand_requester_gnt) begin
+              // Bump the address pointer
+              requester_d.addr = requester_q.addr + 1'b1;
+
               // We read less than 64 bits worth of elements
-              if (requester_q.len < (int'(EW64) - int'(requester_q.vew)))
+              if (requester_q.len < (1 << (int'(EW64) - int'(requester_q.vew))))
                 requester_d.len = 0;
               else
-                requester_d.len = requester_q.len - (int'(EW64) - int'(requester_q.vew));
+                requester_d.len = requester_q.len - (1 << (int'(EW64) - int'(requester_q.vew)));
             end
 
             // Update hazards
