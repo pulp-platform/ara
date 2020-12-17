@@ -33,11 +33,10 @@ module ara_tb;
 
   localparam ClockPeriod = 1ns;
 
-  localparam AxiAddrWidth       = 64;
-  localparam AxiNarrowDataWidth = 64;
-  localparam AxiWideDataWidth   = 64 * NrLanes / 2;
-  localparam AxiWideBeWidth     = AxiWideDataWidth / 8;
-  localparam AxiWideByteOffset  = $clog2(AxiWideBeWidth);
+  localparam AxiAddrWidth      = 64;
+  localparam AxiWideDataWidth  = 64 * NrLanes / 2;
+  localparam AxiWideBeWidth    = AxiWideDataWidth / 8;
+  localparam AxiWideByteOffset = $clog2(AxiWideBeWidth);
 
   localparam DRAMAddrBase = 64'h8000_0000;
   localparam DRAMLength   = 64'h4000_0000; // 1GByte of DDR (split between two chips on Genesys2)
@@ -70,10 +69,9 @@ module ara_tb;
   logic [63:0] exit;
 
   ara_testharness #(
-    .NrLanes           (NrLanes           ),
-    .AxiAddrWidth      (AxiAddrWidth      ),
-    .AxiWideDataWidth  (AxiWideDataWidth  ),
-    .AxiNarrowDataWidth(AxiNarrowDataWidth)
+    .NrLanes     (NrLanes         ),
+    .AxiAddrWidth(AxiAddrWidth    ),
+    .AxiDataWidth(AxiWideDataWidth)
   ) dut (
     .clk_i (clk  ),
     .rst_ni(rst_n),
@@ -117,7 +115,7 @@ module ara_tb;
             mem_row[8 * b +: 8] = buffer[w * AxiWideBeWidth + b];
           end
           if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength)
-            dut.i_sram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
+            dut.i_dram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
           else
             $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
         end

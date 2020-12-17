@@ -16,234 +16,45 @@
 //              Instantiates an AXI-Bus and memories.
 
 module ara_testharness #(
-    parameter int unsigned AxiUserWidth       = 1,
-    parameter int unsigned AxiIdWidth         = 4,
-    parameter int unsigned AxiAddrWidth       = 64,
-    parameter int unsigned AxiWideDataWidth   = 64,
-    parameter int unsigned AxiNarrowDataWidth = 64,
+    parameter int unsigned AxiUserWidth = 1,
+    parameter int unsigned AxiIdWidth   = 6,
+    parameter int unsigned AxiAddrWidth = 64,
+    parameter int unsigned AxiDataWidth = 64,
     // Ara-specific parameters
-    parameter int unsigned NrLanes            = 0,
-    parameter int unsigned NumWords           = 2**23 // memory size
+    parameter int unsigned NrLanes      = 0,
+    parameter int unsigned NumWords     = 2**23 // memory size
   ) (
     input  logic        clk_i,
     input  logic        rst_ni,
     output logic [63:0] exit_o
   );
 
-  /********************
-   *  Memory Regions  *
-   ********************/
-
-  localparam NrAXIMasters = 2; // Actually masters, but slaves on the crossbar
-
-  typedef enum int unsigned {
-    L2MEM = 0,
-    UART  = 1,
-    CTRL  = 2
-  } axi_slaves_t;
-  localparam NrAXISlaves = CTRL + 1;
-
-  /*********
-   *  AXI  *
-   *********/
-
   `include "axi/assign.svh"
   `include "axi/typedef.svh"
 
-  localparam AxiSlvIdWidth = AxiIdWidth + $clog2(NrAXIMasters);
-  localparam AxiLlcIdWidth = AxiSlvIdWidth + 1;
+  /*****************
+   *  Definitions  *
+   *****************/
 
-  // Axi Typedefs
+  typedef logic [AxiDataWidth-1:0] axi_data_t;
+  typedef logic [AxiDataWidth/8-1:0] axi_strb_t;
   typedef logic [AxiAddrWidth-1:0] axi_addr_t;
-  typedef logic [AxiNarrowDataWidth-1:0] axi_narrow_data_t;
-  typedef logic [AxiNarrowDataWidth/8-1:0] axi_narrow_strb_t;
-  typedef logic [AxiWideDataWidth-1:0] axi_wide_data_t;
-  typedef logic [AxiWideDataWidth/8-1:0] axi_wide_strb_t;
-  typedef logic [AxiIdWidth-1:0] axi_id_t;
-  typedef logic [AxiSlvIdWidth-1:0] axi_slv_id_t;
-  typedef logic [AxiLlcIdWidth-1:0] axi_llc_id_t;
   typedef logic [AxiUserWidth-1:0] axi_user_t;
+  typedef logic [AxiIdWidth-1:0] axi_id_t;
 
   `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, axi_addr_t, axi_id_t, axi_user_t)
-  `AXI_TYPEDEF_AR_CHAN_T(slv_ar_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
-  `AXI_TYPEDEF_AR_CHAN_T(llc_ar_chan_t, axi_addr_t, axi_llc_id_t, axi_user_t)
-  `AXI_TYPEDEF_R_CHAN_T(narrow_r_chan_t, axi_narrow_data_t, axi_id_t, axi_user_t)
-  `AXI_TYPEDEF_R_CHAN_T(narrow_slv_r_chan_t, axi_narrow_data_t, axi_slv_id_t, axi_user_t)
-  `AXI_TYPEDEF_R_CHAN_T(wide_r_chan_t, axi_wide_data_t, axi_id_t, axi_user_t)
-  `AXI_TYPEDEF_R_CHAN_T(wide_slv_r_chan_t, axi_wide_data_t, axi_slv_id_t, axi_user_t)
-  `AXI_TYPEDEF_R_CHAN_T(llc_r_chan_t, axi_wide_data_t, axi_llc_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(r_chan_t, axi_data_t, axi_id_t, axi_user_t)
   `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
-  `AXI_TYPEDEF_AW_CHAN_T(slv_aw_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
-  `AXI_TYPEDEF_AW_CHAN_T(llc_aw_chan_t, axi_addr_t, axi_llc_id_t, axi_user_t)
-  `AXI_TYPEDEF_W_CHAN_T(narrow_w_chan_t, axi_narrow_data_t, axi_narrow_strb_t, axi_user_t)
-  `AXI_TYPEDEF_W_CHAN_T(wide_w_chan_t, axi_wide_data_t, axi_wide_strb_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, axi_data_t, axi_strb_t, axi_user_t)
   `AXI_TYPEDEF_B_CHAN_T(b_chan_t, axi_id_t, axi_user_t)
-  `AXI_TYPEDEF_B_CHAN_T(slv_b_chan_t, axi_slv_id_t, axi_user_t)
-  `AXI_TYPEDEF_B_CHAN_T(llc_b_chan_t, axi_llc_id_t, axi_user_t)
+  `AXI_TYPEDEF_REQ_T(axi_req_t, aw_chan_t, w_chan_t, ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(axi_resp_t, b_chan_t, r_chan_t)
 
-  `AXI_TYPEDEF_REQ_T(axi_narrow_req_t, aw_chan_t, narrow_w_chan_t, ar_chan_t)
-  `AXI_TYPEDEF_RESP_T(axi_narrow_resp_t, b_chan_t, narrow_r_chan_t)
-  `AXI_TYPEDEF_REQ_T(axi_narrow_slv_req_t, slv_aw_chan_t, narrow_w_chan_t, slv_ar_chan_t)
-  `AXI_TYPEDEF_RESP_T(axi_narrow_slv_resp_t, slv_b_chan_t, narrow_slv_r_chan_t)
-  `AXI_TYPEDEF_REQ_T(axi_wide_req_t, aw_chan_t, wide_w_chan_t, ar_chan_t)
-  `AXI_TYPEDEF_RESP_T(axi_wide_resp_t, b_chan_t, wide_r_chan_t)
-  `AXI_TYPEDEF_REQ_T(axi_wide_slv_req_t, slv_aw_chan_t, wide_w_chan_t, slv_ar_chan_t)
-  `AXI_TYPEDEF_RESP_T(axi_wide_slv_resp_t, slv_b_chan_t, wide_slv_r_chan_t)
-  `AXI_TYPEDEF_REQ_T(axi_wide_llc_req_t, llc_aw_chan_t, wide_w_chan_t, llc_ar_chan_t)
-  `AXI_TYPEDEF_RESP_T(axi_wide_llc_resp_t, llc_b_chan_t, llc_r_chan_t)
+  /*************
+   *  Signals  *
+   *************/
 
-  `AXI_LITE_TYPEDEF_AW_CHAN_T(axi_lite_narrow_slv_aw_t, axi_addr_t)
-  `AXI_LITE_TYPEDEF_W_CHAN_T(axi_lite_narrow_slv_w_t, axi_narrow_data_t, axi_narrow_strb_t)
-  `AXI_LITE_TYPEDEF_B_CHAN_T(axi_lite_narrow_slv_b_t)
-  `AXI_LITE_TYPEDEF_AR_CHAN_T(axi_lite_narrow_slv_ar_t, axi_addr_t)
-  `AXI_LITE_TYPEDEF_R_CHAN_T(axi_lite_narrow_slv_r_t, axi_narrow_data_t)
-  `AXI_LITE_TYPEDEF_REQ_T(axi_lite_narrow_slv_req_t, axi_lite_narrow_slv_aw_t, axi_lite_narrow_slv_w_t, axi_lite_narrow_slv_ar_t)
-  `AXI_LITE_TYPEDEF_RESP_T(axi_lite_narrow_slv_resp_t, axi_lite_narrow_slv_b_t, axi_lite_narrow_slv_r_t)
-
-  // Buses
-  axi_narrow_req_t  ariane_narrow_axi_req;
-  axi_narrow_resp_t ariane_narrow_axi_resp;
-  axi_wide_req_t    ariane_axi_req;
-  axi_wide_resp_t   ariane_axi_resp;
-  axi_wide_req_t    ara_axi_req;
-  axi_wide_resp_t   ara_axi_resp;
-
-  axi_wide_slv_req_t    [NrAXISlaves-1:0] periph_wide_axi_req;
-  axi_wide_slv_resp_t   [NrAXISlaves-1:0] periph_wide_axi_resp;
-  axi_narrow_slv_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
-  axi_narrow_slv_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
-
-  // Memory Map
-  localparam logic[63:0] CTRLLength = 64'h1000;
-  localparam logic[63:0] UARTLength = 64'h1000;
-  localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
-
-  typedef enum logic [63:0] {
-    CTRLBase = 64'hD000_0000,
-    UARTBase = 64'hC000_0000,
-    DRAMBase = 64'h8000_0000
-  } soc_bus_start_t;
-
-  /********
-   *  L2  *
-   ********/
-
-  axi_wide_slv_req_t  l2mem_wide_axi_req_wo_atomics;
-  axi_wide_slv_resp_t l2mem_wide_axi_resp_wo_atomics;
-
-  // The L2 memory does not support atomics
-  axi_atop_filter #(
-    .AxiIdWidth     (AxiSlvIdWidth      ),
-    .AxiMaxWriteTxns(4                  ),
-    .req_t          (axi_wide_slv_req_t ),
-    .resp_t         (axi_wide_slv_resp_t)
-  ) i_l2mem_atop_filter (
-    .clk_i     (clk_i                         ),
-    .rst_ni    (rst_ni                        ),
-    .slv_req_i (periph_wide_axi_req[L2MEM]    ),
-    .slv_resp_o(periph_wide_axi_resp[L2MEM]   ),
-    .mst_req_o (l2mem_wide_axi_req_wo_atomics ),
-    .mst_resp_i(l2mem_wide_axi_resp_wo_atomics)
-  );
-
-  axi_wide_llc_req_t  dram_wide_axi_req;
-  axi_wide_llc_resp_t dram_wide_axi_resp;
-
-  localparam axi_llc_pkg::llc_axi_cfg_t LlcAxiCfg = '{
-    SlvPortIdWidth:    AxiSlvIdWidth,
-    AddrWidthFull:     AxiAddrWidth,
-    DataWidthFull:     AxiWideDataWidth,
-    LitePortAddrWidth: AxiAddrWidth,
-    LitePortDataWidth: AxiNarrowDataWidth
-  };
-
-  axi_llc_top #(
-    .SetAssociativity ( 8                          ),
-    .NumLines         ( 1024                       ),
-    .NumBlocks        ( 8                          ),
-    .AxiIdWidth       ( AxiSlvIdWidth              ),
-    .AxiAddrWidth     ( AxiAddrWidth               ),
-    .AxiDataWidth     ( AxiWideDataWidth           ),
-    .AxiUserWidth     ( AxiUserWidth               ),
-    .AxiLiteAddrWidth ( AxiAddrWidth               ),
-    .AxiLiteDataWidth ( AxiNarrowDataWidth         ),
-    .slv_req_t        ( axi_wide_slv_req_t         ),
-    .slv_resp_t       ( axi_wide_slv_resp_t        ),
-    .mst_req_t        ( axi_wide_llc_req_t         ),
-    .mst_resp_t       ( axi_wide_llc_resp_t        ),
-    .lite_req_t       ( axi_lite_narrow_slv_req_t  ),
-    .lite_resp_t      ( axi_lite_narrow_slv_resp_t ),
-    .rule_full_t      ( axi_pkg::xbar_rule_64_t    ),
-    .axi_addr_t       ( axi_addr_t  )
-  ) i_l2 (
-    .clk_i               ( clk_i                          ),
-    .rst_ni              ( rst_ni                         ),
-    .test_i              ( '0                             ),
-    .slv_req_i           ( l2mem_wide_axi_req_wo_atomics  ),
-    .slv_resp_o          ( l2mem_wide_axi_resp_wo_atomics ),
-    .mst_req_o           ( dram_wide_axi_req              ),
-    .mst_resp_i          ( dram_wide_axi_resp             ),
-    .conf_req_i          ( '0                             ),
-    .conf_resp_o         (                                ),
-    .cached_start_addr_i ( DRAMBase                       ),
-    .cached_end_addr_i   ( DRAMBase   + DRAMLength        ),
-    .spm_start_addr_i    ( '0                             ),
-    .axi_llc_events_o    (                                )
-  );
-
-  logic                          req;
-  logic                          we;
-  logic [AxiAddrWidth-1:0]       addr;
-  logic [AxiWideDataWidth/8-1:0] be;
-  logic [AxiWideDataWidth-1:0]   wdata;
-  logic [AxiWideDataWidth-1:0]   rdata;
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AxiAddrWidth    ),
-    .AXI_DATA_WIDTH(AxiWideDataWidth),
-    .AXI_ID_WIDTH  (AxiLlcIdWidth   ),
-    .AXI_USER_WIDTH(AxiUserWidth    )
-  ) axi_dram_wide_slave ();
-
-  `AXI_ASSIGN_FROM_REQ(axi_dram_wide_slave, dram_wide_axi_req)
-  `AXI_ASSIGN_TO_RESP(dram_wide_axi_resp, axi_dram_wide_slave)
-
-  axi2mem #(
-    .AXI_ID_WIDTH  (AxiLlcIdWidth   ),
-    .AXI_ADDR_WIDTH(AxiAddrWidth    ),
-    .AXI_DATA_WIDTH(AxiWideDataWidth),
-    .AXI_USER_WIDTH(AxiUserWidth    )
-  ) i_axi2mem (
-    .clk_i (clk_i              ),
-    .rst_ni(rst_ni             ),
-    .slave (axi_dram_wide_slave),
-    .req_o (req                ),
-    .we_o  (we                 ),
-    .addr_o(addr               ),
-    .be_o  (be                 ),
-    .data_o(wdata              ),
-    .data_i(rdata              )
-  );
-
-  tc_sram #(
-    .NumWords (NumWords        ),
-    .NumPorts (1               ),
-    .DataWidth(AxiWideDataWidth)
-  ) i_sram (
-    .clk_i  (clk_i                                                                         ),
-    .rst_ni (rst_ni                                                                        ),
-    .req_i  (req                                                                           ),
-    .we_i   (we                                                                            ),
-    .addr_i (addr[$clog2(NumWords)-1+$clog2(AxiWideDataWidth/8):$clog2(AxiWideDataWidth/8)]),
-    .wdata_i(wdata                                                                         ),
-    .be_i   (be                                                                            ),
-    .rdata_o(rdata                                                                         )
-  );
-
-  /**********
-   *  UART  *
-   **********/
-
+  // UART
   logic        uart_penable;
   logic        uart_pwrite;
   logic [31:0] uart_paddr;
@@ -253,71 +64,84 @@ module ara_testharness #(
   logic        uart_pready;
   logic        uart_pslverr;
 
-  axi2apb_64_32 #(
-    .AXI4_ADDRESS_WIDTH(AxiAddrWidth      ),
-    .AXI4_RDATA_WIDTH  (AxiNarrowDataWidth),
-    .AXI4_WDATA_WIDTH  (AxiNarrowDataWidth),
-    .AXI4_ID_WIDTH     (AxiSlvIdWidth     ),
-    .AXI4_USER_WIDTH   (AxiUserWidth      ),
-    .BUFF_DEPTH_SLAVE  (2                 ),
-    .APB_ADDR_WIDTH    (32                )
-  ) i_axi2apb_64_32_uart (
-    .ACLK      (clk_i                                ),
-    .ARESETn   (rst_ni                               ),
-    .test_en_i (1'b0                                 ),
-    .AWID_i    (periph_narrow_axi_req[UART].aw.id    ),
-    .AWADDR_i  (periph_narrow_axi_req[UART].aw.addr  ),
-    .AWLEN_i   (periph_narrow_axi_req[UART].aw.len   ),
-    .AWSIZE_i  (periph_narrow_axi_req[UART].aw.size  ),
-    .AWBURST_i (periph_narrow_axi_req[UART].aw.burst ),
-    .AWLOCK_i  (periph_narrow_axi_req[UART].aw.lock  ),
-    .AWCACHE_i (periph_narrow_axi_req[UART].aw.cache ),
-    .AWPROT_i  (periph_narrow_axi_req[UART].aw.prot  ),
-    .AWREGION_i(periph_narrow_axi_req[UART].aw.region),
-    .AWUSER_i  (periph_narrow_axi_req[UART].aw.user  ),
-    .AWQOS_i   (periph_narrow_axi_req[UART].aw.qos   ),
-    .AWVALID_i (periph_narrow_axi_req[UART].aw_valid ),
-    .AWREADY_o (periph_narrow_axi_resp[UART].aw_ready),
-    .WDATA_i   (periph_narrow_axi_req[UART].w.data   ),
-    .WSTRB_i   (periph_narrow_axi_req[UART].w.strb   ),
-    .WLAST_i   (periph_narrow_axi_req[UART].w.last   ),
-    .WUSER_i   (periph_narrow_axi_req[UART].w.user   ),
-    .WVALID_i  (periph_narrow_axi_req[UART].w_valid  ),
-    .WREADY_o  (periph_narrow_axi_resp[UART].w_ready ),
-    .BID_o     (periph_narrow_axi_resp[UART].b.id    ),
-    .BRESP_o   (periph_narrow_axi_resp[UART].b.resp  ),
-    .BVALID_o  (periph_narrow_axi_resp[UART].b_valid ),
-    .BUSER_o   (periph_narrow_axi_resp[UART].b.user  ),
-    .BREADY_i  (periph_narrow_axi_req[UART].b_ready  ),
-    .ARID_i    (periph_narrow_axi_req[UART].ar.id    ),
-    .ARADDR_i  (periph_narrow_axi_req[UART].ar.addr  ),
-    .ARLEN_i   (periph_narrow_axi_req[UART].ar.len   ),
-    .ARSIZE_i  (periph_narrow_axi_req[UART].ar.size  ),
-    .ARBURST_i (periph_narrow_axi_req[UART].ar.burst ),
-    .ARLOCK_i  (periph_narrow_axi_req[UART].ar.lock  ),
-    .ARCACHE_i (periph_narrow_axi_req[UART].ar.cache ),
-    .ARPROT_i  (periph_narrow_axi_req[UART].ar.prot  ),
-    .ARREGION_i(periph_narrow_axi_req[UART].ar.region),
-    .ARUSER_i  (periph_narrow_axi_req[UART].ar.user  ),
-    .ARQOS_i   (periph_narrow_axi_req[UART].ar.qos   ),
-    .ARVALID_i (periph_narrow_axi_req[UART].ar_valid ),
-    .ARREADY_o (periph_narrow_axi_resp[UART].ar_ready),
-    .RID_o     (periph_narrow_axi_resp[UART].r.id    ),
-    .RDATA_o   (periph_narrow_axi_resp[UART].r.data  ),
-    .RRESP_o   (periph_narrow_axi_resp[UART].r.resp  ),
-    .RLAST_o   (periph_narrow_axi_resp[UART].r.last  ),
-    .RUSER_o   (periph_narrow_axi_resp[UART].r.user  ),
-    .RVALID_o  (periph_narrow_axi_resp[UART].r_valid ),
-    .RREADY_i  (periph_narrow_axi_req[UART].r_ready  ),
-    .PENABLE   (uart_penable                         ),
-    .PWRITE    (uart_pwrite                          ),
-    .PADDR     (uart_paddr                           ),
-    .PSEL      (uart_psel                            ),
-    .PWDATA    (uart_pwdata                          ),
-    .PRDATA    (uart_prdata                          ),
-    .PREADY    (uart_pready                          ),
-    .PSLVERR   (uart_pslverr                         )
+  // AXI
+  axi_req_t  dram_req;
+  axi_resp_t dram_resp;
+
+  /*********
+   *  SoC  *
+   *********/
+
+  ara_soc #(
+    .NrLanes     (NrLanes      ),
+    .AxiAddrWidth(AxiAddrWidth ),
+    .AxiDataWidth(AxiDataWidth ),
+    .AxiIdWidth  (AxiIdWidth   ),
+    .AxiUserWidth(AxiUserWidth )
+  ) i_ara_soc (
+    .clk_i          (clk_i             ),
+    .rst_ni         (rst_ni            ),
+    .exit_o         (exit_o            ),
+    // UART
+    .uart_penable_o (uart_penable      ),
+    .uart_pwrite_o  (uart_pwrite       ),
+    .uart_paddr_o   (uart_paddr        ),
+    .uart_psel_o    (uart_psel         ),
+    .uart_pwdata_o  (uart_pwdata       ),
+    .uart_prdata_i  (uart_prdata       ),
+    .uart_pready_i  (uart_pready       ),
+    .uart_pslverr_i (uart_pslverr      ),
+    // AXI
+    .axi_aw_valid_o (dram_req.aw_valid ),
+    .axi_aw_id_o    (dram_req.aw.id    ),
+    .axi_aw_addr_o  (dram_req.aw.addr  ),
+    .axi_aw_len_o   (dram_req.aw.len   ),
+    .axi_aw_size_o  (dram_req.aw.size  ),
+    .axi_aw_burst_o (dram_req.aw.burst ),
+    .axi_aw_lock_o  (dram_req.aw.lock  ),
+    .axi_aw_cache_o (dram_req.aw.cache ),
+    .axi_aw_prot_o  (dram_req.aw.prot  ),
+    .axi_aw_qos_o   (dram_req.aw.qos   ),
+    .axi_aw_region_o(dram_req.aw.region),
+    .axi_aw_atop_o  (dram_req.aw.atop  ),
+    .axi_aw_user_o  (dram_req.aw.user  ),
+    .axi_aw_ready_i (dram_resp.aw_ready),
+    .axi_w_valid_o  (dram_req.w_valid  ),
+    .axi_w_data_o   (dram_req.w.data   ),
+    .axi_w_strb_o   (dram_req.w.strb   ),
+    .axi_w_last_o   (dram_req.w.last   ),
+    .axi_w_user_o   (dram_req.w.user   ),
+    .axi_w_ready_i  (dram_resp.w_ready ),
+    .axi_b_valid_i  (dram_resp.b_valid ),
+    .axi_b_id_i     (dram_resp.b.id    ),
+    .axi_b_resp_i   (dram_resp.b.resp  ),
+    .axi_b_user_i   (dram_resp.b.user  ),
+    .axi_b_ready_o  (dram_req.b_ready  ),
+    .axi_ar_valid_o (dram_req.ar_valid ),
+    .axi_ar_id_o    (dram_req.ar.id    ),
+    .axi_ar_addr_o  (dram_req.ar.addr  ),
+    .axi_ar_len_o   (dram_req.ar.len   ),
+    .axi_ar_size_o  (dram_req.ar.size  ),
+    .axi_ar_burst_o (dram_req.ar.burst ),
+    .axi_ar_lock_o  (dram_req.ar.lock  ),
+    .axi_ar_cache_o (dram_req.ar.cache ),
+    .axi_ar_prot_o  (dram_req.ar.prot  ),
+    .axi_ar_qos_o   (dram_req.ar.qos   ),
+    .axi_ar_region_o(dram_req.ar.region),
+    .axi_ar_user_o  (dram_req.ar.user  ),
+    .axi_ar_ready_i (dram_resp.ar_ready),
+    .axi_r_valid_i  (dram_resp.r_valid ),
+    .axi_r_data_i   (dram_resp.r.data  ),
+    .axi_r_id_i     (dram_resp.r.id    ),
+    .axi_r_resp_i   (dram_resp.r.resp  ),
+    .axi_r_last_i   (dram_resp.r.last  ),
+    .axi_r_user_i   (dram_resp.r.user  ),
+    .axi_r_ready_o  (dram_req.r_ready  )
   );
+
+  /**********
+   *  UART  *
+   **********/
 
   mock_uart i_mock_uart (
     .clk_i    (clk_i       ),
@@ -332,239 +156,57 @@ module ara_testharness #(
     .pslverr_o(uart_pslverr)
   );
 
-  axi_dw_converter #(
-    .AxiSlvPortDataWidth(AxiWideDataWidth     ),
-    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
-    .AxiAddrWidth       (AxiAddrWidth         ),
-    .AxiIdWidth         (AxiSlvIdWidth        ),
-    .AxiMaxReads        (2                    ),
-    .ar_chan_t          (slv_ar_chan_t        ),
-    .mst_r_chan_t       (narrow_slv_r_chan_t  ),
-    .slv_r_chan_t       (wide_slv_r_chan_t    ),
-    .aw_chan_t          (slv_aw_chan_t        ),
-    .b_chan_t           (slv_b_chan_t         ),
-    .mst_w_chan_t       (narrow_w_chan_t      ),
-    .slv_w_chan_t       (wide_w_chan_t        ),
-    .axi_mst_req_t      (axi_narrow_slv_req_t ),
-    .axi_mst_resp_t     (axi_narrow_slv_resp_t),
-    .axi_slv_req_t      (axi_wide_slv_req_t   ),
-    .axi_slv_resp_t     (axi_wide_slv_resp_t  )
-  ) i_axi_slave_uart_dwc (
-    .clk_i     (clk_i                       ),
-    .rst_ni    (rst_ni                      ),
-    .slv_req_i (periph_wide_axi_req[UART]   ),
-    .slv_resp_o(periph_wide_axi_resp[UART]  ),
-    .mst_req_o (periph_narrow_axi_req[UART] ),
-    .mst_resp_i(periph_narrow_axi_resp[UART])
+  /********
+   *  L2  *
+   ********/
+
+  logic                      req;
+  logic                      we;
+  logic [AxiAddrWidth-1:0]   addr;
+  logic [AxiDataWidth/8-1:0] be;
+  logic [AxiDataWidth-1:0]   wdata;
+  logic [AxiDataWidth-1:0]   rdata;
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH(AxiAddrWidth),
+    .AXI_DATA_WIDTH(AxiDataWidth),
+    .AXI_ID_WIDTH  (AxiIdWidth  ),
+    .AXI_USER_WIDTH(AxiUserWidth)
+  ) axi_dram_slave ();
+
+  `AXI_ASSIGN_FROM_REQ(axi_dram_slave, dram_req)
+  `AXI_ASSIGN_TO_RESP(dram_resp, axi_dram_slave)
+
+  axi2mem #(
+    .AXI_ID_WIDTH  (AxiIdWidth  ),
+    .AXI_ADDR_WIDTH(AxiAddrWidth),
+    .AXI_DATA_WIDTH(AxiDataWidth),
+    .AXI_USER_WIDTH(AxiUserWidth)
+  ) i_axi2mem (
+    .clk_i (clk_i         ),
+    .rst_ni(rst_ni        ),
+    .slave (axi_dram_slave),
+    .req_o (req           ),
+    .we_o  (we            ),
+    .addr_o(addr          ),
+    .be_o  (be            ),
+    .data_o(wdata         ),
+    .data_i(rdata         )
   );
 
-  /**************
-   *  Crossbar  *
-   **************/
-
-  localparam axi_pkg::xbar_cfg_t XBarCfg = '{
-    NoSlvPorts        : NrAXIMasters,
-    NoMstPorts        : NrAXISlaves,
-    MaxMstTrans       : 4,
-    MaxSlvTrans       : 4,
-    FallThrough       : 1'b0,
-    LatencyMode       : axi_pkg::CUT_MST_PORTS,
-    PipelineStages    : 0,
-    AxiIdWidthSlvPorts: AxiIdWidth,
-    AxiIdUsedSlvPorts : AxiIdWidth,
-    AxiAddrWidth      : AxiAddrWidth,
-    AxiDataWidth      : AxiWideDataWidth,
-    NoAddrRules       : NrAXISlaves
-  };
-
-  axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
-    '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
-    '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
-    '{idx: L2MEM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
-
-  axi_xbar #(
-    .Cfg          (XBarCfg                ),
-    .slv_aw_chan_t(aw_chan_t              ),
-    .mst_aw_chan_t(slv_aw_chan_t          ),
-    .w_chan_t     (wide_w_chan_t          ),
-    .slv_b_chan_t (b_chan_t               ),
-    .mst_b_chan_t (slv_b_chan_t           ),
-    .slv_ar_chan_t(ar_chan_t              ),
-    .mst_ar_chan_t(slv_ar_chan_t          ),
-    .slv_r_chan_t (wide_r_chan_t          ),
-    .mst_r_chan_t (wide_slv_r_chan_t      ),
-    .slv_req_t    (axi_wide_req_t         ),
-    .slv_resp_t   (axi_wide_resp_t        ),
-    .mst_req_t    (axi_wide_slv_req_t     ),
-    .mst_resp_t   (axi_wide_slv_resp_t    ),
-    .rule_t       (axi_pkg::xbar_rule_64_t)
-  ) i_tesbench_xbar (
-    .clk_i                (clk_i                          ),
-    .rst_ni               (rst_ni                         ),
-    .test_i               (1'b0                           ),
-    .slv_ports_req_i      ({ariane_axi_req, ara_axi_req}  ),
-    .slv_ports_resp_o     ({ariane_axi_resp, ara_axi_resp}),
-    .mst_ports_req_o      (periph_wide_axi_req            ),
-    .mst_ports_resp_i     (periph_wide_axi_resp           ),
-    .addr_map_i           (routing_rules                  ),
-    .en_default_mst_port_i('0                             ),
-    .default_mst_port_i   ('0                             )
-  );
-
-  /***********************
-   *  Control registers  *
-   ***********************/
-
-  axi_lite_narrow_slv_req_t  axi_lite_ctrl_registers_req;
-  axi_lite_narrow_slv_resp_t axi_lite_ctrl_registers_resp;
-
-  axi_to_axi_lite #(
-    .AxiAddrWidth   (AxiAddrWidth              ),
-    .AxiDataWidth   (AxiNarrowDataWidth        ),
-    .AxiIdWidth     (AxiSlvIdWidth             ),
-    .AxiUserWidth   (AxiUserWidth              ),
-    .AxiMaxReadTxns (1                         ),
-    .AxiMaxWriteTxns(1                         ),
-    .FallThrough    (1'b0                      ),
-    .full_req_t     (axi_narrow_slv_req_t      ),
-    .full_resp_t    (axi_narrow_slv_resp_t     ),
-    .lite_req_t     (axi_lite_narrow_slv_req_t ),
-    .lite_resp_t    (axi_lite_narrow_slv_resp_t)
-  ) i_axi_to_axi_lite (
-    .clk_i     (clk_i                        ),
-    .rst_ni    (rst_ni                       ),
-    .test_i    (1'b0                         ),
-    .slv_req_i (periph_narrow_axi_req[CTRL]  ),
-    .slv_resp_o(periph_narrow_axi_resp[CTRL] ),
-    .mst_req_o (axi_lite_ctrl_registers_req  ),
-    .mst_resp_i(axi_lite_ctrl_registers_resp )
-  );
-
-  ctrl_registers #(
-    .DRAMBaseAddr   (DRAMBase                  ),
-    .DRAMLength     (DRAMLength                ),
-    .DataWidth      (AxiNarrowDataWidth        ),
-    .AddrWidth      (AxiAddrWidth              ),
-    .axi_lite_req_t (axi_lite_narrow_slv_req_t ),
-    .axi_lite_resp_t(axi_lite_narrow_slv_resp_t)
-  ) i_ctrl_registers (
-    .clk_i                (clk_i                       ),
-    .rst_ni               (rst_ni                      ),
-    .axi_lite_slave_req_i (axi_lite_ctrl_registers_req ),
-    .axi_lite_slave_resp_o(axi_lite_ctrl_registers_resp),
-    .dram_base_addr_o     (/* Unused */                ),
-    .dram_end_addr_o      (/* Unused */                ),
-    .exit_o               (exit_o                      )
-  );
-
-  axi_dw_converter #(
-    .AxiSlvPortDataWidth(AxiWideDataWidth     ),
-    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
-    .AxiAddrWidth       (AxiAddrWidth         ),
-    .AxiIdWidth         (AxiSlvIdWidth        ),
-    .AxiMaxReads        (2                    ),
-    .ar_chan_t          (slv_ar_chan_t        ),
-    .mst_r_chan_t       (narrow_slv_r_chan_t  ),
-    .slv_r_chan_t       (wide_slv_r_chan_t    ),
-    .aw_chan_t          (slv_aw_chan_t        ),
-    .b_chan_t           (slv_b_chan_t         ),
-    .mst_w_chan_t       (narrow_w_chan_t      ),
-    .slv_w_chan_t       (wide_w_chan_t        ),
-    .axi_mst_req_t      (axi_narrow_slv_req_t ),
-    .axi_mst_resp_t     (axi_narrow_slv_resp_t),
-    .axi_slv_req_t      (axi_wide_slv_req_t   ),
-    .axi_slv_resp_t     (axi_wide_slv_resp_t  )
-  ) i_axi_slave_ctrl_dwc (
-    .clk_i     (clk_i                       ),
-    .rst_ni    (rst_ni                      ),
-    .slv_req_i (periph_wide_axi_req[CTRL]   ),
-    .slv_resp_o(periph_wide_axi_resp[CTRL]  ),
-    .mst_req_o (periph_narrow_axi_req[CTRL] ),
-    .mst_resp_i(periph_narrow_axi_resp[CTRL])
-  );
-
-  /*********
-   *  DUT  *
-   *********/
-
-  // Accelerator ports
-  ariane_pkg::accelerator_req_t acc_req;
-  logic acc_req_valid;
-  logic acc_req_ready;
-  ariane_pkg::accelerator_resp_t acc_resp;
-  logic acc_resp_valid;
-  logic acc_resp_ready;
-
-  ariane #(
-    .ArianeCfg(ariane_pkg::ArianeDefaultConfig)
-  ) i_ariane (
-    .clk_i           (clk_i                 ),
-    .rst_ni          (rst_ni                ),
-    .boot_addr_i     (DRAMBase              ), // start fetching from DRAM
-    .hart_id_i       ('0                    ),
-    .irq_i           ('0                    ),
-    .ipi_i           ('0                    ),
-    .time_irq_i      ('0                    ),
-    .debug_req_i     ('0                    ),
-    .axi_req_o       (ariane_narrow_axi_req ),
-    .axi_resp_i      (ariane_narrow_axi_resp),
-    // Accelerator ports
-    .acc_req_o       (acc_req               ),
-    .acc_req_valid_o (acc_req_valid         ),
-    .acc_req_ready_i (acc_req_ready         ),
-    .acc_resp_i      (acc_resp              ),
-    .acc_resp_valid_i(acc_resp_valid        ),
-    .acc_resp_ready_o(acc_resp_ready        )
-  );
-
-  ara #(
-    .NrLanes     (NrLanes         ),
-    .AxiDataWidth(AxiWideDataWidth),
-    .AxiAddrWidth(AxiAddrWidth    ),
-    .axi_ar_t    (ar_chan_t       ),
-    .axi_r_t     (wide_r_chan_t   ),
-    .axi_aw_t    (aw_chan_t       ),
-    .axi_w_t     (wide_w_chan_t   ),
-    .axi_b_t     (b_chan_t        ),
-    .axi_req_t   (axi_wide_req_t  ),
-    .axi_resp_t  (axi_wide_resp_t )
-  ) i_ara (
-    .clk_i           (clk_i         ),
-    .rst_ni          (rst_ni        ),
-    .acc_req_i       (acc_req       ),
-    .acc_req_valid_i (acc_req_valid ),
-    .acc_req_ready_o (acc_req_ready ),
-    .acc_resp_o      (acc_resp      ),
-    .acc_resp_valid_o(acc_resp_valid),
-    .acc_resp_ready_i(acc_resp_ready),
-    .axi_req_o       (ara_axi_req   ),
-    .axi_resp_i      (ara_axi_resp  )
-  );
-
-  axi_dw_converter #(
-    .AxiSlvPortDataWidth(AxiNarrowDataWidth),
-    .AxiMstPortDataWidth(AxiWideDataWidth  ),
-    .AxiAddrWidth       (AxiAddrWidth      ),
-    .AxiIdWidth         (AxiIdWidth        ),
-    .AxiMaxReads        (4                 ),
-    .ar_chan_t          (ar_chan_t         ),
-    .mst_r_chan_t       (wide_r_chan_t     ),
-    .slv_r_chan_t       (narrow_r_chan_t   ),
-    .aw_chan_t          (aw_chan_t         ),
-    .b_chan_t           (b_chan_t          ),
-    .mst_w_chan_t       (wide_w_chan_t     ),
-    .slv_w_chan_t       (narrow_w_chan_t   ),
-    .axi_mst_req_t      (axi_wide_req_t    ),
-    .axi_mst_resp_t     (axi_wide_resp_t   ),
-    .axi_slv_req_t      (axi_narrow_req_t  ),
-    .axi_slv_resp_t     (axi_narrow_resp_t )
-  ) i_ariane_axi_dwc (
-    .clk_i     (clk_i                 ),
-    .rst_ni    (rst_ni                ),
-    .slv_req_i (ariane_narrow_axi_req ),
-    .slv_resp_o(ariane_narrow_axi_resp),
-    .mst_req_o (ariane_axi_req        ),
-    .mst_resp_i(ariane_axi_resp       )
+  tc_sram #(
+    .NumWords (NumWords    ),
+    .NumPorts (1           ),
+    .DataWidth(AxiDataWidth)
+  ) i_dram (
+    .clk_i  (clk_i                                                                 ),
+    .rst_ni (rst_ni                                                                ),
+    .req_i  (req                                                                   ),
+    .we_i   (we                                                                    ),
+    .addr_i (addr[$clog2(NumWords)-1+$clog2(AxiDataWidth/8):$clog2(AxiDataWidth/8)]),
+    .wdata_i(wdata                                                                 ),
+    .be_i   (be                                                                    ),
+    .rdata_o(rdata                                                                 )
   );
 
 endmodule : ara_testharness
