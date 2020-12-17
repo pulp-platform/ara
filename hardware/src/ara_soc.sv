@@ -25,7 +25,7 @@ module ara_soc import axi_pkg::*; #(
     parameter int  unsigned AxiDataWidth = 0,
     parameter int  unsigned AxiAddrWidth = 0,
     parameter int  unsigned AxiUserWidth = 1,
-    parameter int  unsigned AxiIdWidth   = 0,
+    parameter int  unsigned AxiIdWidth   = 6,
     // Dependant parameters. DO NOT CHANGE!
     parameter type          axi_data_t   = logic [AxiDataWidth-1:0],
     parameter type          axi_strb_t   = logic [AxiDataWidth/8-1:0],
@@ -214,7 +214,8 @@ module ara_soc import axi_pkg::*; #(
     NoAddrRules       : NrAXISlaves
   };
 
-  axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules = '{
+  axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules;
+  assign routing_rules = '{
     '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
     '{idx: L2MEM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
