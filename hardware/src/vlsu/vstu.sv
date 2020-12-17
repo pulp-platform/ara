@@ -132,7 +132,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // - A counter of how many beats are left in the current AXI burst
   axi_pkg::len_t len_d, len_q;
   // - A pointer to which byte in the full VRF word we are reading data from.
-  logic [idx_width(DataWidth*NrLanes/8)-1:0] vrf_pnt_d, vrf_pnt_q;
+  logic [idx_width(DataWidth*NrLanes/8):0] vrf_pnt_d, vrf_pnt_q;
 
   always_comb begin: p_vstu
     // Maintain state

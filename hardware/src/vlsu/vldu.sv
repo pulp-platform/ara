@@ -183,9 +183,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   // - A counter of how many beats are left in the current AXI burst
   axi_pkg::len_t len_d, len_q;
   // - A pointer to which byte in the current R beat we are reading data from.
-  logic [idx_width(AxiDataWidth/8)-1:0]      r_pnt_d, r_pnt_q;
+  logic [idx_width(AxiDataWidth/8):0]      r_pnt_d, r_pnt_q;
   // - A pointer to which byte in the full VRF word we are writing data into.
-  logic [idx_width(DataWidth*NrLanes/8)-1:0] vrf_pnt_d, vrf_pnt_q;
+  logic [idx_width(DataWidth*NrLanes/8):0] vrf_pnt_d, vrf_pnt_q;
 
   always_comb begin: p_vldu
     // Maintain state
@@ -221,43 +221,45 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // We are ready to accept the R beats if all the following are respected:
     // - There is an R beat available.
     // - The Address Generator sent us the data about the corresponding AR beat
-    // - The Vector Instruction is ready to be issued
     // - There is place in the result queue to write the data read from the R channel
-    if (axi_r_valid_i && axi_addrgen_req_valid_i && vinsn_issue_valid && !result_queue_full) begin
+    if (axi_r_valid_i && axi_addrgen_req_valid_i && !result_queue_full) begin
       // Bytes valid in the current R beat
       automatic shortint unsigned lower_byte = axi_pkg::beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
       automatic shortint unsigned upper_byte = axi_pkg::beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
 
-      // Copy data from the R channel into the result queue
-      for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
-        // Is this byte a valid byte in the R beat?
-        if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
-          // Map axy_byte to the corresponding byte in the VRF word (sequential)
-          automatic int vrf_seq_byte = axi_byte - lower_byte + r_pnt_q + vrf_pnt_q;
-          // And then shuffle it
-          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+      // Is there a vector instruction ready to be issued?
+      if (vinsn_issue_valid) begin
+        // Copy data from the R channel into the result queue
+        for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
+          // Is this byte a valid byte in the R beat?
+          if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
+            // Map axy_byte to the corresponding byte in the VRF word (sequential)
+            automatic int vrf_seq_byte = axi_byte - lower_byte + r_pnt_q + vrf_pnt_q;
+            // And then shuffle it
+            automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
-          // Is this byte a valid byte in the VRF word?
-          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.vtype.vsew)) begin
-            // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
-            automatic int vrf_lane   = vrf_byte >> 3;
-            automatic int vrf_offset = vrf_byte[2:0];
+            // Is this byte a valid byte in the VRF word?
+            if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.vtype.vsew)) begin
+              // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
+              automatic int vrf_lane   = vrf_byte >> 3;
+              automatic int vrf_offset = vrf_byte[2:0];
 
-            // Copy data and byte strobe
-            result_queue_d[result_queue_write_pnt_q][vrf_lane].wdata[8*vrf_offset +: 8] = axi_r_i.data[8*axi_byte +: 8];
-            result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset]           = 1'b1;
+              // Copy data and byte strobe
+              result_queue_d[result_queue_write_pnt_q][vrf_lane].wdata[8*vrf_offset +: 8] = axi_r_i.data[8*axi_byte +: 8];
+              result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset]           = 1'b1;
 
-            // Account for this byte
-            r_pnt_d++;
-            vrf_pnt_d++;
+              // Account for this byte
+              r_pnt_d++;
+              vrf_pnt_d++;
+            end
           end
         end
-      end
 
-      // Initialize id and addr fields of the result queue requests
-      for (int lane = 0; lane < NrLanes; lane++) begin
-        result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-        result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) / NrLanes);
+        // Initialize id and addr fields of the result queue requests
+        for (int lane = 0; lane < NrLanes; lane++) begin
+          result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
+          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+        end
       end
 
       // We have a word ready to be sent to the lanes
@@ -281,7 +283,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // Consumed all valid bytes in this R beat
-      if (r_pnt_d == upper_byte || issue_cnt_d == '0) begin
+      if (r_pnt_d == upper_byte + 1 || issue_cnt_d == '0) begin
         // Request another beat
         axi_r_ready_o = 1'b1;
         r_pnt_d       = '0;

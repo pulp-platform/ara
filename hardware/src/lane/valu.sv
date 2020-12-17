@@ -232,7 +232,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_d[result_queue_write_pnt_q] = '{
           wdata: valu_result,
           be   : be(element_cnt, vinsn_issue.vtype.vsew),
-          addr : vaddr(vinsn_issue.vd, NrLanes) + (vinsn_issue.vl - issue_cnt_q),
+          addr : vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)),
           id   : vinsn_issue.id
         };
         result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
