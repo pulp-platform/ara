@@ -345,7 +345,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
           result_queue_read_pnt_d = result_queue_read_pnt_q + 1;
 
         // Decrement the counter of results waiting to be written
-        result_queue_cnt_d = result_queue_cnt_q - 1;
+        result_queue_cnt_d -= 1;
 
         // Decrement the counter of remaining vector elements waiting to be written
         commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
