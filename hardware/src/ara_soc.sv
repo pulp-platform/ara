@@ -22,8 +22,8 @@ module ara_soc import axi_pkg::*; #(
     // RVV Parameters
     parameter int  unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     // AXI Interface
-    parameter int  unsigned AxiDataWidth = 0,
-    parameter int  unsigned AxiAddrWidth = 0,
+    parameter int  unsigned AxiDataWidth = 32*NrLanes,
+    parameter int  unsigned AxiAddrWidth = 64,
     parameter int  unsigned AxiUserWidth = 1,
     parameter int  unsigned AxiIdWidth   = 6,
     // Dependant parameters. DO NOT CHANGE!
