@@ -288,6 +288,41 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 ara_req_valid_d  = 1'b0;
               end
             end
+
+            OPMVV: begin
+              // These generate a request to Ara's backend
+              ara_req_d.vs1     = insn.varith_type.rs1;
+              ara_req_d.use_vs1 = 1'b1;
+              ara_req_d.vs2     = insn.varith_type.rs2;
+              ara_req_d.use_vs2 = 1'b1;
+              ara_req_d.vd      = insn.varith_type.rd;
+              ara_req_d.use_vd  = 1'b1;
+              ara_req_d.vm      = insn.varith_type.vm;
+              ara_req_valid_d   = 1'b1;
+
+              // Decode based on the func6 field
+              case (insn.varith_type.func6)
+                6'b011000: ara_req_d.op = ara_pkg::VMANDNOT;
+                6'b011001: ara_req_d.op = ara_pkg::VMAND;
+                6'b011010: ara_req_d.op = ara_pkg::VMOR;
+                6'b011011: ara_req_d.op = ara_pkg::VMXOR;
+                6'b011100: ara_req_d.op = ara_pkg::VMORNOT;
+                6'b011101: ara_req_d.op = ara_pkg::VMNAND;
+                6'b011110: ara_req_d.op = ara_pkg::VMNOR;
+                6'b011111: ara_req_d.op = ara_pkg::VMXNOR;
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              endcase
+
+              // Instruction is invalid if the vtype is invalid
+              if (vtype_q.vill) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            end
           endcase
         end
 
