@@ -55,7 +55,11 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes
     input  elen_t            [NrLanes-1:0] stu_operand_i,
     input  logic             [NrLanes-1:0] stu_operand_valid_i,
-    output logic                           stu_operand_ready_o
+    output logic                           stu_operand_ready_o,
+    // Interface with the Mask unit
+    input  strb_t            [NrLanes-1:0] mask_i,
+    input  logic             [NrLanes-1:0] mask_valid_i,
+    output logic                           mask_ready_o
   );
 
   import cf_math_pkg::idx_width;
@@ -159,6 +163,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     axi_w_valid_o           = 1'b0;
     axi_b_ready_o           = 1'b0;
     stu_operand_ready_o     = 1'b0;
+    mask_ready_o            = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -172,7 +177,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // - We received all the operands from the lanes
     // - The address generator generated an AXI AW request for this write beat
     // - The AXI subsystem is ready to accept this W beat
-    if (vinsn_issue_valid && &stu_operand_valid_i && axi_addrgen_req_valid_i && axi_w_ready_i) begin
+    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && axi_w_ready_i) begin
       // Bytes valid in the current W beat
       automatic shortint unsigned lower_byte = axi_pkg::beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
       automatic shortint unsigned upper_byte = axi_pkg::beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
@@ -194,7 +199,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
             // Copy data
             axi_w_o.data[8*axi_byte +: 8] = stu_operand_i[vrf_lane][8*vrf_offset +: 8];
-            axi_w_o.strb[axi_byte]        = 1'b1;
+            axi_w_o.strb[axi_byte]        = vinsn_issue.vm || mask_i[vrf_lane][vrf_offset];
 
             // Account for this byte
             vrf_pnt_d++;
@@ -220,6 +225,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           vrf_pnt_d           = '0;
           // Acknowledge the operands with the lanes
           stu_operand_ready_o = '1;
+          // Acknowledge the mask operand
+          mask_ready_o        = !vinsn_issue.vm;
           // Account for the results that were issued
           issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
           if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))

@@ -25,7 +25,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     parameter type          vaddr_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
     parameter int  unsigned DataWidth = $bits(elen_t),
-    parameter type          strb_t    = logic [DataWidth/8-1:0]
+    parameter int  unsigned StrbWidth = DataWidth/8,
+    parameter type          strb_t    = logic [StrbWidth-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -44,7 +45,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     output vaddr_t                       alu_result_addr_o,
     output elen_t                        alu_result_wdata_o,
     output strb_t                        alu_result_be_o,
-    input  logic                         alu_result_gnt_i
+    input  logic                         alu_result_gnt_i,
+    // Interface with the Mask unit
+    input  strb_t                        mask_i,
+    input  logic                         mask_valid_i,
+    output logic                         mask_ready_o
   );
 
   import cf_math_pkg::idx_width;
@@ -211,6 +216,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     // Do not acknowledge any operands
     alu_operand_ready_o = '0;
+    mask_ready_o        = '0;
 
     /**************************************
      *  Write data into the result queue  *
@@ -219,7 +225,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid && !result_queue_full) begin
       // Do we have all the operands necessary for this instruction?
-      if ((alu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue.use_vs1)) begin
+      if ((alu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm)) begin
         // How many elements are we committing with this word?
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
         if (element_cnt > issue_cnt_q)
@@ -227,11 +233,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Acknowledge the operands of this instruction
         alu_operand_ready_o = {vinsn_issue.use_vs2, vinsn_issue.use_vs1};
+        mask_ready_o        = !vinsn_issue.vm;
 
         // Store the result in the result queue
         result_queue_d[result_queue_write_pnt_q] = '{
           wdata: valu_result,
-          be   : be(element_cnt, vinsn_issue.vtype.vsew),
+          be   : be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm ? {StrbWidth{1'b1}} : mask_i),
           addr : vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)),
           id   : vinsn_issue.id
         };

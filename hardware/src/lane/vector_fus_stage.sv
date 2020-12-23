@@ -56,8 +56,20 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output vaddr_t                       mfpu_result_addr_o,
     output elen_t                        mfpu_result_wdata_o,
     output strb_t                        mfpu_result_be_o,
-    input  logic                         mfpu_result_gnt_i
+    input  logic                         mfpu_result_gnt_i,
+    // Interface with the Mask unit
+    input  strb_t                        mask_i,
+    input  logic                         mask_valid_i,
+    output logic                         mask_ready_o
   );
+
+  /*************
+   *  Signals  *
+   *************/
+
+  logic alu_mask_ready;
+  assign mask_ready_o = alu_mask_ready;
+
 
   /****************
    *  Vector ALU  *
@@ -84,7 +96,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .alu_result_id_o      (alu_result_id_o      ),
     .alu_result_wdata_o   (alu_result_wdata_o   ),
     .alu_result_be_o      (alu_result_be_o      ),
-    .alu_result_gnt_i     (alu_result_gnt_i     )
+    .alu_result_gnt_i     (alu_result_gnt_i     ),
+    // Interface with the Mask unit
+    .mask_i               (mask_i               ),
+    .mask_valid_i         (mask_valid_i         ),
+    .mask_ready_o         (alu_mask_ready       )
   );
 
   assign mfpu_ready_o         = 1'b0;

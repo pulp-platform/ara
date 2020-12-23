@@ -60,6 +60,11 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                    addrgen_operand_ready_o,
+    // Interface with the Mask unit
+    input  strb_t     [NrLanes-1:0] mask_i,
+    input  logic      [NrLanes-1:0] mask_valid_i,
+    output logic                    vldu_mask_ready_o,
+    output logic                    vstu_mask_ready_o,
     // Results
     output logic      [NrLanes-1:0] ldu_result_req_o,
     output vid_t      [NrLanes-1:0] ldu_result_id_o,
@@ -168,6 +173,10 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_addrgen_req_i      (axi_addrgen_req          ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid    ),
     .axi_addrgen_req_ready_o(ldu_axi_addrgen_req_ready),
+    // Interface with the Mask unit
+    .mask_i                 (mask_i                   ),
+    .mask_valid_i           (mask_valid_i             ),
+    .mask_ready_o           (vldu_mask_ready_o        ),
     // Interface with the lanes
     .ldu_result_req_o       (ldu_result_req_o         ),
     .ldu_result_addr_o      (ldu_result_addr_o        ),
@@ -209,6 +218,10 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_addrgen_req_i      (axi_addrgen_req          ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid    ),
     .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready),
+    // Interface with the Mask unit
+    .mask_i                 (mask_i                   ),
+    .mask_valid_i           (mask_valid_i             ),
+    .mask_ready_o           (vstu_mask_ready_o        ),
     // Interface with the lanes
     .stu_operand_i          (stu_operand_i            ),
     .stu_operand_valid_i    (stu_operand_valid_i      ),

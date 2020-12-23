@@ -52,7 +52,11 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     output vaddr_t           [NrLanes-1:0] ldu_result_addr_o,
     output elen_t            [NrLanes-1:0] ldu_result_wdata_o,
     output strb_t            [NrLanes-1:0] ldu_result_be_o,
-    input  logic             [NrLanes-1:0] ldu_result_gnt_i
+    input  logic             [NrLanes-1:0] ldu_result_gnt_i,
+    // Interface with the Mask unit
+    input  strb_t            [NrLanes-1:0] mask_i,
+    input  logic             [NrLanes-1:0] mask_valid_i,
+    output logic                           mask_ready_o
   );
 
   import cf_math_pkg::idx_width;
@@ -210,6 +214,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     axi_addrgen_req_ready_o = 1'b0;
     pe_resp                 = '0;
     axi_r_ready_o           = 1'b0;
+    mask_ready_o            = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -228,7 +233,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       automatic shortint unsigned upper_byte = axi_pkg::beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
 
       // Is there a vector instruction ready to be issued?
-      if (vinsn_issue_valid) begin
+      // Do we have the operands for it?
+      if (vinsn_issue_valid && (vinsn_issue.vm || (|mask_valid_i))) begin
         // Copy data from the R channel into the result queue
         for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
           // Is this byte a valid byte in the R beat?
@@ -246,7 +252,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
               // Copy data and byte strobe
               result_queue_d[result_queue_write_pnt_q][vrf_lane].wdata[8*vrf_offset +: 8] = axi_r_i.data[8*axi_byte +: 8];
-              result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset]           = 1'b1;
+              result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset]           = vinsn_issue.vm || mask_i[vrf_lane][vrf_offset];
 
               // Account for this byte
               r_pnt_d++;
@@ -273,6 +279,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Trigger the request signal
         result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
+
+        // Acknowledge the mask operands
+        mask_ready_o = !vinsn_issue.vm;
 
         // Reset the pointer in the VRF word
         vrf_pnt_d   = '0;
