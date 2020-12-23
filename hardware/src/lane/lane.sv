@@ -61,7 +61,15 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  vaddr_t                                         ldu_result_addr_i,
     input  elen_t                                          ldu_result_wdata_i,
     input  strb_t                                          ldu_result_be_i,
-    output logic                                           ldu_result_gnt_o
+    output logic                                           ldu_result_gnt_o,
+    // Interface with the Mask unit
+    output elen_t                                          mask_operand_o,
+    output logic                                           mask_operand_valid_o,
+    input  logic                                           mask_operand_ready_i,
+    // Interface between the Mask unit and the VFUs
+    input  strb_t                                          mask_i,
+    input  logic                                           mask_valid_i,
+    output logic                                           mask_ready_o
   );
 
   /***************
@@ -255,7 +263,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Address Generation Unit
     .addrgen_operand_o      (addrgen_operand_o      ),
     .addrgen_operand_valid_o(addrgen_operand_valid_o),
-    .addrgen_operand_ready_i(addrgen_operand_ready_i)
+    .addrgen_operand_ready_i(addrgen_operand_ready_i),
+    // Mask Unit
+    .mask_operand_o         (mask_operand_o         ),
+    .mask_operand_valid_o   (mask_operand_valid_o   ),
+    .mask_operand_ready_i   (mask_operand_ready_i   )
   );
 
   /*****************************
@@ -298,7 +310,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Multiplier/FPU
     .mfpu_operand_i       (mfpu_operand       ),
     .mfpu_operand_valid_i (mfpu_operand_valid ),
-    .mfpu_operand_ready_o (mfpu_operand_ready )
+    .mfpu_operand_ready_o (mfpu_operand_ready ),
+    // Interface with the Mask unit
+    .mask_i               (mask_i             ),
+    .mask_valid_i         (mask_valid_i       ),
+    .mask_ready_o         (mask_ready_o       )
   );
 
   /****************

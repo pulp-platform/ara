@@ -43,7 +43,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
     // Address Generation unit
     output elen_t                       addrgen_operand_o,
     output logic                        addrgen_operand_valid_o,
-    input  logic                        addrgen_operand_ready_i
+    input  logic                        addrgen_operand_ready_i,
+    // Mask unit
+    output elen_t                       mask_operand_o,
+    output logic                        mask_operand_valid_o,
+    input  logic                        mask_operand_ready_i
   );
 
   /*********
@@ -154,6 +158,24 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
     .operand_o             (addrgen_operand_o              ),
     .operand_valid_o       (addrgen_operand_valid_o        ),
     .operand_ready_i       (addrgen_operand_ready_i        )
+  );
+
+  /***************
+   *  Mask Unit  *
+   ***************/
+
+  operand_queue #(
+    .BufferDepth(1)
+  ) i_operand_queue_mask_a (
+    .clk_i                 (clk_i                       ),
+    .rst_ni                (rst_ni                      ),
+    .operand_i             (operand_i[MaskA]            ),
+    .operand_valid_i       (operand_valid_i[MaskA]      ),
+    .operand_issued_i      (operand_issued_i[MaskA]     ),
+    .operand_queue_ready_o (operand_queue_ready_o[MaskA]),
+    .operand_o             (mask_operand_o              ),
+    .operand_valid_o       (mask_operand_valid_o        ),
+    .operand_ready_i       (mask_operand_ready_i        )
   );
 
 endmodule : operand_queues_stage

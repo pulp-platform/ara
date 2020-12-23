@@ -32,8 +32,8 @@ module ara import ara_pkg::*; #(
     parameter type          axi_req_t    = logic,
     parameter type          axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
-    // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, and the slide unit.
-    parameter int  unsigned NrPEs        = NrLanes + 3
+    // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, the slide unit, and the mask unit.
+    parameter int  unsigned NrPEs        = NrLanes + 4
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -150,6 +150,13 @@ module ara import ara_pkg::*; #(
   elen_t  [NrLanes-1:0] addrgen_operand;
   logic   [NrLanes-1:0] addrgen_operand_valid;
   logic                 addrgen_operand_ready;
+  // Mask unit operands and results
+  elen_t  [NrLanes-1:0] masku_operand;
+  logic   [NrLanes-1:0] masku_operand_valid;
+  logic   [NrLanes-1:0] masku_operand_ready;
+  strb_t  [NrLanes-1:0] mask;
+  logic   [NrLanes-1:0] mask_valid;
+  logic   [NrLanes-1:0] lane_mask_ready;
   // Results
   logic   [NrLanes-1:0] ldu_result_req;
   vid_t   [NrLanes-1:0] ldu_result_id;
@@ -191,13 +198,24 @@ module ara import ara_pkg::*; #(
       // Interface with the address generation unit
       .addrgen_operand_o      (addrgen_operand[lane]       ),
       .addrgen_operand_valid_o(addrgen_operand_valid[lane] ),
-      .addrgen_operand_ready_i(addrgen_operand_ready       )
+      .addrgen_operand_ready_i(addrgen_operand_ready       ),
+      // Interface with the mask unit
+      .mask_operand_o         (masku_operand[lane]         ),
+      .mask_operand_valid_o   (masku_operand_valid[lane]   ),
+      .mask_operand_ready_i   (masku_operand_ready[lane]   ),
+      .mask_i                 (mask[lane]                  ),
+      .mask_valid_i           (mask_valid[lane]            ),
+      .mask_ready_o           (lane_mask_ready[lane]       )
     );
   end: gen_lanes
 
   /****************************
    *  Vector Load/Store Unit  *
    ****************************/
+
+  // Interface with the Mask unit
+  logic vldu_mask_ready;
+  logic vstu_mask_ready;
 
   vlsu #(
     .NrLanes     (NrLanes     ),
@@ -226,6 +244,11 @@ module ara import ara_pkg::*; #(
     .pe_resp_o              (pe_resp[NrLanes +: 2]     ),
     .addrgen_ack_o          (addrgen_ack               ),
     .addrgen_error_o        (addrgen_error             ),
+    // Interface with the Mask unit
+    .mask_i                 (mask                      ),
+    .mask_valid_i           (mask_valid                ),
+    .vldu_mask_ready_o      (vldu_mask_ready           ),
+    .vstu_mask_ready_o      (vstu_mask_ready           ),
     // Interface with the lanes
     // Store unit
     .stu_operand_i          (stu_operand               ),
@@ -250,6 +273,33 @@ module ara import ara_pkg::*; #(
 
   assign pe_req_ready[NrLanes + 2] = 1'b1;
   assign pe_resp[NrLanes + 2]      = '0;
+
+  /***************
+   *  Mask unit  *
+   ***************/
+
+  masku #(
+    .NrLanes(NrLanes),
+    .vaddr_t(vaddr_t)
+  ) i_masku (
+    .clk_i                (clk_i                  ),
+    .rst_ni               (rst_ni                 ),
+    // Interface with the main sequencer
+    .pe_req_i             (pe_req                 ),
+    .pe_req_valid_i       (pe_req_valid           ),
+    .pe_req_ready_o       (pe_req_ready[NrLanes+3]),
+    .pe_resp_o            (pe_resp[NrLanes+3]     ),
+    // Interface with the lanes
+    .masku_operand_i      (masku_operand          ),
+    .masku_operand_valid_i(masku_operand_valid    ),
+    .masku_operand_ready_o(masku_operand_ready    ),
+    // Interface with the VFUs
+    .mask_o               (mask                   ),
+    .mask_valid_o         (mask_valid             ),
+    .lane_mask_ready_i    (lane_mask_ready        ),
+    .vldu_mask_ready_i    (vldu_mask_ready        ),
+    .vstu_mask_ready_i    (vstu_mask_ready        )
+  );
 
   /****************
    *  Assertions  *

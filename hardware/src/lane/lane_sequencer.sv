@@ -243,6 +243,21 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           end
         endcase
 
+        // This vector instruction uses masks
+        operand_request_i[MaskA] = '{
+          id     : pe_req_i.id,
+          vs     : VMASK,
+          // Since this request goes outside of the lane, we might need to request an
+          // extra operand regardless of whether it is valid in this lane or not.
+          // TODO: Check that!
+          vl     : pe_req_i.vl / NrLanes + $unsigned(|pe_req_i.vl[cf_math_pkg::idx_width(NrLanes)-1:0]),
+          vstart : vfu_operation_d.vstart,
+          vtype  : pe_req_i.vtype,
+          hazard : pe_req_i.hazard_vm,
+          default: '0
+        };
+        operand_request_push[MaskA] = !pe_req_i.vm;
+
         // The operand requesters are busy. Abort the request and wait for another cycle.
         if (|(operand_request_push & operand_request_valid_o)) begin
           operand_request_push         = '0;

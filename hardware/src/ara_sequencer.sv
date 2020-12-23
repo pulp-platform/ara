@@ -23,8 +23,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     // RVV Parameters
     parameter int unsigned NrLanes = 1,          // Number of parallel vector lanes
     // Dependant parameters. DO NOT CHANGE!
-    // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, and the slide unit.
-    parameter int unsigned NrPEs   = NrLanes + 3
+    // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, the slide unit, and the mask unit.
+    parameter int unsigned NrPEs   = NrLanes + 4
   ) (
     input  logic                  clk_i,
     input  logic                  rst_ni,
@@ -159,6 +159,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
                   pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
             endcase
 
+            // Masked vector instruction also run on the mask unit
+            pe_vinsn_running_d[NrLanes + 3][vinsn_next_id] = !ara_req_i.vm;
 
             // Some instructions need to wait for an acknowledgment
             // before being committed with Ariane
@@ -199,7 +201,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               pe_req_d.hazard_vs1[write_list_d[ara_req_i.vs1].vid] |= write_list_d[ara_req_i.vs1].valid;
             if (ara_req_i.use_vs2)
               pe_req_d.hazard_vs2[write_list_d[ara_req_i.vs2].vid] |= write_list_d[ara_req_i.vs2].valid;
-            if (ara_req_i.vm)
+            if (!ara_req_i.vm)
               pe_req_d.hazard_vm[write_list_d[VMASK].vid] |= write_list_d[VMASK].valid;
 
             // WAR
@@ -222,7 +224,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               read_list_d[ara_req_i.vs1] = '{vid: vinsn_next_id, valid: 1'b1};
             if (ara_req_i.use_vs2)
               read_list_d[ara_req_i.vs2] = '{vid: vinsn_next_id, valid: 1'b1};
-            if (ara_req_i.vm)
+            if (!ara_req_i.vm)
               read_list_d[VMASK] = '{vid: vinsn_next_id, valid: 1'b1};
           end else begin
             // Wait until the PEs are ready
