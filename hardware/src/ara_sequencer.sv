@@ -50,6 +50,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
    *  Running vector instructions  *
    *********************************/
 
+  typedef enum {
+    OffsetLoad, OffsetStore, OffsetMask, OffsetSlide
+  } vfu_offset_e;
+
   // A set bit indicates that the corresponding vector instruction is running at that PE.
   logic [NrPEs-1:0][NrVInsn-1:0] pe_vinsn_running_d, pe_vinsn_running_q;
 
@@ -103,9 +107,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   // This function determines the VFU responsiple for handling this operation.
   function automatic vfu_e vfu(ara_op_e op);
     case (op) inside
-      [VADD:VXOR]: vfu = VFU_Alu;
-      [VLE:VLXE] : vfu = VFU_LoadUnit;
-      [VSE:VSXE] : vfu = VFU_StoreUnit;
+      [VADD:VXOR]      : vfu = VFU_Alu;
+      [VMANDNOT:VMXNOR]: vfu = VFU_MaskUnit;
+      [VLE:VLXE]       : vfu = VFU_LoadUnit;
+      [VSE:VSXE]       : vfu = VFU_StoreUnit;
     endcase
   endfunction: vfu
 
@@ -151,16 +156,17 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
             // Remember that the vector instruction is running
             case (vfu(ara_req_i.op))
-              VFU_LoadUnit : pe_vinsn_running_d[NrLanes][vinsn_next_id]     = 1'b1;
-              VFU_StoreUnit: pe_vinsn_running_d[NrLanes + 1][vinsn_next_id] = 1'b1;
-              VFU_SlideUnit: pe_vinsn_running_d[NrLanes + 2][vinsn_next_id] = 1'b1;
+              VFU_LoadUnit : pe_vinsn_running_d[NrLanes + OffsetLoad][vinsn_next_id]  = 1'b1;
+              VFU_StoreUnit: pe_vinsn_running_d[NrLanes + OffsetStore][vinsn_next_id] = 1'b1;
+              VFU_SlideUnit: pe_vinsn_running_d[NrLanes + OffsetSlide][vinsn_next_id] = 1'b1;
+              VFU_MaskUnit : pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_next_id]  = 1'b1;
               default: // Instruction is running on the lanes
                 for (int l = 0; l < NrLanes; l++)
                   pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
             endcase
 
-            // Masked vector instruction also run on the mask unit
-            pe_vinsn_running_d[NrLanes + 3][vinsn_next_id] = !ara_req_i.vm;
+            // Masked vector instructions also run on the mask unit
+            pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_next_id] = !ara_req_i.vm;
 
             // Some instructions need to wait for an acknowledgment
             // before being committed with Ariane
@@ -195,6 +201,23 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             /*************
              *  Hazards  *
              *************/
+
+            // Structural
+            case (pe_req_d.vfu)
+              // There is a structural hazard between the Store Unit and the Mask Unit (used for OPVMM instructions),
+              // since they share an instruction queue.
+              // If that hazard is active, do not activate the request and wait.
+              VFU_StoreUnit:
+                if (|pe_vinsn_running_q[NrLanes + OffsetMask]) begin
+                  ara_req_ready_o = 1'b0;
+                  pe_req_valid_d  = 1'b0;
+                end
+              VFU_MaskUnit:
+                if (|pe_vinsn_running_q[NrLanes + OffsetStore]) begin
+                  ara_req_ready_o = 1'b0;
+                  pe_req_valid_d  = 1'b0;
+                end
+            endcase
 
             // RAW
             if (ara_req_i.use_vs1)
