@@ -128,9 +128,9 @@ package ara_pkg;
   // It is important that all the VFUs that can write back to the VRF
   // are grouped towards the beginning of the enumeration. The store unit
   // cannot do so, therefore it is at the end of the enumeration.
-  localparam int unsigned NrVFUs = 5;
+  localparam int unsigned NrVFUs = 6;
   typedef enum logic [$clog2(NrVFUs)-1:0] {
-    VFU_Alu, VFU_MFpu, VFU_SlideUnit, VFU_LoadUnit, VFU_StoreUnit
+    VFU_Alu, VFU_MFpu, VFU_SlideUnit, VFU_MaskUnit, VFU_LoadUnit, VFU_StoreUnit
   } vfu_e;
 
   typedef struct packed {
@@ -252,7 +252,7 @@ package ara_pkg;
   // There are seven operand queues, serving operands to the different functional units of each lane
   localparam int unsigned NrOperandQueues = 8;
   typedef enum logic [$clog2(NrOperandQueues)-1:0] {
-    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, StA, AddrGenA, MaskA
+    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, StA, AddrGenA, MaskM
   } opqueue_e;
 
   // Each lane has eight VRF banks
