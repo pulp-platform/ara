@@ -300,11 +300,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Copy data from the mask operands into the result queue
       for (int mask_byte = 0; mask_byte < NrLanes*StrbWidth; mask_byte++) begin
         // Map mask_byte to the corresponding byte in the VRF word (sequential)
-        automatic int vrf_seq_byte = mask_byte + vrf_pnt_q;
+        // Here, we use the vrf_pnt_q as a pointer to which *bit* was last used for producing mask operands.
+        automatic int vrf_seq_byte = ((mask_byte << $clog2(StrbWidth)) + vrf_pnt_q) >> $clog2(StrbWidth);
         // And then shuffle it
         automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
         // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
+        // NOTE: This does not work if the number of lanes is not a power of two.
+        // If that is needed, the following two lines must be changed accordingly.
         automatic int vrf_lane   = vrf_byte >> 3;
         automatic int vrf_offset = vrf_byte[2:0];
 
@@ -324,10 +327,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Increment result queue pointers and counters
       mask_queue_cnt_d += 1;
-      if (mask_queue_cnt_q == MaskQueueDepth-1)
-        mask_queue_cnt_d = '0;
+      if (mask_queue_write_pnt_q == MaskQueueDepth-1)
+        mask_queue_write_pnt_d = '0;
       else
-        mask_queue_write_pnt_d += 1;
+        mask_queue_write_pnt_d = mask_queue_write_pnt_q + 1;
 
       // Trigger the request signal
       mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};

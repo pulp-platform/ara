@@ -272,10 +272,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.vtype.vsew)))) begin
         // Increment result queue pointers and counters
         result_queue_cnt_d += 1;
-        if (result_queue_cnt_q == ResultQueueDepth-1)
-          result_queue_cnt_d = '0;
+        if (result_queue_write_pnt_q == ResultQueueDepth-1)
+          result_queue_write_pnt_d = '0;
         else
-          result_queue_write_pnt_d += 1;
+          result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
 
         // Trigger the request signal
         result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};

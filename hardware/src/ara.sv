@@ -328,6 +328,9 @@ module ara import ara_pkg::*; #(
   if (NrLanes == 0)
     $error("[ara] Ara needs to have at least one lane.");
 
+  if (NrLanes != 2**$clog2(NrLanes))
+    $error("[ara] The number of lanes must be a power of two.");
+
   if (NrLanes > MaxNrLanes)
     $error("[ara] Ara supports at most MaxNrLanes lanes.");
 
