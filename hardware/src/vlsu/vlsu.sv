@@ -158,32 +158,32 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes     (NrLanes     ),
     .vaddr_t     (vaddr_t     )
   ) i_vldu (
-    .clk_i                  (clk_i                    ),
-    .rst_ni                 (rst_ni                   ),
+    .clk_i                  (clk_i                     ),
+    .rst_ni                 (rst_ni                    ),
     // AXI Memory Interface
-    .axi_r_i                (axi_resp.r               ),
-    .axi_r_valid_i          (axi_resp.r_valid         ),
-    .axi_r_ready_o          (axi_req.r_ready          ),
+    .axi_r_i                (axi_resp.r                ),
+    .axi_r_valid_i          (axi_resp.r_valid          ),
+    .axi_r_ready_o          (axi_req.r_ready           ),
     // Interface with the main sequencer
-    .pe_req_i               (pe_req_i                 ),
-    .pe_req_valid_i         (pe_req_valid_i           ),
-    .pe_req_ready_o         (pe_req_ready_o[0]        ),
-    .pe_resp_o              (pe_resp_o[0]             ),
+    .pe_req_i               (pe_req_i                  ),
+    .pe_req_valid_i         (pe_req_valid_i            ),
+    .pe_req_ready_o         (pe_req_ready_o[OffsetLoad]),
+    .pe_resp_o              (pe_resp_o[OffsetLoad]     ),
     // Interface with the address generator
-    .axi_addrgen_req_i      (axi_addrgen_req          ),
-    .axi_addrgen_req_valid_i(axi_addrgen_req_valid    ),
-    .axi_addrgen_req_ready_o(ldu_axi_addrgen_req_ready),
+    .axi_addrgen_req_i      (axi_addrgen_req           ),
+    .axi_addrgen_req_valid_i(axi_addrgen_req_valid     ),
+    .axi_addrgen_req_ready_o(ldu_axi_addrgen_req_ready ),
     // Interface with the Mask unit
-    .mask_i                 (mask_i                   ),
-    .mask_valid_i           (mask_valid_i             ),
-    .mask_ready_o           (vldu_mask_ready_o        ),
+    .mask_i                 (mask_i                    ),
+    .mask_valid_i           (mask_valid_i              ),
+    .mask_ready_o           (vldu_mask_ready_o         ),
     // Interface with the lanes
-    .ldu_result_req_o       (ldu_result_req_o         ),
-    .ldu_result_addr_o      (ldu_result_addr_o        ),
-    .ldu_result_id_o        (ldu_result_id_o          ),
-    .ldu_result_wdata_o     (ldu_result_wdata_o       ),
-    .ldu_result_be_o        (ldu_result_be_o          ),
-    .ldu_result_gnt_i       (ldu_result_gnt_i         )
+    .ldu_result_req_o       (ldu_result_req_o          ),
+    .ldu_result_addr_o      (ldu_result_addr_o         ),
+    .ldu_result_id_o        (ldu_result_id_o           ),
+    .ldu_result_wdata_o     (ldu_result_wdata_o        ),
+    .ldu_result_be_o        (ldu_result_be_o           ),
+    .ldu_result_gnt_i       (ldu_result_gnt_i          )
   );
 
   /***********************
@@ -198,34 +198,34 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes     (NrLanes     ),
     .vaddr_t     (vaddr_t     )
   ) i_vstu (
-    .clk_i                  (clk_i                    ),
-    .rst_ni                 (rst_ni                   ),
+    .clk_i                  (clk_i                      ),
+    .rst_ni                 (rst_ni                     ),
     // AXI Memory Interface
-    .axi_w_o                (axi_req.w                ),
-    .axi_w_valid_o          (axi_req.w_valid          ),
-    .axi_w_ready_i          (axi_resp.w_ready         ),
-    .axi_b_i                (axi_resp.b               ),
-    .axi_b_valid_i          (axi_resp.b_valid         ),
-    .axi_b_ready_o          (axi_req.b_ready          ),
+    .axi_w_o                (axi_req.w                  ),
+    .axi_w_valid_o          (axi_req.w_valid            ),
+    .axi_w_ready_i          (axi_resp.w_ready           ),
+    .axi_b_i                (axi_resp.b                 ),
+    .axi_b_valid_i          (axi_resp.b_valid           ),
+    .axi_b_ready_o          (axi_req.b_ready            ),
     // Interface with the dispatcher
-    .store_pending_o        (store_pending_o          ),
+    .store_pending_o        (store_pending_o            ),
     // Interface with the main sequencer
-    .pe_req_i               (pe_req_i                 ),
-    .pe_req_valid_i         (pe_req_valid_i           ),
-    .pe_req_ready_o         (pe_req_ready_o[1]        ),
-    .pe_resp_o              (pe_resp_o[1]             ),
+    .pe_req_i               (pe_req_i                   ),
+    .pe_req_valid_i         (pe_req_valid_i             ),
+    .pe_req_ready_o         (pe_req_ready_o[OffsetStore]),
+    .pe_resp_o              (pe_resp_o[OffsetStore]     ),
     // Interface with the address generator
-    .axi_addrgen_req_i      (axi_addrgen_req          ),
-    .axi_addrgen_req_valid_i(axi_addrgen_req_valid    ),
-    .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready),
+    .axi_addrgen_req_i      (axi_addrgen_req            ),
+    .axi_addrgen_req_valid_i(axi_addrgen_req_valid      ),
+    .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready  ),
     // Interface with the Mask unit
-    .mask_i                 (mask_i                   ),
-    .mask_valid_i           (mask_valid_i             ),
-    .mask_ready_o           (vstu_mask_ready_o        ),
+    .mask_i                 (mask_i                     ),
+    .mask_valid_i           (mask_valid_i               ),
+    .mask_ready_o           (vstu_mask_ready_o          ),
     // Interface with the lanes
-    .stu_operand_i          (stu_operand_i            ),
-    .stu_operand_valid_i    (stu_operand_valid_i      ),
-    .stu_operand_ready_o    (stu_operand_ready_o      )
+    .stu_operand_i          (stu_operand_i              ),
+    .stu_operand_valid_i    (stu_operand_valid_i        ),
+    .stu_operand_ready_o    (stu_operand_ready_o        )
   );
 
   /****************

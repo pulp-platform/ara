@@ -244,49 +244,49 @@ module ara import ara_pkg::*; #(
     .axi_resp_t  (axi_resp_t  ),
     .vaddr_t     (vaddr_t     )
   ) i_vlsu (
-    .clk_i                  (clk_i                     ),
-    .rst_ni                 (rst_ni                    ),
+    .clk_i                  (clk_i                                                 ),
+    .rst_ni                 (rst_ni                                                ),
     // AXI memory interface
-    .axi_req_o              (axi_req_o                 ),
-    .axi_resp_i             (axi_resp_i                ),
+    .axi_req_o              (axi_req_o                                             ),
+    .axi_resp_i             (axi_resp_i                                            ),
     // Interface with the dispatcher
-    .store_pending_o        (store_pending             ),
+    .store_pending_o        (store_pending                                         ),
     // Interface with the sequencer
-    .pe_req_i               (pe_req                    ),
-    .pe_req_valid_i         (pe_req_valid              ),
-    .pe_req_ready_o         (pe_req_ready[NrLanes +: 2]),
-    .pe_resp_o              (pe_resp[NrLanes +: 2]     ),
-    .addrgen_ack_o          (addrgen_ack               ),
-    .addrgen_error_o        (addrgen_error             ),
+    .pe_req_i               (pe_req                                                ),
+    .pe_req_valid_i         (pe_req_valid                                          ),
+    .pe_req_ready_o         (pe_req_ready[NrLanes+OffsetStore : NrLanes+OffsetLoad]),
+    .pe_resp_o              (pe_resp[NrLanes+OffsetStore : NrLanes+OffsetLoad]     ),
+    .addrgen_ack_o          (addrgen_ack                                           ),
+    .addrgen_error_o        (addrgen_error                                         ),
     // Interface with the Mask unit
-    .mask_i                 (mask                      ),
-    .mask_valid_i           (mask_valid                ),
-    .vldu_mask_ready_o      (vldu_mask_ready           ),
-    .vstu_mask_ready_o      (vstu_mask_ready           ),
+    .mask_i                 (mask                                                  ),
+    .mask_valid_i           (mask_valid                                            ),
+    .vldu_mask_ready_o      (vldu_mask_ready                                       ),
+    .vstu_mask_ready_o      (vstu_mask_ready                                       ),
     // Interface with the lanes
     // Store unit
-    .stu_operand_i          (stu_operand               ),
-    .stu_operand_valid_i    (stu_operand_valid         ),
-    .stu_operand_ready_o    (stu_operand_ready         ),
+    .stu_operand_i          (stu_operand                                           ),
+    .stu_operand_valid_i    (stu_operand_valid                                     ),
+    .stu_operand_ready_o    (stu_operand_ready                                     ),
     // Address Generation
-    .addrgen_operand_i      (addrgen_operand           ),
-    .addrgen_operand_valid_i(addrgen_operand_valid     ),
-    .addrgen_operand_ready_o(addrgen_operand_ready     ),
+    .addrgen_operand_i      (addrgen_operand                                       ),
+    .addrgen_operand_valid_i(addrgen_operand_valid                                 ),
+    .addrgen_operand_ready_o(addrgen_operand_ready                                 ),
     // Load unit
-    .ldu_result_req_o       (ldu_result_req            ),
-    .ldu_result_addr_o      (ldu_result_addr           ),
-    .ldu_result_id_o        (ldu_result_id             ),
-    .ldu_result_wdata_o     (ldu_result_wdata          ),
-    .ldu_result_be_o        (ldu_result_be             ),
-    .ldu_result_gnt_i       (ldu_result_gnt            )
+    .ldu_result_req_o       (ldu_result_req                                        ),
+    .ldu_result_addr_o      (ldu_result_addr                                       ),
+    .ldu_result_id_o        (ldu_result_id                                         ),
+    .ldu_result_wdata_o     (ldu_result_wdata                                      ),
+    .ldu_result_be_o        (ldu_result_be                                         ),
+    .ldu_result_gnt_i       (ldu_result_gnt                                        )
   );
 
   /****************
    *  Slide unit  *
    ****************/
 
-  assign pe_req_ready[NrLanes + 2] = 1'b1;
-  assign pe_resp[NrLanes + 2]      = '0;
+  assign pe_req_ready[NrLanes+OffsetSlide] = 1'b1;
+  assign pe_resp[NrLanes+OffsetSlide]      = '0;
 
   /***************
    *  Mask unit  *
@@ -296,29 +296,29 @@ module ara import ara_pkg::*; #(
     .NrLanes(NrLanes),
     .vaddr_t(vaddr_t)
   ) i_masku (
-    .clk_i                (clk_i                    ),
-    .rst_ni               (rst_ni                   ),
+    .clk_i                (clk_i                           ),
+    .rst_ni               (rst_ni                          ),
     // Interface with the main sequencer
-    .pe_req_i             (pe_req                   ),
-    .pe_req_valid_i       (pe_req_valid             ),
-    .pe_req_ready_o       (pe_req_ready[NrLanes + 3]),
-    .pe_resp_o            (pe_resp[NrLanes + 3]     ),
+    .pe_req_i             (pe_req                          ),
+    .pe_req_valid_i       (pe_req_valid                    ),
+    .pe_req_ready_o       (pe_req_ready[NrLanes+OffsetMask]),
+    .pe_resp_o            (pe_resp[NrLanes+OffsetMask]     ),
     // Interface with the lanes
-    .masku_operand_i      (masku_operand            ),
-    .masku_operand_valid_i(masku_operand_valid      ),
-    .masku_operand_ready_o(masku_operand_ready      ),
-    .masku_result_req_o   (masku_result_req         ),
-    .masku_result_addr_o  (masku_result_addr        ),
-    .masku_result_id_o    (masku_result_id          ),
-    .masku_result_wdata_o (masku_result_wdata       ),
-    .masku_result_be_o    (masku_result_be          ),
-    .masku_result_gnt_i   (masku_result_gnt         ),
+    .masku_operand_i      (masku_operand                   ),
+    .masku_operand_valid_i(masku_operand_valid             ),
+    .masku_operand_ready_o(masku_operand_ready             ),
+    .masku_result_req_o   (masku_result_req                ),
+    .masku_result_addr_o  (masku_result_addr               ),
+    .masku_result_id_o    (masku_result_id                 ),
+    .masku_result_wdata_o (masku_result_wdata              ),
+    .masku_result_be_o    (masku_result_be                 ),
+    .masku_result_gnt_i   (masku_result_gnt                ),
     // Interface with the VFUs
-    .mask_o               (mask                     ),
-    .mask_valid_o         (mask_valid               ),
-    .lane_mask_ready_i    (lane_mask_ready          ),
-    .vldu_mask_ready_i    (vldu_mask_ready          ),
-    .vstu_mask_ready_i    (vstu_mask_ready          )
+    .mask_o               (mask                            ),
+    .mask_valid_o         (mask_valid                      ),
+    .lane_mask_ready_i    (lane_mask_ready                 ),
+    .vldu_mask_ready_i    (vldu_mask_ready                 ),
+    .vstu_mask_ready_i    (vstu_mask_ready                 )
   );
 
   /****************

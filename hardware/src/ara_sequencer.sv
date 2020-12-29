@@ -50,10 +50,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
    *  Running vector instructions  *
    *********************************/
 
-  typedef enum {
-    OffsetLoad, OffsetStore, OffsetMask, OffsetSlide
-  } vfu_offset_e;
-
   // A set bit indicates that the corresponding vector instruction is running at that PE.
   logic [NrPEs-1:0][NrVInsn-1:0] pe_vinsn_running_d, pe_vinsn_running_q;
 
@@ -104,7 +100,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   pe_req_t pe_req_d;
   logic    pe_req_valid_d;
 
-  // This function determines the VFU responsiple for handling this operation.
+  // This function determines the VFU responsible for handling this operation.
   function automatic vfu_e vfu(ara_op_e op);
     case (op) inside
       [VADD:VXOR]      : vfu = VFU_Alu;
@@ -155,7 +151,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_ready_o = 1'b1;
 
             // Remember that the vector instruction is running
-            case (vfu(ara_req_i.op))
+            unique case (vfu(ara_req_i.op))
               VFU_LoadUnit : pe_vinsn_running_d[NrLanes + OffsetLoad][vinsn_next_id]  = 1'b1;
               VFU_StoreUnit: pe_vinsn_running_d[NrLanes + OffsetStore][vinsn_next_id] = 1'b1;
               VFU_SlideUnit: pe_vinsn_running_d[NrLanes + OffsetSlide][vinsn_next_id] = 1'b1;

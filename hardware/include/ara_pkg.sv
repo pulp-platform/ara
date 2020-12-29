@@ -133,6 +133,15 @@ package ara_pkg;
     VFU_Alu, VFU_MFpu, VFU_SlideUnit, VFU_MaskUnit, VFU_LoadUnit, VFU_StoreUnit
   } vfu_e;
 
+  // Internally, each lane is treated as a processing element, between indexes
+  // 0 and NrLanes-1. Besides such PEs, functional units that act at a global
+  // scale also are with index given by NrLanes plus the following offset.
+  //
+  // The load and the store unit must be at the beginning of this enumeration.
+  typedef enum {
+    OffsetLoad, OffsetStore, OffsetMask, OffsetSlide
+  } vfu_offset_e;
+
   typedef struct packed {
     vid_t id; // ID of the vector instruction
 
