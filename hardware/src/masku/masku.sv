@@ -56,6 +56,28 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
+  /**************
+   *  Operands  *
+   **************/
+
+  elen_t [NrLanes-1:0] masku_operand_a_i;
+  logic  [NrLanes-1:0] masku_operand_a_valid_i;
+  logic  [NrLanes-1:0] masku_operand_a_ready_o;
+
+  elen_t [NrLanes-1:0] masku_operand_m_i;
+  logic  [NrLanes-1:0] masku_operand_m_valid_i;
+  logic  [NrLanes-1:0] masku_operand_m_ready_o;
+
+  for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_unpack_masku_operands
+    assign masku_operand_a_i[lane]        = masku_operand_i[lane][1];
+    assign masku_operand_a_valid_i[lane]  = masku_operand_valid_i[lane][1];
+    assign masku_operand_ready_o[lane][1] = masku_operand_a_ready_o[lane];
+
+    assign masku_operand_m_i[lane]        = masku_operand_i[lane][0];
+    assign masku_operand_m_valid_i[lane]  = masku_operand_valid_i[lane][0];
+    assign masku_operand_ready_o[lane][0] = masku_operand_m_ready_o[lane];
+  end: gen_unpack_masku_operands
+
   /******************************
    *  Vector instruction queue  *
    ******************************/
@@ -202,18 +224,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [NrLanes-1:0] alu_result;
 
   always_comb begin: p_mask_alu
-    // Default assignment
-    alu_result = '0;
-
-    case (vinsn_issue.op)
-      VMANDNOT: for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] & ~masku_operand_i[lane][0];
-      VMAND   : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] & masku_operand_i[lane][0];
-      VMOR    : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] | masku_operand_i[lane][0];
-      VMXOR   : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] ^ masku_operand_i[lane][0];
-      VMORNOT : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] | ~masku_operand_i[lane][0];
-      VMNAND  : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = ~(masku_operand_i[lane][1] & masku_operand_i[lane][0]);
-      VMNOR   : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = ~(masku_operand_i[lane][1] | masku_operand_i[lane][0]);
-      VMXNOR  : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = ~(masku_operand_i[lane][1] ^ masku_operand_i[lane][0]);
+    unique case (vinsn_issue.op)
+      VMANDNOT: alu_result = masku_operand_a_i & ~masku_operand_m_i;
+      VMAND   : alu_result = masku_operand_a_i & masku_operand_m_i;
+      VMOR    : alu_result = masku_operand_a_i | masku_operand_m_i;
+      VMXOR   : alu_result = masku_operand_a_i ^ masku_operand_m_i;
+      VMORNOT : alu_result = masku_operand_a_i | ~masku_operand_m_i;
+      VMNAND  : alu_result = ~(masku_operand_a_i & masku_operand_m_i);
+      VMNOR   : alu_result = ~(masku_operand_a_i | masku_operand_m_i);
+      VMXNOR  : alu_result = ~(masku_operand_a_i ^ masku_operand_m_i);
+      default : alu_result = '0;
     endcase
   end: p_mask_alu
 
@@ -234,8 +254,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // Pointers
   //
-  // We need a pointer to which byte in the full VRF word we are writing mask data into.
-  logic [idx_width(StrbWidth*NrLanes):0] vrf_pnt_d, vrf_pnt_q;
+  // We need a pointer to which bit on the full VRF word we are reading mask data from.
+  logic [idx_width(DataWidth*NrLanes):0] vrf_pnt_d, vrf_pnt_q;
 
   always_comb begin: p_masku
     // Maintain state
@@ -261,8 +281,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
 
     // We are not ready, by default
-    pe_resp               = '0;
-    masku_operand_ready_o = 1'b0;
+    pe_resp                 = '0;
+    masku_operand_a_ready_o = '0;
+    masku_operand_m_ready_o = '0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -275,7 +296,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // - There is an instruction ready to be issued.
     // - There are operands from the lanes available.
     // - There is place in the result queue to write the mask data read from the lanes
-    if (vinsn_issue_valid && &masku_operand_valid_i && !mask_queue_full) begin
+    if (vinsn_issue_valid && &masku_operand_m_valid_i && !mask_queue_full) begin
       // Copy data from the mask operands into the result queue
       for (int mask_byte = 0; mask_byte < NrLanes*StrbWidth; mask_byte++) begin
         // Map mask_byte to the corresponding byte in the VRF word (sequential)
@@ -288,14 +309,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         automatic int vrf_offset = vrf_byte[2:0];
 
         // A single bit from the mask operands can be used several times, depending on the vsew.
-        automatic int mask_seq_byte = vrf_seq_byte >> (int'(EW64) - int'(vinsn_issue.vtype.vsew));
+        automatic int mask_seq_byte = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
 
         // At which lane, and what is the byte offset in that lane, of the mask operand from vrf_seq_byte?
         automatic int mask_lane   = mask_seq_byte >> 3;
         automatic int mask_offset = mask_seq_byte[2:0];
 
         // Copy the mask operand
-        mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_i[mask_byte >> 3][0][mask_byte[2:0]];
+        mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_m_i[mask_lane][mask_offset];
       end
 
       // Account for the used operands
@@ -312,16 +333,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};
 
       // Account for the results that were issued
-      issue_cnt_d = issue_cnt_q - NrLanes * (8 << (int'(EW64) - vinsn_issue.vtype.vsew));
-      if (issue_cnt_q < NrLanes * (8 << (int'(EW64) - vinsn_issue.vtype.vsew)))
+      issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
+      if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
         issue_cnt_d = '0;
 
-      // Consumed all valid bytes in this R beat
+      // Consumed all valid bytes from the lane operands
       if (vrf_pnt_d == NrLanes*8 || issue_cnt_d == '0) begin
         // Request another beat
-        masku_operand_ready_o = '1;
+        masku_operand_m_ready_o = '1;
         // Reset the pointer
-        vrf_pnt_d             = '0;
+        vrf_pnt_d               = '0;
       end
     end
 
@@ -361,8 +382,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         mask_queue_cnt_d -= 1;
 
         // Decrement the counter of remaining vector elements waiting to be used
-        commit_cnt_d = commit_cnt_q - NrLanes * (8 << (int'(EW64) - vinsn_commit.vtype.vsew));
-        if (commit_cnt_q < (NrLanes * (8 << (int'(EW64) - vinsn_commit.vtype.vsew))))
+        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
+        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew))))
           commit_cnt_d = '0;
       end
 
