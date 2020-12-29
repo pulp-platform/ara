@@ -66,27 +66,6 @@ module ara import ara_pkg::*; #(
   localparam int unsigned StrbWidth = DataWidth / 8;
   typedef logic [StrbWidth-1:0] strb_t;
 
-  /********************************
-   *  Ariane interface registers  *
-   ********************************/
-
-  // Response
-  accelerator_resp_t acc_resp;
-  logic              acc_resp_valid;
-  logic              acc_resp_ready;
-  spill_register #(
-    .T(accelerator_resp_t)
-  ) i_acc_resp_register (
-    .clk_i  (clk_i           ),
-    .rst_ni (rst_ni          ),
-    .data_i (acc_resp        ),
-    .valid_i(acc_resp_valid  ),
-    .ready_o(acc_resp_ready  ),
-    .data_o (acc_resp_o      ),
-    .valid_o(acc_resp_valid_o),
-    .ready_i(acc_resp_ready_i)
-  );
-
   /****************
    *  Dispatcher  *
    ****************/
@@ -101,23 +80,23 @@ module ara import ara_pkg::*; #(
   logic      store_pending;
 
   ara_dispatcher i_dispatcher (
-    .clk_i           (clk_i          ),
-    .rst_ni          (rst_ni         ),
+    .clk_i           (clk_i           ),
+    .rst_ni          (rst_ni          ),
     // Interface with Ariane
-    .acc_req_i       (acc_req_i      ),
-    .acc_req_valid_i (acc_req_valid_i),
-    .acc_req_ready_o (acc_req_ready_o),
-    .acc_resp_o      (acc_resp       ),
-    .acc_resp_valid_o(acc_resp_valid ),
-    .acc_resp_ready_i(acc_resp_ready ),
+    .acc_req_i       (acc_req_i       ),
+    .acc_req_valid_i (acc_req_valid_i ),
+    .acc_req_ready_o (acc_req_ready_o ),
+    .acc_resp_o      (acc_resp_o      ),
+    .acc_resp_valid_o(acc_resp_valid_o),
+    .acc_resp_ready_i(acc_resp_ready_i),
     // Interface with the sequencer
-    .ara_req_o       (ara_req        ),
-    .ara_req_valid_o (ara_req_valid  ),
-    .ara_req_ready_i (ara_req_ready  ),
-    .ara_resp_i      (ara_resp       ),
-    .ara_resp_valid_i(ara_resp_valid ),
+    .ara_req_o       (ara_req         ),
+    .ara_req_valid_o (ara_req_valid   ),
+    .ara_req_ready_i (ara_req_ready   ),
+    .ara_resp_i      (ara_resp        ),
+    .ara_resp_valid_i(ara_resp_valid  ),
     // Interface with the Vector Store Unit
-    .store_pending_i (store_pending  )
+    .store_pending_i (store_pending   )
   );
 
   /***************
