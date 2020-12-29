@@ -632,6 +632,7 @@ module ariane import ariane_pkg::*; #(
     .flush_tlb_o            ( flush_tlb_ctrl_ex             ),
     .flush_dcache_o         ( dcache_flush_ctrl_cache       ),
     .flush_dcache_ack_i     ( dcache_flush_ack_cache_ctrl   ),
+    .acc_store_pending_i    ( acc_resp_i.store_pending      ),
 
     .halt_csr_i             ( halt_csr_ctrl                 ),
     .halt_o                 ( halt_ctrl                     ),
