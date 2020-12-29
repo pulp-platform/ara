@@ -63,6 +63,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   import cf_math_pkg::idx_width;
+  import axi_pkg::beat_lower_byte;
+  import axi_pkg::beat_upper_byte;
 
   /******************************
    *  Vector instruction queue  *
@@ -179,8 +181,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // - The AXI subsystem is ready to accept this W beat
     if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && axi_w_ready_i) begin
       // Bytes valid in the current W beat
-      automatic shortint unsigned lower_byte = axi_pkg::beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
-      automatic shortint unsigned upper_byte = axi_pkg::beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
+      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, AxiDataWidth/8, len_q);
+      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, AxiDataWidth/8, len_q);
 
       // Copy data from the operands into the W channel
       for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin

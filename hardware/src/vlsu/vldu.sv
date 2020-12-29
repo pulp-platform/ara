@@ -60,6 +60,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   import cf_math_pkg::idx_width;
+  import axi_pkg::beat_lower_byte;
+  import axi_pkg::beat_upper_byte;
 
   /******************************
    *  Vector instruction queue  *
@@ -229,8 +231,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // - There is place in the result queue to write the data read from the R channel
     if (axi_r_valid_i && axi_addrgen_req_valid_i && !result_queue_full) begin
       // Bytes valid in the current R beat
-      automatic shortint unsigned lower_byte = axi_pkg::beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
-      automatic shortint unsigned upper_byte = axi_pkg::beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, 8, len_q);
+      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, AxiDataWidth/8, len_q);
+      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, AxiDataWidth/8, len_q);
 
       // Is there a vector instruction ready to be issued?
       // Do we have the operands for it?
@@ -292,7 +294,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // Consumed all valid bytes in this R beat
-      if (r_pnt_d == upper_byte + 1 || issue_cnt_d == '0) begin
+      if (r_pnt_d == upper_byte - lower_byte + 1 || issue_cnt_d == '0) begin
         // Request another beat
         axi_r_ready_o = 1'b1;
         r_pnt_d       = '0;
