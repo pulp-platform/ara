@@ -207,11 +207,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
                 if (|pe_vinsn_running_q[NrLanes + OffsetMask]) begin
                   ara_req_ready_o = 1'b0;
                   pe_req_valid_d  = 1'b0;
+                  state_d         = IDLE;
                 end
               VFU_MaskUnit:
                 if (|pe_vinsn_running_q[NrLanes + OffsetStore]) begin
                   ara_req_ready_o = 1'b0;
                   pe_req_valid_d  = 1'b0;
+                  state_d         = IDLE;
                 end
             endcase
 
