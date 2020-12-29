@@ -36,7 +36,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     output logic              ara_req_valid_o,
     input  logic              ara_req_ready_i,
     input  ara_resp_t         ara_resp_i,
-    input  logic              ara_resp_valid_i
+    input  logic              ara_resp_valid_i,
+    // Interface with the Vector Store Unit
+    input  logic              store_pending_i
   );
 
   `include "common_cells/registers.svh"
@@ -102,8 +104,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
     acc_resp_o       = '{
-      trans_id: acc_req_i.trans_id,
-      default : '0
+      trans_id     : acc_req_i.trans_id,
+      store_pending: store_pending_i,
+      default      : '0
     };
 
     ara_req_d = '{

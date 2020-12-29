@@ -97,6 +97,8 @@ module ara import ara_pkg::*; #(
   logic      ara_req_ready;
   ara_resp_t ara_resp;
   logic      ara_resp_valid;
+  // Interface with the VSTU
+  logic      store_pending;
 
   ara_dispatcher i_dispatcher (
     .clk_i           (clk_i          ),
@@ -113,7 +115,9 @@ module ara import ara_pkg::*; #(
     .ara_req_valid_o (ara_req_valid  ),
     .ara_req_ready_i (ara_req_ready  ),
     .ara_resp_i      (ara_resp       ),
-    .ara_resp_valid_i(ara_resp_valid )
+    .ara_resp_valid_i(ara_resp_valid ),
+    // Interface with the Vector Store Unit
+    .store_pending_i (store_pending  )
   );
 
   /***************
@@ -234,6 +238,8 @@ module ara import ara_pkg::*; #(
     // AXI memory interface
     .axi_req_o              (axi_req_o                 ),
     .axi_resp_i             (axi_resp_i                ),
+    // Interface with the dispatcher
+    .store_pending_o        (store_pending             ),
     // Interface with the sequencer
     .pe_req_i               (pe_req                    ),
     .pe_req_valid_i         (pe_req_valid              ),

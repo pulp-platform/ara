@@ -41,6 +41,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     input  axi_b_t                         axi_b_i,
     input  logic                           axi_b_valid_i,
     output logic                           axi_b_ready_o,
+    // Interface with the dispatcher
+    output logic                           store_pending_o,
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
@@ -91,6 +93,11 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // Is the vector instruction queue full?
   logic vinsn_queue_full;
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
+
+  // Is the vector instruction queue empty?
+  logic vinsn_queue_empty;
+  assign vinsn_queue_empty = (vinsn_queue_q.commit_cnt == '0);
+  assign store_pending_o = !vinsn_queue_empty;
 
   // Do we have a vector instruction ready to be issued?
   pe_req_t vinsn_issue;

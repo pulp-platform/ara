@@ -42,6 +42,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // AXI Memory Interface
     output axi_req_t                axi_req_o,
     input  axi_resp_t               axi_resp_i,
+    // Interface with the dispatcher
+    output logic                    store_pending_o,
     // Interface with the sequencer
     input  pe_req_t                 pe_req_i,
     input  logic                    pe_req_valid_i,
@@ -196,6 +198,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_b_i                (axi_resp.b               ),
     .axi_b_valid_i          (axi_resp.b_valid         ),
     .axi_b_ready_o          (axi_req.b_ready          ),
+    // Interface with the dispatcher
+    .store_pending_o        (store_pending_o          ),
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                 ),
     .pe_req_valid_i         (pe_req_valid_i           ),
