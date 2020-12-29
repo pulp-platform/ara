@@ -29,23 +29,29 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     parameter int  unsigned StrbWidth = DataWidth/8,
     parameter type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
   ) (
-    input  logic                   clk_i,
-    input  logic                   rst_ni,
+    input  logic                        clk_i,
+    input  logic                        rst_ni,
     // Interface with the main sequencer
-    input  pe_req_t                pe_req_i,
-    input  logic                   pe_req_valid_i,
-    output logic                   pe_req_ready_o,
-    output pe_resp_t               pe_resp_o,
-    // Interface with the lanes' vector register file
-    input  elen_t    [NrLanes-1:0] masku_operand_i,
-    input  logic     [NrLanes-1:0] masku_operand_valid_i,
-    output logic     [NrLanes-1:0] masku_operand_ready_o,
+    input  pe_req_t                     pe_req_i,
+    input  logic                        pe_req_valid_i,
+    output logic                        pe_req_ready_o,
+    output pe_resp_t                    pe_resp_o,
+    // Interface with the lanes
+    input  elen_t    [NrLanes-1:0][1:0] masku_operand_i,
+    input  logic     [NrLanes-1:0][1:0] masku_operand_valid_i,
+    output logic     [NrLanes-1:0][1:0] masku_operand_ready_o,
+    output logic     [NrLanes-1:0]      masku_result_req_o,
+    output vid_t     [NrLanes-1:0]      masku_result_id_o,
+    output vaddr_t   [NrLanes-1:0]      masku_result_addr_o,
+    output elen_t    [NrLanes-1:0]      masku_result_wdata_o,
+    output strb_t    [NrLanes-1:0]      masku_result_be_o,
+    input  logic     [NrLanes-1:0]      masku_result_gnt_i,
     // Interface with the VFUs
-    output strb_t    [NrLanes-1:0] mask_o,
-    output logic     [NrLanes-1:0] mask_valid_o,
-    input  logic     [NrLanes-1:0] lane_mask_ready_i,
-    input  logic                   vldu_mask_ready_i,
-    input  logic                   vstu_mask_ready_i
+    output strb_t    [NrLanes-1:0]      mask_o,
+    output logic     [NrLanes-1:0]      mask_valid_o,
+    input  logic     [NrLanes-1:0]      lane_mask_ready_i,
+    input  logic                        vldu_mask_ready_i,
+    input  logic                        vstu_mask_ready_i
   );
 
   import cf_math_pkg::idx_width;
@@ -95,26 +101,76 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  /*****************
+   *  Mask queues  *
+   *****************/
+
+  localparam int unsigned MaskQueueDepth = 2;
+
+  // There is a mask queue per lane, holding the operands that were not
+  // yet used by the corresponding lane.
+
+  // Mask queue
+  strb_t [MaskQueueDepth-1:0][NrLanes-1:0] mask_queue_d, mask_queue_q;
+  logic  [MaskQueueDepth-1:0][NrLanes-1:0] mask_queue_valid_d, mask_queue_valid_q;
+  // We need two pointers in the mask queue. One pointer to
+  // indicate with `strb_t` we are currently writing into (write_pnt),
+  // and one pointer to indicate which `strb_t` we are currently
+  // reading from and writing into the lanes (read_pnt).
+  logic  [idx_width(MaskQueueDepth)-1:0]   mask_queue_write_pnt_d, mask_queue_write_pnt_q;
+  logic  [idx_width(MaskQueueDepth)-1:0]   mask_queue_read_pnt_d, mask_queue_read_pnt_q;
+  // We need to count how many valid elements are there in this mask queue.
+  logic  [idx_width(MaskQueueDepth):0]     mask_queue_cnt_d, mask_queue_cnt_q;
+
+  // Is the mask queue full?
+  logic mask_queue_full;
+  assign mask_queue_full = (mask_queue_cnt_q == MaskQueueDepth);
+  // Is the mask queue empty?
+  logic mask_queue_empty;
+  assign mask_queue_empty = (mask_queue_cnt_q == '0);
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin: p_mask_queue_ff
+    if (!rst_ni) begin
+      mask_queue_q           <= '0;
+      mask_queue_valid_q     <= '0;
+      mask_queue_write_pnt_q <= '0;
+      mask_queue_read_pnt_q  <= '0;
+      mask_queue_cnt_q       <= '0;
+    end else begin
+      mask_queue_q           <= mask_queue_d;
+      mask_queue_valid_q     <= mask_queue_valid_d;
+      mask_queue_write_pnt_q <= mask_queue_write_pnt_d;
+      mask_queue_read_pnt_q  <= mask_queue_read_pnt_d;
+      mask_queue_cnt_q       <= mask_queue_cnt_d;
+    end
+  end
+
   /*******************
    *  Result queues  *
    *******************/
 
   localparam int unsigned ResultQueueDepth = 2;
 
-  // There is a result queue per lane, holding the operands that were not
-  // yet used by the corresponding lane.
+  // There is a result queue per lane, holding the results that were not
+  // yet accepted by the corresponding lane.
+  typedef struct packed {
+    vid_t id;
+    vaddr_t addr;
+    elen_t wdata;
+    strb_t be;
+  } payload_t;
 
   // Result queue
-  strb_t [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_d, result_queue_q;
-  logic  [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_valid_d, result_queue_valid_q;
+  payload_t [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_d, result_queue_q;
+  logic     [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_valid_d, result_queue_valid_q;
   // We need two pointers in the result queue. One pointer to
   // indicate with `payload_t` we are currently writing into (write_pnt),
   // and one pointer to indicate which `payload_t` we are currently
   // reading from and writing into the lanes (read_pnt).
-  logic  [idx_width(ResultQueueDepth)-1:0]   result_queue_write_pnt_d, result_queue_write_pnt_q;
-  logic  [idx_width(ResultQueueDepth)-1:0]   result_queue_read_pnt_d, result_queue_read_pnt_q;
+  logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_write_pnt_d, result_queue_write_pnt_q;
+  logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_read_pnt_d, result_queue_read_pnt_q;
   // We need to count how many valid elements are there in this result queue.
-  logic  [idx_width(ResultQueueDepth):0]     result_queue_cnt_d, result_queue_cnt_q;
+  logic     [idx_width(ResultQueueDepth):0]     result_queue_cnt_d, result_queue_cnt_q;
 
   // Is the result queue full?
   logic result_queue_full;
@@ -138,6 +194,28 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       result_queue_cnt_q       <= result_queue_cnt_d;
     end
   end
+
+  /**************
+   *  Mask ALU  *
+   **************/
+
+  elen_t [NrLanes-1:0] alu_result;
+
+  always_comb begin: p_mask_alu
+    // Default assignment
+    alu_result = '0;
+
+    case (vinsn_issue.op)
+      VMANDNOT: for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] & ~masku_operand_i[lane][0];
+      VMAND   : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] & masku_operand_i[lane][0];
+      VMOR    : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] | masku_operand_i[lane][0];
+      VMXOR   : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] ^ masku_operand_i[lane][0];
+      VMORNOT : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = masku_operand_i[lane][1] | ~masku_operand_i[lane][0];
+      VMNAND  : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = ~(masku_operand_i[lane][1] & masku_operand_i[lane][0]);
+      VMNOR   : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = ~(masku_operand_i[lane][1] | masku_operand_i[lane][0]);
+      VMXNOR  : for (int lane = 0; lane < NrLanes; lane++) alu_result[lane] = ~(masku_operand_i[lane][1] ^ masku_operand_i[lane][0]);
+    endcase
+  end: p_mask_alu
 
   /***************
    *  Mask unit  *
@@ -167,6 +245,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     vrf_pnt_d = vrf_pnt_q;
 
+    mask_queue_d           = mask_queue_q;
+    mask_queue_valid_d     = mask_queue_valid_q;
+    mask_queue_write_pnt_d = mask_queue_write_pnt_q;
+    mask_queue_read_pnt_d  = mask_queue_read_pnt_q;
+    mask_queue_cnt_d       = mask_queue_cnt_q;
+
     result_queue_d           = result_queue_q;
     result_queue_valid_d     = result_queue_valid_q;
     result_queue_write_pnt_d = result_queue_write_pnt_q;
@@ -183,10 +267,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
-    // By default, send no operands
-    mask_o       = '0;
-    mask_valid_o = '0;
-
     /******************************
      *  Read data from the lanes  *
      ******************************/
@@ -195,7 +275,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // - There is an instruction ready to be issued.
     // - There are operands from the lanes available.
     // - There is place in the result queue to write the mask data read from the lanes
-    if (vinsn_issue_valid && &masku_operand_valid_i && !result_queue_full) begin
+    if (vinsn_issue_valid && &masku_operand_valid_i && !mask_queue_full) begin
       // Copy data from the mask operands into the result queue
       for (int mask_byte = 0; mask_byte < NrLanes*StrbWidth; mask_byte++) begin
         // Map mask_byte to the corresponding byte in the VRF word (sequential)
@@ -215,21 +295,21 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         automatic int mask_offset = mask_seq_byte[2:0];
 
         // Copy the mask operand
-        result_queue_d[result_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_i[mask_byte >> 3][mask_byte[2:0]];
+        mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_i[mask_byte >> 3][0][mask_byte[2:0]];
       end
 
       // Account for the used operands
       vrf_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
 
       // Increment result queue pointers and counters
-      result_queue_cnt_d += 1;
-      if (result_queue_cnt_q == ResultQueueDepth-1)
-        result_queue_cnt_d = '0;
+      mask_queue_cnt_d += 1;
+      if (mask_queue_cnt_q == MaskQueueDepth-1)
+        mask_queue_cnt_d = '0;
       else
-        result_queue_write_pnt_d += 1;
+        mask_queue_write_pnt_d += 1;
 
       // Trigger the request signal
-      result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
+      mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};
 
       // Account for the results that were issued
       issue_cnt_d = issue_cnt_q - NrLanes * (8 << (int'(EW64) - vinsn_issue.vtype.vsew));
@@ -256,31 +336,31 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
      *******************************/
 
     for (int lane = 0; lane < NrLanes; lane++) begin: send_operand
-      mask_valid_o[lane] = result_queue_valid_q[result_queue_read_pnt_q][lane];
-      mask_o[lane]       = result_queue_q[result_queue_read_pnt_q][lane];
+      mask_valid_o[lane] = mask_queue_valid_q[mask_queue_read_pnt_q][lane];
+      mask_o[lane]       = mask_queue_q[mask_queue_read_pnt_q][lane];
       // Received a grant from the VFUs.
       // The VLDU and the VSTU acknowledge all the operands at once.
       // Deactivate the request, but do not bump the pointers for now.
       if (lane_mask_ready_i[lane] || vldu_mask_ready_i || vstu_mask_ready_i) begin
-        result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
-        result_queue_d[result_queue_read_pnt_q][lane]       = '0;
+        mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
+        mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
       end
     end: send_operand
 
     // All lanes accepted the VRF request
-    if (!(|result_queue_valid_d[result_queue_read_pnt_q]))
+    if (!(|mask_queue_valid_d[mask_queue_read_pnt_q]))
       // There is something waiting to be written
-      if (!result_queue_empty) begin
+      if (!mask_queue_empty) begin
         // Increment the read pointer
-        if (result_queue_read_pnt_q == ResultQueueDepth-1)
-          result_queue_read_pnt_d = 0;
+        if (mask_queue_read_pnt_q == MaskQueueDepth-1)
+          mask_queue_read_pnt_d = 0;
         else
-          result_queue_read_pnt_d = result_queue_read_pnt_q + 1;
+          mask_queue_read_pnt_d = mask_queue_read_pnt_q + 1;
 
-        // Decrement the counter of results waiting to be written
-        result_queue_cnt_d -= 1;
+        // Decrement the counter of mask operands waiting to be used
+        mask_queue_cnt_d -= 1;
 
-        // Decrement the counter of remaining vector elements waiting to be written
+        // Decrement the counter of remaining vector elements waiting to be used
         commit_cnt_d = commit_cnt_q - NrLanes * (8 << (int'(EW64) - vinsn_commit.vtype.vsew));
         if (commit_cnt_q < (NrLanes * (8 << (int'(EW64) - vinsn_commit.vtype.vsew))))
           commit_cnt_d = '0;
@@ -295,11 +375,30 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.commit_cnt -= 1;
     end
 
+    /********************************
+     *  Write results into the VRF  *
+     ********************************/
+
+    for (int lane = 0; lane < NrLanes; lane++) begin: result_write
+      masku_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
+      masku_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr;
+      masku_result_id_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].id;
+      masku_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
+      masku_result_be_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].be;
+
+      // Received a grant from the VRF.
+      // Deactivate the request, but do not bump the pointers for now.
+      if (masku_result_gnt_i[lane]) begin
+        result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
+        result_queue_d[result_queue_read_pnt_q][lane]       = '0;
+      end
+    end: result_write
+
     /****************************
      *  Accept new instruction  *
      ****************************/
 
-    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] && !pe_req_i.vm) begin
+    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] && (!pe_req_i.vm || pe_req_i.vfu == VFU_MaskUnit)) begin
       vinsn_queue_d.vinsn[0]       = pe_req_i;
       vinsn_running_d[pe_req_i.id] = 1'b1;
 

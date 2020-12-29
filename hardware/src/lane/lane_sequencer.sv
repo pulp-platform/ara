@@ -203,6 +203,22 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               default: '0
             };
             operand_request_push[AluB] = pe_req_i.use_vs2;
+
+            // This vector instruction uses masks
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : VMASK,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+              operand_request_i[MaskM].vl += 1;
+            operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_MFpu: begin
             operand_request_i[MulFPUA] = '{
@@ -226,37 +242,104 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               default: '0
             };
             operand_request_push[MulFPUB] = pe_req_i.use_vs2;
+
+            // This vector instruction uses masks
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : VMASK,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+              operand_request_i[MaskM].vl += 1;
+            operand_request_push[MaskM] = !pe_req_i.vm;
+          end
+          VFU_LoadUnit : begin
+            // This vector instruction uses masks
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : VMASK,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+              operand_request_i[MaskM].vl += 1;
+            operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_StoreUnit : begin
-            operand_request_i[StA] = '{
+            operand_request_i[StMaskA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : pe_req_i.vl / NrLanes + $unsigned(|pe_req_i.vl[cf_math_pkg::idx_width(NrLanes)-1:0]),
+              vl     : pe_req_i.vl / NrLanes,
               vstart : vfu_operation_d.vstart,
               vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs1,
               default: '0
             };
-            operand_request_push[StA] = pe_req_i.use_vs1;
+            if (operand_request_i[StMaskA].vl * NrLanes != pe_req_i.vl)
+              operand_request_i[StMaskA].vl += 1;
+            operand_request_push[StMaskA] = pe_req_i.use_vs1;
+
+            // This vector instruction uses masks
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : VMASK,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+              operand_request_i[MaskM].vl += 1;
+            operand_request_push[MaskM] = !pe_req_i.vm;
+          end
+          VFU_MaskUnit: begin
+            operand_request_i[StMaskA] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs1,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[StMaskA].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+              operand_request_i[StMaskA].vl += 1;
+            operand_request_push[StMaskA] = pe_req_i.use_vs1;
+
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs2,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+              operand_request_i[MaskM].vl += 1;
+            operand_request_push[MaskM] = pe_req_i.use_vs2;
           end
         endcase
-
-        // This vector instruction uses masks
-        operand_request_i[MaskA] = '{
-          id     : pe_req_i.id,
-          vs     : VMASK,
-          // Since this request goes outside of the lane, we might need to request an
-          // extra operand regardless of whether it is valid in this lane or not.
-          // TODO: Check that!
-          vl     : pe_req_i.vl / NrLanes + $unsigned(|pe_req_i.vl[cf_math_pkg::idx_width(NrLanes)-1:0]),
-          vstart : vfu_operation_d.vstart,
-          vtype  : pe_req_i.vtype,
-          hazard : pe_req_i.hazard_vm,
-          default: '0
-        };
-        operand_request_push[MaskA] = !pe_req_i.vm;
 
         // The operand requesters are busy. Abort the request and wait for another cycle.
         if (|(operand_request_push & operand_request_valid_o)) begin

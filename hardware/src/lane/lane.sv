@@ -63,9 +63,15 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          ldu_result_be_i,
     output logic                                           ldu_result_gnt_o,
     // Interface with the Mask unit
-    output elen_t                                          mask_operand_o,
-    output logic                                           mask_operand_valid_o,
-    input  logic                                           mask_operand_ready_i,
+    output elen_t    [1:0]                                 mask_operand_o,
+    output logic     [1:0]                                 mask_operand_valid_o,
+    input  logic     [1:0]                                 mask_operand_ready_i,
+    input  logic                                           masku_result_req_i,
+    input  vid_t                                           masku_result_id_i,
+    input  vaddr_t                                         masku_result_addr_i,
+    input  elen_t                                          masku_result_wdata_i,
+    input  strb_t                                          masku_result_be_i,
+    output logic                                           masku_result_gnt_o,
     // Interface between the Mask unit and the VFUs
     input  strb_t                                          mask_i,
     input  logic                                           mask_valid_i,
@@ -181,6 +187,13 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mfpu_result_wdata_i    (mfpu_result_wdata    ),
     .mfpu_result_be_i       (mfpu_result_be       ),
     .mfpu_result_gnt_o      (mfpu_result_gnt      ),
+    // Mask Unit
+    .masku_result_req_i     (masku_result_req_i   ),
+    .masku_result_id_i      (masku_result_id_i    ),
+    .masku_result_addr_i    (masku_result_addr_i  ),
+    .masku_result_wdata_i   (masku_result_wdata_i ),
+    .masku_result_be_i      (masku_result_be_i    ),
+    .masku_result_gnt_o     (masku_result_gnt_o   ),
     // Slide Unit
     .sldu_result_req_i      (sldu_result_req_i    ),
     .sldu_result_id_i       (sldu_result_id_i     ),

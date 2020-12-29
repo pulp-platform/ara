@@ -59,6 +59,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                      mfpu_result_wdata_i,
     input  strb_t                                      mfpu_result_be_i,
     output logic                                       mfpu_result_gnt_o,
+    // Mask unit
+    input  logic                                       masku_result_req_i,
+    input  vid_t                                       masku_result_id_i,
+    input  vaddr_t                                     masku_result_addr_i,
+    input  elen_t                                      masku_result_wdata_i,
+    input  strb_t                                      masku_result_be_i,
+    output logic                                       masku_result_gnt_o,
     // Slide unit
     input  logic                                       sldu_result_req_i,
     input  vid_t                                       sldu_result_id_i,
@@ -96,6 +103,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     // Which vector instructions are writing something?
     vinsn_result_written_d[alu_result_id_i] |= alu_result_gnt_o;
     vinsn_result_written_d[mfpu_result_id_i] |= mfpu_result_gnt_o;
+    vinsn_result_written_d[masku_result_id_i] |= masku_result_gnt_o;
     vinsn_result_written_d[ldu_result_id_i] |= ldu_result_gnt_o;
     vinsn_result_written_d[sldu_result_id_i] |= sldu_result_gnt_o;
   end
@@ -121,8 +129,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
   // A set bit indicates that the the master q is requesting access to the bank b
   // Masters 0 to NrOperandQueues-1 correspond to the operand queues.
-  // The remaining four masters correspond to the ALU, the MFPU, the LDU, and the SLDU.
-  localparam NrMasters = NrOperandQueues + 4;
+  // The remaining four masters correspond to the ALU, the MFPU, the MASKU, the VLDU, and the SLDU.
+  localparam NrMasters = NrOperandQueues + 5;
 
   typedef struct packed {
     vaddr_t addr;
@@ -255,6 +263,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     for (int bank = 0; bank < NrBanks; bank++) begin
       operand_req[bank][NrOperandQueues + VFU_Alu]       = 1'b0;
       operand_req[bank][NrOperandQueues + VFU_MFpu]      = 1'b0;
+      operand_req[bank][NrOperandQueues + VFU_MaskUnit]  = 1'b0;
       operand_req[bank][NrOperandQueues + VFU_SlideUnit] = 1'b0;
       operand_req[bank][NrOperandQueues + VFU_LoadUnit]  = 1'b0;
     end
@@ -272,6 +281,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       wen    : 1'b1,
       wdata  : mfpu_result_wdata_i,
       be     : mfpu_result_be_i,
+      default: '0
+    };
+    operand_payload[NrOperandQueues + VFU_MaskUnit] = '{
+      addr   : masku_result_addr_i >> $clog2(NrBanks),
+      wen    : 1'b1,
+      wdata  : masku_result_wdata_i,
+      be     : masku_result_be_i,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_SlideUnit] = '{
@@ -292,19 +308,22 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     // Store their request value
     operand_req[alu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_Alu]        = alu_result_req_i;
     operand_req[mfpu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_MFpu]      = mfpu_result_req_i;
+    operand_req[masku_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_MaskUnit] = masku_result_req_i;
     operand_req[sldu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_SlideUnit] = sldu_result_req_i;
     operand_req[ldu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_LoadUnit]   = ldu_result_req_i;
 
     // Generate the grant signals
-    alu_result_gnt_o  = 1'b0;
-    mfpu_result_gnt_o = 1'b0;
-    sldu_result_gnt_o = 1'b0;
-    ldu_result_gnt_o  = 1'b0;
+    alu_result_gnt_o   = 1'b0;
+    mfpu_result_gnt_o  = 1'b0;
+    masku_result_gnt_o = 1'b0;
+    sldu_result_gnt_o  = 1'b0;
+    ldu_result_gnt_o   = 1'b0;
     for (int bank = 0; bank < NrBanks; bank++) begin
-      alu_result_gnt_o  = alu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_Alu];
-      mfpu_result_gnt_o = mfpu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MFpu];
-      sldu_result_gnt_o = sldu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_SlideUnit];
-      ldu_result_gnt_o  = ldu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_LoadUnit];
+      alu_result_gnt_o   = alu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_Alu];
+      mfpu_result_gnt_o  = mfpu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MFpu];
+      masku_result_gnt_o = masku_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MaskUnit];
+      sldu_result_gnt_o  = sldu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_SlideUnit];
+      ldu_result_gnt_o   = ldu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_LoadUnit];
     end
   end
 
