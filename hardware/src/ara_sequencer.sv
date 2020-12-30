@@ -145,8 +145,25 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
       IDLE: begin
         // Received a new request
         if (ara_req_valid_i) begin
-          // PEs are ready, and we can handle another running vector instruction
-          if (&pe_req_ready_i && !vinsn_running_full) begin
+          /************************
+           *  Structural hazards  *
+           ************************/
+          automatic logic structural_hazard = 1'b0;
+
+          case (vfu(ara_req_i.op))
+            // There is a structural hazard between the Store Unit and the Mask Unit (used for OPVMM instructions),
+            // since they share an instruction queue.
+            // If that hazard is active, do not activate the request and wait.
+            VFU_StoreUnit:
+              if (|pe_vinsn_running_q[NrLanes + OffsetMask])
+                structural_hazard = 1'b1;
+            VFU_MaskUnit:
+              if (|pe_vinsn_running_q[NrLanes + OffsetStore])
+                structural_hazard = 1'b1;
+          endcase
+
+          // PEs are ready, there is no structural hazard, and we can handle another running vector instruction
+          if (&pe_req_ready_i && !structural_hazard && !vinsn_running_full) begin
             // Acknowledge instruction
             ara_req_ready_o = 1'b1;
 
@@ -186,6 +203,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               stride       : ara_req_i.stride,
               vd           : ara_req_i.vd,
               use_vd       : ara_req_i.use_vd,
+              eew          : ara_req_i.eew,
               vl           : ara_req_i.vl,
               vstart       : ara_req_i.vstart,
               vtype        : ara_req_i.vtype,
@@ -197,25 +215,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             /*************
              *  Hazards  *
              *************/
-
-            // Structural
-            case (pe_req_d.vfu)
-              // There is a structural hazard between the Store Unit and the Mask Unit (used for OPVMM instructions),
-              // since they share an instruction queue.
-              // If that hazard is active, do not activate the request and wait.
-              VFU_StoreUnit:
-                if (|pe_vinsn_running_q[NrLanes + OffsetMask]) begin
-                  ara_req_ready_o = 1'b0;
-                  pe_req_valid_d  = 1'b0;
-                  state_d         = IDLE;
-                end
-              VFU_MaskUnit:
-                if (|pe_vinsn_running_q[NrLanes + OffsetStore]) begin
-                  ara_req_ready_o = 1'b0;
-                  pe_req_valid_d  = 1'b0;
-                  state_d         = IDLE;
-                end
-            endcase
 
             // RAW
             if (ara_req_i.use_vs1)
