@@ -105,6 +105,8 @@ package ara_pkg;
     logic [4:0] vd; // Destination vector register
     logic use_vd;   // Instruction writes to vd
 
+    rvv_pkg::vew_e eew; // Effective element width
+
     // Vector machine metadata
     vlen_t vl;
     vlen_t vstart;
@@ -160,6 +162,8 @@ package ara_pkg;
 
     logic [4:0] vd; // Destination vector register
     logic use_vd;   // Instruction writes to vd
+
+    rvv_pkg::vew_e eew; // Effective element width
 
     // Vector machine metadata
     vlen_t vl;
