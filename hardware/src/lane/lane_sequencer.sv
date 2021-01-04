@@ -317,7 +317,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
               vstart : vfu_operation_d.vstart,
               vtype  : pe_req_i.vtype,
-              hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
+              hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
             if ((operand_request_i[StMaskA].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
@@ -332,7 +332,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
               vstart : vfu_operation_d.vstart,
               vtype  : pe_req_i.vtype,
-              hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
+              hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
             if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
