@@ -317,6 +317,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 end
               endcase
 
+              // Ara can only support this kind of operation if vl mod 8 == 0.
+              // Otherwise, we would either need to have a 'bit enable' signal to leave
+              // individual bits untouched, or we would need to read back the destination
+              // register before writing the result back to the VRF.
+              if (vl_q % 8 != '0) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+
               // Instruction is invalid if the vtype is invalid
               if (vtype_q.vill) begin
                 acc_resp_o.error = 1'b1;
