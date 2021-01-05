@@ -38,14 +38,25 @@ package rvv_pkg;
     EW1024 = 3'b111
   } vew_e;
 
+  // Length multiplier
+  typedef enum logic [2:0] {
+    LMUL_1,
+    LMUL_2,
+    LMUL_4,
+    LMUL_8,
+    LMUL_RSVD,
+    LMUL_1_8,
+    LMUL_1_4,
+    LMUL_1_2
+  } vlmul_e;
+
   // Vector type register
   typedef struct packed {
     logic vill;
     logic vma;
     logic vta;
-    logic vlmul2;
     vew_e vsew;
-    logic [1:0] vlmul;
+    vlmul_e vlmul;
   } vtype_t;
 
   // Func3 values for vector arithmetics instructions under OpcodeV

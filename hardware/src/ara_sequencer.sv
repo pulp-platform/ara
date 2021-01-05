@@ -34,6 +34,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     output logic                  ara_req_ready_o,
     output ara_resp_t             ara_resp_o,
     output logic                  ara_resp_valid_o,
+    output logic                  ara_idle_o,
     // Interface with the processing elements
     output pe_req_t               pe_req_o,
     output logic                  pe_req_valid_o,
@@ -57,6 +58,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
   vid_t               vinsn_next_id;
   logic               vinsn_running_full;
+
+  // Ara is idle if no instruction is currently running on it.
+  assign ara_idle_o = !(|vinsn_running_q);
 
   lzc #(
     .WIDTH(NrVInsn)

@@ -76,6 +76,7 @@ module ara import ara_pkg::*; #(
   logic      ara_req_ready;
   ara_resp_t ara_resp;
   logic      ara_resp_valid;
+  logic      ara_idle;
   // Interface with the VSTU
   logic      store_pending;
 
@@ -95,6 +96,7 @@ module ara import ara_pkg::*; #(
     .ara_req_ready_i (ara_req_ready   ),
     .ara_resp_i      (ara_resp        ),
     .ara_resp_valid_i(ara_resp_valid  ),
+    .ara_idle_i      (ara_idle        ),
     // Interface with the Vector Store Unit
     .store_pending_i (store_pending   )
   );
@@ -124,6 +126,7 @@ module ara import ara_pkg::*; #(
     .ara_req_ready_o       (ara_req_ready  ),
     .ara_resp_o            (ara_resp       ),
     .ara_resp_valid_o      (ara_resp_valid ),
+    .ara_idle_o            (ara_idle       ),
     // Interface with the PEs
     .pe_req_o              (pe_req         ),
     .pe_req_valid_o        (pe_req_valid   ),

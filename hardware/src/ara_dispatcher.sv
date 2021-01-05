@@ -37,6 +37,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     input  logic              ara_req_ready_i,
     input  ara_resp_t         ara_resp_i,
     input  logic              ara_resp_valid_i,
+    input  logic              ara_idle_i,
     // Interface with the Vector Store Unit
     input  logic              store_pending_i
   );
@@ -57,7 +58,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
   function automatic riscv::xlen_t xlen_vtype(vtype_t vtype);
-    xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vlmul2, vtype.vsew, vtype.vlmul};
+    xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vlmul[2], vtype.vsew, vtype.vlmul[1:0]};
   endfunction: xlen_vtype
 
   // Converts between the XLEN-bit vtype CSR and its internal representation
@@ -66,9 +67,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
       vill  : xlen[riscv::XLEN-1],
       vma   : xlen[7],
       vta   : xlen[6],
-      vlmul2: xlen[5],
       vsew  : vew_e'(xlen[4:2]),
-      vlmul : xlen[1:0]
+      vlmul : vlmul_e'({xlen[5], xlen[1:0]})
     };
   endfunction: vtype_xlen
 
@@ -91,6 +91,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     end
   end
 
+  /***********
+   *  State  *
+   ***********/
+
+  // The backend can either be in normal operation, or waiting for Ara to be idle before issuing new operations.
+  // This can happen, for example, once the vlmul has changed.
+  typedef enum logic {
+    NORMAL_OPERATION,
+    WAIT_IDLE
+  } state_e;
+  state_e state_d, state_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= NORMAL_OPERATION;
+    end else begin
+      state_q <= state_d;
+    end
+  end
+
   /*************
    *  Decoder  *
    *************/
@@ -100,6 +120,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     vstart_d = vstart_q;
     vl_d     = vl_q;
     vtype_d  = vtype_q;
+    state_d  = state_q;
 
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
@@ -117,7 +138,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     };
     ara_req_valid_d = 1'b0;
 
-    if (acc_req_valid_i && acc_resp_ready_i) begin
+    // Is Ara idle?
+    if (state_q == WAIT_IDLE && ara_idle_i)
+      state_d = NORMAL_OPERATION;
+
+    if (acc_req_valid_i && acc_resp_ready_i && state_d == NORMAL_OPERATION) begin
       // Acknowledge the request
       acc_req_ready_o = ara_req_ready_i;
 
@@ -138,9 +163,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           case (insn.varith_type.func3)
             // Configuration instructions
             OPCFG: begin
-              // Length multiplier
-              automatic logic signed [2:0] lmul;
-
               // These can be acknowledged regardless of the state of Ara
               acc_req_ready_o = 1'b1;
 
@@ -152,13 +174,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               end else
                 acc_resp_o.error = 1'b1;
 
-              // Calculate the length multiplier
-              lmul = {vtype_d.vlmul2, vtype_d.vlmul};
-
               // Check whether the updated vtype makes sense
               if ((vtype_d.vsew > rvv_pkg::vew_e'($clog2(ELENB))) || // SEW <= ELEN
-                  (lmul == 3'b100) ||                                // reserved value
-                  (signed'($clog2(ELENB)) + signed'(lmul) < signed'(vtype_d.vsew))) begin // LMUL >= SEW/ELEN
+                  (vtype_d.vlmul == LMUL_RSVD) ||                    // reserved value
+                  (signed'($clog2(ELENB)) + signed'(vtype_d.vlmul) < signed'(vtype_d.vsew))) begin // LMUL >= SEW/ELEN
                 vtype_d = '{ vill: 1'b1, default: '0 };
                 vl_d    = '0;
               end
@@ -166,7 +185,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               // Update the vector length
               else begin
                 // Maximum vector length. VLMAX = LMUL * VLEN / SEW.
-                automatic int unsigned vlmax = vtype_d.vlmul2 ? ((VLENB >> vtype_d.vsew) << vtype_d.vlmul) : ((VLENB >> vtype_d.vsew) >> -vtype_d.vlmul);
+                automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
+                case (vtype_d.vlmul)
+                  LMUL_1  : vlmax <<= 0;
+                  LMUL_2  : vlmax <<= 1;
+                  LMUL_4  : vlmax <<= 2;
+                  LMUL_8  : vlmax <<= 3;
+                  // Fractional LMUL
+                  LMUL_1_2: vlmax >>= 1;
+                  LMUL_1_4: vlmax >>= 2;
+                  LMUL_1_8: vlmax >>= 3;
+                endcase
 
                 if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd == '0) begin
                   // Do not update the vector length
@@ -179,6 +208,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   vl_d = (vlen_t'(acc_req_i.rs1) > vlmax) ? vlmax : vlen_t'(acc_req_i.rs1);
                 end
               end
+
+              // If the vtype has changed, wait for the backend before issuing any new instructions.
+              if (vtype_d != vtype_q)
+                state_d = WAIT_IDLE;
             end
 
             OPIVV: begin
@@ -208,6 +241,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+              endcase
+
+              // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              case (vtype_q.vlmul)
+                LMUL_2:
+                  if (insn.varith_type.rs1 & 5'b00001 != 5'b00000 || insn.varith_type.rs2 & 5'b00001 != 5'b00000 || insn.varith_type.rd & 5'b00001 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if (insn.varith_type.rs1 & 5'b00011 != 5'b00000 || insn.varith_type.rs2 & 5'b00011 != 5'b00000 || insn.varith_type.rd & 5'b00011 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if (insn.varith_type.rs1 & 5'b00111 != 5'b00000 || insn.varith_type.rs2 & 5'b00111 != 5'b00000 || insn.varith_type.rd & 5'b00111 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -247,6 +299,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 end
               endcase
 
+              // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              case (vtype_q.vlmul)
+                LMUL_2:
+                  if (insn.varith_type.rs2 & 5'b00001 != 5'b00000 || insn.varith_type.rd & 5'b00001 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if (insn.varith_type.rs2 & 5'b00011 != 5'b00000 || insn.varith_type.rd & 5'b00011 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if (insn.varith_type.rs2 & 5'b00111 != 5'b00000 || insn.varith_type.rd & 5'b00111 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+              endcase
+
               // Instruction is invalid if the vtype is invalid
               if (vtype_q.vill) begin
                 acc_resp_o.error = 1'b1;
@@ -280,6 +351,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+              endcase
+
+              // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              case (vtype_q.vlmul)
+                LMUL_2:
+                  if (insn.varith_type.rs2 & 5'b00001 != 5'b00000 || insn.varith_type.rd & 5'b00001 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if (insn.varith_type.rs2 & 5'b00011 != 5'b00000 || insn.varith_type.rd & 5'b00011 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if (insn.varith_type.rs2 & 5'b00111 != 5'b00000 || insn.varith_type.rd & 5'b00111 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -409,11 +499,31 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             end
           endcase
 
-          // Vector register register loads are encoded as loads of length VLENB, and element
-          // width EW8. They overwrite all this decoding.
+          // Instructions with an integer LMUL have extra constraints on the registers they can access.
+          case (vtype_q.vlmul)
+            LMUL_2:
+              if (insn.varith_type.rd & 5'b00001 != 5'b00000) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            LMUL_4:
+              if (insn.varith_type.rd & 5'b00011 != 5'b00000) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            LMUL_8:
+              if (insn.varith_type.rd & 5'b00111 != 5'b00000) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+          endcase
+
+          // Vector register register loads are encoded as loads of length VLENB, length multiplier
+          // LMUL_1 and element width EW8. They overwrite all this decoding.
           if (ara_req_d.op == VLE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew = EW8;
-            ara_req_d.vl  = VLENB;
+            ara_req_d.eew         = EW8;
+            ara_req_d.vl          = VLENB;
+            ara_req_d.vtype.vlmul = LMUL_1;
 
             acc_req_ready_o  = 1'b1;
             acc_resp_o.error = 1'b0;
@@ -492,11 +602,31 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             end
           endcase
 
-          // Vector register register stores are encoded as loads of length VLENB, and element
-          // width EW8. They overwrite all this decoding.
+          // Instructions with an integer LMUL have extra constraints on the registers they can access.
+          case (vtype_q.vlmul)
+            LMUL_2:
+              if (insn.varith_type.rs1 & 5'b00001 != 5'b00000) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            LMUL_4:
+              if (insn.varith_type.rs1 & 5'b00011 != 5'b00000) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            LMUL_8:
+              if (insn.varith_type.rs1 & 5'b00111 != 5'b00000) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+          endcase
+
+          // Vector register register stores are encoded as stores of length VLENB, length multiplier
+          // LMUL_1 and element width EW8. They overwrite all this decoding.
           if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew = EW8;
-            ara_req_d.vl  = VLENB;
+            ara_req_d.eew         = EW8;
+            ara_req_d.vl          = VLENB;
+            ara_req_d.vtype.vlmul = LMUL_1;
 
             acc_req_ready_o  = 1'b1;
             acc_resp_o.error = 1'b0;
