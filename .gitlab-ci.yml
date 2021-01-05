@@ -16,7 +16,9 @@
 #         Matheus Cavalcante, ETH Zurich
 
 variables:
-  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_STRATEGY: none
+  RUST_LOG: 'memora=debug'
+  PATH: '/home/gitlabci/.cargo/bin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/usr/local/condor/bin:/usr/sepp/bin'
 
 workflow:
   rules:
@@ -41,14 +43,12 @@ stages:
 tc-gcc:
   stage: toolchain
   script:
-    - git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
-    - make toolchain
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
-  artifacts:
-    paths:
-      - install/riscv-gcc
-    expire_in: 1 day
+    - |
+      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-gcc; then
+        git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+        make toolchain
+        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-gcc
+      fi
 
 tc-isa-sim:
   stage: toolchain
@@ -57,8 +57,6 @@ tc-isa-sim:
     - git submodule foreach --recursive git reset --hard
     - rm -rf toolchain/riscv-isa-sim/build
     - make riscv-isa-sim
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
   artifacts:
     paths:
       - install/riscv-isa-sim
@@ -67,26 +65,24 @@ tc-isa-sim:
 build_apps:
   stage: build
   script:
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - make -C apps
   artifacts:
     paths:
       - apps/bin
   needs: ["tc-gcc"]
-  dependencies:
-    - tc-gcc
 
 build_riscv_tests:
   stage: build
   script:
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
     - git submodule update --init --recursive -- apps/riscv-tests
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - make -C apps riscv_tests
   artifacts:
     paths:
       - apps/bin
   needs: ["tc-gcc"]
-  dependencies:
-    - tc-gcc
 
 build_vsim:
   stage: build
@@ -115,3 +111,17 @@ riscv_tests:
   needs: ["build_riscv_tests"]
   dependencies:
     - build_riscv_tests
+
+riscv_tests_spike:
+  stage: test
+  script:
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - make -C apps riscv_tests_spike
+  artifacts:
+    paths:
+      - apps/riscv-tests/isa/*.dump
+      - apps/riscv-tests/isa/*.out32
+  needs: ["tc-isa-sim", "tc-gcc"]
+  dependencies:
+    - tc-isa-sim
+    - tc-gcc
