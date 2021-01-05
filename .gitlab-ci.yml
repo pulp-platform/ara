@@ -46,6 +46,7 @@ tc-gcc:
     - |
       if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-gcc; then
         git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+        mkdir -p /usr/scratch2/dolent1/gitlabci/buildcache/ara
         make toolchain
         $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-gcc
       fi
