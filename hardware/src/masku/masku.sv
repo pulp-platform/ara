@@ -225,11 +225,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   always_comb begin: p_mask_alu
     unique case (vinsn_issue.op)
-      VMANDNOT: alu_result = masku_operand_a_i & ~masku_operand_m_i;
+      VMANDNOT: alu_result = ~masku_operand_a_i & masku_operand_m_i;
       VMAND   : alu_result = masku_operand_a_i & masku_operand_m_i;
       VMOR    : alu_result = masku_operand_a_i | masku_operand_m_i;
       VMXOR   : alu_result = masku_operand_a_i ^ masku_operand_m_i;
-      VMORNOT : alu_result = masku_operand_a_i | ~masku_operand_m_i;
+      VMORNOT : alu_result = ~masku_operand_a_i | masku_operand_m_i;
       VMNAND  : alu_result = ~(masku_operand_a_i & masku_operand_m_i);
       VMNOR   : alu_result = ~(masku_operand_a_i | masku_operand_m_i);
       VMXNOR  : alu_result = ~(masku_operand_a_i ^ masku_operand_m_i);
