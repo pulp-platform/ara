@@ -302,19 +302,35 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Is there place in the result queue to write the results?
         // Did we receive operands on the MaskA channel?
         if (!result_queue_full && &masku_operand_a_valid_i) begin
+          // How many elements are we committing in total?
+          // Since the MASKU instructions have vl mod 8 == 0 (non-default behaviour), we carry out
+          // the following calculation with vl/8 instead.
+          automatic int element_cnt_all_lanes = (NrLanes << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+          if (element_cnt_all_lanes > issue_cnt_q / 8)
+            element_cnt_all_lanes = issue_cnt_q / 8;
+
           // Acknowledge the operands of this instruction
           masku_operand_a_ready_o = masku_operand_a_valid_i;
           masku_operand_m_ready_o = masku_operand_m_valid_i;
 
           // Store the result in the operand queue
-          for (int unsigned lane = 0; lane < NrLanes; lane++)
+          for (int unsigned lane = 0; lane < NrLanes; lane++) begin
+            // How many elements are we committing in this lane?
+            // Since the MASKU instructions have vl mod 8 == 0 (non-default behaviour), we carry out
+            // the following calculation with vl/8 instead.
+            automatic int element_cnt = element_cnt_all_lanes / NrLanes;
+            if (lane < element_cnt_all_lanes[idx_width(NrLanes)-1:0])
+              element_cnt += 1;
+
             result_queue_d[result_queue_write_pnt_q][lane] = '{
               wdata: alu_result[lane],
-              be   : '1, // TODO
-              addr : vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew))),
+              be   : be(element_cnt, EW8),
+              addr : vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes / 8) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew))),
               id   : vinsn_issue.id
             };
-          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+          end
+          result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
+
 
           // Increment result queue pointers and counters
           result_queue_cnt_d += 1;
