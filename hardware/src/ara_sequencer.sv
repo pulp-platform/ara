@@ -107,7 +107,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   // This function determines the VFU responsible for handling this operation.
   function automatic vfu_e vfu(ara_op_e op);
     case (op) inside
-      [VADD:VXOR]      : vfu = VFU_Alu;
+      [VADD:VSRA]      : vfu = VFU_Alu;
       [VMANDNOT:VMXNOR]: vfu = VFU_MaskUnit;
       [VLE:VLXE]       : vfu = VFU_LoadUnit;
       [VSE:VSXE]       : vfu = VFU_StoreUnit;

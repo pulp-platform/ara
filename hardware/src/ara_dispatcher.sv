@@ -236,6 +236,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                6'b101000: ara_req_d.op = ara_pkg::VSRL;
+                6'b101001: ara_req_d.op = ara_pkg::VSRA;
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
@@ -292,6 +295,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                6'b101000: ara_req_d.op = ara_pkg::VSRL;
+                6'b101001: ara_req_d.op = ara_pkg::VSRA;
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
@@ -346,6 +352,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                6'b101000: ara_req_d.op = ara_pkg::VSRL;
+                6'b101001: ara_req_d.op = ara_pkg::VSRA;
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
