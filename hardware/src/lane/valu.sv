@@ -261,7 +261,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
           else
             vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
-          if (vinsn_queue_d.issue_pnt != 0)
+          if (vinsn_queue_d.issue_cnt != 0)
             issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
         end
       end
@@ -439,6 +439,14 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
           EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] - opb.w16[b];
           EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] - opb.w32[b];
           EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] - opb.w64[b];
+        endcase
+
+      // Shift instructions
+      VSLL: unique case (vew_i)
+          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] << opa.w8 [b][2:0];
+          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] << opa.w16[b][3:0];
+          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] << opa.w32[b][4:0];
+          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] << opa.w64[b][5:0];
         endcase
 
       // Comparison instructions
