@@ -6,15 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-- Move to flip-flop-based registers to store the vector descriptions (addresses and lengths)
-- Restrict Ara's FPU type support to RVD, RVF and Xf16
-- Data-movement instructions (vslide, vins, vext) are executed in a dedicated VSLIDE unit
-- Add support to full-duplex AXI operation
-- Add dedicated reduction hardware in VALU and VFPU
-- Remove VSLIDE unit
+- Hardware support for:
+  - Vector configuration instructions (vsetvl/vsetvli)
+  - Unit-strided vector loads and vector stores
+  - Basic arithmetic and logic instructions (vand, vor, vxor, vadd, vsub, vrsub, vmin-u, vmax-u)
+  - Predicated instructions through a mask unit
+  - Vector mask instructions (vmand, vmnand, vmandnot, vmor, vmnor, vmornot, vmxor, vmxnor)
+  - Length multipliers
 
-## [0.1.0] - 2018-05-30
+- Implementation of a synthesizable Ara SoC top-level
 
-### Added
-- Initial development
-- Support to RV64 "V" 0.3-DRAFT
+- Software support for RISC-V Vector code
+
+- Continuous integration tests through riscv-tests executed both with Spike and on Ara
