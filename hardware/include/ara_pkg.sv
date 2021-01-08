@@ -60,6 +60,8 @@ package ara_pkg;
     VADD, VSUB, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
     // Shifts,
     VSLL, VSRL, VSRA,
+    // Merge
+    VMERGE,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Load instructions

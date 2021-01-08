@@ -162,7 +162,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // Decode based on their func3 field
           case (insn.varith_type.func3)
             // Configuration instructions
-            OPCFG: begin
+            OPCFG: begin: opcfg
               // These can be acknowledged regardless of the state of Ara
               acc_req_ready_o = 1'b1;
 
@@ -214,7 +214,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 state_d = WAIT_IDLE;
             end
 
-            OPIVV: begin
+            OPIVV: begin: opivv
               // These generate a request to Ara's backend
               ara_req_d.vs1     = insn.varith_type.rs1;
               ara_req_d.use_vs1 = 1'b1;
@@ -236,6 +236,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
@@ -272,7 +273,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               end
             end
 
-            OPIVX: begin
+            OPIVX: begin: opivx
               // These generate a request to Ara's backend
               ara_req_d.scalar_op     = acc_req_i.rs1;
               ara_req_d.use_scalar_op = 1'b1;
@@ -295,6 +296,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
@@ -331,7 +333,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               end
             end
 
-            OPIVI: begin
+            OPIVI: begin: opivi
               // These generate a request to Ara's backend
               // Sign-extend this by default.
               // Instructions that need the immediate to be zero-extended
@@ -352,6 +354,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
@@ -388,7 +391,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               end
             end
 
-            OPMVV: begin
+            OPMVV: begin: opmvv
               // These generate a request to Ara's backend
               ara_req_d.vs1     = insn.varith_type.rs1;
               ara_req_d.use_vs1 = 1'b1;
