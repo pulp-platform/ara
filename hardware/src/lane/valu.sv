@@ -184,6 +184,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   simd_valu i_simd_valu (
     .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]),
     .operand_b_i(alu_operand_i[1]                                        ),
+    .mask_i     (mask_valid_i ? mask_i : {StrbWidth{1'b1}}               ),
     .op_i       (vinsn_issue.op                                          ),
     .vew_i      (vinsn_issue.vtype.vsew                                  ),
     .result_o   (valu_result                                             )
@@ -238,7 +239,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         // Store the result in the result queue
         result_queue_d[result_queue_write_pnt_q] = '{
           wdata: valu_result,
-          be   : be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm ? {StrbWidth{1'b1}} : mask_i),
+          be   : be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm || vinsn_issue.op == VMERGE ? {StrbWidth{1'b1}} : mask_i),
           addr : vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)),
           id   : vinsn_issue.id
         };
@@ -355,9 +356,15 @@ endmodule : valu
 // Description:
 // Ara's SIMD ALU, operating on elements 64-bit wide, and generating 64 bits per cycle.
 
-module simd_valu import ara_pkg::*; import rvv_pkg::*; (
+module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
+    // Dependant parameters. DO NOT CHANGE!
+    parameter int  unsigned DataWidth = $bits(elen_t),
+    parameter int  unsigned StrbWidth = DataWidth/8,
+    parameter type          strb_t    = logic [StrbWidth-1:0]
+  ) (
     input  elen_t   operand_a_i,
     input  elen_t   operand_b_i,
+    input  strb_t   mask_i,
     input  ara_op_e op_i,
     input  vew_e    vew_i,
     output elen_t   result_o
@@ -366,8 +373,6 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
   /*****************
    *  Definitions  *
    *****************/
-
-  localparam DataWidth = $bits(elen_t);
 
   typedef union packed {
     logic [0:0][63:0] w64;
@@ -459,6 +464,14 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; (
           EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
           EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
           EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
+        endcase
+
+      // Merge instructions
+      VMERGE: unique case (vew_i)
+          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = mask_i[b] ? opa.w8 [b] : opb.w8 [b];
+          EW16: for (int b = 0; b < 4; b++) res.w16[b] = mask_i[2*b] ? opa.w16[b] : opb.w16[b];
+          EW32: for (int b = 0; b < 2; b++) res.w32[b] = mask_i[4*b] ? opa.w32[b] : opb.w32[b];
+          EW64: for (int b = 0; b < 1; b++) res.w64[b] = mask_i[8*b] ? opa.w64[b] : opb.w64[b];
         endcase
 
       // Comparison instructions
