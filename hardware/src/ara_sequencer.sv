@@ -194,26 +194,28 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
             // Populate the PE request
             pe_req_d = '{
-              id           : vinsn_next_id,
-              op           : ara_req_i.op,
-              vm           : ara_req_i.vm,
-              vfu          : vfu(ara_req_i.op),
-              vs1          : ara_req_i.vs1,
-              use_vs1      : ara_req_i.use_vs1,
-              vs2          : ara_req_i.vs2,
-              use_vs2      : ara_req_i.use_vs2,
-              scalar_op    : ara_req_i.scalar_op,
-              use_scalar_op: ara_req_i.use_scalar_op,
-              stride       : ara_req_i.stride,
-              vd           : ara_req_i.vd,
-              use_vd       : ara_req_i.use_vd,
-              emul         : ara_req_i.emul,
-              eew          : ara_req_i.eew,
-              vl           : ara_req_i.vl,
-              vstart       : ara_req_i.vstart,
-              vtype        : ara_req_i.vtype,
-              vinsn_running: vinsn_running_q,
-              default      : '0
+              id            : vinsn_next_id,
+              op            : ara_req_i.op,
+              vm            : ara_req_i.vm,
+              vfu           : vfu(ara_req_i.op),
+              vs1           : ara_req_i.vs1,
+              use_vs1       : ara_req_i.use_vs1,
+              conversion_vs1: ara_req_i.conversion_vs1,
+              vs2           : ara_req_i.vs2,
+              use_vs2       : ara_req_i.use_vs2,
+              conversion_vs2: ara_req_i.conversion_vs2,
+              scalar_op     : ara_req_i.scalar_op,
+              use_scalar_op : ara_req_i.use_scalar_op,
+              stride        : ara_req_i.stride,
+              vd            : ara_req_i.vd,
+              use_vd        : ara_req_i.use_vd,
+              eew           : ara_req_i.eew,
+              emul          : ara_req_i.emul,
+              vl            : ara_req_i.vl,
+              vstart        : ara_req_i.vstart,
+              vtype         : ara_req_i.vtype,
+              vinsn_running : vinsn_running_q,
+              default       : '0
             };
             pe_req_valid_d = 1'b1;
 

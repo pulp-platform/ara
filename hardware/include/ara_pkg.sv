@@ -80,6 +80,23 @@ package ara_pkg;
     is_store = op inside {[VSE:VSXE]};
   endfunction: is_store
 
+  /**********************
+   *  Width conversion  *
+   **********************/
+
+  // Some instructions mix vector element widths. For example, widening integers, vwadd.vv,
+  // operate on 2*SEW = SEW + SEW. In Ara, we would out the whole instruction on 2*SEW.
+  //
+  // The operand queues are responsible for taking an element of width EEW and converting it on
+  // an element of width SEW for the functional units. The operand queues support the following
+  // type conversions:
+
+  typedef enum logic [1:0] {
+    OpQueueConversionNone,
+    OpQueueConversionZExt,
+    OpQueueConversionSExt
+  } opqueue_conversion_e;
+
   /***************************
    *  Accelerator interface  *
    ***************************/
@@ -100,8 +117,10 @@ package ara_pkg;
 
     logic [4:0] vs1; // 1st vector register operand
     logic use_vs1;
+    opqueue_conversion_e conversion_vs1;
     logic [4:0] vs2; // 2nd vector register operand
     logic use_vs2;
+    opqueue_conversion_e conversion_vs2;
     elen_t scalar_op; // Scalar operand
     logic use_scalar_op;
     elen_t stride; // 2nd scalar operand: stride for constant-strided vector load/stores
@@ -159,8 +178,10 @@ package ara_pkg;
 
     logic [4:0] vs1; // 1st vector register operand
     logic use_vs1;
+    opqueue_conversion_e conversion_vs1;
     logic [4:0] vs2; // 2nd vector register operand
     logic use_vs2;
+    opqueue_conversion_e conversion_vs2;
     elen_t scalar_op; // Scalar operand
     logic use_scalar_op;
     elen_t stride; // 2nd scalar operand: stride for constant-strided vector load/stores

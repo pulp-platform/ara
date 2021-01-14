@@ -72,6 +72,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     };
   endfunction: vtype_xlen
 
+  // Calculates next(lmul)
+  function automatic vlmul_e next_lmul(vlmul_e lmul);
+    unique case (lmul)
+      LMUL_1_8: next_lmul = LMUL_1_4;
+      LMUL_1_4: next_lmul = LMUL_1_2;
+      LMUL_1_2: next_lmul = LMUL_1;
+      LMUL_1  : next_lmul = LMUL_2;
+      LMUL_2  : next_lmul = LMUL_4;
+      LMUL_4  : next_lmul = LMUL_8;
+      default : next_lmul = LMUL_RSVD;
+    endcase
+  endfunction: next_lmul
+
   /***********************
    *  Backend interface  *
    ***********************/
@@ -413,6 +426,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_d.vm      = insn.varith_type.vm;
               ara_req_valid_d   = 1'b1;
 
+              // Assume an effective EMUL = LMUL1 by default (for the mask operations)
+              ara_req_d.emul = LMUL_1;
+
               // Decode based on the func6 field
               case (insn.varith_type.func6)
                 6'b011000: ara_req_d.op = ara_pkg::VMANDNOT;
@@ -423,6 +439,59 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b011101: ara_req_d.op = ara_pkg::VMNAND;
                 6'b011110: ara_req_d.op = ara_pkg::VMNOR;
                 6'b011111: ara_req_d.op = ara_pkg::VMXNOR;
+                // Widening instructions
+                6'b110000: begin // VWADDU
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110001: begin // VWADD
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                6'b110010: begin // VWSUBU
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110011: begin // VWSUB
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                6'b110100: begin // VWADDU.W
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110101: begin // VWADD.W
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                6'b110110: begin // VWSUBU.W
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110111: begin // VWSUB.W
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
@@ -434,7 +503,139 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               // Otherwise, we would either need to have a 'bit enable' signal to leave
               // individual bits untouched, or we would need to read back the destination
               // register before writing the result back to the VRF.
-              if (vl_q % 8 != '0) begin
+              if (ara_req_d.op inside {VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR}) begin
+                if (vl_q % 8 != '0) begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              end
+
+              // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              case (ara_req_d.emul)
+                LMUL_2:
+                  if (insn.varith_type.rs1 & 5'b00001 != 5'b00000 || insn.varith_type.rs2 & 5'b00001 != 5'b00000 || insn.varith_type.rd & 5'b00001 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if (insn.varith_type.rs1 & 5'b00011 != 5'b00000 || insn.varith_type.rs2 & 5'b00011 != 5'b00000 || insn.varith_type.rd & 5'b00011 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if (insn.varith_type.rs1 & 5'b00111 != 5'b00000 || insn.varith_type.rs2 & 5'b00111 != 5'b00000 || insn.varith_type.rd & 5'b00111 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+              endcase
+
+              // Ara cannot support instructions who operates on more than 64 bits.
+              if (int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+
+              // Instruction is invalid if the vtype is invalid
+              if (vtype_q.vill) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            end
+
+            OPMVX: begin: opmvx
+              // These generate a request to Ara's backend
+              ara_req_d.scalar_op     = acc_req_i.rs1;
+              ara_req_d.use_scalar_op = 1'b1;
+              ara_req_d.vs2           = insn.varith_type.rs2;
+              ara_req_d.use_vs2       = 1'b1;
+              ara_req_d.vd            = insn.varith_type.rd;
+              ara_req_d.use_vd        = 1'b1;
+              ara_req_d.vm            = insn.varith_type.vm;
+              ara_req_valid_d         = 1'b1;
+
+              // Decode based on the func6 field
+              case (insn.varith_type.func6)
+                // Widening instructions
+                6'b110000: begin // VWADDU
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110001: begin // VWADD
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                6'b110010: begin // VWSUBU
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110011: begin // VWSUB
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                6'b110100: begin // VWADDU.W
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110101: begin // VWADD.W
+                  ara_req_d.op             = ara_pkg::VADD;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                6'b110110: begin // VWSUBU.W
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                end
+                6'b110111: begin // VWSUB.W
+                  ara_req_d.op             = ara_pkg::VSUB;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                end
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              endcase
+
+              // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              case (ara_req_d.emul)
+                LMUL_2:
+                  if (insn.varith_type.rs2 & 5'b00001 != 5'b00000 || insn.varith_type.rd & 5'b00001 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if (insn.varith_type.rs2 & 5'b00011 != 5'b00000 || insn.varith_type.rd & 5'b00011 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if (insn.varith_type.rs2 & 5'b00111 != 5'b00000 || insn.varith_type.rd & 5'b00111 != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+              endcase
+
+              // Ara cannot support instructions who operates on more than 64 bits.
+              if (int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
