@@ -109,7 +109,8 @@ package ara_pkg;
     logic [4:0] vd; // Destination vector register
     logic use_vd;   // Instruction writes to vd
 
-    rvv_pkg::vew_e eew; // Effective element width
+    rvv_pkg::vlmul_e emul; // Effective length multiplier
+    rvv_pkg::vew_e eew;    // Effective element width
 
     // Vector machine metadata
     vlen_t vl;
@@ -167,7 +168,8 @@ package ara_pkg;
     logic [4:0] vd; // Destination vector register
     logic use_vd;   // Instruction writes to vd
 
-    rvv_pkg::vew_e eew; // Effective element width
+    rvv_pkg::vlmul_e emul; // Effective length multiplier
+    rvv_pkg::vew_e eew;    // Effective element width
 
     // Vector machine metadata
     vlen_t vl;
@@ -287,10 +289,11 @@ package ara_pkg;
 
     logic [4:0] vs; // Vector register operand
 
+    rvv_pkg::vew_e eew; // Effective element width
+
     // Vector machine metadata
     vlen_t vl;
     vlen_t vstart;
-    rvv_pkg::vtype_t vtype;
 
     // Hazards
     logic [NrVInsn-1:0] hazard;
@@ -306,7 +309,7 @@ package ara_pkg;
     logic use_vs1; // This operation uses vs1
     logic use_vs2; // This operation uses vs1
 
-    elen_t scalar_op; // Scalar operand
+    elen_t scalar_op;    // Scalar operand
     logic use_scalar_op; // This operation uses the scalar operand
 
     vfu_e vfu; // VFU responsible for this instruction

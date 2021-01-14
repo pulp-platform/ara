@@ -197,9 +197,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
             // Store the request
             requester_d = '{
-              addr   : vaddr(operand_request_i[requester].vs, NrLanes) + (operand_request_i[requester].vstart >> (int'(EW64) - int'(operand_request_i[requester].vtype.vsew))),
+              addr   : vaddr(operand_request_i[requester].vs, NrLanes) + (operand_request_i[requester].vstart >> (int'(EW64) - int'(operand_request_i[requester].eew))),
               len    : operand_request_i[requester].vl,
-              vew    : operand_request_i[requester].vtype.vsew,
+              vew    : operand_request_i[requester].eew,
               hazard : operand_request_i[requester].hazard,
               default: '0
             };

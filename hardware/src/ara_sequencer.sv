@@ -207,6 +207,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               stride       : ara_req_i.stride,
               vd           : ara_req_i.vd,
               use_vd       : ara_req_i.use_vd,
+              emul         : ara_req_i.emul,
               eew          : ara_req_i.eew,
               vl           : ara_req_i.vl,
               vstart       : ara_req_i.vstart,

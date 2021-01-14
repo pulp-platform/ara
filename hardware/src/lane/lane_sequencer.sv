@@ -185,9 +185,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[AluA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
+              eew    : pe_req_i.eew,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
@@ -196,9 +196,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[AluB] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
@@ -208,15 +208,15 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MaskM] = '{
               id     : pe_req_i.id,
               vs     : VMASK,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.eew)),
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.eew))) * NrLanes * 8 != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
@@ -224,9 +224,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MulFPUA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
+              eew    : pe_req_i.eew,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
@@ -235,9 +235,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MulFPUB] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
@@ -247,15 +247,15 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MaskM] = '{
               id     : pe_req_i.id,
               vs     : VMASK,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.eew)),
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.eew))) * NrLanes * 8 != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
@@ -264,15 +264,15 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MaskM] = '{
               id     : pe_req_i.id,
               vs     : VMASK,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.eew)),
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.eew))) * NrLanes * 8 != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
@@ -280,11 +280,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[StMaskA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
               vl     : pe_req_i.vl / NrLanes,
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
@@ -296,15 +296,15 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MaskM] = '{
               id     : pe_req_i.id,
               vs     : VMASK,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.eew)),
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.eew))) * NrLanes * 8 != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
@@ -312,30 +312,30 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[StMaskA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew)),
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[StMaskA].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+            if ((operand_request_i[StMaskA].vl << (int'(EW64) - int'(pe_req_i.eew))) * NrLanes != pe_req_i.vl)
               operand_request_i[StMaskA].vl += 1;
             operand_request_push[StMaskA] = pe_req_i.use_vs1;
 
             operand_request_i[MaskM] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)),
+              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew)),
               vstart : vfu_operation_d.vstart,
-              vtype  : pe_req_i.vtype,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes != pe_req_i.vl)
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.eew))) * NrLanes != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = pe_req_i.use_vs2;
           end
