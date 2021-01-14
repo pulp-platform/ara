@@ -182,12 +182,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t valu_result;
 
   simd_valu i_simd_valu (
-    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]),
-    .operand_b_i(alu_operand_i[1]                                        ),
-    .mask_i     (mask_valid_i ? mask_i : {StrbWidth{1'b1}}               ),
-    .op_i       (vinsn_issue.op                                          ),
-    .vew_i      (vinsn_issue.vtype.vsew                                  ),
-    .result_o   (valu_result                                             )
+    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
+    .operand_b_i(alu_operand_i[1]                                            ),
+    .mask_i     (mask_valid_i && !vinsn_issue.vm ? mask_i : {StrbWidth{1'b1}}),
+    .op_i       (vinsn_issue.op                                              ),
+    .vew_i      (vinsn_issue.vtype.vsew                                      ),
+    .result_o   (valu_result                                                 )
   );
 
   /*************
