@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Hardware support for:
   - Bit-shift instructions (vsll, vsrl, vsra)
+- Bender updated to version 0.21.0
 
 ## 0.1.0 - 2020-01-06
 
