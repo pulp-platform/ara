@@ -78,8 +78,7 @@ $(buildpath):
 # Bender
 bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
-	(command -v bender >/dev/null 2>&1 && ln -sf $$(command -v bender) ./bender || \
-	curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
+	(curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
 		| bash -s -- 0.21.0)
 	@echo "$$(./bender --version) available."
 
