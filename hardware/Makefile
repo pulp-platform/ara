@@ -64,8 +64,9 @@ dpi   := $(patsubst tb/dpi/%.cpp,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/d
 
 vlog_args += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233
 vlog_args += -work $(library)
+
 # Defines
-vlog_args += +define+NR_LANES=$(nr_lanes) +define+VLEN=$(vlen) +define+RVV_ARIANE=1
+bender_defs += --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen) --define RVV_ARIANE=1
 
 # Default target
 all: compile
@@ -79,7 +80,7 @@ bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
 	(command -v bender >/dev/null 2>&1 && ln -sf $$(command -v bender) ./bender || \
 	curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
-		| bash -s -- 0.19.0)
+		| bash -s -- 0.21.0)
 	@echo "$$(./bender --version) available."
 
 # Library
@@ -92,7 +93,7 @@ $(buildpath)/$(library):
 .PHONY: compile
 compile: dpi lib $(buildpath) $(buildpath)/compile.tcl | bender
 $(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
-	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t test > $(buildpath)/compile.tcl
+	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t test $(bender_defs) > $(buildpath)/compile.tcl
 	echo "exit" >> $(buildpath)/compile.tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile.tcl
 
