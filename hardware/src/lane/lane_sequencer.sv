@@ -186,6 +186,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               eew    : pe_req_i.eew,
+              conv   : pe_req_i.conversion_vs1,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
@@ -197,6 +198,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
               eew    : pe_req_i.eew,
+              conv   : pe_req_i.conversion_vs2,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
@@ -225,6 +227,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               eew    : pe_req_i.eew,
+              conv   : pe_req_i.conversion_vs1,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
@@ -236,6 +239,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
               eew    : pe_req_i.eew,
+              conv   : pe_req_i.conversion_vs2,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
@@ -281,6 +285,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               eew    : pe_req_i.eew,
+              conv   : pe_req_i.conversion_vs1,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
               vl     : pe_req_i.vl / NrLanes,
@@ -297,6 +302,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : VMASK,
               eew    : pe_req_i.eew,
+              conv   : pe_req_i.conversion_vs1,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
               vl     : (pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.eew)),

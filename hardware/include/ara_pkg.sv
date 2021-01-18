@@ -310,7 +310,8 @@ package ara_pkg;
 
     logic [4:0] vs; // Vector register operand
 
-    rvv_pkg::vew_e eew; // Effective element width
+    rvv_pkg::vew_e eew;        // Effective element width
+    opqueue_conversion_e conv; // Type conversion
 
     // Vector machine metadata
     vlen_t vl;
@@ -319,6 +320,12 @@ package ara_pkg;
     // Hazards
     logic [NrVInsn-1:0] hazard;
   } operand_request_cmd_t;
+
+  typedef struct packed {
+    rvv_pkg::vew_e eew;        // Effective element width
+    vlen_t vl;                 // Vector length
+    opqueue_conversion_e conv; // Type conversion
+  } operand_queue_cmd_t;
 
   // This is the interface between the lane's sequencer and the lane's VFUs.
   typedef struct packed {
