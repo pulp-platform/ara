@@ -366,7 +366,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
             automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
             // Shuffle this source byte
-            automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+            automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew);
             // Account for the bit offset
             automatic int mask_bit      = (mask_byte << $clog2(StrbWidth)) + mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
 
