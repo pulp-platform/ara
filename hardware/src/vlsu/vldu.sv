@@ -389,20 +389,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
-      // Unused fields
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vs1           = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].use_vs1       = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vs2           = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].use_vs2       = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op     = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].use_scalar_op = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride        = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vinsn_running = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].hazard_vs1    = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].hazard_vs2    = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].hazard_vm     = '0;
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].hazard_vd     = '0;
-
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
         issue_cnt_d = pe_req_i.vl;

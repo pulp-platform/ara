@@ -503,20 +503,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.vinsn[0]       = pe_req_i;
       vinsn_running_d[pe_req_i.id] = 1'b1;
 
-      // Unused fields
-      vinsn_queue_d.vinsn[0].vs1           = '0;
-      vinsn_queue_d.vinsn[0].use_vs1       = '0;
-      vinsn_queue_d.vinsn[0].vs2           = '0;
-      vinsn_queue_d.vinsn[0].use_vs2       = '0;
-      vinsn_queue_d.vinsn[0].scalar_op     = '0;
-      vinsn_queue_d.vinsn[0].use_scalar_op = '0;
-      vinsn_queue_d.vinsn[0].stride        = '0;
-      vinsn_queue_d.vinsn[0].vinsn_running = '0;
-      vinsn_queue_d.vinsn[0].hazard_vs1    = '0;
-      vinsn_queue_d.vinsn[0].hazard_vs2    = '0;
-      vinsn_queue_d.vinsn[0].hazard_vm     = '0;
-      vinsn_queue_d.vinsn[0].hazard_vd     = '0;
-
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
         issue_cnt_d = pe_req_i.vl;
