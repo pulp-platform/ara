@@ -30,15 +30,18 @@ before_script:
   - env
   - git submodule sync --recursive
   - git submodule foreach --recursive git reset --hard
-  # Clean up some stuff that the CI misses
 
 after_script:
   - env
 
 stages:
   - toolchain
-  - build
-  - test
+  - compile
+  - simulate
+
+#####################
+#  Toolchain stage  #
+#####################
 
 tc-gcc:
   stage: toolchain
@@ -63,9 +66,14 @@ tc-isa-sim:
       - install/riscv-isa-sim
     expire_in: 1 day
 
-build_apps:
-  stage: build
+###################
+#  Compile stage  #
+###################
+
+compile_apps:
+  stage: compile
   script:
+    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - make -C apps
   artifacts:
@@ -73,8 +81,8 @@ build_apps:
       - apps/bin
   needs: ["tc-gcc"]
 
-build_riscv_tests:
-  stage: build
+compile_riscv_tests:
+  stage: compile
   script:
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
     - git submodule update --init --recursive -- apps/riscv-tests
@@ -85,16 +93,12 @@ build_riscv_tests:
       - apps/bin
   needs: ["tc-gcc"]
 
-build_vsim:
-  stage: build
-  script:
-    - make -C hardware compile
-  artifacts:
-    paths:
-      - hardware/build
+####################
+#  Simulate stage  #
+####################
 
 hello_world:
-  stage: test
+  stage: simulate
   script:
     - make -C hardware app=${CI_JOB_NAME} simc
   artifacts:
@@ -102,27 +106,31 @@ hello_world:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
 
-riscv_tests:
-  stage: test
+riscv_tests_vsim:
+  stage: simulate
   script:
+    - git submodule update --init --recursive -- apps/riscv-tests
     - make -C hardware riscv_tests_simc
   artifacts:
     paths:
       - hardware/build/rv*.trace
-  needs: ["build_riscv_tests"]
+  needs: ["tc-gcc", "compile_riscv_tests"]
   dependencies:
-    - build_riscv_tests
+    - tc-gcc
+    - compile_riscv_tests
 
 riscv_tests_spike:
-  stage: test
+  stage: simulate
   script:
+    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - make -C apps riscv_tests_spike
   artifacts:
     paths:
       - apps/riscv-tests/isa/*.dump
       - apps/riscv-tests/isa/*.out32
-  needs: ["tc-isa-sim", "tc-gcc"]
+  needs: ["tc-isa-sim", "tc-gcc", "compile_riscv_tests"]
   dependencies:
     - tc-isa-sim
     - tc-gcc
+    - compile_riscv_tests
