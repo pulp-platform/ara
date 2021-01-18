@@ -150,7 +150,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 addr    : pe_req_i.scalar_op,
                 len     : pe_req_i.vl,
                 stride  : pe_req_i.stride,
-                vew     : pe_req_i.vtype.vsew,
+                vew     : pe_req_i.eew_vs1,
                 is_load : is_load(pe_req_i.op),
                 // Unit-strided loads/stores trigger incremental AXI bursts.
                 is_burst: (pe_req_i.op inside {VLE, VSE})

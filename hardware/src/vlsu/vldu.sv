@@ -244,7 +244,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             // Map axy_byte to the corresponding byte in the VRF word (sequential)
             automatic int vrf_seq_byte = axi_byte - lower_byte + r_pnt_q + vrf_pnt_q;
             // And then shuffle it
-            automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+            automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew > vinsn_issue.eew_vs1 ? vinsn_issue.vtype.vsew : vinsn_issue.eew_vs1);
 
             // Is this byte a valid byte in the VRF word?
             if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew_vs1)) begin
@@ -266,7 +266,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Initialize id and addr fields of the result queue requests
         for (int lane = 0; lane < NrLanes; lane++) begin
           result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.eew_vs1)));
         end
       end
 

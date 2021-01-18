@@ -473,25 +473,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 6'b110101: begin // VWADD.W
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 6'b110110: begin // VWSUBU.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 6'b110111: begin // VWSUB.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 default: begin
                   // Trigger an error
@@ -589,25 +593,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 6'b110101: begin // VWADD.W
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 6'b110110: begin // VWSUBU.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionZExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 6'b110111: begin // VWSUB.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                  ara_req_d.conversion_vs1 = OpQueueConversionSExt;
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
                 end
                 default: begin
                   // Trigger an error
