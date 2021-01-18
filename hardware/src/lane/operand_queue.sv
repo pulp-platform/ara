@@ -26,18 +26,48 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
     parameter int unsigned DataWidth   = $bits(elen_t)
   ) (
-    input  logic                 clk_i,
-    input  logic                 rst_ni,
+    input  logic                              clk_i,
+    input  logic                              rst_ni,
+    // Interface with the Operand Requester
+    input  operand_queue_cmd_t                operand_queue_cmd_i,
+    input  logic                              operand_queue_cmd_valid_i,
     // Interface with the Vector Register File
-    input  elen_t                operand_i,
-    input  logic                 operand_valid_i,
-    input  logic                 operand_issued_i,
-    output logic                 operand_queue_ready_o,
+    input  elen_t                             operand_i,
+    input  logic                              operand_valid_i,
+    input  logic                              operand_issued_i,
+    output logic                              operand_queue_ready_o,
     // Interface with the functional units
-    output elen_t                operand_o,
-    output logic                 operand_valid_o,
-    input  logic  [NrSlaves-1:0] operand_ready_i
+    output elen_t                             operand_o,
+    output logic                              operand_valid_o,
+    input  logic               [NrSlaves-1:0] operand_ready_i
   );
+
+  /********************
+   *  Command Buffer  *
+   ********************/
+
+  operand_queue_cmd_t cmd;
+  logic               cmd_valid;
+  logic               cmd_empty;
+  logic               cmd_pop;
+
+  fifo_v3 #(
+    .DEPTH(BufferDepth        ),
+    .dtype(operand_queue_cmd_t)
+  ) i_cmd_buffer (
+    .clk_i     (clk_i                    ),
+    .rst_ni    (rst_ni                   ),
+    .testmode_i(1'b0                     ),
+    .flush_i   (1'b0                     ),
+    .data_i    (operand_queue_cmd_i      ),
+    .push_i    (operand_queue_cmd_valid_i),
+    .full_o    (/* Unused */             ),
+    .data_o    (cmd                      ),
+    .empty_o   (cmd_empty                ),
+    .pop_i     (cmd_pop                  ),
+    .usage_o   (/* Unused */             )
+  );
+  assign cmd_valid = !cmd_empty;
 
   /************
    *  Buffer  *
@@ -94,21 +124,93 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  /*********************
+   *  Type conversion  *
+   *********************/
+
+  elen_t conv_operand;
+  // Decide whether we are taking the operands from the lower or from the upper half of the input buffer operand
+  logic  select_d, select_q;
+
+  always_comb begin: type_conversion
+    unique case (cmd.conv)
+      // No conversion
+      OpQueueConversionNone: conv_operand = ibuf_operand;
+
+      // Sign extension
+      OpQueueConversionSExt: begin
+        case (cmd.eew)
+          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = {{8 {ibuf_operand[16*e + 8 *select_q +  7]}}, ibuf_operand[16*e + 8 *select_q +: 8]};
+          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{16{ibuf_operand[32*e + 16*select_q + 15]}}, ibuf_operand[32*e + 16*select_q +: 16]};
+          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{32{ibuf_operand[64*e + 32*select_q + 31]}}, ibuf_operand[64*e + 32*select_q +: 32]};
+        endcase
+      end
+
+      // Zero extension
+      OpQueueConversionZExt: begin
+        case (cmd.eew)
+          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = { 8'b0, ibuf_operand[16*e + 8 *select_q +: 8]};
+          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {16'b0, ibuf_operand[32*e + 16*select_q +: 16]};
+          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {32'b0, ibuf_operand[64*e + 32*select_q +: 32]};
+        endcase
+      end
+    endcase
+  end: type_conversion
+
   /********************
    *  Operand output  *
    *******************/
 
+  // Count how many operands were already produced
+  vlen_t vl_d, vl_q;
+
   always_comb begin: obuf_control
-    // Do not pop anything from the input buffer queue
+    // Do not pop anything from the any of the queues
     ibuf_pop = 1'b0;
+    cmd_pop  = 1'b0;
+
+    // Maintain state
+    select_d = select_q;
+    vl_d     = vl_q;
 
     // Send the operand
-    operand_o       = ibuf_operand;
+    operand_o       = conv_operand;
     operand_valid_o = ibuf_operand_valid;
 
     // Account for sent operands
-    if (|operand_ready_i)
-      ibuf_pop = 1'b1;
+    if (operand_valid_o && |operand_ready_i) begin
+      // Count the used elements
+      if (cmd.conv inside {OpQueueConversionSExt, OpQueueConversionZExt})
+        vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
+      else
+        vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
+
+      // Next iteration will use the other half of the input operands
+      if (cmd.conv inside {OpQueueConversionSExt, OpQueueConversionZExt})
+        select_d = !select_q;
+
+      // Finished using an operand
+      if (select_q || cmd.conv == OpQueueConversionNone)
+        ibuf_pop = 1'b1;
+
+      // Finished execution
+      if (vl_d >= cmd.vl) begin
+        ibuf_pop = 1'b1;
+        cmd_pop  = 1'b1;
+        select_d = 1'b0;
+        vl_d     = '0;
+      end
+    end
   end: obuf_control
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin: p_type_conversion_ff
+    if (!rst_ni) begin
+      select_q <= '0;
+      vl_q     <= '0;
+    end else begin
+      select_q <= select_d;
+      vl_q     <= vl_d;
+    end
+  end
 
 endmodule : operand_queue

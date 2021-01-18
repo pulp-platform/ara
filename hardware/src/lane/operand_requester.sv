@@ -33,7 +33,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  operand_request_cmd_t [NrOperandQueues-1:0] operand_request_i,
     input  logic                 [NrOperandQueues-1:0] operand_request_valid_i,
     output logic                 [NrOperandQueues-1:0] operand_request_ready_o,
-    input  logic                 [ NrVInsn-1:0]        vinsn_running_i,
+    input  logic                 [NrVInsn-1:0]         vinsn_running_i,
     // Interface with the VRF
     output logic                 [NrBanks-1:0]         vrf_req_o,
     output vaddr_t               [NrBanks-1:0]         vrf_addr_o,
@@ -44,6 +44,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the operand queues
     input  logic                 [NrOperandQueues-1:0] operand_queue_ready_i,
     output logic                 [NrOperandQueues-1:0] operand_issued_o,
+    output operand_queue_cmd_t   [NrOperandQueues-1:0] operand_queue_cmd_o,
+    output logic                 [NrOperandQueues-1:0] operand_queue_cmd_valid_o,
     // Interface with the VFUs
     // ALU
     input  logic                                       alu_result_req_i,
@@ -187,6 +189,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Do not acknowledge any operand requester commands
       operand_request_ready_o[requester] = 1'b0;
 
+      // Do not send any operand conversion commands
+      operand_queue_cmd_o[requester]       = '0;
+      operand_queue_cmd_valid_o[requester] = 1'b0;
+
       case (state_q)
         IDLE: begin
           // Accept a new instruction
@@ -194,6 +200,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             state_d                            = REQUESTING;
             // Acknowledge the request
             operand_request_ready_o[requester] = 1'b1;
+
+            // Send a command to the operand queue
+            operand_queue_cmd_o[requester] = '{
+              eew : operand_request_i[requester].eew,
+              vl  : operand_request_i[requester].vl,
+              conv: operand_request_i[requester].conv
+            };
+            operand_queue_cmd_valid_o[requester] = 1'b1;
 
             // Store the request
             requester_d = '{
