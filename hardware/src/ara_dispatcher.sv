@@ -148,7 +148,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
       vstart : vstart_q,
       vtype  : vtype_q,
       emul   : vtype_q.vlmul,
-      eew    : vtype_q.vsew,
+      eew_vs1: vtype_q.vsew,
+      eew_vs2: vtype_q.vsew,
       default: '0
     };
     ara_req_valid_d = 1'b0;
@@ -709,12 +710,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             end
           endcase
 
-          // Decode the effective element width
+          // Decode the element width
           case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.eew = EW8;
-            4'b0101: ara_req_d.eew = EW16;
-            4'b0110: ara_req_d.eew = EW32;
-            4'b0111: ara_req_d.eew = EW64;
+            4'b0000: ara_req_d.eew_vs1 = EW8;
+            4'b0101: ara_req_d.eew_vs1 = EW16;
+            4'b0110: ara_req_d.eew_vs1 = EW32;
+            4'b0111: ara_req_d.eew_vs1 = EW64;
             default: begin // Invalid. Element is too wide, or encoding is non-existant.
               acc_req_ready_o  = 1'b1;
               acc_resp_o.error = 1'b1;
@@ -745,9 +746,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // Vector register register loads are encoded as loads of length VLENB, length multiplier
           // LMUL_1 and element width EW8. They overwrite all this decoding.
           if (ara_req_d.op == VLE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew  = EW8;
-            ara_req_d.emul = LMUL_1;
-            ara_req_d.vl   = VLENB;
+            ara_req_d.eew_vs1 = EW8;
+            ara_req_d.emul    = LMUL_1;
+            ara_req_d.vl      = VLENB;
 
             acc_req_ready_o  = 1'b1;
             acc_resp_o.error = 1'b0;
@@ -814,10 +815,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
           // Decode the element width
           case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.eew = EW8;
-            4'b0101: ara_req_d.eew = EW16;
-            4'b0110: ara_req_d.eew = EW32;
-            4'b0111: ara_req_d.eew = EW64;
+            4'b0000: ara_req_d.eew_vs1 = EW8;
+            4'b0101: ara_req_d.eew_vs1 = EW16;
+            4'b0110: ara_req_d.eew_vs1 = EW32;
+            4'b0111: ara_req_d.eew_vs1 = EW64;
             default: begin // Invalid. Element is too wide, or encoding is non-existant.
               acc_req_ready_o  = 1'b1;
               acc_resp_o.error = 1'b1;
@@ -848,9 +849,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // Vector register register stores are encoded as stores of length VLENB, length multiplier
           // LMUL_1 and element width EW8. They overwrite all this decoding.
           if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew  = EW8;
-            ara_req_d.emul = LMUL_1;
-            ara_req_d.vl   = VLENB;
+            ara_req_d.eew_vs1 = EW8;
+            ara_req_d.emul    = LMUL_1;
+            ara_req_d.vl      = VLENB;
 
             acc_req_ready_o  = 1'b1;
             acc_resp_o.error = 1'b0;

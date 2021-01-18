@@ -247,7 +247,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
-            if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew)) begin
+            if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew_vs1)) begin
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int vrf_lane   = vrf_byte >> 3;
               automatic int vrf_offset = vrf_byte[2:0];
@@ -271,7 +271,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // We have a word ready to be sent to the lanes
-      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.eew)))) begin
+      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.eew_vs1)))) begin
         // Increment result queue pointers and counters
         result_queue_cnt_d += 1;
         if (result_queue_write_pnt_q == ResultQueueDepth-1)
@@ -288,8 +288,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Reset the pointer in the VRF word
         vrf_pnt_d   = '0;
         // Account for the results that were issued
-        issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.eew));
-        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.eew)))
+        issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1));
+        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1)))
           issue_cnt_d = '0;
       end
 
@@ -359,8 +359,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_cnt_d -= 1;
 
         // Decrement the counter of remaining vector elements waiting to be written
-        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.eew));
-        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.eew))))
+        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.eew_vs1));
+        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.eew_vs1))))
           commit_cnt_d = '0;
       end
 

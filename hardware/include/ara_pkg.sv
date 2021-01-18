@@ -115,21 +115,31 @@ package ara_pkg;
     ara_op_e op; // Operation
     logic vm;    // Masked instruction
 
-    logic [4:0] vs1; // 1st vector register operand
+    // 1st vector register operand
+    logic [4:0] vs1;
     logic use_vs1;
     opqueue_conversion_e conversion_vs1;
-    logic [4:0] vs2; // 2nd vector register operand
+    rvv_pkg::vew_e eew_vs1;
+
+    // 2nd vector register operand
+    logic [4:0] vs2;
     logic use_vs2;
     opqueue_conversion_e conversion_vs2;
-    elen_t scalar_op; // Scalar operand
+    rvv_pkg::vew_e eew_vs2;
+
+    // Scalar operand
+    elen_t scalar_op;
     logic use_scalar_op;
-    elen_t stride; // 2nd scalar operand: stride for constant-strided vector load/stores
 
-    logic [4:0] vd; // Destination vector register
-    logic use_vd;   // Instruction writes to vd
+    // 2nd scalar operand: stride for constant-strided vector load/stores
+    elen_t stride;
 
-    rvv_pkg::vlmul_e emul; // Effective length multiplier
-    rvv_pkg::vew_e eew;    // Effective element width
+    // Destination vector register
+    logic [4:0] vd;
+    logic use_vd;
+
+    // Effective length multiplier
+    rvv_pkg::vlmul_e emul;
 
     // Vector machine metadata
     vlen_t vl;
@@ -176,21 +186,31 @@ package ara_pkg;
 
     vfu_e vfu; // VFU responsible for handling this instruction
 
-    logic [4:0] vs1; // 1st vector register operand
+    // 1st vector register operand
+    logic [4:0] vs1;
     logic use_vs1;
     opqueue_conversion_e conversion_vs1;
-    logic [4:0] vs2; // 2nd vector register operand
+    rvv_pkg::vew_e eew_vs1;
+
+    // 2nd vector register operand
+    logic [4:0] vs2;
     logic use_vs2;
     opqueue_conversion_e conversion_vs2;
-    elen_t scalar_op; // Scalar operand
+    rvv_pkg::vew_e eew_vs2;
+
+    // Scalar operand
+    elen_t scalar_op;
     logic use_scalar_op;
-    elen_t stride; // 2nd scalar operand: stride for constant-strided vector load/stores
 
-    logic [4:0] vd; // Destination vector register
-    logic use_vd;   // Instruction writes to vd
+    // 2nd scalar operand: stride for constant-strided vector load/stores
+    elen_t stride;
 
-    rvv_pkg::vlmul_e emul; // Effective length multiplier
-    rvv_pkg::vew_e eew;    // Effective element width
+    // Destination vector register
+    logic [4:0] vd;
+    logic use_vd;
+
+    // Effective length multiplier
+    rvv_pkg::vlmul_e emul;
 
     // Vector machine metadata
     vlen_t vl;
