@@ -91,10 +91,14 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  typedef enum logic [1:0] {
+  typedef enum logic [3:0] {
     OpQueueConversionNone,
-    OpQueueConversionZExt,
-    OpQueueConversionSExt
+    OpQueueConversionZExt2,
+    OpQueueConversionSExt2,
+    OpQueueConversionZExt4,
+    OpQueueConversionSExt4,
+    OpQueueConversionZExt8,
+    OpQueueConversionSExt8
   } opqueue_conversion_e;
 
   /***************************

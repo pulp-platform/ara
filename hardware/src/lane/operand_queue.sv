@@ -24,7 +24,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     parameter int unsigned BufferDepth = 2,
     parameter int unsigned NrSlaves    = 1,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int unsigned DataWidth   = $bits(elen_t)
+    parameter int unsigned DataWidth   = $bits(elen_t),
+    parameter int unsigned StrbWidth   = DataWidth/8
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -47,8 +48,6 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
    ********************/
 
   operand_queue_cmd_t cmd;
-  logic               cmd_valid;
-  logic               cmd_empty;
   logic               cmd_pop;
 
   fifo_v3 #(
@@ -63,11 +62,10 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     .push_i    (operand_queue_cmd_valid_i),
     .full_o    (/* Unused */             ),
     .data_o    (cmd                      ),
-    .empty_o   (cmd_empty                ),
+    .empty_o   (/* Unused */             ),
     .pop_i     (cmd_pop                  ),
     .usage_o   (/* Unused */             )
   );
-  assign cmd_valid = !cmd_empty;
 
   /************
    *  Buffer  *
@@ -128,30 +126,55 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
    *  Type conversion  *
    *********************/
 
-  elen_t conv_operand;
+  elen_t                                         conv_operand;
   // Decide whether we are taking the operands from the lower or from the upper half of the input buffer operand
-  logic  select_d, select_q;
+  logic  [cf_math_pkg::idx_width(StrbWidth)-1:0] select_d, select_q;
 
   always_comb begin: type_conversion
+    // Shuffle the input operand
+    automatic logic [cf_math_pkg::idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
+
     unique case (cmd.conv)
       // No conversion
       OpQueueConversionNone: conv_operand = ibuf_operand;
 
       // Sign extension
-      OpQueueConversionSExt: begin
-        case (cmd.eew)
-          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = {{8 {ibuf_operand[16*e + 8 *select_q +  7]}}, ibuf_operand[16*e + 8 *select_q +: 8]};
-          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{16{ibuf_operand[32*e + 16*select_q + 15]}}, ibuf_operand[32*e + 16*select_q +: 16]};
-          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{32{ibuf_operand[64*e + 32*select_q + 31]}}, ibuf_operand[64*e + 32*select_q +: 32]};
+      OpQueueConversionSExt2: begin
+        unique case (cmd.eew)
+          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = {{8 {ibuf_operand[16*e + 8*select + 7]}}, ibuf_operand[16*e + 8*select +: 8]};
+          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{16{ibuf_operand[32*e + 8*select + 15]}}, ibuf_operand[32*e + 8*select +: 16]};
+          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{32{ibuf_operand[64*e + 8*select + 31]}}, ibuf_operand[64*e + 8*select +: 32]};
+        endcase
+      end
+      OpQueueConversionSExt4: begin
+        unique case (cmd.eew)
+          EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{24{ibuf_operand[32*e + 8*select + 7]}}, ibuf_operand[32*e + 8*select +: 8]};
+          EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{48{ibuf_operand[64*e + 8*select + 15]}}, ibuf_operand[64*e + 8*select +: 16]};
+        endcase
+      end
+      OpQueueConversionSExt8: begin
+        unique case (cmd.eew)
+          EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{56{ibuf_operand[64*e + 8*select + 7]}}, ibuf_operand[64*e + 8*select +: 8]};
         endcase
       end
 
       // Zero extension
-      OpQueueConversionZExt: begin
-        case (cmd.eew)
-          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = { 8'b0, ibuf_operand[16*e + 8 *select_q +: 8]};
-          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {16'b0, ibuf_operand[32*e + 16*select_q +: 16]};
-          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {32'b0, ibuf_operand[64*e + 32*select_q +: 32]};
+      OpQueueConversionZExt2: begin
+        unique case (cmd.eew)
+          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = { 8'b0, ibuf_operand[16*e + 8*select +: 8]};
+          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {16'b0, ibuf_operand[32*e + 8*select +: 16]};
+          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {32'b0, ibuf_operand[64*e + 8*select +: 32]};
+        endcase
+      end
+      OpQueueConversionZExt4: begin
+        unique case (cmd.eew)
+          EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {24'b0, ibuf_operand[32*e + 8*select +: 8]};
+          EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {48'b0, ibuf_operand[64*e + 8*select +: 16]};
+        endcase
+      end
+      OpQueueConversionZExt8: begin
+        unique case (cmd.eew)
+          EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {56'b0, ibuf_operand[64*e + 8*select +: 8]};
         endcase
       end
     endcase
@@ -180,24 +203,25 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     // Account for sent operands
     if (operand_valid_o && |operand_ready_i) begin
       // Count the used elements
-      if (cmd.conv inside {OpQueueConversionSExt, OpQueueConversionZExt})
-        vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
-      else
-        vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
+      vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.sew)));
 
-      // Next iteration will use the other half of the input operands
-      if (cmd.conv inside {OpQueueConversionSExt, OpQueueConversionZExt})
-        select_d = !select_q;
+      // Update the pointer to the input operand
+      unique case (cmd.conv)
+        OpQueueConversionSExt2, OpQueueConversionZExt2: select_d = select_q + 4;
+        OpQueueConversionSExt4, OpQueueConversionZExt4: select_d = select_q + 2;
+        OpQueueConversionSExt8, OpQueueConversionZExt8: select_d = select_q + 1;
+        default:; // Do nothing.
+      endcase
 
       // Finished using an operand
-      if (select_q || cmd.conv == OpQueueConversionNone)
+      if ((select_q != '0 && select_d == '0) || cmd.conv == OpQueueConversionNone)
         ibuf_pop = 1'b1;
 
       // Finished execution
       if (vl_d >= cmd.vl) begin
         ibuf_pop = 1'b1;
         cmd_pop  = 1'b1;
-        select_d = 1'b0;
+        select_d = '0;
         vl_d     = '0;
       end
     end
