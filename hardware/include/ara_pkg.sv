@@ -59,7 +59,7 @@ package ara_pkg;
     // Arithmetic and logic instructions
     VADD, VSUB, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
     // Shifts,
-    VSLL, VSRL, VSRA,
+    VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
     VMERGE,
     // Mask operations

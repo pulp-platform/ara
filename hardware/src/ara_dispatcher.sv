@@ -267,6 +267,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
+                6'b101100: begin
+                  ara_req_d.op      = ara_pkg::VNSRL;
+                  ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
+
+                  // Check whether the EEW is not too wide.
+                  if (ara_req_d.eew_vs2 > EW64) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                6'b101101: begin
+                  ara_req_d.op      = ara_pkg::VNSRA;
+                  ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
+
+                  // Check whether the EEW is not too wide.
+                  if (ara_req_d.eew_vs2 > EW64) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
@@ -330,6 +354,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
+                6'b101100: begin
+                  ara_req_d.op      = ara_pkg::VNSRL;
+                  ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
+
+                  // Check whether the EEW is not too wide.
+                  if (ara_req_d.eew_vs2 > EW64) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                6'b101101: begin
+                  ara_req_d.op      = ara_pkg::VNSRA;
+                  ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
+
+                  // Check whether the EEW is not too wide.
+                  if (ara_req_d.eew_vs2 > EW64) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
@@ -391,6 +439,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
+                6'b101100: begin
+                  ara_req_d.op      = ara_pkg::VNSRL;
+                  ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
+
+                  // Check whether the EEW is not too wide.
+                  if (ara_req_d.eew_vs2 > EW64) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                6'b101101: begin
+                  ara_req_d.op      = ara_pkg::VNSRA;
+                  ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
+
+                  // Check whether the EEW is not too wide.
+                  if (ara_req_d.eew_vs2 > EW64) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
