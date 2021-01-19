@@ -362,11 +362,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             automatic int vrf_pnt_byte_offset = vrf_pnt_q >> $clog2(StrbWidth);
             automatic int vrf_pnt_bit_offset  = vrf_pnt_q[idx_width(StrbWidth)-1:0];
 
-            // A single bit from the mask operands can be used several times, depending on the vsew.
+            // A single bit from the mask operands can be used several times, depending on the eew.
             automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
             automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
             // Shuffle this source byte
-            automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vs1);
+            automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
             // Account for the bit offset
             automatic int mask_bit      = (mask_byte << $clog2(StrbWidth)) + mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
 

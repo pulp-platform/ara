@@ -197,6 +197,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               id            : vinsn_next_id,
               op            : ara_req_i.op,
               vm            : ara_req_i.vm,
+              eew_vmask     : ara_req_i.eew_vmask,
               vfu           : vfu(ara_req_i.op),
               vs1           : ara_req_i.vs1,
               use_vs1       : ara_req_i.use_vs1,

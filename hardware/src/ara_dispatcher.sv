@@ -116,11 +116,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
   } state_e;
   state_e state_d, state_q;
 
+  // We need to memorize the element width used to store the mask vector on the lanes, so that we are able to
+  // deshuffle it on the Mask unit.
+  rvv_pkg::vew_e eew_vmask_d, eew_vmask_q;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q <= NORMAL_OPERATION;
+      state_q     <= NORMAL_OPERATION;
+      eew_vmask_q <= rvv_pkg::EW8;
     end else begin
-      state_q <= state_d;
+      state_q     <= state_d;
+      eew_vmask_q <= eew_vmask_d;
     end
   end
 
@@ -130,10 +136,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
   always_comb begin: p_decoder
     // Default values
-    vstart_d = vstart_q;
-    vl_d     = vl_q;
-    vtype_d  = vtype_q;
-    state_d  = state_q;
+    vstart_d    = vstart_q;
+    vl_d        = vl_q;
+    vtype_d     = vtype_q;
+    state_d     = state_q;
+    eew_vmask_d = eew_vmask_q;
 
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
@@ -144,13 +151,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     };
 
     ara_req_d = '{
-      vl     : vl_q,
-      vstart : vstart_q,
-      vtype  : vtype_q,
-      emul   : vtype_q.vlmul,
-      eew_vs1: vtype_q.vsew,
-      eew_vs2: vtype_q.vsew,
-      default: '0
+      vl       : vl_q,
+      vstart   : vstart_q,
+      vtype    : vtype_q,
+      emul     : vtype_q.vlmul,
+      eew_vs1  : vtype_q.vsew,
+      eew_vs2  : vtype_q.vsew,
+      eew_vmask: eew_vmask_q,
+      default  : '0
     };
     ara_req_valid_d = 1'b0;
 
@@ -802,10 +810,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
           // Decode the element width
           case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.eew_vs1 = EW8;
-            4'b0101: ara_req_d.eew_vs1 = EW16;
-            4'b0110: ara_req_d.eew_vs1 = EW32;
-            4'b0111: ara_req_d.eew_vs1 = EW64;
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
             default: begin // Invalid. Element is too wide, or encoding is non-existant.
               acc_req_ready_o  = 1'b1;
               acc_resp_o.error = 1'b1;
@@ -905,10 +913,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
           // Decode the element width
           case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.eew_vs1 = EW8;
-            4'b0101: ara_req_d.eew_vs1 = EW16;
-            4'b0110: ara_req_d.eew_vs1 = EW32;
-            4'b0111: ara_req_d.eew_vs1 = EW64;
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
             default: begin // Invalid. Element is too wide, or encoding is non-existant.
               acc_req_ready_o  = 1'b1;
               acc_resp_o.error = 1'b1;
@@ -1127,6 +1135,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           acc_resp_valid_o = 1'b1;
         end
       endcase
+    end
+
+    // Update the EEW_VMASK
+    if (ara_req_valid_d && ara_req_d.use_vd && ara_req_d.vd == VMASK) begin
+      eew_vmask_d = ara_req_d.vtype.vsew;
     end
   end: p_decoder
 

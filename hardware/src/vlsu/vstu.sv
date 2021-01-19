@@ -191,10 +191,10 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           // Map axy_byte to the corresponding byte in the VRF word (sequential)
           automatic int vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
           // And then shuffle it
-          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew > vinsn_issue.eew_vs1 ? vinsn_issue.vtype.vsew : vinsn_issue.eew_vs1);
+          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
           // Is this byte a valid byte in the VRF word?
-          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew_vs1)) begin
+          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.vtype.vsew)) begin
             // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
             automatic int vrf_lane   = vrf_byte >> 3;
             automatic int vrf_offset = vrf_byte[2:0];
@@ -222,7 +222,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         end
 
         // We consumed a whole word from the lanes
-        if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.eew_vs1)))) begin
+        if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.vtype.vsew)))) begin
           // Reset the pointer in the VRF word
           vrf_pnt_d           = '0;
           // Acknowledge the operands with the lanes
@@ -230,8 +230,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           // Acknowledge the mask operand
           mask_ready_o        = !vinsn_issue.vm;
           // Account for the results that were issued
-          issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1));
-          if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1)))
+          issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
+          if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
             issue_cnt_d = '0;
         end
       end

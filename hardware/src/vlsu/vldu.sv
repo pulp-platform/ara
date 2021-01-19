@@ -244,10 +244,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             // Map axy_byte to the corresponding byte in the VRF word (sequential)
             automatic int vrf_seq_byte = axi_byte - lower_byte + r_pnt_q + vrf_pnt_q;
             // And then shuffle it
-            automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew > vinsn_issue.eew_vs1 ? vinsn_issue.vtype.vsew : vinsn_issue.eew_vs1);
+            automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
-            if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew_vs1)) begin
+            if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.vtype.vsew)) begin
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int vrf_lane   = vrf_byte >> 3;
               automatic int vrf_offset = vrf_byte[2:0];
@@ -266,12 +266,12 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Initialize id and addr fields of the result queue requests
         for (int lane = 0; lane < NrLanes; lane++) begin
           result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.eew_vs1)));
+          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
         end
       end
 
       // We have a word ready to be sent to the lanes
-      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.eew_vs1)))) begin
+      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.vtype.vsew)))) begin
         // Increment result queue pointers and counters
         result_queue_cnt_d += 1;
         if (result_queue_write_pnt_q == ResultQueueDepth-1)
@@ -288,8 +288,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Reset the pointer in the VRF word
         vrf_pnt_d   = '0;
         // Account for the results that were issued
-        issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1));
-        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1)))
+        issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
+        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
           issue_cnt_d = '0;
       end
 
@@ -359,8 +359,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_cnt_d -= 1;
 
         // Decrement the counter of remaining vector elements waiting to be written
-        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.eew_vs1));
-        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.eew_vs1))))
+        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
+        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew))))
           commit_cnt_d = '0;
       end
 
