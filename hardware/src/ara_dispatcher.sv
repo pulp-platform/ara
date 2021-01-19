@@ -451,10 +451,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   case (insn.varith_type.rs1)
                     5'b00010: begin // VZEXT.VF8
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt;
-                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(3);
+                      ara_req_d.eew_vs2        = vtype_q.vsew.prev(3);
 
                       // Invalid conversion
-                      if (int'(vtype_q.vsew) < int'(EW64) || int'(vtype_q.vlmul) < LMUL_1) begin
+                      if (int'(vtype_q.vsew) < int'(EW64) || int'(vtype_q.vlmul) inside {LMUL_1_2, LMUL_1_4, LMUL_1_8}) begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
                         ara_req_valid_d  = 1'b0;
@@ -462,10 +462,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00011: begin // VSEXT.VF8
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt;
-                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(3);
+                      ara_req_d.eew_vs2        = vtype_q.vsew.prev(3);
 
                       // Invalid conversion
-                      if (int'(vtype_q.vsew) < int'(EW64) || int'(vtype_q.vlmul) < LMUL_1) begin
+                      if (int'(vtype_q.vsew) < int'(EW64) || int'(vtype_q.vlmul) inside {LMUL_1_2, LMUL_1_4, LMUL_1_8}) begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
                         ara_req_valid_d  = 1'b0;
@@ -473,10 +473,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00100: begin // VZEXT.VF4
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt;
-                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(2);
+                      ara_req_d.eew_vs2        = vtype_q.vsew.prev(2);
 
                       // Invalid conversion
-                      if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) < LMUL_1_2) begin
+                      if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) inside {LMUL_1_4, LMUL_1_8}) begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
                         ara_req_valid_d  = 1'b0;
@@ -484,10 +484,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00101: begin // VSEXT.VF4
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt;
-                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(2);
+                      ara_req_d.eew_vs2        = vtype_q.vsew.prev(2);
 
                       // Invalid conversion
-                      if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) < LMUL_1_2) begin
+                      if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) inside {LMUL_1_4, LMUL_1_8}) begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
                         ara_req_valid_d  = 1'b0;
@@ -495,10 +495,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00110: begin // VZEXT.VF2
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt;
-                      ara_req_d.eew_vs1        = vtype_q.vsew.prev();
+                      ara_req_d.eew_vs2        = vtype_q.vsew.prev();
 
                       // Invalid conversion
-                      if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) < LMUL_1_4) begin
+                      if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) inside {LMUL_1_8}) begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
                         ara_req_valid_d  = 1'b0;
@@ -506,10 +506,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00111: begin // VSEXT.VF2
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt;
-                      ara_req_d.eew_vs1        = vtype_q.vsew.prev();
+                      ara_req_d.eew_vs2        = vtype_q.vsew.prev();
 
                       // Invalid conversion
-                      if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) < LMUL_1_4) begin
+                      if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) inside {LMUL_1_8}) begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
                         ara_req_valid_d  = 1'b0;
