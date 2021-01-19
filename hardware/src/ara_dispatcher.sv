@@ -440,6 +440,88 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b011101: ara_req_d.op = ara_pkg::VMNAND;
                 6'b011110: ara_req_d.op = ara_pkg::VMNOR;
                 6'b011111: ara_req_d.op = ara_pkg::VMXNOR;
+                6'b010010: begin // VXUNARY0
+                  // These instructions do not use vs1
+                  ara_req_d.use_vs1       = 1'b0;
+                  // They are always encoded as ADDs with zero.
+                  ara_req_d.op            = VADD;
+                  ara_req_d.use_scalar_op = 1'b1;
+                  ara_req_d.scalar_op     = '0;
+
+                  case (insn.varith_type.rs1)
+                    5'b00010: begin // VZEXT.VF8
+                      ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(3);
+
+                      // Invalid conversion
+                      if (int'(vtype_q.vsew) < int'(EW64) || int'(vtype_q.vlmul) < LMUL_1) begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    end
+                    5'b00011: begin // VSEXT.VF8
+                      ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(3);
+
+                      // Invalid conversion
+                      if (int'(vtype_q.vsew) < int'(EW64) || int'(vtype_q.vlmul) < LMUL_1) begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    end
+                    5'b00100: begin // VZEXT.VF4
+                      ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(2);
+
+                      // Invalid conversion
+                      if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) < LMUL_1_2) begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    end
+                    5'b00101: begin // VSEXT.VF4
+                      ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.prev(2);
+
+                      // Invalid conversion
+                      if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) < LMUL_1_2) begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    end
+                    5'b00110: begin // VZEXT.VF2
+                      ara_req_d.conversion_vs2 = OpQueueConversionZExt;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.prev();
+
+                      // Invalid conversion
+                      if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) < LMUL_1_4) begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    end
+                    5'b00111: begin // VSEXT.VF2
+                      ara_req_d.conversion_vs2 = OpQueueConversionSExt;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.prev();
+
+                      // Invalid conversion
+                      if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) < LMUL_1_4) begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    end
+                    default: begin
+                      // Trigger an error
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
+                end
                 // Widening instructions
                 6'b110000: begin // VWADDU
                   ara_req_d.op             = ara_pkg::VADD;

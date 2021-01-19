@@ -334,6 +334,7 @@ package ara_pkg;
     opqueue_conversion_e conv; // Type conversion
 
     // Vector machine metadata
+    rvv_pkg::vtype_t vtype;
     vlen_t vl;
     vlen_t vstart;
 
@@ -343,6 +344,7 @@ package ara_pkg;
 
   typedef struct packed {
     rvv_pkg::vew_e eew;        // Effective element width
+    rvv_pkg::vew_e sew;        // Standard element width
     vlen_t vl;                 // Vector length
     opqueue_conversion_e conv; // Type conversion
   } operand_queue_cmd_t;

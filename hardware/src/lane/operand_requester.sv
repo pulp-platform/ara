@@ -204,6 +204,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Send a command to the operand queue
             operand_queue_cmd_o[requester] = '{
               eew : operand_request_i[requester].eew,
+              sew : operand_request_i[requester].vtype.vsew,
               vl  : operand_request_i[requester].vl,
               conv: operand_request_i[requester].conv
             };
