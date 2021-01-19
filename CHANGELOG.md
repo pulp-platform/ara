@@ -6,11 +6,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
 - Hardware support for:
   - Bit-shift instructions (vsll, vsrl, vsra)
+  - Vector widening integer add/subtract (vwadd, vwaddu, vwsub, vwsubu)
+  - Vector integer extension (vzext, vsext)
+  - Vector integer merge and move instructions (vmerge, vmv)
+
+### Changed
+
 - Bender updated to version 0.21.0
 
+### Fixed
+
+- CVA6's forwarding mechanism of operand B for accelerator instructions
+
 ## 0.1.0 - 2020-01-06
+
+# Added
 
 - Hardware support for:
   - Vector configuration instructions (vsetvl/vsetvli)
