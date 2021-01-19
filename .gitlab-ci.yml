@@ -124,6 +124,7 @@ riscv_tests_spike:
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - make -C apps/riscv-tests/isa clean
     - make -C apps riscv_tests_spike
   artifacts:
     paths:
