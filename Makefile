@@ -41,7 +41,7 @@ all: toolchain riscv-isa-sim verilator
 .PHONY: toolchain
 toolchain: ${GCC_INSTALL_DIR}
 
-${GCC_INSTALL_DIR}:
+${GCC_INSTALL_DIR}: Makefile
 	mkdir -p $(GCC_INSTALL_DIR)
 	# Apply patch on riscv-binutils
 	cd $(CURDIR)/toolchain/riscv-gnu-toolchain/riscv-binutils && git reset --hard && git apply $(CURDIR)/patches/0001-riscv-binutils-patch
@@ -53,7 +53,7 @@ ${GCC_INSTALL_DIR}:
 .PHONY: riscv-isa-sim
 riscv-isa-sim: ${ISA_SIM_INSTALL_DIR}
 
-${ISA_SIM_INSTALL_DIR}:
+${ISA_SIM_INSTALL_DIR}: Makefile
 	# Apply patch on riscv-isa-sim
 	cd $(CURDIR)/toolchain/riscv-isa-sim && git reset --hard && git apply $(CURDIR)/patches/0002-riscv-isa-sim-patch
 	# There are linking issues with the standard libraries when using newer CC/CXX versions to compile Spike.
@@ -68,7 +68,7 @@ ${ISA_SIM_INSTALL_DIR}:
 .PHONY: verilator
 verilator: ${VERIL_INSTALL_DIR}
 
-${VERIL_INSTALL_DIR}:
+${VERIL_INSTALL_DIR}: Makefile
 	# Checkout the right version
 	cd $(CURDIR)/toolchain/verilator && git reset --hard && git fetch && git checkout ${VERIL_VERSION}
 	# Compile verilator
