@@ -292,7 +292,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             // Acknowledge the request
             state_d          = IDLE;
             ara_req_ready_o  = 1'b1;
-            ara_resp_o       = pe_scalar_resp_i;
+            ara_resp_o.resp  = pe_scalar_resp_i;
             ara_resp_valid_o = 1'b1;
           end
       end
