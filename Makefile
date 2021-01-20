@@ -22,6 +22,8 @@ INSTALL_PREFIX      ?= install
 INSTALL_DIR         ?= ${ROOT_DIR}/${INSTALL_PREFIX}
 GCC_INSTALL_DIR     ?= ${INSTALL_DIR}/riscv-gcc
 ISA_SIM_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim
+VERIL_INSTALL_DIR   ?= ${INSTALL_DIR}/verilator
+VERIL_VERSION       ?= v4.106
 
 # CC and CXX are Makefile default variables that are always defined in a Makefile. Hence, overwrite
 # the variable if it is only defined by the Makefile (its origin in the Makefile's default).
@@ -33,7 +35,7 @@ CXX    = g++-7.2.0
 endif
 
 # Default target
-all: toolchain riscv-isa-sim
+all: toolchain riscv-isa-sim verilator
 
 # Toolchain
 .PHONY: toolchain
@@ -61,6 +63,17 @@ ${ISA_SIM_INSTALL_DIR}:
 	make install SETUP_PREFIX=$(ISA_SIM_INSTALL_DIR) PREFIX=$(ISA_SIM_INSTALL_DIR) && \
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:$$PATH; cd ..; \
 	CC=gcc-4.8.3 CXX=g++-4.8.3 ../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
+
+# Verilator
+.PHONY: verilator
+verilator: ${VERIL_INSTALL_DIR}
+
+${VERIL_INSTALL_DIR}:
+	# Checkout the right version
+	cd $(CURDIR)/toolchain/verilator && git reset --hard && git fetch && git checkout ${VERIL_VERSION}
+	# Compile verilator
+	cd $(CURDIR)/toolchain/verilator && git clean -xfdf && autoconf && \
+	./configure --prefix=$(VERIL_INSTALL_DIR) && make -j4 && make install
 
 # RISC-V Tests
 riscv_tests:
