@@ -270,7 +270,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b101100: begin
                   ara_req_d.op      = ara_pkg::VNSRL;
                   ara_req_d.eew_vs2 = vtype_q.vsew.next();
-                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
@@ -278,11 +277,33 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+
+                  // Check whether we can access vs2
+                  case (ara_req_d.emul.next())
+                    LMUL_2:
+                      if (insn.varith_type.rs2 & 5'b00001 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (insn.varith_type.rs2 & 5'b00011 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (insn.varith_type.rs2 & 5'b00111 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_RSVD: begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
                 end
                 6'b101101: begin
                   ara_req_d.op      = ara_pkg::VNSRA;
                   ara_req_d.eew_vs2 = vtype_q.vsew.next();
-                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
@@ -290,6 +311,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+
+                  // Check whether we can access vs2
+                  case (ara_req_d.emul.next())
+                    LMUL_2:
+                      if (insn.varith_type.rs2 & 5'b00001 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (insn.varith_type.rs2 & 5'b00011 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (insn.varith_type.rs2 & 5'b00111 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_RSVD: begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
                 end
                 default: begin
                   // Trigger an error
@@ -361,7 +405,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b101100: begin
                   ara_req_d.op      = ara_pkg::VNSRL;
                   ara_req_d.eew_vs2 = vtype_q.vsew.next();
-                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
@@ -369,11 +412,33 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+
+                  // Check whether we can access vs2
+                  case (ara_req_d.emul.next())
+                    LMUL_2:
+                      if (insn.varith_type.rs2 & 5'b00001 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (insn.varith_type.rs2 & 5'b00011 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (insn.varith_type.rs2 & 5'b00111 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_RSVD: begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
                 end
                 6'b101101: begin
                   ara_req_d.op      = ara_pkg::VNSRA;
                   ara_req_d.eew_vs2 = vtype_q.vsew.next();
-                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
@@ -381,6 +446,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+
+                  // Check whether we can access vs2
+                  case (ara_req_d.emul.next())
+                    LMUL_2:
+                      if (insn.varith_type.rs2 & 5'b00001 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (insn.varith_type.rs2 & 5'b00011 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (insn.varith_type.rs2 & 5'b00111 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_RSVD: begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
                 end
                 default: begin
                   // Trigger an error
@@ -450,7 +538,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b101100: begin
                   ara_req_d.op      = ara_pkg::VNSRL;
                   ara_req_d.eew_vs2 = vtype_q.vsew.next();
-                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
@@ -458,11 +545,33 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+
+                  // Check whether we can access vs2
+                  case (ara_req_d.emul.next())
+                    LMUL_2:
+                      if (insn.varith_type.rs2 & 5'b00001 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (insn.varith_type.rs2 & 5'b00011 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (insn.varith_type.rs2 & 5'b00111 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_RSVD: begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
                 end
                 6'b101101: begin
                   ara_req_d.op      = ara_pkg::VNSRA;
                   ara_req_d.eew_vs2 = vtype_q.vsew.next();
-                  ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
@@ -470,6 +579,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+
+                  // Check whether we can access vs2
+                  case (ara_req_d.emul.next())
+                    LMUL_2:
+                      if (insn.varith_type.rs2 & 5'b00001 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (insn.varith_type.rs2 & 5'b00011 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (insn.varith_type.rs2 & 5'b00111 != 5'b00000) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_RSVD: begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
                 end
                 default: begin
                   // Trigger an error
