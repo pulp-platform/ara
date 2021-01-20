@@ -69,13 +69,13 @@ tc-isa-sim:
 tc-verilator:
   stage: toolchain
   script:
-    - git submodule update --init --recursive -- toolchain/verilator
-    - git submodule foreach --recursive git reset --hard
-    - make verilator
-  artifacts:
-    paths:
-      - install/verilator
-    expire_in: 1 day
+    - |
+      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-verilator; then
+        git submodule update --init --recursive -- toolchain/verilator
+        mkdir -p /usr/scratch2/dolent1/gitlabci/buildcache/ara
+        make verilator
+        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-verilator
+      fi
 
 ###################
 #  Compile stage  #
