@@ -273,7 +273,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
-                  if (ara_req_d.eew_vs2 > EW64) begin
+                  if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
                     // Trigger an error
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
@@ -285,7 +285,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
-                  if (ara_req_d.eew_vs2 > EW64) begin
+                  if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
                     // Trigger an error
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
@@ -315,6 +315,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -360,7 +364,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
-                  if (ara_req_d.eew_vs2 > EW64) begin
+                  if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
                     // Trigger an error
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
@@ -372,7 +376,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
-                  if (ara_req_d.eew_vs2 > EW64) begin
+                  if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
                     // Trigger an error
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
@@ -402,6 +406,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -445,7 +453,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
-                  if (ara_req_d.eew_vs2 > EW64) begin
+                  if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
                     // Trigger an error
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
@@ -457,7 +465,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.emul    = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
-                  if (ara_req_d.eew_vs2 > EW64) begin
+                  if (int'(ara_req_d.eew_vs2) > int'(EW64)) begin
                     // Trigger an error
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
@@ -487,6 +495,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -694,6 +706,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               endcase
 
               // Ara cannot support instructions who operates on more than 64 bits.
@@ -803,6 +819,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               endcase
 
               // Ara cannot support instructions who operates on more than 64 bits.
@@ -911,6 +931,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
+            LMUL_RSVD: begin
+              acc_resp_o.error = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
           endcase
 
           // Vector register register loads are encoded as loads of length VLENB, length multiplier
@@ -1014,6 +1038,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
+            LMUL_RSVD: begin
+              acc_resp_o.error = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
           endcase
 
           // Vector register register stores are encoded as stores of length VLENB, length multiplier
