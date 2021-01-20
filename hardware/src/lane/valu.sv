@@ -175,6 +175,22 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   end
 
+  /****************************
+   *  Narrowing instructions  *
+   ****************************/
+
+  // This function returns 1'b1 if `op` is a narrowing instruction, i.e.,
+  // it produces only EEW/2 per cycle.
+  function automatic logic narrowing(ara_op_e op);
+    narrowing = 1'b0;
+    if (op inside {VNSRA, VNSRL})
+      narrowing = 1'b1;
+  endfunction: narrowing
+
+  // If this is a narrowing instruction, point to which half of the
+  // output EEW word we are producing.
+  logic narrowing_select_d, narrowing_select_q;
+
   /*********************
    *  SIMD Vector ALU  *
    *********************/
@@ -182,12 +198,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t valu_result;
 
   simd_valu i_simd_valu (
-    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
-    .operand_b_i(alu_operand_i[1]                                            ),
-    .mask_i     (mask_valid_i && !vinsn_issue.vm ? mask_i : {StrbWidth{1'b1}}),
-    .op_i       (vinsn_issue.op                                              ),
-    .vew_i      (vinsn_issue.vtype.vsew                                      ),
-    .result_o   (valu_result                                                 )
+    .operand_a_i       (vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
+    .operand_b_i       (alu_operand_i[1]                                            ),
+    .mask_i            (mask_valid_i && !vinsn_issue.vm ? mask_i : {StrbWidth{1'b1}}),
+    .narrowing_select_i(narrowing_select_q                                          ),
+    .op_i              (vinsn_issue.op                                              ),
+    .vew_i             (vinsn_issue.vtype.vsew                                      ),
+    .result_o          (valu_result                                                 )
   );
 
   /*************
@@ -210,6 +227,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_read_pnt_d  = result_queue_read_pnt_q;
     result_queue_write_pnt_d = result_queue_write_pnt_q;
     result_queue_cnt_d       = result_queue_cnt_q;
+
+    narrowing_select_d = narrowing_select_q;
 
     // Inform our status to the lane controller
     alu_ready_o      = !vinsn_queue_full;
@@ -338,11 +357,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      issue_cnt_q  <= '0;
-      commit_cnt_q <= '0;
+      issue_cnt_q        <= '0;
+      commit_cnt_q       <= '0;
+      narrowing_select_q <= 1'b0;
     end else begin
-      issue_cnt_q  <= issue_cnt_d;
-      commit_cnt_q <= commit_cnt_d;
+      issue_cnt_q        <= issue_cnt_d;
+      commit_cnt_q       <= commit_cnt_d;
+      narrowing_select_q <= narrowing_select_d;
     end
   end
 
@@ -365,6 +386,7 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t   operand_a_i,
     input  elen_t   operand_b_i,
     input  strb_t   mask_i,
+    input  logic    narrowing_select_i,
     input  ara_op_e op_i,
     input  vew_e    vew_i,
     output elen_t   result_o
@@ -464,6 +486,16 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
           EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
           EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
           EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
+        endcase
+      VNSRL: unique case (vew_i)
+          EW8 : for (int b = 0; b < 4; b++) res.w8 [2*b + narrowing_select_i] = opb.w16[b] >> opa.w16[b][3:0];
+          EW16: for (int b = 0; b < 2; b++) res.w16[2*b + narrowing_select_i] = opb.w32[b] >> opa.w32[b][4:0];
+          EW32: for (int b = 0; b < 1; b++) res.w32[2*b + narrowing_select_i] = opb.w64[b] >> opa.w64[b][5:0];
+        endcase
+      VNSRA: unique case (vew_i)
+          EW8 : for (int b = 0; b < 4; b++) res.w8 [2*b + narrowing_select_i] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
+          EW16: for (int b = 0; b < 2; b++) res.w16[2*b + narrowing_select_i] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
+          EW32: for (int b = 0; b < 1; b++) res.w32[2*b + narrowing_select_i] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
         endcase
 
       // Merge instructions
