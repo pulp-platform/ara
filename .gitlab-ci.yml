@@ -66,6 +66,17 @@ tc-isa-sim:
       - install/riscv-isa-sim
     expire_in: 1 day
 
+tc-verilator:
+  stage: toolchain
+  script:
+    - git submodule update --init --recursive -- toolchain/verilator
+    - git submodule foreach --recursive git reset --hard
+    - make verilator
+  artifacts:
+    paths:
+      - install/verilator
+    expire_in: 1 day
+
 ###################
 #  Compile stage  #
 ###################
