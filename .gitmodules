@@ -9,3 +9,6 @@
 [submodule "apps/riscv-tests"]
 	path = apps/riscv-tests
 	url = git@iis-git.ee.ethz.ch:ara_release/riscv-tests.git
+[submodule "toolchain/verilator"]
+	path = toolchain/verilator
+	url = https://github.com/verilator/verilator
