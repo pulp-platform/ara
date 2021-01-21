@@ -51,12 +51,22 @@ module sub_per_hash #(
 
   // typedefs and respective localparams
   typedef int unsigned perm_lists_t [NoRounds][InpWidth];
+  `ifdef VERILATOR
+  perm_lists_t PERMUTATIONS;
+  assign PERMUTATIONS = get_permutations(PermuteKey);
+  `else
   localparam perm_lists_t PERMUTATIONS = get_permutations(PermuteKey);
+  `endif
   // encoding for inner most array:
   // position 0 indicates the number of inputs, 2 or 3
   // the other positions 1 - 3 indicate the inputs
   typedef int unsigned xor_stages_t [NoRounds][InpWidth][3];
+  `ifdef VERILATOR
+  xor_stages_t XorStages;
+  assign XorStages = get_xor_stages(XorKey);
+  `else
   localparam xor_stages_t XorStages = get_xor_stages(XorKey);
+  `endif
 
   // stage signals
   logic [NoRounds-1:0][InpWidth-1:0] permuted, xored;
