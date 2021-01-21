@@ -22,8 +22,10 @@ module ara_tb;
    *  Definitions  *
    *****************/
 
+  `ifndef VERILATOR
   timeunit      1ns;
   timeprecision 1ps;
+  `endif
 
   `ifdef NR_LANES
   localparam NrLanes = `NR_LANES;
@@ -68,6 +70,10 @@ module ara_tb;
 
   logic [63:0] exit;
 
+  // This TB must be implemented in C for integration with Verilator.
+  // In order to Verilator to understand that the ara_testharness module is the top-level,
+  // we do not instantiate it when Verilating this module.
+  `ifndef VERILATOR
   ara_testharness #(
     .NrLanes     (NrLanes         ),
     .AxiAddrWidth(AxiAddrWidth    ),
@@ -77,6 +83,7 @@ module ara_tb;
     .rst_ni(rst_n),
     .exit_o(exit )
   );
+  `endif
 
   /*************************
    *  DRAM Initialization  *
@@ -127,10 +134,8 @@ module ara_tb;
    *  EOC  *
    *********/
 
-  initial begin
-    forever begin
-      wait (exit[0]);
-
+  always @(posedge clk) begin
+    if (exit[0]) begin
       if (exit >> 1) begin
         $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
       end else begin
