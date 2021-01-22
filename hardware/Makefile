@@ -29,6 +29,12 @@ resultpath     ?= results
 library        ?= work
 # dpi library
 dpi_library    ?= work-dpi
+# verilator library
+veril_library  ?= $(buildpath)/work-verilator
+# verilator path
+veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
+# verilator threads
+veril_threads  ?= 4
 # Top level module to compile
 top_level      ?= ara_tb
 # QuestaSim Version
@@ -124,6 +130,34 @@ $(tests): rv%: $(app_path)/rv% compile
 	$(questa_cmd) vsim -c $(questa_args) +PRELOAD=$< $(library).$(top_level) -do "run -a"
 	./scripts/return_status.sh $(buildpath)/transcript
 	cp $(buildpath)/trace_hart_0.log $(buildpath)/$@.trace
+
+# Verilator
+.PHONY: verilate
+verilate: $(buildpath) $(veril_library)/Vara_testharness.mk | bender
+
+$(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+	mkdir -p $(veril_library)
+	./bender script verilator -t rtl -t ara_test -t cva6_test $(bender_defs) > $(veril_library)/bender_script
+# Verilate the design
+	$(veril_path)/verilator -f $(veril_library)/bender_script \
+		-GNrLanes=$(nr_lanes)                                   \
+		--threads $(veril_threads)                              \
+		--unroll-count 256                                      \
+		-Werror-IMPLICIT                                        \
+		-Wno-fatal                                              \
+		-Wno-PINCONNECTEMPTY                                    \
+		-Wno-ASSIGNDLY                                          \
+		-Wno-BLKANDNBLK                                         \
+		-Wno-BLKLOOPINIT                                        \
+		-Wno-DECLFILENAME                                       \
+		-Wno-UNUSED                                             \
+		-Wno-UNOPTFLAT                                          \
+		-Wno-style                                              \
+		--cc                                                    \
+		--top-module ara_testharness                            \
+		--Mdir $(veril_library) -O3                             \
+		-Itb/dpi -I$(QUESTASIM_HOME)/include                    \
+		--exe $(ROOT_DIR)/tb/ara_tb.cpp $(ROOT_DIR)/tb/dpi/elfloader.cpp
 
 # DPIs
 .PHONY: dpi
