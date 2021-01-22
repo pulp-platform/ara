@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector widening integer add/subtract (vwadd, vwaddu, vwsub, vwsubu)
   - Vector integer extension (vzext, vsext)
   - Vector integer merge and move instructions (vmerge, vmv)
+  - Vector narrowing integer right shift instructions (vnsrl, vnsra)
 
 ### Changed
 
@@ -24,7 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 0.1.0 - 2020-01-06
 
-# Added
+### Added
 
 - Hardware support for:
   - Vector configuration instructions (vsetvl/vsetvli)
