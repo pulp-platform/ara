@@ -253,27 +253,60 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Acknowledge the operands of this instruction
         alu_operand_ready_o = {vinsn_issue.use_vs2, vinsn_issue.use_vs1};
-        mask_ready_o        = !vinsn_issue.vm;
+        // Narrowing instructions might need an extra cycle before acknowledging the mask operands
+        if (!narrowing(vinsn_issue.op))
+          mask_ready_o = !vinsn_issue.vm;
 
         // Store the result in the result queue
-        result_queue_d[result_queue_write_pnt_q] = '{
-          wdata: valu_result,
-          be   : be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm || vinsn_issue.op == VMERGE ? {StrbWidth{1'b1}} : mask_i),
-          addr : vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)),
-          id   : vinsn_issue.id
-        };
-        result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+        result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
+        result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew));
+        result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue.id;
+        if (!narrowing(vinsn_issue.op) || !narrowing_select_q)
+          result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm || vinsn_issue.op == VMERGE ? {StrbWidth{1'b1}} : mask_i);
 
-        // Bump pointers and counters of the result queue
-        result_queue_cnt_d += 1;
-        if (result_queue_write_pnt_q == ResultQueueDepth-1)
-          result_queue_write_pnt_d = 0;
-        else
-          result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
-        issue_cnt_d = issue_cnt_q - element_cnt;
+        // Is this a narrowing instruction?
+        if (narrowing(vinsn_issue.op)) begin
+          // How many elements did we calculate in this iteration?
+          automatic logic [3:0] element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew))) / 2;
+          if (element_cnt_narrow > issue_cnt_q)
+            element_cnt_narrow = issue_cnt_q;
+
+          // Account for the issued operands
+          issue_cnt_d = issue_cnt_q - element_cnt_narrow;
+
+          // Write the next half of the results in the next cycle.
+          narrowing_select_d = !narrowing_select_q;
+
+          // Did we fill up a word?
+          if (issue_cnt_d == '0 || !narrowing_select_d) begin
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+
+            // Acknowledge the mask operand, if needed
+            mask_ready_o = !vinsn_issue.vm;
+
+            // Bump pointers and counters of the result queue
+            result_queue_cnt_d += 1;
+            if (result_queue_write_pnt_q == ResultQueueDepth-1)
+              result_queue_write_pnt_d = 0;
+            else
+              result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+          end
+        end else begin // Normal behavior
+          // Bump pointers and counters of the result queue
+          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+          result_queue_cnt_d += 1;
+          if (result_queue_write_pnt_q == ResultQueueDepth-1)
+            result_queue_write_pnt_d = 0;
+          else
+            result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+          issue_cnt_d = issue_cnt_q - element_cnt;
+        end
 
         // Finished issuing the micro-operations of this vector instruction
         if (vinsn_issue_valid && issue_cnt_d == '0) begin
+          // Reset the narrowing pointer
+          narrowing_select_d = 1'b0;
+
           // Bump issue counter and pointers
           vinsn_queue_d.issue_cnt -= 1;
           if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
