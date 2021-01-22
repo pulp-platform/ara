@@ -203,7 +203,19 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     // Account for sent operands
     if (operand_valid_o && |operand_ready_i) begin
       // Count the used elements
-      vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.sew)));
+      unique case (cmd.conv)
+        OpQueueConversionSExt2,
+        OpQueueConversionZExt2:
+          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
+        OpQueueConversionSExt4,
+        OpQueueConversionZExt4:
+          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 4;
+        OpQueueConversionSExt8,
+        OpQueueConversionZExt8:
+          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
+        default:
+          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
+      endcase
 
       // Update the pointer to the input operand
       unique case (cmd.conv)
