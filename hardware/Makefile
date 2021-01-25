@@ -139,25 +139,28 @@ $(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find
 	mkdir -p $(veril_library)
 	./bender script verilator -t rtl -t ara_test -t cva6_test $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
-	$(veril_path)/verilator -f $(veril_library)/bender_script \
-		-GNrLanes=$(nr_lanes)                                   \
-		--threads $(veril_threads)                              \
-		--unroll-count 256                                      \
-		-Werror-IMPLICIT                                        \
-		-Wno-fatal                                              \
-		-Wno-PINCONNECTEMPTY                                    \
-		-Wno-ASSIGNDLY                                          \
-		-Wno-BLKANDNBLK                                         \
-		-Wno-BLKLOOPINIT                                        \
-		-Wno-DECLFILENAME                                       \
-		-Wno-UNUSED                                             \
-		-Wno-UNOPTFLAT                                          \
-		-Wno-style                                              \
-		--cc                                                    \
-		--top-module ara_testharness                            \
-		--Mdir $(veril_library) -O3                             \
-		-Itb/dpi -I$(QUESTASIM_HOME)/include                    \
-		--exe $(ROOT_DIR)/tb/ara_tb.cpp $(ROOT_DIR)/tb/dpi/elfloader.cpp
+	$(veril_path)/verilator -f $(veril_library)/bender_script  \
+  -GNrLanes=$(nr_lanes)                                      \
+  --threads $(veril_threads)                                 \
+  --unroll-count 256                                         \
+  -Werror-IMPLICIT                                           \
+  -Wno-fatal                                                 \
+  -Wno-PINCONNECTEMPTY                                       \
+  -Wno-ASSIGNDLY                                             \
+  -Wno-BLKANDNBLK                                            \
+  -Wno-BLKLOOPINIT                                           \
+  -Wno-DECLFILENAME                                          \
+  -Wno-UNUSED                                                \
+  -Wno-UNOPTFLAT                                             \
+  -Wno-lint                                                  \
+  -Wno-style                                                 \
+  -Wno-fatal                                                 \
+  --cc                                                       \
+  --top-module ara_testharness                               \
+  --Mdir $(veril_library) -O3                                \
+  -Itb/dpi -I$(QUESTASIM_HOME)/include                       \
+  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_testharness" \
+  --exe $(ROOT_DIR)/tb/ara_tb.cpp $(ROOT_DIR)/tb/dpi/elfloader.cpp
 
 # DPIs
 .PHONY: dpi
