@@ -204,4 +204,59 @@ module tc_sram #(
 `endif
 `endif
 // pragma translate_on
+
+  // Copyright lowRISC contributors.
+  // Licensed under the Apache License, Version 2.0, see LICENSE for details.
+  // SPDX-License-Identifier: Apache-2.0
+
+  /**
+   * Memory loader for simulation
+   *
+   * Include this file in a memory primitive to load a memory array from
+   * simulation.
+   *
+   * Requirements:
+   * - A memory array named `sram`.
+   * - A parameter `DataWidth` giving the memory width (word size) in bit.
+   * - A parameter `NumWords` giving the memory depth in words.
+   */
+
+  `ifndef SYNTHESIS
+  // Task for loading 'sram' with SystemVerilog system task $readmemh()
+  export "DPI-C" task simutil_memload;
+
+  task simutil_memload;
+    input string file;
+    $readmemh(file, sram);
+  endtask
+
+  // Function for setting a specific element in |sram|
+  // Returns 1 (true) for success, 0 (false) for errors.
+  export "DPI-C" function simutil_set_mem;
+  function int simutil_set_mem(input int index, input bit [255:0] val);
+    // Function will only work for memories <= 256 bits
+    if (DataWidth > 256)
+      return 0;
+    if (index >= NumWords)
+      return 0;
+
+    sram[index] = val[DataWidth-1:0];
+    return 1;
+  endfunction
+
+  // Function for getting a specific element in |sram|
+  export "DPI-C" function simutil_get_mem;
+  function int simutil_get_mem(input int index, output bit [255:0] val);
+    // Function will only work for memories <= 256 bits
+    if (DataWidth > 256)
+      return 0;
+    if (index >= NumWords)
+      return 0;
+
+    val                = 0;
+    val[DataWidth-1:0] = sram[index];
+    return 1;
+  endfunction
+  `endif
+
 endmodule
