@@ -160,6 +160,7 @@ $(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find
   --Mdir $(veril_library) -O3                                \
   -Itb/dpi -I$(QUESTASIM_HOME)/include                       \
   -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_testharness" \
+  -CFLAGS "-DNR_LANES=$(nr_lanes)"                           \
   --exe $(ROOT_DIR)/tb/ara_tb.cpp $(ROOT_DIR)/tb/dpi/elfloader.cpp
 
 # DPIs
