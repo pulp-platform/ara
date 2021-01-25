@@ -29,6 +29,7 @@ sources:
     - hardware/src/lane/operand_queue.sv
     - hardware/src/lane/operand_requester.sv
     - hardware/src/lane/valu.sv
+    - hardware/src/lane/vmfpu.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/masku/masku.sv
     - hardware/src/vlsu/addrgen.sv

@@ -68,8 +68,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
    *************/
 
   logic alu_mask_ready;
-  assign mask_ready_o = alu_mask_ready;
-
+  logic mfpu_mask_ready;
+  assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
 
   /****************
    *  Vector ALU  *
@@ -103,38 +103,36 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .mask_ready_o         (alu_mask_ready       )
   );
 
-  assign mfpu_ready_o         = 1'b0;
-  assign mfpu_vinsn_done_o    = '0;
-  assign mfpu_operand_ready_o = '0;
+  /*****************
+   *  Vector MFPU  *
+   *****************/
 
-  assign mfpu_result_req_o   = '0;
-  assign mfpu_result_id_o    = '0;
-  assign mfpu_result_addr_o  = '0;
-  assign mfpu_result_wdata_o = '0;
-  assign mfpu_result_be_o    = '0;
+  vmfpu #(
+    .NrLanes              (NrLanes              ),
+    .vaddr_t              (vaddr_t              )
+  ) i_vmfpu (
+    .clk_i                (clk_i                ),
+    .rst_ni               (rst_ni               ),
+    // Interface with the lane sequencer
+    .vfu_operation_i      (vfu_operation_i      ),
+    .vfu_operation_valid_i(vfu_operation_valid_i),
+    .mfpu_ready_o         (mfpu_ready_o         ),
+    .mfpu_vinsn_done_o    (mfpu_vinsn_done_o    ),
+    // Interface with the operand queues
+    .mfpu_operand_i       (mfpu_operand_i       ),
+    .mfpu_operand_valid_i (mfpu_operand_valid_i ),
+    .mfpu_operand_ready_o (mfpu_operand_ready_o ),
+    // Interface with the vector register file
+    .mfpu_result_req_o    (mfpu_result_req_o    ),
+    .mfpu_result_id_o     (mfpu_result_id_o     ),
+    .mfpu_result_addr_o   (mfpu_result_addr_o   ),
+    .mfpu_result_wdata_o  (mfpu_result_wdata_o  ),
+    .mfpu_result_be_o     (mfpu_result_be_o     ),
+    .mfpu_result_gnt_i    (mfpu_result_gnt_i    ),
+    // Interface with the Mask unit
+    .mask_i               (mask_i               ),
+    .mask_valid_i         (mask_valid_i         ),
+    .mask_ready_o         (mfpu_mask_ready       )
+  );
 
-
-/*
- valu i_valu (
- .clk_i              (clk_i                ),
- .rst_ni             (rst_ni               ),
- .operation_i        (operation_i          ),
- .alu_operand_i      (alu_operand_i        ),
- .alu_operand_ready_o(alu_operand_ready_o  ),
- .alu_result_o       (alu_result_o         ),
- .alu_result_gnt_i   (alu_result_gnt_i     ),
- .vfu_status_o       (vfu_status_o[VFU_ALU])
- );
-
- vmfpu i_vmfpu (
- .clk_i               (clk_i                 ),
- .rst_ni              (rst_ni                ),
- .operation_i         (operation_i           ),
- .mfpu_operand_i      (mfpu_operand_i        ),
- .mfpu_operand_ready_o(mfpu_operand_ready_o  ),
- .mfpu_result_o       (mfpu_result_o         ),
- .mfpu_result_gnt_i   (mfpu_result_gnt_i     ),
- .vfu_status_o        (vfu_status_o[VFU_MFPU])
- );
- */
 endmodule : vector_fus_stage

@@ -151,14 +151,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     };
 
     ara_req_d = '{
-      vl       : vl_q,
-      vstart   : vstart_q,
-      vtype    : vtype_q,
-      emul     : vtype_q.vlmul,
-      eew_vs1  : vtype_q.vsew,
-      eew_vs2  : vtype_q.vsew,
-      eew_vmask: eew_q[VMASK],
-      default  : '0
+      vl        : vl_q,
+      vstart    : vstart_q,
+      vtype     : vtype_q,
+      emul      : vtype_q.vlmul,
+      eew_vs1   : vtype_q.vsew,
+      eew_vs2   : vtype_q.vsew,
+      eew_vd_op : vtype_q.vsew,
+      eew_vmask : eew_q[VMASK],
+      default   : '0
     };
     ara_req_valid_d = 1'b0;
 
@@ -752,6 +753,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                   endcase
                 end
+                // Multiply instructions
+                6'b100100: ara_req_d.op = ara_pkg::VMULHU;
+                6'b100101: ara_req_d.op = ara_pkg::VMUL;
+                6'b100110: ara_req_d.op = ara_pkg::VMULHSU;
+                6'b100111: ara_req_d.op = ara_pkg::VMULH;
+                // Multiply-Add instructions
+                // vd is also used as a source operand
+                6'b101001: begin
+                  ara_req_d.op        = ara_pkg::VMADD;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101011: begin
+                  ara_req_d.op        = ara_pkg::VNMSUB;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101101: begin
+                  ara_req_d.op        = ara_pkg::VMACC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101111: begin
+                  ara_req_d.op        = ara_pkg::VNMSAC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 // Widening instructions
                 6'b110000: begin // VWADDU
                   ara_req_d.op             = ara_pkg::VADD;
@@ -876,6 +900,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
               // Decode based on the func6 field
               case (insn.varith_type.func6)
+                // Multiply instructions
+                6'b100100: ara_req_d.op = ara_pkg::VMULHU;
+                6'b100101: ara_req_d.op = ara_pkg::VMUL;
+                6'b100110: ara_req_d.op = ara_pkg::VMULHSU;
+                6'b100111: ara_req_d.op = ara_pkg::VMULH;
+                // Multiply-Add instructions
+                // vd is also used as a source operand
+                6'b101001: begin
+                  ara_req_d.op        = ara_pkg::VMADD;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101011: begin
+                  ara_req_d.op        = ara_pkg::VNMSUB;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101101: begin
+                  ara_req_d.op        = ara_pkg::VMACC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101111: begin
+                  ara_req_d.op        = ara_pkg::VNMSAC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 // Widening instructions
                 6'b110000: begin // VWADDU
                   ara_req_d.op             = ara_pkg::VADD;

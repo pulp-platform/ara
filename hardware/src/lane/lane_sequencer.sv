@@ -152,6 +152,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           vfu          : pe_req_i.vfu,
           use_vs1      : pe_req_i.use_vs1,
           use_vs2      : pe_req_i.use_vs2,
+          use_vd_op    : pe_req_i.use_vd_op,
           scalar_op    : pe_req_i.scalar_op,
           use_scalar_op: pe_req_i.use_scalar_op,
           vd           : pe_req_i.vd,
@@ -226,6 +227,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_MFpu: begin
+
+            // When performing VMADD or VNMSUB, swap "vs2" and "vd"
+            // since "vs2" is the addend and "vd" is the multiplicand
+            logic mac_vd_multiplied;
+            assign mac_vd_multiplied = pe_req_i.op inside {VMADD, VNMSUB};
+
             operand_request_i[MulFPUA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
@@ -241,16 +248,28 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
             operand_request_i[MulFPUB] = '{
               id     : pe_req_i.id,
-              vs     : pe_req_i.vs2,
+              vs     : (mac_vd_multiplied ? pe_req_i.vd : pe_req_i.vs2),
               eew    : pe_req_i.eew_vs2,
               conv   : pe_req_i.conversion_vs2,
               vtype  : pe_req_i.vtype,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
-              hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+              hazard : (mac_vd_multiplied ? pe_req_i.hazard_vd : (pe_req_i.hazard_vs2 | pe_req_i.hazard_vd)),
               default: '0
             };
             operand_request_push[MulFPUB] = pe_req_i.use_vs2;
+
+            operand_request_i[MulFPUC] = '{
+              id     : pe_req_i.id,
+              vs     : (mac_vd_multiplied ? pe_req_i.vs2 : pe_req_i.vd),
+              eew    : pe_req_i.eew_vd_op,
+              vl     : vfu_operation_d.vl,
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : (mac_vd_multiplied ? (pe_req_i.hazard_vs2 | pe_req_i.hazard_vd) : pe_req_i.hazard_vd),
+              default: '0
+            };
+            operand_request_push[MulFPUC] = pe_req_i.use_vd_op;
 
             // This vector instruction uses masks
             operand_request_i[MaskM] = '{

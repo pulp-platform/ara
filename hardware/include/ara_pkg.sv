@@ -42,6 +42,9 @@ package ara_pkg;
   // Maximum number of lanes that Ara can support.
   localparam int unsigned MaxNrLanes = 16;
 
+  // Intrinsic multiplier latency.
+  localparam int unsigned LatMultiplier = 2;
+
   /*****************
    *  Definitions  *
    *****************/
@@ -55,13 +58,15 @@ package ara_pkg;
    *  Operations  *
    ****************/
 
-  typedef enum logic [4:0] {
+  typedef enum logic [5:0] {
     // Arithmetic and logic instructions
     VADD, VSUB, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
     // Shifts,
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
     VMERGE,
+    // Mul/FPU
+    VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Load instructions
@@ -133,6 +138,10 @@ package ara_pkg;
     logic use_vs2;
     opqueue_conversion_e conversion_vs2;
     rvv_pkg::vew_e eew_vs2;
+
+    // Use vd as an operand as well (e.g., vmacc)
+    logic use_vd_op;
+    rvv_pkg::vew_e eew_vd_op;
 
     // Scalar operand
     elen_t scalar_op;
@@ -207,6 +216,10 @@ package ara_pkg;
     logic use_vs2;
     opqueue_conversion_e conversion_vs2;
     rvv_pkg::vew_e eew_vs2;
+
+    // Use vd as an operand as well (e.g., vmacc)
+    logic use_vd_op;
+    rvv_pkg::vew_e eew_vd_op;
 
     // Scalar operand
     elen_t scalar_op;
@@ -367,6 +380,7 @@ package ara_pkg;
 
     logic use_vs1; // This operation uses vs1
     logic use_vs2; // This operation uses vs1
+    logic use_vd_op; // This operation uses vd as an operand as well
 
     elen_t scalar_op;    // Scalar operand
     logic use_scalar_op; // This operation uses the scalar operand
