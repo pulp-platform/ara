@@ -151,15 +151,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     };
 
     ara_req_d = '{
-      vl        : vl_q,
-      vstart    : vstart_q,
-      vtype     : vtype_q,
-      emul      : vtype_q.vlmul,
-      eew_vs1   : vtype_q.vsew,
-      eew_vs2   : vtype_q.vsew,
-      eew_vd_op : vtype_q.vsew,
-      eew_vmask : eew_q[VMASK],
-      default   : '0
+      vl       : vl_q,
+      vstart   : vstart_q,
+      vtype    : vtype_q,
+      emul     : vtype_q.vlmul,
+      eew_vs1  : vtype_q.vsew,
+      eew_vs2  : vtype_q.vsew,
+      eew_vd_op: vtype_q.vsew,
+      eew_vmask: eew_q[VMASK],
+      default  : '0
     };
     ara_req_valid_d = 1'b0;
 

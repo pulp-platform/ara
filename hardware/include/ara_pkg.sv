@@ -378,8 +378,8 @@ package ara_pkg;
     ara_op_e op; // Operation
     logic vm;    // Masked instruction
 
-    logic use_vs1; // This operation uses vs1
-    logic use_vs2; // This operation uses vs1
+    logic use_vs1;   // This operation uses vs1
+    logic use_vs2;   // This operation uses vs1
     logic use_vd_op; // This operation uses vd as an operand as well
 
     elen_t scalar_op;    // Scalar operand
