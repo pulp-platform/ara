@@ -400,9 +400,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0)
+      if (vinsn_queue_d.issue_cnt == '0) begin
         issue_cnt_d = vfu_operation_i.vl;
-      to_process_cnt_d = vfu_operation_i.vl;
+        to_process_cnt_d = vfu_operation_i.vl;
+      end
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = vfu_operation_i.vl;
 
