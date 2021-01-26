@@ -261,6 +261,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b010000: begin
+                  ara_req_d.op = ara_pkg::VADC;
+
+                  // Encoding corresponding to unmasked operations are reserved
+                  if (insn.varith_type.vm) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+
+                  // An illegal instruction is raised if the destination vector is v0
+                  if (insn.varith_type.rd == 5'b0) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                6'b010010: begin
+                  ara_req_d.op = ara_pkg::VSBC;
+
+                  // Encoding corresponding to unmasked operations are reserved
+                  if (insn.varith_type.vm) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+
+                  // An illegal instruction is raised if the destination vector is v0
+                  if (insn.varith_type.rd == 5'b0) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
                 6'b010111: begin
                   ara_req_d.op      = ara_pkg::VMERGE;
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
@@ -398,6 +432,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b010000: begin
+                  ara_req_d.op = ara_pkg::VADC;
+
+                  // Encoding corresponding to unmasked operations are reserved
+                  if (insn.varith_type.vm) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+
+                  // An illegal instruction is raised if the destination vector is v0
+                  if (insn.varith_type.rd == 5'b0) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                6'b010010: begin
+                  ara_req_d.op = ara_pkg::VSBC;
+
+                  // Encoding corresponding to unmasked operations are reserved
+                  if (insn.varith_type.vm) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+
+                  // An illegal instruction is raised if the destination vector is v0
+                  if (insn.varith_type.rd == 5'b0) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
                 6'b010111: begin
                   ara_req_d.op      = ara_pkg::VMERGE;
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.x does not use vs2
@@ -533,6 +601,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b010000: begin
+                  ara_req_d.op = ara_pkg::VADC;
+
+                  // Encoding corresponding to unmasked operations are reserved
+                  if (insn.varith_type.vm) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+
+                  // An illegal instruction is raised if the destination vector is v0
+                  if (insn.varith_type.rd == 5'b0) begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
                 6'b010111: begin
                   ara_req_d.op      = ara_pkg::VMERGE;
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.i does not use vs2
