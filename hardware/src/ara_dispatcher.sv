@@ -85,6 +85,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     endcase
   endfunction: next_lmul
 
+  // Calculates prev(prev(ew))
+  function automatic vew_e prev_prev_ew(vew_e ew);
+    unique case (ew)
+      EW64:    prev_prev_ew = EW16;
+      EW32:    prev_prev_ew = EW8;
+      default: prev_prev_ew = EW1024;
+    endcase
+  endfunction: prev_prev_ew
+
   /***********************
    *  Backend interface  *
    ***********************/
@@ -789,7 +798,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00100: begin // VZEXT.VF4
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt4;
-                      ara_req_d.eew_vs2        = vtype_q.vsew.prev(2);
+                      ara_req_d.eew_vs2        = prev_prev_ew(vtype_q.vsew);
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) inside {LMUL_1_4, LMUL_1_8}) begin
@@ -800,7 +809,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                     5'b00101: begin // VSEXT.VF4
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt4;
-                      ara_req_d.eew_vs2        = vtype_q.vsew.prev(2);
+                      ara_req_d.eew_vs2        = prev_prev_ew(vtype_q.vsew);
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW32) || int'(vtype_q.vlmul) inside {LMUL_1_4, LMUL_1_8}) begin
