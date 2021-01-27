@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Hardware support for:
   - Vector single-width integer multiply instructions (vmul, vmulh, vmulhu, vmulhsu)
   - Vector single-width integer multiply-add instructions (vmacc, vnmsac, vmadd, vnmsub)
+  - Vector integer add-with-carry/subtract-with-borrow instructions (vadc, vsbc)
 
 ## 0.2.0 - 2020-01-22
 
