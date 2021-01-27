@@ -860,6 +860,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     end
                   endcase
                 end
+                // Divide instructions
+                6'b100000: ara_req_d.op = ara_pkg::VDIVU;
+                6'b100001: ara_req_d.op = ara_pkg::VDIV;
+                6'b100010: ara_req_d.op = ara_pkg::VREMU;
+                6'b100011: ara_req_d.op = ara_pkg::VREM;
                 // Multiply instructions
                 6'b100100: ara_req_d.op = ara_pkg::VMULHU;
                 6'b100101: ara_req_d.op = ara_pkg::VMUL;
@@ -1055,7 +1060,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d         = 1'b1;
 
               // Decode based on the func6 field
-              unique case (insn.varith_type.func6)
+              case (insn.varith_type.func6)
+                // Divide instructions
+                6'b100000: ara_req_d.op = ara_pkg::VDIVU;
+                6'b100001: ara_req_d.op = ara_pkg::VDIV;
+                6'b100010: ara_req_d.op = ara_pkg::VREMU;
+                6'b100011: ara_req_d.op = ara_pkg::VREM;
                 // Multiply instructions
                 6'b100100: ara_req_d.op = ara_pkg::VMULHU;
                 6'b100101: ara_req_d.op = ara_pkg::VMUL;

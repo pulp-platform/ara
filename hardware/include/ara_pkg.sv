@@ -70,6 +70,8 @@ package ara_pkg;
     VMERGE,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
+    // Div
+    VDIVU, VDIV, VREMU, VREM,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Load instructions
