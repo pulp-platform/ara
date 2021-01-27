@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector single-width integer multiply instructions (vmul, vmulh, vmulhu, vmulhsu)
   - Vector single-width integer multiply-add instructions (vmacc, vnmsac, vmadd, vnmsub)
   - Vector integer add-with-carry/subtract-with-borrow instructions (vadc, vsbc)
+  - Vector widening integer multiply instructions (vwmul, vwmulu, vwmulsu)
+  - Vector widening integer multiply-add instructions (vwmaccu, vwmacc, vwmaccsu, vwmaccus)
 
 ## 0.2.0 - 2020-01-22
 
