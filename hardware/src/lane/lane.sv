@@ -38,7 +38,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                           scan_data_i,
     output logic                                           scan_data_o,
     // Lane ID
-    logic            [cf_math_pkg::idx_width(NrLanes)-1:0] lane_id_i,
+    input  logic     [cf_math_pkg::idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with the sequencer
     input  pe_req_t                                        pe_req_i,
     input  logic                                           pe_req_valid_i,
