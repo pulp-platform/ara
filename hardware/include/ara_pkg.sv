@@ -68,7 +68,7 @@ package ara_pkg;
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
     VMERGE,
-    // Mul/FPU
+    // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
