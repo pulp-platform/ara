@@ -296,6 +296,37 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   /*************
+   *  Divider  *
+   ************/
+
+  elen_t vdiv_result;
+
+  logic vdiv_in_valid;
+  logic vdiv_out_valid;
+  logic vdiv_in_ready;
+  logic vdiv_out_ready;
+
+  // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the operand queues
+  // Another choice would be to delay the mask grant when the vdiv_result is committed
+  strb_t vdiv_mask;
+
+//  simd_div i_simd_div (
+//    .clk_i      (clk_i                                                    ),
+//    .rst_ni     (rst_ni                                                   ),
+//    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+//    .operand_b_i(mfpu_operand_i[1]                                        ),
+//    .mask_i     (mask_i                                                   ),
+//    .op_i       (vinsn_issue.op                                           ),
+//    .vew_i      (vinsn_issue.vtype.vsew                                   ),
+//    .result_o   (vdiv_result                                              ),
+//    .mask_o     (vdiv_mask                                                ),
+//    .valid_i    (vdiv_in_valid                                            ),
+//    .ready_o    (vdiv_in_ready                                            ),
+//    .ready_i    (vdiv_out_ready                                           ),
+//    .valid_o    (vdiv_out_valid                                           )
+//  );
+
+  /*************
    *  Control  *
    *************/
 
@@ -305,6 +336,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t to_process_cnt_d, to_process_cnt_q;
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
+
+  // Valid, result, and mask of the unit in use
+  logic  unit_out_valid;
+  elen_t unit_out_result;
+  strb_t unit_out_mask;
 
   always_comb begin: p_vmfpu
 
@@ -327,8 +363,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // Do not acknowledge any operands
     mfpu_operand_ready_o = '0;
 
-    // vmul input not valid by default
+    // Inputs to the units are not valid by default
     vmul_in_valid = 1'b0;
+    vdiv_in_valid = 1'b0;
+
+    // Valid of the unit in use (i.e., result queue input valid) is not asserted by default
+    unit_out_valid  = 1'b0;
+    unit_out_result = vmul_result;
+    unit_out_mask   = vmul_mask;
 
     // Mask not granted by default
     mask_ready_o = 1'b0;
@@ -341,11 +383,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_issue_valid) begin
       // Do we have all the operands necessary for this instruction?
       if ((mfpu_operand_valid_i[2] || !vinsn_issue.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (mfpu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm)) begin
-        // Validate multiplier inputs
-        vmul_in_valid = 1'b1;
+        // Validate the inputs of the correct unit
+        case (vinsn_issue.op) inside
+          [VMUL:VNMSUB]: vmul_in_valid = 1'b1;
+          [VDIVU:VREM] : vdiv_in_valid = 1'b1;
+        endcase
 
-        // Is the multiplier ready?
-        if (vmul_in_ready) begin
+        // Is the unit in use ready?
+        if ((vinsn_issue.op inside {[VMUL:VNMSUB]} && vmul_in_ready) || (vinsn_issue.op inside {[VDIVU:VREM]} && vdiv_in_ready)) begin
           // Acknowledge the operands of this instruction
           mfpu_operand_ready_o = {vinsn_issue.use_vd_op, vinsn_issue.use_vs2, vinsn_issue.use_vs1};
           // Acknowledge the mask unit
@@ -381,9 +426,24 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
     // If the result queue is not full, it is ready to accept a result
     vmul_out_ready = ~result_queue_full;
+    vdiv_out_ready = ~result_queue_full;
+
+    // Select the correct valid, result, and mask, to write in the result queue
+    case (vinsn_processing.op) inside
+      [VMUL:VNMSUB]: begin
+        unit_out_valid  = vmul_out_valid;
+        unit_out_result = vmul_result;
+        unit_out_mask   = vmul_mask;
+      end
+      [VDIVU:VREM] : begin
+        unit_out_valid  = vdiv_out_valid;
+        unit_out_result = vdiv_result;
+        unit_out_mask   = vdiv_mask;
+      end
+    endcase
 
     // Check if we have a valid result and we can add it to the result queue
-    if (vmul_out_valid && !result_queue_full) begin
+    if (unit_out_valid && !result_queue_full) begin
       // How many elements have we processed?
       automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
       if (processed_element_cnt > to_process_cnt_q)
@@ -392,8 +452,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       // Store the result in the result queue
       result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing.id;
       result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) + ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
-      result_queue_d[result_queue_write_pnt_q].wdata = vmul_result;
-      result_queue_d[result_queue_write_pnt_q].be    = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ? {StrbWidth{1'b1}} : vmul_mask);
+      result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
+      result_queue_d[result_queue_write_pnt_q].be    = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ? {StrbWidth{1'b1}} : unit_out_mask);
       result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
       // Update the number of elements still to be processed
@@ -738,3 +798,30 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   end: gen_p_mul_error
 
 endmodule : simd_mul
+
+
+/*********************
+ *  SIMD Divider  *
+ ********************/
+
+// Description:
+// Ara's SIMD Divider, operating on elements 64-bit wide.
+// The unit can generate 64 bits per cycle.
+
+//  module simd_div import ara_pkg::*; import rvv_pkg::*; (
+//      input  logic    clk_i,
+//      input  logic    rst_ni,
+//      input  elen_t   operand_a_i,
+//      input  elen_t   operand_b_i,
+//      input  strb_t   mask_i,
+//      input  ara_op_e op_i,
+//      input  vew_e    vew_i,
+//      output elen_t   result_o,
+//      output strb_t   mask_o,
+//      input  logic    valid_i,
+//      output logic    ready_o,
+//      input  logic    ready_i,
+//      output logic    valid_o
+//    );
+//
+//  endmodule : simd_div
