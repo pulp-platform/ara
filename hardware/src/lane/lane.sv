@@ -33,6 +33,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,
+    // Scan chain
+    input  logic                                           scan_enable_i,
+    input  logic                                           scan_data_i,
+    output logic                                           scan_data_o,
     // Lane ID
     logic            [cf_math_pkg::idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with the sequencer

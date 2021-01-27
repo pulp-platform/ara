@@ -82,6 +82,9 @@ module ara_testharness #(
     .clk_i          (clk_i             ),
     .rst_ni         (rst_ni            ),
     .exit_o         (exit_o            ),
+    .scan_enable_i  (1'b0              ),
+    .scan_data_i    (1'b0              ),
+    .scan_data_o    (/* Unused */      ),
     // UART
     .uart_penable_o (uart_penable      ),
     .uart_pwrite_o  (uart_pwrite       ),

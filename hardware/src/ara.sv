@@ -38,6 +38,10 @@ module ara import ara_pkg::*; #(
     // Clock and Reset
     input  logic              clk_i,
     input  logic              rst_ni,
+    // Scan chain
+    input  logic              scan_enable_i,
+    input  logic              scan_data_i,
+    output logic              scan_data_o,
     // Interface with Ariane
     input  accelerator_req_t  acc_req_i,
     input  logic              acc_req_valid_i,
@@ -182,6 +186,9 @@ module ara import ara_pkg::*; #(
     ) i_lane (
       .clk_i                  (clk_i                       ),
       .rst_ni                 (rst_ni                      ),
+      .scan_enable_i          (scan_enable_i               ),
+      .scan_data_i            (1'b0                        ),
+      .scan_data_o            (/* Unused */                ),
       .lane_id_i              (lane[idx_width(NrLanes)-1:0]),
       // Interface with the sequencer
       .pe_req_i               (pe_req                      ),

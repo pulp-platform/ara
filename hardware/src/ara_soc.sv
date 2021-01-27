@@ -36,6 +36,10 @@ module ara_soc import axi_pkg::*; #(
     input  logic             clk_i,
     input  logic             rst_ni,
     output logic      [63:0] exit_o,
+    // Scan chain
+    input  logic             scan_enable_i,
+    input  logic             scan_data_i,
+    output logic             scan_data_o,
     // UART APB interface
     output logic             uart_penable_o,
     output logic             uart_pwrite_o,
@@ -597,6 +601,9 @@ module ara_soc import axi_pkg::*; #(
   ) i_ara (
     .clk_i           (clk_i         ),
     .rst_ni          (rst_ni        ),
+    .scan_enable_i   (scan_enable_i ),
+    .scan_data_i     (1'b0          ),
+    .scan_data_o     (/* Unused */  ),
     .acc_req_i       (acc_req       ),
     .acc_req_valid_i (acc_req_valid ),
     .acc_req_ready_o (acc_req_ready ),
