@@ -401,7 +401,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0) begin
-        issue_cnt_d = vfu_operation_i.vl;
+        issue_cnt_d      = vfu_operation_i.vl;
         to_process_cnt_d = vfu_operation_i.vl;
       end
       if (vinsn_queue_d.commit_cnt == '0)
@@ -438,11 +438,12 @@ endmodule : vmfpu
 // Once the pipeline is full, the unit can generate 64 bits per cycle.
 
 module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NumPipeRegs = 0,
+    parameter int   unsigned NumPipeRegs  = 0,
+    parameter vew_e          ElementWidth = EW64,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth   = $bits(elen_t),
-    parameter int  unsigned StrbWidth   = DataWidth/8,
-    parameter type          strb_t      = logic [DataWidth/8-1:0]
+    parameter int   unsigned DataWidth    = $bits(elen_t),
+    parameter int   unsigned StrbWidth    = DataWidth/8,
+    parameter type           strb_t       = logic [DataWidth/8-1:0]
   ) (
     input  logic    clk_i,
     input  logic    rst_ni,
@@ -496,95 +497,121 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   assign signed_a = op_i inside {VMULH};
   assign signed_b = op_i inside {VMULH, VMULHSU};
 
-  always_comb begin : p_mul
-    // Default assignments
-    mul_wide_res = '0;
-    res          = '0;
+  if (ElementWidth == EW64) begin: gen_p_mul_ew64
+    always_comb begin : p_mul
+      // Default assignments
+      mul_wide_res = '0;
+      res          = '0;
 
-    case (op_i)
-      // Single-Width integer multiply instructions
-      VMUL: unique case (vew_i)
-          EW8: for (int l = 0; l < 8; l++) begin
-              mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-              res.w8[l]           = mul_wide_res.w16[l][7:0];
-            end
-          EW16: for (int l = 0; l < 4; l++) begin
-              mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-              res.w16[l]          = mul_wide_res.w32[l][15:0];
-            end
-          EW32: for (int l = 0; l < 2; l++) begin
-              mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-              res.w32[l]          = mul_wide_res.w64[l][31:0];
-            end
-          EW64: for (int l = 0; l < 1; l++) begin
-              mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-              res.w64[l]           = mul_wide_res.w128[l][63:0];
-            end
-        endcase
+      case (op_i)
+        // Single-Width integer multiply instructions
+        VMUL: for (int l = 0; l < 1; l++) begin
+            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
+            res.w64[l]           = mul_wide_res.w128[l][63:0];
+          end
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 1; l++) begin
+            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
+            res.w64[l]           = mul_wide_res.w128[l][127:64];
+          end
 
-      VMULH,
-      VMULHU,
-      VMULHSU: unique case (vew_i)
-          EW8: for (int l = 0; l < 8; l++) begin
-              mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-              res.w8[l]           = mul_wide_res.w16[l][15:8];
-            end
-          EW16: for (int l = 0; l < 4; l++) begin
-              mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-              res.w16[l]          = mul_wide_res.w32[l][31:16];
-            end
-          EW32: for (int l = 0; l < 2; l++) begin
-              mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-              res.w32[l]          = mul_wide_res.w64[l][63:32];
-            end
-          EW64: for (int l = 0; l < 1; l++) begin
-              mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-              res.w64[l]           = mul_wide_res.w128[l][127:64];
-            end
-        endcase
+        // Single-Width integer multiply-add instructions
+        VMACC, VMADD: for (int l = 0; l < 1; l++) begin
+            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
+            res.w64[l]           = mul_wide_res.w128[l][63:0] + opc.w64[l];
+          end
+        VNMSAC, VNMSUB: for (int l = 0; l < 1; l++) begin
+            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
+            res.w64[l]           = -mul_wide_res.w128[l][63:0] + opc.w64[l];
+          end
+      endcase
+    end
+  end: gen_p_mul_ew64 else if (ElementWidth == EW32) begin: gen_p_mul_ew32
+    always_comb begin : p_mul
+      // Default assignments
+      mul_wide_res = '0;
+      res          = '0;
 
-      // Single-Width integer multiply-add instructions
-      VMACC,
-      VMADD: unique case (vew_i)
-          EW8: for (int l = 0; l < 8; l++) begin
-              mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-              res.w8[l]           = mul_wide_res.w16[l][7:0] + opc.w8[l];
-            end
-          EW16: for (int l = 0; l < 4; l++) begin
-              mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-              res.w16[l]          = mul_wide_res.w32[l][15:0] + opc.w16[l];
-            end
-          EW32: for (int l = 0; l < 2; l++) begin
-              mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-              res.w32[l]          = mul_wide_res.w64[l][31:0] + opc.w32[l];
-            end
-          EW64: for (int l = 0; l < 1; l++) begin
-              mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-              res.w64[l]           = mul_wide_res.w128[l][63:0] + opc.w64[l];
-            end
-        endcase
+      case (op_i)
+        // Single-Width integer multiply instructions
+        VMUL: for (int l = 0; l < 2; l++) begin
+            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
+            res.w32[l]          = mul_wide_res.w64[l][31:0];
+          end
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 2; l++) begin
+            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
+            res.w32[l]          = mul_wide_res.w64[l][63:32];
+          end
 
-      VNMSAC,
-      VNMSUB: unique case (vew_i)
-          EW8: for (int l = 0; l < 8; l++) begin
-              mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-              res.w8[l]           = -mul_wide_res.w16[l][7:0] + opc.w8[l];
-            end
-          EW16: for (int l = 0; l < 4; l++) begin
-              mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-              res.w16[l]          = -mul_wide_res.w32[l][15:0] + opc.w16[l];
-            end
-          EW32: for (int l = 0; l < 2; l++) begin
-              mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-              res.w32[l]          = -mul_wide_res.w64[l][31:0] + opc.w32[l];
-            end
-          EW64: for (int l = 0; l < 1; l++) begin
-              mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-              res.w64[l]           = -mul_wide_res.w128[l][63:0] + opc.w64[l];
-            end
-        endcase
-    endcase
-  end
+        // Single-Width integer multiply-add instructions
+        VMACC, VMADD: for (int l = 0; l < 2; l++) begin
+            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
+            res.w32[l]          = mul_wide_res.w64[l][31:0] + opc.w32[l];
+          end
+        VNMSAC, VNMSUB: for (int l = 0; l < 2; l++) begin
+            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
+            res.w32[l]          = -mul_wide_res.w64[l][31:0] + opc.w32[l];
+          end
+      endcase
+    end
+  end: gen_p_mul_ew32 else if (ElementWidth == EW16) begin: gen_p_mul_ew16
+    always_comb begin : p_mul
+      // Default assignments
+      mul_wide_res = '0;
+      res          = '0;
+
+      case (op_i)
+        // Single-Width integer multiply instructions
+        VMUL: for (int l = 0; l < 4; l++) begin
+            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
+            res.w16[l]          = mul_wide_res.w32[l][15:0];
+          end
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 4; l++) begin
+            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
+            res.w16[l]          = mul_wide_res.w32[l][31:16];
+          end
+
+        // Single-Width integer multiply-add instructions
+        VMACC, VMADD: for (int l = 0; l < 4; l++) begin
+            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
+            res.w16[l]          = mul_wide_res.w32[l][15:0] + opc.w16[l];
+          end
+        VNMSAC, VNMSUB: for (int l = 0; l < 4; l++) begin
+            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
+            res.w16[l]          = -mul_wide_res.w32[l][15:0] + opc.w16[l];
+          end
+      endcase
+    end
+  end: gen_p_mul_ew16 else if (ElementWidth == EW8) begin: gen_p_mul_ew8
+    always_comb begin : p_mul
+      // Default assignments
+      mul_wide_res = '0;
+      res          = '0;
+
+      case (op_i)
+        // Single-Width integer multiply instructions
+        VMUL: for (int l = 0; l < 8; l++) begin
+            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
+            res.w8[l]           = mul_wide_res.w16[l][7:0];
+          end
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 8; l++) begin
+            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
+            res.w8[l]           = mul_wide_res.w16[l][15:8];
+          end
+
+        // Single-Width integer multiply-add instructions
+        VMACC, VMADD: for (int l = 0; l < 8; l++) begin
+            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
+            res.w8[l]           = mul_wide_res.w16[l][7:0] + opc.w8[l];
+          end
+        VNMSAC, VNMSUB: for (int l = 0; l < 8; l++) begin
+            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
+            res.w8[l]           = -mul_wide_res.w16[l][7:0] + opc.w8[l];
+          end
+      endcase
+    end
+  end: gen_p_mul_ew8 else begin: gen_p_mul_error
+    $error("[simd_vmul] Invalid ElementWidth.");
+  end: gen_p_mul_error
 
   /*********************
    *  Pipeline stages  *
@@ -605,10 +632,10 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   // Generate the pipeline stages in case they are needed
   if (NumPipeRegs > 0) begin : gen_pipeline
     // Pipelined versions of signals for later stages
-    logic  [NumPipeRegs-1:0][63:0] result_q;
-    logic  [NumPipeRegs-1:0][7:0]  operand_m_q;
-    strb_t [NumPipeRegs-1:0]       mask_q;
-    logic  [NumPipeRegs-1:0]       valid_q;
+    logic [NumPipeRegs-1:0][63:0] result_q;
+    logic [NumPipeRegs-1:0][7:0]  operand_m_q;
+    strb_t [NumPipeRegs-1:0]      mask_q;
+    logic [NumPipeRegs-1:0]       valid_q;
 
     for (genvar i = 0; i < NumPipeRegs; i++) begin : pipeline_stages
       // Next state from previous register to form a shift register
