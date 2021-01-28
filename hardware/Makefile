@@ -30,11 +30,13 @@ library        ?= work
 # dpi library
 dpi_library    ?= work-dpi
 # verilator library
-veril_library  ?= $(buildpath)/work-verilator
+veril_library  ?= $(buildpath)/verilator
 # verilator path
 veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
 # verilator threads
 veril_threads  ?= 4
+# verilator top-level
+veril_top      ?= ara_tb_verilator
 # Top level module to compile
 top_level      ?= ara_tb
 # QuestaSim Version
@@ -122,20 +124,11 @@ include $(APPS_DIR)/common/riscv_tests.mk
 
 tests := $(ara_tests) $(cva6_tests)
 
-.PHONY: riscv_tests_simc
-riscv_tests_simc: $(tests)
-
-$(tests): rv%: $(app_path)/rv% compile
-	cd $(buildpath) && \
-	$(questa_cmd) vsim -c $(questa_args) +PRELOAD=$< $(library).$(top_level) -do "run -a"
-	./scripts/return_status.sh $(buildpath)/transcript
-	cp $(buildpath)/trace_hart_0.log $(buildpath)/$@.trace
-
 # Verilator
 .PHONY: verilate
-verilate: $(buildpath) $(veril_library)/Vara_tb_verilator | bender
+verilate: $(buildpath) $(veril_library)/V$(veril_top) | bender
 
-$(veril_library)/Vara_tb_verilator.mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+$(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	mkdir -p $(veril_library)
 	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
@@ -157,7 +150,7 @@ $(veril_library)/Vara_tb_verilator.mk: Makefile bender ../Bender.yml $(shell fin
   -Wno-fatal                                                                    \
   --Mdir $(veril_library) -O3 --trace                                           \
   -Itb/dpi                                                                      \
-  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_tb_verilator -O3"               \
+  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top) -O3"                   \
   -CFLAGS "-DNR_LANES=$(nr_lanes) -g"                                           \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
@@ -169,10 +162,17 @@ $(veril_library)/Vara_tb_verilator.mk: Makefile bender ../Bender.yml $(shell fin
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp/*.cc      \
   $(ROOT_DIR)/tb/verilator/ara_tb.cpp                                           \
   --cc                                                                          \
-  --top-module ara_tb_verilator
+  --top-module $(veril_top)
 
-$(veril_library)/Vara_tb_verilator: $(veril_library)/Vara_tb_verilator.mk
-	cd $(veril_library) && make -j4 -f Vara_tb_verilator.mk
+$(veril_library)/V$(veril_top): $(veril_library)/V$(veril_top).mk
+	cd $(veril_library) && make -j4 -f V$(veril_top).mk
+
+.PHONY: riscv_tests_veril
+riscv_tests_veril: $(tests)
+
+$(tests): rv%: $(app_path)/rv% verilate
+	cd $(buildpath) && \
+	$(veril_library)/V$(veril_top) $<
 
 # DPIs
 .PHONY: dpi
