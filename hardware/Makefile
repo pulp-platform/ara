@@ -162,7 +162,7 @@ $(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp \
-  -LDFLAGS "-pthread -lutil -lelf"                                              \
+  -LDFLAGS "-lelf"                                                              \
   --exe                                                                         \
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp/*.cc            \
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp/*.cc      \

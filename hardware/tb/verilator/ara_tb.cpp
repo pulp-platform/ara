@@ -7,12 +7,12 @@
 
 int main(int argc, char **argv) {
   // Create an instance of the DUT
-  Vara_testharness dut;
+  ara_testharness *dut = new ara_testharness;
 
   // Initialize lowRISC's verilator utilities
   VerilatorMemUtil memutil;
   VerilatorSimCtrl &simctrl = VerilatorSimCtrl::GetInstance();
-  simctrl.SetTop(dut, dut.clk_i, dut.rst_ni,
+  simctrl.SetTop(dut, &dut->clk_i, &dut->rst_ni,
                  VerilatorSimCtrlFlags::ResetPolarityNegative);
 
   // Initialize the DRAM
