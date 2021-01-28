@@ -136,7 +136,6 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
   -GNrLanes=$(nr_lanes)                                                         \
   --threads $(veril_threads)                                                    \
   --unroll-count 256                                                            \
-  --autoflush                                                                   \
   -Werror-IMPLICIT                                                              \
   -Wno-fatal                                                                    \
   -Wno-BLKANDNBLK                                                               \
@@ -167,12 +166,16 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
 $(veril_library)/V$(veril_top): $(veril_library)/V$(veril_top).mk
 	cd $(veril_library) && make -j4 -f V$(veril_top).mk
 
+# Simulation
+.PHONY: simv
+simv: verilate
+	$(veril_library)/V$(veril_top) -l ram,$(app_path)/$(app),elf
+
 .PHONY: riscv_tests_veril
 riscv_tests_veril: $(tests)
 
 $(tests): rv%: $(app_path)/rv% verilate
-	cd $(buildpath) && \
-	$(veril_library)/V$(veril_top) $<
+	$(veril_library)/V$(veril_top) -l ram,$<,elf
 
 # DPIs
 .PHONY: dpi
