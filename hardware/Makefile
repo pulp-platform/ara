@@ -133,14 +133,14 @@ $(tests): rv%: $(app_path)/rv% compile
 
 # Verilator
 .PHONY: verilate
-verilate: $(buildpath) $(veril_library)/Vara_testharness.mk | bender
+verilate: $(buildpath) $(veril_library)/Vara_tb_verilator | bender
 
-$(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+$(veril_library)/Vara_tb_verilator.mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	mkdir -p $(veril_library)
-	./bender script verilator -t rtl -t ara_test -t cva6_test $(bender_defs) > $(veril_library)/bender_script
+	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script                     \
-  -GNrLanes=$(nr_lanes) -GAxiDataWidth=$(shell echo 32*$(nr_lanes) | bc)        \
+  -GNrLanes=$(nr_lanes)                                                         \
   --threads $(veril_threads)                                                    \
   --unroll-count 256                                                            \
   --autoflush                                                                   \
@@ -157,7 +157,7 @@ $(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find
   -Wno-fatal                                                                    \
   --Mdir $(veril_library) -O3 --trace                                           \
   -Itb/dpi                                                                      \
-  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_testharness -O3"                \
+  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_tb_verilator -O3"               \
   -CFLAGS "-DNR_LANES=$(nr_lanes) -g"                                           \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
@@ -169,7 +169,10 @@ $(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp/*.cc      \
   $(ROOT_DIR)/tb/verilator/ara_tb.cpp                                           \
   --cc                                                                          \
-  --top-module ara_testharness
+  --top-module ara_tb_verilator
+
+$(veril_library)/Vara_tb_verilator: $(veril_library)/Vara_tb_verilator.mk
+	cd $(veril_library) && make -j4 -f Vara_tb_verilator.mk
 
 # DPIs
 .PHONY: dpi

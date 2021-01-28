@@ -81,3 +81,8 @@ sources:
         - hardware/tb/ara_testharness.sv
         # Level 2
         - hardware/tb/ara_tb.sv
+
+    - target: ara_test and not(verilator)
+      files:
+        # Level 2
+        - hardware/tb/ara_tb_verilator.sv

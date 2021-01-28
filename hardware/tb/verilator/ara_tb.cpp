@@ -7,7 +7,7 @@
 
 int main(int argc, char **argv) {
   // Create an instance of the DUT
-  ara_testharness *dut = new ara_testharness;
+  ara_tb_verilator *dut = new ara_tb_verilator;
 
   // Initialize lowRISC's verilator utilities
   VerilatorMemUtil memutil;
@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   // Initialize the DRAM
   MemAreaLoc l2_mem = {.base=0x80000000, .size=0x00080000};
   memutil.RegisterMemoryArea(
-                             "ram", "TOP.ara_testharness.i_dram", 64*NR_LANES/2, &l2_mem);
+                             "ram", "TOP.ara_tb_verilator.dut.i_dram", 64*NR_LANES/2, &l2_mem);
   simctrl.RegisterExtension(&memutil);
 
   simctrl.SetInitialResetDelay(5);
