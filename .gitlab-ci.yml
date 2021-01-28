@@ -112,6 +112,7 @@ compile_ara:
     - export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
     - git submodule update --init --recursive -- toolchain/verilator
     - git submodule foreach --recursive git reset --hard
+    - rm -rf install/verilator
     - make verilator
     - veril_trace=0 make -C hardware verilate
   artifacts:
