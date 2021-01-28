@@ -19,6 +19,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: none
   RUST_LOG: 'memora=debug'
   PATH: '/home/gitlabci/.cargo/bin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/usr/local/condor/bin:/usr/sepp/bin'
+  CCACHE_DIR: $CI_PROJECT_DIR/.ccache
 
 workflow:
   rules:
@@ -69,13 +70,14 @@ tc-isa-sim:
 tc-verilator:
   stage: toolchain
   script:
-    - |
-      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-verilator; then
-        git submodule update --init --recursive -- toolchain/verilator
-        mkdir -p /usr/scratch2/dolent1/gitlabci/buildcache/ara
-        make verilator
-        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-verilator
-      fi
+    - git submodule update --init --recursive -- toolchain/verilator
+    - git submodule foreach --recursive git reset --hard
+    - export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
+    - make verilator
+  artifacts:
+    paths:
+      - install/verilator
+    expire_in: 1 day
 
 ###################
 #  Compile stage  #
@@ -107,8 +109,8 @@ compile_riscv_tests:
 compile_ara:
   stage: compile
   script:
-    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
-    - make -C hardware verilate
+    - export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
+    - veril_trace=0 make -C hardware verilate
   artifacts:
     paths:
       - hardware/build/work-verilator/Vara_tb_verilator

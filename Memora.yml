@@ -7,10 +7,3 @@ artifacts:
       - toolchain/riscv-gnu-toolchain
     outputs:
       - install/riscv-gcc
-
-  tc-verilator:
-    inputs:
-      - Makefile
-      - toolchain/verilator
-    outputs:
-      - install/verilator
