@@ -16,13 +16,14 @@
 //              Instantiates an AXI-Bus and memories.
 
 module ara_testharness #(
+    // Ara-specific parameters
+    parameter int unsigned NrLanes      = 0,
+    parameter int unsigned NumWords     = 2**21, // memory size
+    // AXI Parameters
     parameter int unsigned AxiUserWidth = 1,
     parameter int unsigned AxiIdWidth   = 6,
     parameter int unsigned AxiAddrWidth = 64,
-    parameter int unsigned AxiDataWidth = 64,
-    // Ara-specific parameters
-    parameter int unsigned NrLanes      = 0,
-    parameter int unsigned NumWords     = 2**23 // memory size
+    parameter int unsigned AxiDataWidth = 64*NrLanes/2
   ) (
     input  logic        clk_i,
     input  logic        rst_ni,
