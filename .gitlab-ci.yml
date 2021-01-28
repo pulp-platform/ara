@@ -104,6 +104,16 @@ compile_riscv_tests:
       - apps/bin
   needs: ["tc-gcc"]
 
+compile_ara:
+  stage: compile
+  script:
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
+    - make -C hardware verilate
+  artifacts:
+    paths:
+      - hardware/build/work-verilator/Vara_tb_verilator
+  needs: ["tc-verilator"]
+
 ####################
 #  Simulate stage  #
 ####################
@@ -117,18 +127,16 @@ hello_world:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
 
-riscv_tests_vsim:
+riscv_tests_veril:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
-    - make -C hardware riscv_tests_simc
-  artifacts:
-    paths:
-      - hardware/build/rv*.trace
-  needs: ["tc-gcc", "compile_riscv_tests"]
+    - make -C hardware riscv_tests_veril
+  needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
   dependencies:
     - tc-gcc
     - compile_riscv_tests
+    - compile_ara
 
 riscv_tests_spike:
   stage: simulate
