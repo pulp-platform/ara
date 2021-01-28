@@ -37,6 +37,8 @@ veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
 veril_threads  ?= 4
 # verilator top-level
 veril_top      ?= ara_tb_verilator
+# activate verilator traces
+veril_trace    ?= 1
 # Top level module to compile
 top_level      ?= ara_tb
 # QuestaSim Version
@@ -75,6 +77,13 @@ vlog_args += -work $(library)
 
 # Defines
 bender_defs += --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen) --define RVV_ARIANE=1
+
+# Verilate command
+ifeq ($(veril_trace),1)
+	veril_trace_cmd = --trace
+else
+	veril_trace_cmd =
+endif
 
 # Default target
 all: compile
@@ -147,7 +156,7 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
   -Wno-UNSIGNED                                                                 \
   -Wno-UNUSED                                                                   \
   -Wno-fatal                                                                    \
-  --Mdir $(veril_library) -O3 --trace                                           \
+  --Mdir $(veril_library) -O3 $(veril_trace_cmd)                                \
   -Itb/dpi                                                                      \
   -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top) -O3"                   \
   -CFLAGS "-DNR_LANES=$(nr_lanes) -g"                                           \
@@ -164,7 +173,7 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
   --top-module $(veril_top)
 
 $(veril_library)/V$(veril_top): $(veril_library)/V$(veril_top).mk
-	cd $(veril_library) && make -j4 -f V$(veril_top).mk
+	cd $(veril_library) && rm -rf *.o && make -j4 -f V$(veril_top).mk
 
 # Simulation
 .PHONY: simv
