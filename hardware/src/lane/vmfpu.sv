@@ -187,20 +187,19 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
    *  Multiplier  *
    ****************/
 
-  elen_t vmul_result;
-
-  logic vmul_in_valid;
-  logic vmul_out_valid;
-  logic vmul_in_ready;
-  logic vmul_out_ready;
-
+  elen_t [3:0] vmul_simd_result;
+  logic  [3:0] vmul_simd_in_valid;
+  logic  [3:0] vmul_simd_in_ready;
+  logic  [3:0] vmul_simd_out_valid;
+  logic  [3:0] vmul_simd_out_ready;
   // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the operand queues
   // Another choice would be to delay the mask grant when the vmul_result is committed
-  strb_t vmul_mask;
+  strb_t [3:0] vmul_simd_mask;
 
   simd_mul #(
-    .NumPipeRegs(LatMultiplier)
-  ) i_simd_mul (
+    .NumPipeRegs (LatMultiplierEW64),
+    .ElementWidth(EW64             )
+  ) i_simd_mul_ew64 (
     .clk_i      (clk_i                                                    ),
     .rst_ni     (rst_ni                                                   ),
     .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
@@ -209,13 +208,113 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .mask_i     (mask_i                                                   ),
     .op_i       (vinsn_issue.op                                           ),
     .vew_i      (vinsn_issue.vtype.vsew                                   ),
-    .result_o   (vmul_result                                              ),
-    .mask_o     (vmul_mask                                                ),
-    .valid_i    (vmul_in_valid                                            ),
-    .ready_o    (vmul_in_ready                                            ),
-    .ready_i    (vmul_out_ready                                           ),
-    .valid_o    (vmul_out_valid                                           )
+    .result_o   (vmul_simd_result[EW64]                                   ),
+    .mask_o     (vmul_simd_mask[EW64]                                     ),
+    .valid_i    (vmul_simd_in_valid[EW64]                                 ),
+    .ready_o    (vmul_simd_in_ready[EW64]                                 ),
+    .ready_i    (vmul_simd_out_ready[EW64]                                ),
+    .valid_o    (vmul_simd_out_valid[EW64]                                )
   );
+
+  simd_mul #(
+    .NumPipeRegs (LatMultiplierEW32),
+    .ElementWidth(EW32             )
+  ) i_simd_mul_ew32 (
+    .clk_i      (clk_i                                                    ),
+    .rst_ni     (rst_ni                                                   ),
+    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                        ),
+    .operand_c_i(mfpu_operand_i[2]                                        ),
+    .mask_i     (mask_i                                                   ),
+    .op_i       (vinsn_issue.op                                           ),
+    .vew_i      (vinsn_issue.vtype.vsew                                   ),
+    .result_o   (vmul_simd_result[EW32]                                   ),
+    .mask_o     (vmul_simd_mask[EW32]                                     ),
+    .valid_i    (vmul_simd_in_valid[EW32]                                 ),
+    .ready_o    (vmul_simd_in_ready[EW32]                                 ),
+    .ready_i    (vmul_simd_out_ready[EW32]                                ),
+    .valid_o    (vmul_simd_out_valid[EW32]                                )
+  );
+
+  simd_mul #(
+    .NumPipeRegs (LatMultiplierEW16),
+    .ElementWidth(EW16             )
+  ) i_simd_mul_ew16 (
+    .clk_i      (clk_i                                                    ),
+    .rst_ni     (rst_ni                                                   ),
+    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                        ),
+    .operand_c_i(mfpu_operand_i[2]                                        ),
+    .mask_i     (mask_i                                                   ),
+    .op_i       (vinsn_issue.op                                           ),
+    .vew_i      (vinsn_issue.vtype.vsew                                   ),
+    .result_o   (vmul_simd_result[EW16]                                   ),
+    .mask_o     (vmul_simd_mask[EW16]                                     ),
+    .valid_i    (vmul_simd_in_valid[EW16]                                 ),
+    .ready_o    (vmul_simd_in_ready[EW16]                                 ),
+    .ready_i    (vmul_simd_out_ready[EW16]                                ),
+    .valid_o    (vmul_simd_out_valid[EW16]                                )
+  );
+
+  simd_mul #(
+    .NumPipeRegs (LatMultiplierEW8),
+    .ElementWidth(EW8             )
+  ) i_simd_mul_ew8 (
+    .clk_i      (clk_i                                                    ),
+    .rst_ni     (rst_ni                                                   ),
+    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                        ),
+    .operand_c_i(mfpu_operand_i[2]                                        ),
+    .mask_i     (mask_i                                                   ),
+    .op_i       (vinsn_issue.op                                           ),
+    .vew_i      (vinsn_issue.vtype.vsew                                   ),
+    .result_o   (vmul_simd_result[EW8]                                    ),
+    .mask_o     (vmul_simd_mask[EW8]                                      ),
+    .valid_i    (vmul_simd_in_valid[EW8]                                  ),
+    .ready_o    (vmul_simd_in_ready[EW8]                                  ),
+    .ready_i    (vmul_simd_out_ready[EW8]                                 ),
+    .valid_o    (vmul_simd_out_valid[EW8]                                 )
+  );
+
+  // The outputs of the SIMD multipliers are read in order
+  elen_t vmul_result;
+  logic  vmul_in_valid;
+  logic  vmul_in_ready;
+  logic  vmul_out_valid;
+  logic  vmul_out_ready;
+  strb_t vmul_mask;
+  vew_e  vmul_ew;
+
+  fifo_v3 #(
+    .DEPTH(LatMultiplierEW64+1),
+    .dtype(vew_e              )
+  ) i_simd_mul_fifo (
+    .clk_i     (clk_i                           ),
+    .rst_ni    (rst_ni                          ),
+    .flush_i   (1'b0                            ),
+    .testmode_i(1'b0                            ),
+    .data_i    (vinsn_issue.vtype.vsew          ),
+    .push_i    (vmul_in_valid && vmul_in_ready  ),
+    .full_o    (/* Unused */                    ),
+    .data_o    (vmul_ew                         ),
+    .pop_i     (vmul_out_valid && vmul_out_ready),
+    .empty_o   (/* Unused */                    ),
+    .usage_o   (/* Unused */                    )
+  );
+
+  always_comb begin
+    // Only one SIMD Multiplier receives the request
+    vmul_simd_in_valid                         = '0;
+    vmul_simd_in_valid[vinsn_issue.vtype.vsew] = vmul_in_valid;
+    vmul_in_ready                              = vmul_simd_in_ready[vinsn_issue.vtype.vsew];
+
+    // We read the responses of a single SIMD Multipler
+    vmul_result                  = vmul_simd_result[vmul_ew];
+    vmul_mask                    = vmul_simd_mask[vmul_ew];
+    vmul_out_valid               = vmul_simd_out_valid[vmul_ew];
+    vmul_simd_out_ready          = '0;
+    vmul_simd_out_ready[vmul_ew] = vmul_out_ready;
+  end
 
   /*************
    *  Control  *
@@ -633,9 +732,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   if (NumPipeRegs > 0) begin : gen_pipeline
     // Pipelined versions of signals for later stages
     logic [NumPipeRegs-1:0][63:0] result_q;
-    logic [NumPipeRegs-1:0][7:0]  operand_m_q;
-    strb_t [NumPipeRegs-1:0]      mask_q;
-    logic [NumPipeRegs-1:0]       valid_q;
+    logic [NumPipeRegs-1:0][7:0] operand_m_q;
+    strb_t [NumPipeRegs-1:0] mask_q;
+    logic [NumPipeRegs-1:0] valid_q;
 
     for (genvar i = 0; i < NumPipeRegs; i++) begin : pipeline_stages
       // Next state from previous register to form a shift register

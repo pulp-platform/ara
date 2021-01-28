@@ -42,8 +42,11 @@ package ara_pkg;
   // Maximum number of lanes that Ara can support.
   localparam int unsigned MaxNrLanes = 16;
 
-  // Intrinsic multiplier latency.
-  localparam int unsigned LatMultiplier = 2;
+  // Multiplier latencies.
+  localparam int unsigned LatMultiplierEW64 = 2;
+  localparam int unsigned LatMultiplierEW32 = 1;
+  localparam int unsigned LatMultiplierEW16 = 1;
+  localparam int unsigned LatMultiplierEW8  = 1;
 
   /*****************
    *  Definitions  *
