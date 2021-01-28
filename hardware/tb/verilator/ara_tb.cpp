@@ -21,6 +21,9 @@ int main(int argc, char **argv) {
                              "ram", "TOP.ara_testharness.i_dram", 64*NR_LANES/2, &l2_mem);
   simctrl.RegisterExtension(&memutil);
 
+  simctrl.SetInitialResetDelay(5);
+  simctrl.SetResetDuration(5);
+
   bool exit_app = false;
   int ret_code = simctrl.ParseCommandArgs(argc, argv, exit_app);
   if (exit_app) {
