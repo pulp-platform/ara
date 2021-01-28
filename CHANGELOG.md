@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector widening integer multiply instructions (vwmul, vwmulu, vwmulsu)
   - Vector widening integer multiply-add instructions (vwmaccu, vwmacc, vwmaccsu, vwmaccus)
 
+### Changed
+
+- Explicit scan chain signals added to the lane's and Ara's interfaces
+
+### Fixed
+
+- Miscellaneous fixes for compatibility with Synopsys DC
+
 ## 0.2.0 - 2020-01-22
 
 ### Added
