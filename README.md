@@ -28,6 +28,17 @@ To build this toolchain, run the following command in the project's root directo
 make toolchain
 ```
 
+## Verilator
+
+Ara requires an updated version of Verilator, for RTL simulations.
+
+To build it, run the following command in the project's root directory.
+
+```bash
+# Build Verilator
+make verilator
+```
+
 ## Configuration
 
 Ara's parameters are centralized in the `config` folder, in the `config.mk` file.
@@ -70,13 +81,13 @@ preload=/some_path/some_binary make sim
 app=hello_world make simc
 ```
 
-It is also possible to simulate the unit tests compiled in the `apps` folder. Use the following command to run the simulation:
+It is also possible to simulate the unit tests compiled in the `apps` folder. Given the number of unit tests, we use Verilator. Use the following command to install Verilator, verilate the design, and run the simulation:
 
 ```bash
 # Go to the hardware folder
 cd hardware
 # Run the tests
-make riscv_tests_simc
+make riscv_tests_veril
 ```
 
 Alternatively, you can also use the `riscv_tests` target at Ara's top-level Makefile to both compile the RISC-V tests and run their simulation.
