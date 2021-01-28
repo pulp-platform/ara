@@ -86,6 +86,8 @@ It is also possible to simulate the unit tests compiled in the `apps` folder. Gi
 ```bash
 # Go to the hardware folder
 cd hardware
+# Verilate the design
+make verilate
 # Run the tests
 make riscv_tests_veril
 ```
