@@ -99,7 +99,9 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  typedef enum logic [3:0] {
+  localparam int unsigned NumConversions = 7;
+
+  typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
     OpQueueConversionZExt2,
     OpQueueConversionSExt2,

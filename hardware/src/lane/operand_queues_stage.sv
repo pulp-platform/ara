@@ -57,7 +57,10 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
    *********/
 
   operand_queue #(
-    .BufferDepth(5)
+    .BufferDepth   (5   ),
+    .SupportIntExt2(1'b1),
+    .SupportIntExt4(1'b1),
+    .SupportIntExt8(1'b1)
   ) i_operand_queue_alu_a (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -73,7 +76,10 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth(5)
+    .BufferDepth   (5   ),
+    .SupportIntExt2(1'b1),
+    .SupportIntExt4(1'b1),
+    .SupportIntExt8(1'b1)
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -93,7 +99,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
    ********************/
 
   operand_queue #(
-    .BufferDepth(5)
+    .BufferDepth   (5    ),
+    .SupportIntExt2(1'b1 )
   ) i_operand_queue_mfpu_a (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -109,7 +116,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth(5)
+    .BufferDepth   (5    ),
+    .SupportIntExt2(1'b1 )
   ) i_operand_queue_mfpu_b (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -125,7 +133,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth(5)
+    .BufferDepth   (5    ),
+    .SupportIntExt2(1'b1 )
   ) i_operand_queue_mfpu_c (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -179,7 +188,6 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   /***************
    *  Mask Unit  *
    ***************/
-
 
   operand_queue #(
     .BufferDepth(1)

@@ -21,11 +21,15 @@
 // need it.
 
 module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int unsigned BufferDepth = 2,
-    parameter int unsigned NrSlaves    = 1,
+    parameter int   unsigned BufferDepth    = 2,
+    parameter int   unsigned NrSlaves       = 1,
+    // Supported conversions
+    parameter logic          SupportIntExt2 = 1'b0,
+    parameter logic          SupportIntExt4 = 1'b0,
+    parameter logic          SupportIntExt8 = 1'b0,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int unsigned DataWidth   = $bits(elen_t),
-    parameter int unsigned StrbWidth   = DataWidth/8
+    parameter int   unsigned DataWidth      = $bits(elen_t),
+    parameter int   unsigned StrbWidth      = DataWidth/8
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -134,49 +138,57 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     // Shuffle the input operand
     automatic logic [cf_math_pkg::idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
 
-    unique case (cmd.conv)
-      // No conversion
-      OpQueueConversionNone: conv_operand = ibuf_operand;
+    // Default: no conversion
+    conv_operand = ibuf_operand;
 
+    unique case (cmd.conv)
       // Sign extension
       OpQueueConversionSExt2: begin
-        unique case (cmd.eew)
-          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = {{8 {ibuf_operand[16*e + 8*select + 7]}}, ibuf_operand[16*e + 8*select +: 8]};
-          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{16{ibuf_operand[32*e + 8*select + 15]}}, ibuf_operand[32*e + 8*select +: 16]};
-          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{32{ibuf_operand[64*e + 8*select + 31]}}, ibuf_operand[64*e + 8*select +: 32]};
-        endcase
+        if (SupportIntExt2)
+          unique case (cmd.eew)
+            EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = {{8 {ibuf_operand[16*e + 8*select + 7]}}, ibuf_operand[16*e + 8*select +: 8]};
+            EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{16{ibuf_operand[32*e + 8*select + 15]}}, ibuf_operand[32*e + 8*select +: 16]};
+            EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{32{ibuf_operand[64*e + 8*select + 31]}}, ibuf_operand[64*e + 8*select +: 32]};
+          endcase
       end
       OpQueueConversionSExt4: begin
-        unique case (cmd.eew)
-          EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{24{ibuf_operand[32*e + 8*select + 7]}}, ibuf_operand[32*e + 8*select +: 8]};
-          EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{48{ibuf_operand[64*e + 8*select + 15]}}, ibuf_operand[64*e + 8*select +: 16]};
-        endcase
+        if (SupportIntExt4)
+          unique case (cmd.eew)
+            EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{24{ibuf_operand[32*e + 8*select + 7]}}, ibuf_operand[32*e + 8*select +: 8]};
+            EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{48{ibuf_operand[64*e + 8*select + 15]}}, ibuf_operand[64*e + 8*select +: 16]};
+          endcase
       end
       OpQueueConversionSExt8: begin
-        unique case (cmd.eew)
-          EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{56{ibuf_operand[64*e + 8*select + 7]}}, ibuf_operand[64*e + 8*select +: 8]};
-        endcase
+        if (SupportIntExt8)
+          unique case (cmd.eew)
+            EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{56{ibuf_operand[64*e + 8*select + 7]}}, ibuf_operand[64*e + 8*select +: 8]};
+          endcase
       end
 
       // Zero extension
       OpQueueConversionZExt2: begin
-        unique case (cmd.eew)
-          EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = { 8'b0, ibuf_operand[16*e + 8*select +: 8]};
-          EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {16'b0, ibuf_operand[32*e + 8*select +: 16]};
-          EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {32'b0, ibuf_operand[64*e + 8*select +: 32]};
-        endcase
+        if (SupportIntExt2)
+          unique case (cmd.eew)
+            EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = { 8'b0, ibuf_operand[16*e + 8*select +: 8]};
+            EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {16'b0, ibuf_operand[32*e + 8*select +: 16]};
+            EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {32'b0, ibuf_operand[64*e + 8*select +: 32]};
+          endcase
       end
       OpQueueConversionZExt4: begin
-        unique case (cmd.eew)
-          EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {24'b0, ibuf_operand[32*e + 8*select +: 8]};
-          EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {48'b0, ibuf_operand[64*e + 8*select +: 16]};
-        endcase
+        if (SupportIntExt4)
+          unique case (cmd.eew)
+            EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {24'b0, ibuf_operand[32*e + 8*select +: 8]};
+            EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {48'b0, ibuf_operand[64*e + 8*select +: 16]};
+          endcase
       end
       OpQueueConversionZExt8: begin
-        unique case (cmd.eew)
-          EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {56'b0, ibuf_operand[64*e + 8*select +: 8]};
-        endcase
+        if (SupportIntExt8)
+          unique case (cmd.eew)
+            EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {56'b0, ibuf_operand[64*e + 8*select +: 8]};
+          endcase
       end
+
+      default:;
     endcase
   end: type_conversion
 
@@ -206,22 +218,25 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
       unique case (cmd.conv)
         OpQueueConversionSExt2,
         OpQueueConversionZExt2:
-          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
+          if (SupportIntExt2)
+            vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
         OpQueueConversionSExt4,
         OpQueueConversionZExt4:
-          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 4;
+          if (SupportIntExt4)
+            vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 4;
         OpQueueConversionSExt8,
         OpQueueConversionZExt8:
-          vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
+          if (SupportIntExt8)
+            vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
         default:
           vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
       endcase
 
       // Update the pointer to the input operand
       unique case (cmd.conv)
-        OpQueueConversionSExt2, OpQueueConversionZExt2: select_d = select_q + 4;
-        OpQueueConversionSExt4, OpQueueConversionZExt4: select_d = select_q + 2;
-        OpQueueConversionSExt8, OpQueueConversionZExt8: select_d = select_q + 1;
+        OpQueueConversionSExt2, OpQueueConversionZExt2: if (SupportIntExt2) select_d = select_q + 4;
+        OpQueueConversionSExt4, OpQueueConversionZExt4: if (SupportIntExt4) select_d = select_q + 2;
+        OpQueueConversionSExt8, OpQueueConversionZExt8: if (SupportIntExt8) select_d = select_q + 1;
         default:; // Do nothing.
       endcase
 
