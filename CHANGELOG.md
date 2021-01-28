@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Hardware compilation with Verilator
+
+### Changed
+
+- The `riscv_tests_simc` Makefile target was deprecated. The riscv-tests are now run with the Verilated design, which can be called through the `riscv_tests_veril` Makefile target.
+
 ## 0.3.0 - 2020-01-28
 
 ### Added
