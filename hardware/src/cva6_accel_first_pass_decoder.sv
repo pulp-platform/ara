@@ -27,7 +27,9 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
     output logic        is_rd_o,
     output logic        is_fs1_o,
     output logic        is_fs2_o,
-    output logic        is_fd_o
+    output logic        is_fd_o,
+    output logic        is_load_o,
+    output logic        is_store_o
   );
 
   // Cast instruction into the `rvv_instruction_t` struct
@@ -43,6 +45,8 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
     is_fs1_o   = 1'b0;
     is_fs2_o   = 1'b0;
     is_fd_o    = 1'b0;
+    is_load_o  = instr.i_type.opcode == riscv::OpcodeLoadFp;
+    is_store_o = instr.i_type.opcode == riscv::OpcodeStoreFp;
 
     // Decode based on the opcode
     case (instr.i_type.opcode)

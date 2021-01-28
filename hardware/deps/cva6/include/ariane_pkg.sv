@@ -500,7 +500,7 @@ package ariane_pkg;
                                // Vectorial Floating-Point Instructions that don't directly map onto the scalar ones
                                VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFEQ, VFNE, VFLT, VFGE, VFLE, VFGT, VFCPKAB_S, VFCPKCD_S, VFCPKAB_D, VFCPKCD_D,
                                // Accelerator operations
-                               ACCEL_OP, ACCEL_OP_FS1, ACCEL_OP_FD
+                               ACCEL_OP, ACCEL_OP_FS1, ACCEL_OP_FD, ACCEL_OP_LOAD, ACCEL_OP_STORE
                              } fu_op;
 
     typedef struct packed {
