@@ -90,8 +90,8 @@ class ElfFile {
     return phnum;
   }
 
-  const Elf32_Phdr *GetPhdrs() {
-    const Elf32_Phdr *phdrs = elf32_getphdr(ptr_);
+  const Elf64_Phdr *GetPhdrs() {
+    const Elf64_Phdr *phdrs = elf64_getphdr(ptr_);
     if (!phdrs)
       throw ElfError(path_, elf_errmsg(-1));
     return phdrs;
@@ -146,7 +146,7 @@ static std::vector<uint8_t> FlattenElfFile(const std::string &filepath) {
   ElfFile elf(filepath);
 
   size_t phnum = elf.GetPhdrNum();
-  const Elf32_Phdr *phdrs = elf.GetPhdrs();
+  const Elf64_Phdr *phdrs = elf.GetPhdrs();
 
   // To mimic what objcopy does (that is, the binary target of BFD), we need to
   // iterate over all loadable program headers, find the lowest address, and
@@ -154,9 +154,9 @@ static std::vector<uint8_t> FlattenElfFile(const std::string &filepath) {
   // found base address.
 
   bool any = false;
-  Elf32_Addr low = 0, high = 0;
+  Elf64_Addr low = 0, high = 0;
   for (size_t i = 0; i < phnum; i++) {
-    const Elf32_Phdr &phdr = phdrs[i];
+    const Elf64_Phdr &phdr = phdrs[i];
 
     if (phdr.p_type != PT_LOAD) {
       std::cout << "Program header number " << i << " in `" << filepath
@@ -176,7 +176,7 @@ static std::vector<uint8_t> FlattenElfFile(const std::string &filepath) {
                 << "' low is " << std::hex << low << std::endl;
     }
 
-    Elf32_Addr seg_top = phdr.p_paddr + (phdr.p_memsz - 1);
+    Elf64_Addr seg_top = phdr.p_paddr + (phdr.p_memsz - 1);
     if (seg_top < phdr.p_paddr) {
       std::ostringstream oss;
       oss << "phdr for segment " << i << " has start 0x" << std::hex
@@ -210,7 +210,7 @@ static std::vector<uint8_t> FlattenElfFile(const std::string &filepath) {
   StagedMem ret;
 
   for (size_t i = 0; i < phnum; i++) {
-    const Elf32_Phdr &phdr = phdrs[i];
+    const Elf64_Phdr &phdr = phdrs[i];
 
     if (phdr.p_type != PT_LOAD) {
       continue;
@@ -228,9 +228,9 @@ static std::vector<uint8_t> FlattenElfFile(const std::string &filepath) {
       throw ElfError(filepath, oss.str());
     }
 
-    uint32_t off = phdr.p_paddr - low;
-    uint32_t dst_len = phdr.p_memsz;
-    uint32_t src_len = std::min(phdr.p_filesz, dst_len);
+    uint64_t off = phdr.p_paddr - low;
+    uint64_t dst_len = phdr.p_memsz;
+    uint64_t src_len = std::min(phdr.p_filesz, dst_len);
 
     if (!dst_len)
       continue;
@@ -580,10 +580,10 @@ void DpiMemUtil::StageElf(bool verbose, const std::string &path) {
   assert(file_data);
 
   size_t phnum = elf.GetPhdrNum();
-  const Elf32_Phdr *phdrs = elf.GetPhdrs();
+  const Elf64_Phdr *phdrs = elf.GetPhdrs();
 
   for (size_t i = 0; i < phnum; ++i) {
-    const Elf32_Phdr &phdr = phdrs[i];
+    const Elf64_Phdr &phdr = phdrs[i];
     if (phdr.p_type != PT_LOAD)
       continue;
 
