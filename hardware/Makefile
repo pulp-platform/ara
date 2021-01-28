@@ -140,24 +140,24 @@ $(veril_library)/Vara_testharness.mk: Makefile bender ../Bender.yml $(shell find
 	./bender script verilator -t rtl -t ara_test -t cva6_test $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script                     \
-  -GNrLanes=$(nr_lanes)                                                         \
+  -GNrLanes=$(nr_lanes) -GAxiDataWidth=$(shell echo 32*$(nr_lanes) | bc)        \
   --threads $(veril_threads)                                                    \
-  --unroll-count 512                                                            \
+  --unroll-count 256                                                            \
+  --autoflush                                                                   \
   -Werror-IMPLICIT                                                              \
   -Wno-fatal                                                                    \
-  -Wno-PINCONNECTEMPTY                                                          \
-  -Wno-ASSIGNDLY                                                                \
   -Wno-BLKANDNBLK                                                               \
-  -Wno-BLKLOOPINIT                                                              \
-  -Wno-DECLFILENAME                                                             \
-  -Wno-UNUSED                                                                   \
+  -Wno-LITENDIAN                                                                \
+  -Wno-CASEINCOMPLETE                                                           \
+  -Wno-WIDTH                                                                    \
+  -Wno-WIDTHCONCAT                                                              \
   -Wno-UNOPTFLAT                                                                \
-  -Wno-lint                                                                     \
-  -Wno-style                                                                    \
+  -Wno-UNSIGNED                                                                 \
+  -Wno-UNUSED                                                                   \
   -Wno-fatal                                                                    \
   --Mdir $(veril_library) -O3 --trace                                           \
   -Itb/dpi                                                                      \
-  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_testharness"                    \
+  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=ara_testharness -O3"                \
   -CFLAGS "-DNR_LANES=$(nr_lanes) -g"                                           \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
