@@ -89,6 +89,8 @@ module ex_stage import ariane_pkg::*; #(
     output logic                                   acc_ready_o,      // FU is ready
     input logic                                    acc_valid_i,      // Output is valid
     input logic                                    acc_commit_i,
+    output logic                                   acc_ld_disp_o,
+    output logic                                   acc_st_disp_o,
     output logic [TRANS_ID_BITS-1:0]               acc_trans_id_o,
     output riscv::xlen_t                           acc_result_o,
     output logic                                   acc_valid_o,
@@ -157,10 +159,6 @@ module ex_stage import ariane_pkg::*; #(
     logic csr_ready, mult_ready;
     logic [TRANS_ID_BITS-1:0] mult_trans_id;
     logic mult_valid;
-
-    // between LSU and accelerator dispatcher
-    logic acc_no_ld_pending;
-    logic acc_no_st_pending;
 
     // 1. ALU (combinatorial)
     // data silence operation
@@ -287,12 +285,8 @@ module ex_stage import ariane_pkg::*; #(
     // Load-Store Unit
     // ----------------
     fu_data_t lsu_data;
-    logic     stall_ld;
-    logic     stall_st;
 
     assign lsu_data  = lsu_valid_i ? fu_data_i  : '0;
-    assign stall_ld = ENABLE_ACCELERATOR ? ~acc_no_st_pending : 1'b0;
-    assign stall_st = ENABLE_ACCELERATOR ? ~(acc_no_st_pending & acc_no_ld_pending) : 1'b0;
 
     load_store_unit #(
         .ASID_WIDTH ( ASID_WIDTH ),
@@ -302,8 +296,8 @@ module ex_stage import ariane_pkg::*; #(
         .rst_ni,
         .flush_i,
         .no_st_pending_o,
-        .stall_ld_i            ( stall_ld ),
-        .stall_st_i            ( stall_st ),
+        .stall_ld_i            ( 1'b0 ),
+        .stall_st_i            ( 1'b0 ),
         .fu_data_i             ( lsu_data ),
         .lsu_ready_o,
         .lsu_valid_i,
@@ -360,14 +354,14 @@ module ex_stage import ariane_pkg::*; #(
           .acc_ready_o          (acc_ready_o      ),
           .acc_valid_i          (acc_valid_i      ),
           .acc_commit_i         (acc_commit_i     ),
+          .acc_ld_disp_o        (acc_ld_disp_o    ),
+          .acc_st_disp_o        (acc_st_disp_o    ),
           .acc_commit_trans_id_i(commit_tran_id_i ),
           .acc_trans_id_o       (acc_trans_id_o   ),
           .acc_result_o         (acc_result_o     ),
           .acc_valid_o          (acc_valid_o      ),
           .acc_exception_o      (acc_exception_o  ),
-          .acc_no_ld_pending_o  (acc_no_ld_pending),
-          .acc_no_st_pending_o  (acc_no_st_pending),
-          .acc_no_st_pending_i  (dcache_wbuffer_empty_i || no_st_pending_o),
+          .acc_no_st_pending_i  (dcache_wbuffer_empty_i && no_st_pending_o),
           .acc_req_o            (acc_req_o        ),
           .acc_req_valid_o      (acc_req_valid_o  ),
           .acc_req_ready_i      (acc_req_ready_i  ),

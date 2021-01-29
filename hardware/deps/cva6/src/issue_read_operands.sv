@@ -65,6 +65,10 @@ module issue_read_operands import ariane_pkg::*; #(
     // Accelerator
     input  logic                                   acc_ready_i,      // FU is ready
     output logic                                   acc_valid_o,      // Output is valid
+    input  logic                                   acc_ld_disp_i,    // Load dispatched to accelerator
+    input  logic                                   acc_st_disp_i,    // Store dispatched to accelerator
+    input  logic                                   acc_ld_complete_i,// Load in accelerator complete
+    input  logic                                   acc_st_complete_i,// Store in accelerator complete
     // commit port
     input  logic [NR_COMMIT_PORTS-1:0][4:0]        waddr_i,
     input  logic [NR_COMMIT_PORTS-1:0][riscv::XLEN-1:0] wdata_i,
@@ -100,6 +104,10 @@ module issue_read_operands import ariane_pkg::*; #(
 
     // forwarding signals
     logic forward_rs1, forward_rs2, forward_rs3;
+
+    // Accelerator load/store pending signals
+    logic acc_no_ld_pending;
+    logic acc_no_st_pending;
 
     // original instruction stored in tval
     riscv::instruction_t orig_instr;
@@ -197,6 +205,14 @@ module issue_read_operands import ariane_pkg::*; #(
             end else begin // the operand is not available -> stall
                 stall = 1'b1;
             end
+        end
+
+        if (issue_instr_i.fu == LOAD) begin
+            stall |= !acc_no_st_pending;
+        end
+
+        if (issue_instr_i.fu == STORE) begin
+            stall |= !(acc_no_ld_pending && acc_no_st_pending);
         end
     end
 
@@ -452,6 +468,98 @@ module issue_read_operands import ariane_pkg::*; #(
             branch_predict_o      <= issue_instr_i.bp;
         end
     end
+
+    // ---------------------
+    //  Load/Store tracking
+    // ---------------------
+
+    // Loads
+    logic       acc_spec_loads_overflow;
+    logic [2:0] acc_spec_loads_pending;
+    logic       acc_disp_loads_overflow;
+    logic [2:0] acc_disp_loads_pending;
+
+    assign acc_no_ld_pending = acc_spec_loads_pending == '0 && acc_disp_loads_pending == '0;
+
+    // Count speculative loads. These can still be flushed.
+    counter #(
+        .WIDTH           (3),
+        .STICKY_OVERFLOW (0)
+    ) i_acc_spec_loads (
+        .clk_i           (clk_i                   ),
+        .rst_ni          (rst_ni                  ),
+        .clear_i         (flush_i                 ),
+        .en_i            ((acc_valid_q && operator_q == ACCEL_OP_LOAD) || acc_ld_disp_i),
+        .load_i          (1'b0                    ),
+        .down_i          (acc_ld_disp_i           ),
+        .d_i             ('0                      ),
+        .q_o             (acc_spec_loads_pending  ),
+        .overflow_o      (acc_spec_loads_overflow )
+    );
+
+    // Count dispatched loads. These cannot be flushed anymore.
+    counter #(
+        .WIDTH           (3),
+        .STICKY_OVERFLOW (0)
+    ) i_acc_disp_loads (
+        .clk_i           (clk_i                   ),
+        .rst_ni          (rst_ni                  ),
+        .clear_i         (                        ),
+        .en_i            (acc_ld_disp_i || acc_ld_complete_i),
+        .load_i          (1'b0                    ),
+        .down_i          (acc_ld_complete_i       ),
+        .d_i             ('0                      ),
+        .q_o             (acc_disp_loads_pending  ),
+        .overflow_o      (acc_disp_loads_overflow )
+    );
+
+    acc_dispatcher_no_load_overflow: assert property (
+        @(posedge clk_i) disable iff (~rst_ni) (acc_spec_loads_overflow & acc_disp_loads_overflow) == 1'b0 )
+    else $error("[acc_dispatcher] Too many pending loads.");
+
+    // Stores
+    logic       acc_spec_stores_overflow;
+    logic [2:0] acc_spec_stores_pending;
+    logic       acc_disp_stores_overflow;
+    logic [2:0] acc_disp_stores_pending;
+
+    assign acc_no_st_pending = acc_spec_stores_pending == '0 && acc_disp_stores_pending == '0;
+
+    // Count speculative stores. These can still be flushed.
+    counter #(
+        .WIDTH           (3),
+        .STICKY_OVERFLOW (0)
+    ) i_acc_spec_stores (
+        .clk_i           (clk_i                   ),
+        .rst_ni          (rst_ni                  ),
+        .clear_i         (flush_i                 ),
+        .en_i            ((acc_valid_q && operator_q == ACCEL_OP_STORE) || acc_st_disp_i),
+        .load_i          (1'b0                    ),
+        .down_i          (acc_st_disp_i           ),
+        .d_i             ('0                      ),
+        .q_o             (acc_spec_stores_pending ),
+        .overflow_o      (acc_spec_stores_overflow)
+    );
+
+    // Count dispatched stores. These cannot be flushed anymore.
+    counter #(
+        .WIDTH           (3),
+        .STICKY_OVERFLOW (0)
+    ) i_acc_disp_stores (
+        .clk_i           (clk_i                   ),
+        .rst_ni          (rst_ni                  ),
+        .clear_i         (                        ),
+        .en_i            (acc_st_disp_i || acc_st_complete_i),
+        .load_i          (1'b0                    ),
+        .down_i          (acc_st_complete_i       ),
+        .d_i             ('0                      ),
+        .q_o             (acc_disp_stores_pending ),
+        .overflow_o      (acc_disp_stores_overflow)
+    );
+
+    acc_dispatcher_no_store_overflow: assert property (
+        @(posedge clk_i) disable iff (~rst_ni) (acc_spec_stores_overflow & acc_disp_stores_overflow) == 1'b0 )
+    else $error("[acc_dispatcher] Too many pending stores.");
 
     //pragma translate_off
     `ifndef VERILATOR
