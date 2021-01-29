@@ -293,6 +293,7 @@ package ariane_pkg;
       riscv::xlen_t             rs1;
       riscv::xlen_t             rs2;
       logic [TRANS_ID_BITS-1:0] trans_id;
+      logic                     store_pending;
     } accelerator_req_t;
 
     typedef struct packed {
@@ -300,6 +301,8 @@ package ariane_pkg;
       logic [TRANS_ID_BITS-1:0] trans_id;
       logic                     error;
       logic                     store_pending;
+      logic                     store_complete;
+      logic                     load_complete;
     } accelerator_resp_t;
 
     // ---------------

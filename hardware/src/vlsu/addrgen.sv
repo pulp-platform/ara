@@ -38,6 +38,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     output axi_aw_t                        axi_aw_o,
     output logic                           axi_aw_valid_o,
     input  logic                           axi_aw_ready_i,
+    // Interace with the dispatcher
+    input  logic                           core_st_pending_i,
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
@@ -206,8 +208,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
    ****************************/
 
   addrgen_req_t axi_addrgen_d, axi_addrgen_q;
-  enum logic {
-    AXI_ADDRGEN_IDLE, AXI_ADDRGEN_REQUESTING
+  enum logic [1:0] {
+    AXI_ADDRGEN_IDLE, AXI_ADDRGEN_WAITING, AXI_ADDRGEN_REQUESTING
   } axi_addrgen_state_d, axi_addrgen_state_q;
 
   always_comb begin: axi_addrgen
@@ -232,6 +234,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       AXI_ADDRGEN_IDLE: begin
         if (addrgen_req_valid) begin
           axi_addrgen_d       = addrgen_req;
+          axi_addrgen_state_d = core_st_pending_i ? AXI_ADDRGEN_WAITING : AXI_ADDRGEN_REQUESTING;
+        end
+      end
+      AXI_ADDRGEN_WAITING: begin
+        if (!core_st_pending_i) begin
           axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING;
         end
       end

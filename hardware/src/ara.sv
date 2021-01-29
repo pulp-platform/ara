@@ -82,27 +82,33 @@ module ara import ara_pkg::*; #(
   logic      ara_resp_valid;
   logic      ara_idle;
   // Interface with the VSTU
+  logic      core_st_pending;
+  logic      load_complete;
+  logic      store_complete;
   logic      store_pending;
 
   ara_dispatcher i_dispatcher (
-    .clk_i           (clk_i           ),
-    .rst_ni          (rst_ni          ),
+    .clk_i            (clk_i           ),
+    .rst_ni           (rst_ni          ),
     // Interface with Ariane
-    .acc_req_i       (acc_req_i       ),
-    .acc_req_valid_i (acc_req_valid_i ),
-    .acc_req_ready_o (acc_req_ready_o ),
-    .acc_resp_o      (acc_resp_o      ),
-    .acc_resp_valid_o(acc_resp_valid_o),
-    .acc_resp_ready_i(acc_resp_ready_i),
+    .acc_req_i        (acc_req_i       ),
+    .acc_req_valid_i  (acc_req_valid_i ),
+    .acc_req_ready_o  (acc_req_ready_o ),
+    .acc_resp_o       (acc_resp_o      ),
+    .acc_resp_valid_o (acc_resp_valid_o),
+    .acc_resp_ready_i (acc_resp_ready_i),
     // Interface with the sequencer
-    .ara_req_o       (ara_req         ),
-    .ara_req_valid_o (ara_req_valid   ),
-    .ara_req_ready_i (ara_req_ready   ),
-    .ara_resp_i      (ara_resp        ),
-    .ara_resp_valid_i(ara_resp_valid  ),
-    .ara_idle_i      (ara_idle        ),
+    .ara_req_o        (ara_req         ),
+    .ara_req_valid_o  (ara_req_valid   ),
+    .ara_req_ready_i  (ara_req_ready   ),
+    .ara_resp_i       (ara_resp        ),
+    .ara_resp_valid_i (ara_resp_valid  ),
+    .ara_idle_i       (ara_idle        ),
     // Interface with the Vector Store Unit
-    .store_pending_i (store_pending   )
+    .core_st_pending_o(core_st_pending ),
+    .load_complete_i  (load_complete   ),
+    .store_complete_i (store_complete  ),
+    .store_pending_i  (store_pending   )
   );
 
   /***************
@@ -260,6 +266,9 @@ module ara import ara_pkg::*; #(
     .axi_req_o              (axi_req_o                                             ),
     .axi_resp_i             (axi_resp_i                                            ),
     // Interface with the dispatcher
+    .core_st_pending_i      (core_st_pending                                       ),
+    .load_complete_o        (load_complete                                         ),
+    .store_complete_o       (store_complete                                        ),
     .store_pending_o        (store_pending                                         ),
     // Interface with the sequencer
     .pe_req_i               (pe_req                                                ),

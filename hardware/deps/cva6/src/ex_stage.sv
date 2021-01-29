@@ -158,6 +158,10 @@ module ex_stage import ariane_pkg::*; #(
     logic [TRANS_ID_BITS-1:0] mult_trans_id;
     logic mult_valid;
 
+    // between LSU and accelerator dispatcher
+    logic acc_no_ld_pending;
+    logic acc_no_st_pending;
+
     // 1. ALU (combinatorial)
     // data silence operation
     fu_data_t alu_data;
@@ -283,8 +287,12 @@ module ex_stage import ariane_pkg::*; #(
     // Load-Store Unit
     // ----------------
     fu_data_t lsu_data;
+    logic     stall_ld;
+    logic     stall_st;
 
     assign lsu_data  = lsu_valid_i ? fu_data_i  : '0;
+    assign stall_ld = ENABLE_ACCELERATOR ? ~acc_no_st_pending : 1'b0;
+    assign stall_st = ENABLE_ACCELERATOR ? ~(acc_no_st_pending & acc_no_ld_pending) : 1'b0;
 
     load_store_unit #(
         .ASID_WIDTH ( ASID_WIDTH ),
@@ -294,6 +302,8 @@ module ex_stage import ariane_pkg::*; #(
         .rst_ni,
         .flush_i,
         .no_st_pending_o,
+        .stall_ld_i            ( stall_ld ),
+        .stall_st_i            ( stall_st ),
         .fu_data_i             ( lsu_data ),
         .lsu_ready_o,
         .lsu_valid_i,
@@ -343,24 +353,27 @@ module ex_stage import ariane_pkg::*; #(
         assign acc_data = acc_valid_i ? fu_data_i : '0;
 
         acc_dispatcher i_acc_dispatcher (
-          .clk_i                (clk_i           ),
-          .rst_ni               (rst_ni          ),
-          .flush_i              (flush_i         ),
-          .acc_data_i           (acc_data        ),
-          .acc_ready_o          (acc_ready_o     ),
-          .acc_valid_i          (acc_valid_i     ),
-          .acc_commit_i         (acc_commit_i    ),
-          .acc_commit_trans_id_i(commit_tran_id_i),
-          .acc_trans_id_o       (acc_trans_id_o  ),
-          .acc_result_o         (acc_result_o    ),
-          .acc_valid_o          (acc_valid_o     ),
-          .acc_exception_o      (acc_exception_o ),
-          .acc_req_o            (acc_req_o       ),
-          .acc_req_valid_o      (acc_req_valid_o ),
-          .acc_req_ready_i      (acc_req_ready_i ),
-          .acc_resp_i           (acc_resp_i      ),
-          .acc_resp_valid_i     (acc_resp_valid_i),
-          .acc_resp_ready_o     (acc_resp_ready_o)
+          .clk_i                (clk_i            ),
+          .rst_ni               (rst_ni           ),
+          .flush_i              (flush_i          ),
+          .acc_data_i           (acc_data         ),
+          .acc_ready_o          (acc_ready_o      ),
+          .acc_valid_i          (acc_valid_i      ),
+          .acc_commit_i         (acc_commit_i     ),
+          .acc_commit_trans_id_i(commit_tran_id_i ),
+          .acc_trans_id_o       (acc_trans_id_o   ),
+          .acc_result_o         (acc_result_o     ),
+          .acc_valid_o          (acc_valid_o      ),
+          .acc_exception_o      (acc_exception_o  ),
+          .acc_no_ld_pending_o  (acc_no_ld_pending),
+          .acc_no_st_pending_o  (acc_no_st_pending),
+          .acc_no_st_pending_i  (dcache_wbuffer_empty_i || no_st_pending_o),
+          .acc_req_o            (acc_req_o        ),
+          .acc_req_valid_o      (acc_req_valid_o  ),
+          .acc_req_ready_i      (acc_req_ready_i  ),
+          .acc_resp_i           (acc_resp_i       ),
+          .acc_resp_valid_i     (acc_resp_valid_i ),
+          .acc_resp_ready_o     (acc_resp_ready_o )
         );
     end : gen_accelerator else begin: gen_no_accelerator
         assign acc_req_o        = '0;

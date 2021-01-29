@@ -43,6 +43,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                           axi_b_ready_o,
     // Interface with the dispatcher
     output logic                           store_pending_o,
+    output logic                           store_complete_o,
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
@@ -166,6 +167,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     axi_b_ready_o           = 1'b0;
     stu_operand_ready_o     = 1'b0;
     mask_ready_o            = 1'b0;
+    store_complete_o        = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -259,6 +261,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     if (axi_b_valid_i) begin
       // Acknowledge the B beat
       axi_b_ready_o = 1'b1;
+
+      // Signal complete store
+      store_complete_o = 1'b1;
 
       // Mark the vector instruction as being done
       if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin

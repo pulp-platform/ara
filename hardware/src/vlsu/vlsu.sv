@@ -43,6 +43,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output axi_req_t                axi_req_o,
     input  axi_resp_t               axi_resp_i,
     // Interface with the dispatcher
+    input  logic                    core_st_pending_i,
+    output logic                    load_complete_o,
+    output logic                    store_complete_o,
     output logic                    store_pending_o,
     // Interface with the sequencer
     input  pe_req_t                 pe_req_i,
@@ -131,6 +134,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_ar_o                   (axi_req.ar               ),
     .axi_ar_valid_o             (axi_req.ar_valid         ),
     .axi_ar_ready_i             (axi_resp.ar_ready        ),
+    // Interface with dispatcher
+    .core_st_pending_i          (core_st_pending_i        ),
     // Interface with the sequencer
     .pe_req_i                   (pe_req_i                 ),
     .pe_req_valid_i             (pe_req_valid_i           ),
@@ -164,6 +169,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_r_i                (axi_resp.r                ),
     .axi_r_valid_i          (axi_resp.r_valid          ),
     .axi_r_ready_o          (axi_req.r_ready           ),
+    // Interface with the dispatcher
+    .load_complete_o        (load_complete_o           ),
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                  ),
     .pe_req_valid_i         (pe_req_valid_i            ),
@@ -209,6 +216,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_b_ready_o          (axi_req.b_ready            ),
     // Interface with the dispatcher
     .store_pending_o        (store_pending_o            ),
+    .store_complete_o       (store_complete_o           ),
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                   ),
     .pe_req_valid_i         (pe_req_valid_i             ),
