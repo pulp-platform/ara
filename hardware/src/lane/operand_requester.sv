@@ -86,6 +86,89 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
+  /**********************
+   *  Stream registers  *
+   **********************/
+
+  typedef struct packed {
+    vid_t id;
+    vaddr_t addr;
+    elen_t wdata;
+    strb_t be;
+  } stream_register_payload_t;
+
+  // Load unit
+  vid_t   ldu_result_id;
+  vaddr_t ldu_result_addr;
+  elen_t  ldu_result_wdata;
+  strb_t  ldu_result_be;
+  logic   ldu_result_req;
+  logic   ldu_result_gnt;
+  logic   ldu_result_ready;
+  assign ldu_result_gnt_o = ldu_result_req_i && ldu_result_ready;
+  stream_register #(
+    .T(stream_register_payload_t)
+  ) i_ldu_stream_register (
+    .clk_i     (clk_i                                                                    ),
+    .rst_ni    (rst_ni                                                                   ),
+    .clr_i     (1'b0                                                                     ),
+    .testmode_i(1'b0                                                                     ),
+    .data_i    ({ldu_result_id_i, ldu_result_addr_i, ldu_result_wdata_i, ldu_result_be_i}),
+    .valid_i   (ldu_result_req_i                                                         ),
+    .ready_o   (ldu_result_ready                                                         ),
+    .data_o    ({ldu_result_id, ldu_result_addr, ldu_result_wdata, ldu_result_be}        ),
+    .valid_o   (ldu_result_req                                                           ),
+    .ready_i   (ldu_result_gnt                                                           )
+  );
+
+  // Slide unit
+  vid_t   sldu_result_id;
+  vaddr_t sldu_result_addr;
+  elen_t  sldu_result_wdata;
+  strb_t  sldu_result_be;
+  logic   sldu_result_req;
+  logic   sldu_result_gnt;
+  logic   sldu_result_ready;
+  assign sldu_result_gnt_o = sldu_result_req_i && sldu_result_ready;
+  stream_register #(
+    .T(stream_register_payload_t)
+  ) i_sldu_stream_register (
+    .clk_i     (clk_i                                                                        ),
+    .rst_ni    (rst_ni                                                                       ),
+    .clr_i     (1'b0                                                                         ),
+    .testmode_i(1'b0                                                                         ),
+    .data_i    ({sldu_result_id_i, sldu_result_addr_i, sldu_result_wdata_i, sldu_result_be_i}),
+    .valid_i   (sldu_result_req_i                                                            ),
+    .ready_o   (sldu_result_ready                                                            ),
+    .data_o    ({sldu_result_id, sldu_result_addr, sldu_result_wdata, sldu_result_be}        ),
+    .valid_o   (sldu_result_req                                                              ),
+    .ready_i   (sldu_result_gnt                                                              )
+  );
+
+  // Mask unit
+  vid_t   masku_result_id;
+  vaddr_t masku_result_addr;
+  elen_t  masku_result_wdata;
+  strb_t  masku_result_be;
+  logic   masku_result_req;
+  logic   masku_result_gnt;
+  logic   masku_result_ready;
+  assign masku_result_gnt_o = masku_result_req_i && masku_result_ready;
+  stream_register #(
+    .T(stream_register_payload_t)
+  ) i_masku_stream_register (
+    .clk_i     (clk_i                                                                            ),
+    .rst_ni    (rst_ni                                                                           ),
+    .clr_i     (1'b0                                                                             ),
+    .testmode_i(1'b0                                                                             ),
+    .data_i    ({masku_result_id_i, masku_result_addr_i, masku_result_wdata_i, masku_result_be_i}),
+    .valid_i   (masku_result_req_i                                                               ),
+    .ready_o   (masku_result_ready                                                               ),
+    .data_o    ({masku_result_id, masku_result_addr, masku_result_wdata, masku_result_be}        ),
+    .valid_o   (masku_result_req                                                                 ),
+    .ready_i   (masku_result_gnt                                                                 )
+  );
+
   /*********************
    *  Stall mechanism  *
    *********************/
@@ -105,9 +188,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     // Which vector instructions are writing something?
     vinsn_result_written_d[alu_result_id_i] |= alu_result_gnt_o;
     vinsn_result_written_d[mfpu_result_id_i] |= mfpu_result_gnt_o;
-    vinsn_result_written_d[masku_result_id_i] |= masku_result_gnt_o;
-    vinsn_result_written_d[ldu_result_id_i] |= ldu_result_gnt_o;
-    vinsn_result_written_d[sldu_result_id_i] |= sldu_result_gnt_o;
+    vinsn_result_written_d[masku_result_id] |= masku_result_gnt;
+    vinsn_result_written_d[ldu_result_id] |= ldu_result_gnt;
+    vinsn_result_written_d[sldu_result_id] |= sldu_result_gnt;
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_vinsn_result_written_ff
@@ -298,46 +381,46 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_MaskUnit] = '{
-      addr   : masku_result_addr_i >> $clog2(NrBanks),
+      addr   : masku_result_addr >> $clog2(NrBanks),
       wen    : 1'b1,
-      wdata  : masku_result_wdata_i,
-      be     : masku_result_be_i,
+      wdata  : masku_result_wdata,
+      be     : masku_result_be,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_SlideUnit] = '{
-      addr   : sldu_result_addr_i >> $clog2(NrBanks),
+      addr   : sldu_result_addr >> $clog2(NrBanks),
       wen    : 1'b1,
-      wdata  : sldu_result_wdata_i,
-      be     : sldu_result_be_i,
+      wdata  : sldu_result_wdata,
+      be     : sldu_result_be,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_LoadUnit] = '{
-      addr   : ldu_result_addr_i >> $clog2(NrBanks),
+      addr   : ldu_result_addr >> $clog2(NrBanks),
       wen    : 1'b1,
-      wdata  : ldu_result_wdata_i,
-      be     : ldu_result_be_i,
+      wdata  : ldu_result_wdata,
+      be     : ldu_result_be,
       default: '0
     };
 
     // Store their request value
-    operand_req[alu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_Alu]        = alu_result_req_i;
-    operand_req[mfpu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_MFpu]      = mfpu_result_req_i;
-    operand_req[masku_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_MaskUnit] = masku_result_req_i;
-    operand_req[sldu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_SlideUnit] = sldu_result_req_i;
-    operand_req[ldu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_LoadUnit]   = ldu_result_req_i;
+    operand_req[alu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_Alu]      = alu_result_req_i;
+    operand_req[mfpu_result_addr_i[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_MFpu]    = mfpu_result_req_i;
+    operand_req[masku_result_addr[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_MaskUnit] = masku_result_req;
+    operand_req[sldu_result_addr[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_SlideUnit] = sldu_result_req;
+    operand_req[ldu_result_addr[idx_width(NrBanks)-1:0]][NrOperandQueues + VFU_LoadUnit]   = ldu_result_req;
 
     // Generate the grant signals
-    alu_result_gnt_o   = 1'b0;
-    mfpu_result_gnt_o  = 1'b0;
-    masku_result_gnt_o = 1'b0;
-    sldu_result_gnt_o  = 1'b0;
-    ldu_result_gnt_o   = 1'b0;
+    alu_result_gnt_o  = 1'b0;
+    mfpu_result_gnt_o = 1'b0;
+    masku_result_gnt  = 1'b0;
+    sldu_result_gnt   = 1'b0;
+    ldu_result_gnt    = 1'b0;
     for (int bank = 0; bank < NrBanks; bank++) begin
-      alu_result_gnt_o   = alu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_Alu];
-      mfpu_result_gnt_o  = mfpu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MFpu];
-      masku_result_gnt_o = masku_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MaskUnit];
-      sldu_result_gnt_o  = sldu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_SlideUnit];
-      ldu_result_gnt_o   = ldu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_LoadUnit];
+      alu_result_gnt_o  = alu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_Alu];
+      mfpu_result_gnt_o = mfpu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MFpu];
+      masku_result_gnt  = masku_result_gnt | operand_gnt[bank][NrOperandQueues + VFU_MaskUnit];
+      sldu_result_gnt   = sldu_result_gnt | operand_gnt[bank][NrOperandQueues + VFU_SlideUnit];
+      ldu_result_gnt    = ldu_result_gnt | operand_gnt[bank][NrOperandQueues + VFU_LoadUnit];
     end
   end
 
