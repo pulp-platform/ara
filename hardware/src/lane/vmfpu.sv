@@ -99,7 +99,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Do we have a vector instruction being processed?
   vfu_operation_t vinsn_processing;
-  logic           vinsn_processing_valid;
   assign vinsn_processing = vinsn_queue_q.vinsn[vinsn_queue_q.processing_pnt];
 
   // Do we have a vector instruction with results being committed?
@@ -207,7 +206,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_c_i(mfpu_operand_i[2]                                        ),
     .mask_i     (mask_i                                                   ),
     .op_i       (vinsn_issue.op                                           ),
-    .vew_i      (vinsn_issue.vtype.vsew                                   ),
     .result_o   (vmul_simd_result[EW64]                                   ),
     .mask_o     (vmul_simd_mask[EW64]                                     ),
     .valid_i    (vmul_simd_in_valid[EW64]                                 ),
@@ -227,7 +225,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_c_i(mfpu_operand_i[2]                                        ),
     .mask_i     (mask_i                                                   ),
     .op_i       (vinsn_issue.op                                           ),
-    .vew_i      (vinsn_issue.vtype.vsew                                   ),
     .result_o   (vmul_simd_result[EW32]                                   ),
     .mask_o     (vmul_simd_mask[EW32]                                     ),
     .valid_i    (vmul_simd_in_valid[EW32]                                 ),
@@ -247,7 +244,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_c_i(mfpu_operand_i[2]                                        ),
     .mask_i     (mask_i                                                   ),
     .op_i       (vinsn_issue.op                                           ),
-    .vew_i      (vinsn_issue.vtype.vsew                                   ),
     .result_o   (vmul_simd_result[EW16]                                   ),
     .mask_o     (vmul_simd_mask[EW16]                                     ),
     .valid_i    (vmul_simd_in_valid[EW16]                                 ),
@@ -267,7 +263,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_c_i(mfpu_operand_i[2]                                        ),
     .mask_i     (mask_i                                                   ),
     .op_i       (vinsn_issue.op                                           ),
-    .vew_i      (vinsn_issue.vtype.vsew                                   ),
     .result_o   (vmul_simd_result[EW8]                                    ),
     .mask_o     (vmul_simd_mask[EW8]                                      ),
     .valid_i    (vmul_simd_in_valid[EW8]                                  ),
@@ -551,7 +546,6 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t   operand_c_i,
     input  strb_t   mask_i,
     input  ara_op_e op_i,
-    input  vew_e    vew_i,
     output elen_t   result_o,
     output strb_t   mask_o,
     input  logic    valid_i,
@@ -597,115 +591,91 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   assign signed_b = op_i inside {VMULH, VMULHSU};
 
   if (ElementWidth == EW64) begin: gen_p_mul_ew64
-    always_comb begin : p_mul
-      // Default assignments
-      mul_wide_res = '0;
-      res          = '0;
+    for (genvar l = 0; l < 1; l++) begin: gen_mul
+      assign mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
+    end: gen_mul
 
-      case (op_i)
+    always_comb begin : p_mul
+      unique case (op_i)
         // Single-Width integer multiply instructions
-        VMUL: for (int l = 0; l < 1; l++) begin
-            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-            res.w64[l]           = mul_wide_res.w128[l][63:0];
-          end
-        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 1; l++) begin
-            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-            res.w64[l]           = mul_wide_res.w128[l][127:64];
-          end
+        VMUL: for (int l = 0; l < 1; l++)
+            res[64*l +: 64] = mul_wide_res.w128[l][63:0];
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 1; l++)
+            res[64*l +: 64] = mul_wide_res.w128[l][127:64];
 
         // Single-Width integer multiply-add instructions
-        VMACC, VMADD: for (int l = 0; l < 1; l++) begin
-            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-            res.w64[l]           = mul_wide_res.w128[l][63:0] + opc.w64[l];
-          end
-        VNMSAC, VNMSUB: for (int l = 0; l < 1; l++) begin
-            mul_wide_res.w128[l] = $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-            res.w64[l]           = -mul_wide_res.w128[l][63:0] + opc.w64[l];
-          end
+        VMACC, VMADD: for (int l = 0; l < 1; l++)
+            res[64*l +: 64] = mul_wide_res.w128[l][63:0] + opc.w64[l];
+        VNMSAC, VNMSUB: for (int l = 0; l < 1; l++)
+            res[64*l +: 64] = -mul_wide_res.w128[l][63:0] + opc.w64[l];
+
+        default: res = '0;
       endcase
     end
   end: gen_p_mul_ew64 else if (ElementWidth == EW32) begin: gen_p_mul_ew32
-    always_comb begin : p_mul
-      // Default assignments
-      mul_wide_res = '0;
-      res          = '0;
+    for (genvar l = 0; l < 2; l++) begin: gen_mul
+      assign mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
+    end: gen_mul
 
-      case (op_i)
+    always_comb begin : p_mul
+      unique case (op_i)
         // Single-Width integer multiply instructions
-        VMUL: for (int l = 0; l < 2; l++) begin
-            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-            res.w32[l]          = mul_wide_res.w64[l][31:0];
-          end
-        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 2; l++) begin
-            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-            res.w32[l]          = mul_wide_res.w64[l][63:32];
-          end
+        VMUL: for (int l = 0; l < 2; l++)
+            res[32*l +: 32] = mul_wide_res.w64[l][31:0];
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 2; l++)
+            res[32*l +: 32] = mul_wide_res.w64[l][63:32];
 
         // Single-Width integer multiply-add instructions
-        VMACC, VMADD: for (int l = 0; l < 2; l++) begin
-            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-            res.w32[l]          = mul_wide_res.w64[l][31:0] + opc.w32[l];
-          end
-        VNMSAC, VNMSUB: for (int l = 0; l < 2; l++) begin
-            mul_wide_res.w64[l] = $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-            res.w32[l]          = -mul_wide_res.w64[l][31:0] + opc.w32[l];
-          end
+        VMACC, VMADD: for (int l = 0; l < 2; l++)
+            res[32*l +: 32] = mul_wide_res.w64[l][31:0] + opc.w32[l];
+        VNMSAC, VNMSUB: for (int l = 0; l < 2; l++)
+            res[32*l +: 32] = -mul_wide_res.w64[l][31:0] + opc.w32[l];
+
+        default: res = '0;
       endcase
     end
   end: gen_p_mul_ew32 else if (ElementWidth == EW16) begin: gen_p_mul_ew16
-    always_comb begin : p_mul
-      // Default assignments
-      mul_wide_res = '0;
-      res          = '0;
+    for (genvar l = 0; l < 4; l++) begin: gen_mul
+      assign mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
+    end: gen_mul
 
-      case (op_i)
+    always_comb begin : p_mul
+      unique case (op_i)
         // Single-Width integer multiply instructions
-        VMUL: for (int l = 0; l < 4; l++) begin
-            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-            res.w16[l]          = mul_wide_res.w32[l][15:0];
-          end
-        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 4; l++) begin
-            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-            res.w16[l]          = mul_wide_res.w32[l][31:16];
-          end
+        VMUL: for (int l = 0; l < 4; l++)
+            res[16*l +: 16] = mul_wide_res.w32[l][15:0];
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 4; l++)
+            res[16*l +: 16] = mul_wide_res.w32[l][31:16];
 
         // Single-Width integer multiply-add instructions
-        VMACC, VMADD: for (int l = 0; l < 4; l++) begin
-            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-            res.w16[l]          = mul_wide_res.w32[l][15:0] + opc.w16[l];
-          end
-        VNMSAC, VNMSUB: for (int l = 0; l < 4; l++) begin
-            mul_wide_res.w32[l] = $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l][15] & signed_b, opb.w16[l]});
-            res.w16[l]          = -mul_wide_res.w32[l][15:0] + opc.w16[l];
-          end
+        VMACC, VMADD: for (int l = 0; l < 4; l++)
+            res[16*l +: 16] = mul_wide_res.w32[l][15:0] + opc.w16[l];
+        VNMSAC, VNMSUB: for (int l = 0; l < 4; l++)
+            res[16*l +: 16] = -mul_wide_res.w32[l][15:0] + opc.w16[l];
+
+        default: res = '0;
       endcase
     end
   end: gen_p_mul_ew16 else if (ElementWidth == EW8) begin: gen_p_mul_ew8
-    always_comb begin : p_mul
-      // Default assignments
-      mul_wide_res = '0;
-      res          = '0;
+    for (genvar l = 0; l < 8; l++) begin: gen_mul
+      assign mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
+    end: gen_mul
 
-      case (op_i)
+    always_comb begin : p_mul
+      unique case (op_i)
         // Single-Width integer multiply instructions
-        VMUL: for (int l = 0; l < 8; l++) begin
-            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-            res.w8[l]           = mul_wide_res.w16[l][7:0];
-          end
-        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 8; l++) begin
-            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-            res.w8[l]           = mul_wide_res.w16[l][15:8];
-          end
+        VMUL: for (int l = 0; l < 8; l++)
+            res[8*l +: 8] = mul_wide_res.w16[l][7:0];
+        VMULH, VMULHU, VMULHSU: for (int l = 0; l < 8; l++)
+            res[8*l +: 8] = mul_wide_res.w16[l][15:8];
 
         // Single-Width integer multiply-add instructions
-        VMACC, VMADD: for (int l = 0; l < 8; l++) begin
-            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-            res.w8[l]           = mul_wide_res.w16[l][7:0] + opc.w8[l];
-          end
-        VNMSAC, VNMSUB: for (int l = 0; l < 8; l++) begin
-            mul_wide_res.w16[l] = $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-            res.w8[l]           = -mul_wide_res.w16[l][7:0] + opc.w8[l];
-          end
+        VMACC, VMADD: for (int l = 0; l < 8; l++)
+            res[8*l +: 8] = mul_wide_res.w16[l][7:0] + opc.w8[l];
+        VNMSAC, VNMSUB: for (int l = 0; l < 8; l++)
+            res[8*l +: 8] = -mul_wide_res.w16[l][7:0] + opc.w8[l];
+
+        default: res = '0;
       endcase
     end
   end: gen_p_mul_ew8 else begin: gen_p_mul_error
@@ -732,7 +702,6 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   if (NumPipeRegs > 0) begin : gen_pipeline
     // Pipelined versions of signals for later stages
     logic [NumPipeRegs-1:0][63:0] result_q;
-    logic [NumPipeRegs-1:0][7:0] operand_m_q;
     strb_t [NumPipeRegs-1:0] mask_q;
     logic [NumPipeRegs-1:0] valid_q;
 
