@@ -156,9 +156,9 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
   -Wno-UNSIGNED                                                                 \
   -Wno-UNUSED                                                                   \
   -Wno-fatal                                                                    \
-  --Mdir $(veril_library) -O3 $(veril_trace_cmd)                                \
+  --Mdir $(veril_library) $(veril_trace_cmd)                                    \
   -Itb/dpi                                                                      \
-  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top) -O3"                   \
+  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top)"                       \
   -CFLAGS "-DNR_LANES=$(nr_lanes) -g"                                           \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
