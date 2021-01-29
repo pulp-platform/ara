@@ -846,13 +846,11 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   // The input CU loads the number of elements to process into the issue counter and commit counter.
   // Then, it validates the inputs and waits until the last result is committed into the output
   // buffer, before returning IDLE
-  typedef enum logic [1:0] {IDLE, LOAD, PROCESSING, WAIT_DONE} in_state_t;
-  // The output CU waits for the result buffer to be filled, then it stops the commitment to wait
-  // for the result to be accepted by the external environment
-  typedef enum logic       {READY, FULL}                       out_state_t;
+  typedef enum logic [2:0] {ISSUE_IDLE, LOAD, PROCESSING, ISSUE_SKIP, WAIT_DONE} issue_state_t;
+  typedef enum logic [1:0] {COMMIT_IDLE, COMMIT_READY, COMMIT_SKIP, COMMIT_DONE} commit_state_t;
 
-  in_state_t  in_state_d, in_state_q;
-  out_state_t out_state_d, out_state_q;
+  issue_state_t  issue_state_d, issue_state_q;
+  commit_state_t commit_state_d, commit_state_q;
 
   // Input registers, buffers for the input operands and information
   // Kept stable until the complete 64-bit result is formed
@@ -862,7 +860,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     logic [3:0][15:0] w16;
     logic [7:0][ 7:0] w8;
   } operand_t;
-  operand_t opa_d, opa_q, opa_q_masked, opb_d, opb_q, opb_q_masked, serdiv_result, serdiv_result_masked;
+  operand_t opa_d, opa_q, opb_d, opb_q, serdiv_result, serdiv_result_masked;
   vew_e     vew_d, vew_q;
   ara_op_e  op_d, op_q;
   strb_t    be_d, be_q;
@@ -873,9 +871,9 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   strb_t mask_d, mask_q;
   assign mask_o = mask_q;
 
-  logic load_cnt, processing_done, issue_cnt_en, commit_cnt_en;
+  logic load_cnt, issue_cnt_en, commit_cnt_en;
   logic serdiv_out_ready, serdiv_out_valid, serdiv_in_valid, serdiv_in_ready;
-  logic [3:0] cnt_init_val, issue_cnt_d, issue_cnt_q, commit_cnt_d, commit_cnt_q;
+  logic [2:0] cnt_init_val, issue_cnt_d, issue_cnt_q, commit_cnt_d, commit_cnt_q;
 
   elen_t opa_w8, opb_w8, opa_w16, opb_w16, opa_w32, opb_w32, opa_w64, opb_w64, serdiv_opa, serdiv_opb, shifted_result;
 
@@ -893,94 +891,132 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   assign be_d   = (valid_i && ready_o) ? be_i        : be_q;
   assign mask_d = (valid_i && ready_o) ? mask_i      : mask_q;
 
-  // Mask invalid operands
-  // NON-SYNTHESIZABLE CODE
-  always_comb begin
-    for (int b = 0; b < 8; b++) begin
-      opa_q_masked.w8[b] = (^opa_q.w8[b] === 1'bX) ? 8'b0 : opa_q.w8[b];
-      opb_q_masked.w8[b] = (^opb_q.w8[b] === 1'bX) ? 8'b0 : opb_q.w8[b];
-    end
-  end
-
   /************
    *  Control  *
    ************/
 
-  // Input CU
-  always_comb begin : in_cu_p
-    ready_o         = 1'b0;
-    load_cnt        = 1'b0;
-    serdiv_in_valid = 1'b0;
-    in_state_d      = in_state_q;
+  // Issue CU
+  always_comb begin : issue_cu_p
+    ready_o          = 1'b0;
+    load_cnt         = 1'b0;
+    serdiv_in_valid  = 1'b0;
+    issue_cnt_en     = 1'b0;
+    issue_state_d    = issue_state_q;
 
-    case (in_state_q)
-      IDLE: begin
+    case (issue_state_q)
+      ISSUE_IDLE: begin
         // We can accept a new request from the external environment
         ready_o    = 1'b1;
-        in_state_d = valid_i ? LOAD : IDLE;
+        issue_state_d = valid_i ? LOAD : ISSUE_IDLE;
       end
       LOAD: begin
         // The request was accepted: load how many elements to process/commit
         load_cnt   = 1'b1;
-        in_state_d = PROCESSING;
+        // Check if the next byte is valid or not. If not, skip it.
+        issue_state_d = (be_q[cnt_init_val]) ? PROCESSING : ISSUE_SKIP;
       end
       PROCESSING: begin
-        // The inputs are valid. Wait until all the inputs have been consumed
+        // The inputs are valid
         serdiv_in_valid = 1'b1;
-        in_state_d      = |issue_cnt_q ? PROCESSING : WAIT_DONE;
+        // Count down when these inputs are consumed by the serdiv
+        issue_cnt_en    = (serdiv_in_valid && serdiv_in_ready) ? 1'b1 : 1'b0;
+        // Change state only when the serdiv accepts the operands
+        if (serdiv_in_valid && serdiv_in_ready) begin
+          // If we are issuing the last operands, wait for the whole result to be completed
+          if (issue_cnt_q == '0) begin
+            issue_state_d = WAIT_DONE;
+          // If we are not issuing the last operands, decide if to process or skip the next byte
+          end else begin
+            issue_state_d = (be_q[issue_cnt_d]) ? PROCESSING : ISSUE_SKIP;
+          end
+        end
+      end
+      ISSUE_SKIP: begin
+        // Skip the invalid inputs
+        issue_cnt_en  = 1'b1;
+        // If we are issuing the last operands, wait for the whole result to be completed
+        if (issue_cnt_q == '0) begin
+          issue_state_d = WAIT_DONE;
+        // If we are not issuing the last operands, decide if to process or skip the next byte
+        end else begin
+          issue_state_d = (be_q[issue_cnt_d]) ? PROCESSING : ISSUE_SKIP;
+        end
       end
       WAIT_DONE: begin
         // Wait for the entire 64-bit result to be created
-        in_state_d = processing_done ? IDLE : WAIT_DONE;
+        // We need vew_q stable when serdiv_result is produced
+        issue_state_d = valid_o ? ISSUE_IDLE : WAIT_DONE;
       end
       default: begin
-        in_state_d = IDLE;
+        issue_state_d = ISSUE_IDLE;
       end
     endcase
   end
 
-  // Output CU
-  always_comb begin : out_cu_p
-    serdiv_out_ready = 1'b0;
+  // Commit CU
+  always_comb begin : commit_cu_p
     valid_o          = 1'b0;
-    out_state_d      = out_state_q;
+    serdiv_out_ready = 1'b0;
+    commit_cnt_en    = 1'b0;
+    commit_state_d      = commit_state_q;
 
-    case (out_state_q)
-      READY: begin
-        serdiv_out_ready = 1'b1;
-        out_state_d      = processing_done ? FULL : READY;
+  case (commit_state_q)
+      COMMIT_IDLE: begin
+        // Start if the issue CU has already started
+        if (issue_state_q != ISSUE_IDLE) begin
+          commit_state_d = (be_q[cnt_init_val]) ? COMMIT_READY : COMMIT_SKIP;
+        end
       end
-      FULL: begin
+      COMMIT_READY: begin
+        serdiv_out_ready = 1'b1;
+        commit_cnt_en    = (serdiv_out_valid && serdiv_out_ready) ? 1'b1 : 1'b0;
+        // Change state only when the serdiv produce a valid result
+        if (serdiv_out_valid && serdiv_out_ready) begin
+          // If we are committing the last result, complete the execution
+          if (commit_cnt_q == '0) begin
+            commit_state_d = COMMIT_DONE;
+          // If we are not committing the last result, decide if to process or skip the next one
+          end else begin
+            commit_state_d = (be_q[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
+          end
+        end
+      end
+      COMMIT_SKIP: begin
+        serdiv_out_ready = 1'b1;
+        commit_cnt_en    = 1'b1;
+        // If we are skipping the last result, complete the execution
+        if (commit_cnt_q == '0) begin
+          commit_state_d = COMMIT_DONE;
+        // If we are not committing the last result, decide if to process or skip the next one
+        end else begin
+          commit_state_d = (be_q[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
+        end
+      end
+      COMMIT_DONE: begin
+        // The 64-bit result is complete, validate it
         valid_o     = 1'b1;
-        out_state_d = ready_i ? READY : FULL;
+        commit_state_d = ready_i ? COMMIT_IDLE : COMMIT_DONE;
       end
       default: begin
-        out_state_d = READY;
+        commit_state_d = COMMIT_IDLE;
       end
     endcase
   end
-
-  // Tell the CUs when the entire result is complete
-  // commit_cnt_q indicates how many elements should still be committed
-  // ~(|commit_cnt_q) == 1'b1 when the whole result is complete
-  assign processing_done = (in_state_q == WAIT_DONE) ? ~(|commit_cnt_q) : 1'b0;
 
   // Counters
   // issue_cnt  counts how many elements should still be issued, and controls the first wall of MUXes
   // commit_cnt counts how many elements should still be committed
   always_comb begin
-    issue_cnt_d   = issue_cnt_q;
-    commit_cnt_d  = commit_cnt_q;
-    issue_cnt_en  = 1'b0;
-    commit_cnt_en = 1'b0;
-    cnt_init_val  = '0;
+    issue_cnt_d  = issue_cnt_q;
+    commit_cnt_d = commit_cnt_q;
+    cnt_init_val = '0;
 
-    // How many elements should we process?
+    // Track how many elements we should process (load #elements-1)
     case (vew_q)
-      EW8:  cnt_init_val = 8;
-      EW16: cnt_init_val = 4;
-      EW32: cnt_init_val = 2;
-      EW64: cnt_init_val = 1;
+      EW8:  cnt_init_val = 3'h7;
+      EW16: cnt_init_val = 3'h3;
+      EW32: cnt_init_val = 3'h1;
+      EW64: cnt_init_val = 3'h0;
     endcase
     // Load the initial number of elements to process (i.e., also the number of results to collect)
     if (load_cnt) begin
@@ -988,22 +1024,20 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       commit_cnt_d = cnt_init_val;
     end
 
-    // Count down when serdiv accepts one couple of operands
-    issue_cnt_en  = serdiv_in_valid & serdiv_in_ready;
+    // Count down when serdiv accepts one couple of operands or when they are invalid
     if (issue_cnt_en)  issue_cnt_d  -= 1;
-    // Count down when the result buffer accepts one result
-    commit_cnt_en = serdiv_out_valid & serdiv_out_ready;
+    // Count down when serdiv produce one result or when it is invalid
     if (commit_cnt_en) commit_cnt_d -= 1;
   end
 
   // Opcode selection
   always_comb begin
-    serdiv_opcode = '0;
     case (op_q)
-      VDIVU: serdiv_opcode = 2'b00;
-      VDIV:  serdiv_opcode = 2'b01;
-      VREMU: serdiv_opcode = 2'b10;
-      VREM:  serdiv_opcode = 2'b11;
+      VDIVU:   serdiv_opcode = 2'b00;
+      VDIV:    serdiv_opcode = 2'b01;
+      VREMU:   serdiv_opcode = 2'b10;
+      VREM:    serdiv_opcode = 2'b11;
+      default: serdiv_opcode = 2'b00;
     endcase
   end
 
@@ -1013,34 +1047,17 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
 
   // serdiv input MUXes
   always_comb begin
-    serdiv_opa = opa_q_masked;
-    serdiv_opb = opb_q_masked;
+    // First wall of MUXes: select one byte/halfword/word/dword from the inputs and fill it with zeroes/sign extend it
+    opa_w8  = op_q inside {VDIV, VREM} ? {{56{opa_q.w8[issue_cnt_q[2:0]][7]  }}, opa_q.w8[issue_cnt_q[2:0]] } : {56'b0, opa_q.w8[issue_cnt_q[2:0]] };
+    opb_w8  = op_q inside {VDIV, VREM} ? {{56{opb_q.w8[issue_cnt_q[2:0]][7]  }}, opb_q.w8[issue_cnt_q[2:0]] } : {56'b0, opb_q.w8[issue_cnt_q[2:0]] };
+    opa_w16 = op_q inside {VDIV, VREM} ? {{48{opa_q.w16[issue_cnt_q[1:0]][15]}}, opa_q.w16[issue_cnt_q[1:0]]} : {48'b0, opa_q.w16[issue_cnt_q[1:0]]};
+    opb_w16 = op_q inside {VDIV, VREM} ? {{48{opb_q.w16[issue_cnt_q[1:0]][15]}}, opb_q.w16[issue_cnt_q[1:0]]} : {48'b0, opb_q.w16[issue_cnt_q[1:0]]};
+    opa_w32 = op_q inside {VDIV, VREM} ? {{32{opa_q.w32[issue_cnt_q[0]][31]  }}, opa_q.w32[issue_cnt_q[0]]  } : {32'b0, opa_q.w32[issue_cnt_q[0]]  };
+    opb_w32 = op_q inside {VDIV, VREM} ? {{32{opb_q.w32[issue_cnt_q[0]][31]  }}, opb_q.w32[issue_cnt_q[0]]  } : {32'b0, opb_q.w32[issue_cnt_q[0]]  };
+    opa_w64 = opa_q.w64;
+    opb_w64 = opb_q.w64;
 
-    // First wall of MUXes: select one byte/halfword/word/dword from the inputs and sign extend it
-    case (op_q)
-      VDIVU, VREMU: begin
-        opa_w8  = {56'b0, opa_q_masked.w8[issue_cnt_d[2:0]] };
-        opb_w8  = {56'b0, opb_q_masked.w8[issue_cnt_d[2:0]] };
-        opa_w16 = {48'b0, opa_q_masked.w16[issue_cnt_d[1:0]]};
-        opb_w16 = {48'b0, opb_q_masked.w16[issue_cnt_d[1:0]]};
-        opa_w32 = {32'b0, opa_q_masked.w32[issue_cnt_d[0]]  };
-        opb_w32 = {32'b0, opb_q_masked.w32[issue_cnt_d[0]]  };
-        opa_w64 = opa_q_masked.w64;
-        opb_w64 = opb_q_masked.w64;
-      end
-      VDIV, VREM: begin
-        opa_w8  = {{56{opa_q_masked.w8[issue_cnt_d[2:0]][7]  }}, opa_q_masked.w8[issue_cnt_d[2:0]] };
-        opb_w8  = {{56{opb_q_masked.w8[issue_cnt_d[2:0]][7]  }}, opb_q_masked.w8[issue_cnt_d[2:0]] };
-        opa_w16 = {{48{opa_q_masked.w16[issue_cnt_d[1:0]][15]}}, opa_q_masked.w16[issue_cnt_d[1:0]]};
-        opb_w16 = {{48{opb_q_masked.w16[issue_cnt_d[1:0]][15]}}, opb_q_masked.w16[issue_cnt_d[1:0]]};
-        opa_w32 = {{32{opa_q_masked.w32[issue_cnt_d[0]][31]  }}, opa_q_masked.w32[issue_cnt_d[0]]  };
-        opb_w32 = {{32{opb_q_masked.w32[issue_cnt_d[0]][31]  }}, opb_q_masked.w32[issue_cnt_d[0]]  };
-        opa_w64 = opa_q_masked.w64;
-        opb_w64 = opb_q_masked.w64;
-      end
-    endcase
-
-    // Last selection MUX
+    // Last 64-bit wide selection MUX
     case (vew_q)
       EW8: begin
         serdiv_opa = opa_w8;
@@ -1058,10 +1075,14 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
         serdiv_opa = opa_w64;
         serdiv_opb = opb_w64;
       end
+      default: begin
+        serdiv_opa = opa_w64;
+        serdiv_opb = opb_w64;
+      end
     endcase
   end
 
-  // The serial divider
+  // Serial divider
   serdiv_mod #(
     .WIDTH(ELEN)
   ) i_serdiv_mod (
@@ -1082,25 +1103,33 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
 
   // Output buffer
   // Shift the partial result and update the output buffer with the new masked byte/halfword/word
+  // If we are skipping a byte, just shift
   always_comb begin
-    shifted_result           = '0;
-    serdiv_result_masked     = serdiv_result;
-    case (vew_q)
-      EW8: begin
-        shifted_result       = result_q << 8;
-        serdiv_result_masked = {56'b0, serdiv_result.w8[0]};
-      end
-      EW16: begin
-        shifted_result       = result_q << 16;
-        serdiv_result_masked = {48'b0, serdiv_result.w16[0]};
-      end
-      EW32: begin
-        shifted_result       = result_q << 32;
-        serdiv_result_masked = {32'b0, serdiv_result.w32[0]};
-      end
-    endcase
+    if (commit_state_q == COMMIT_SKIP) begin
+      shifted_result       = result_q << 8;
+      serdiv_result_masked = '0;
+    end else begin
+      case (vew_q)
+        EW8: begin
+          shifted_result       = result_q << 8;
+          serdiv_result_masked = {56'b0, serdiv_result.w8[0]};
+        end
+        EW16: begin
+          shifted_result       = result_q << 16;
+          serdiv_result_masked = {48'b0, serdiv_result.w16[0]};
+        end
+        EW32: begin
+          shifted_result       = result_q << 32;
+          serdiv_result_masked = {32'b0, serdiv_result.w32[0]};
+        end
+        default: begin
+          shifted_result       = '0;
+          serdiv_result_masked = serdiv_result;
+        end
+      endcase
+    end
   end
-  assign result_d = (serdiv_out_valid && serdiv_out_ready) ? (shifted_result | serdiv_result_masked) : result_q;
+  assign result_d = (commit_cnt_en) ? (shifted_result | serdiv_result_masked) : result_q;
 
   /****************************
    *  Sequential assignments  *
@@ -1109,20 +1138,22 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   // In/Out CUs sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      in_state_q   <= IDLE;
-      out_state_q  <= READY;
+      issue_state_q   <= ISSUE_IDLE;
+      commit_state_q  <= COMMIT_IDLE;
 
       opa_q        <= '0;
       opb_q        <= '0;
       vew_q        <= EW8;
+      op_q         <= VDIV;
+      be_q         <= '0;
       mask_q       <= '0;
       result_q     <= '0;
 
       issue_cnt_q  <= '0;
       commit_cnt_q <= '0;
     end else begin
-      in_state_q   <= in_state_d;
-      out_state_q  <= out_state_d;
+      issue_state_q   <= issue_state_d;
+      commit_state_q  <= commit_state_d;
 
       opa_q        <= opa_d;
       opb_q        <= opb_d;
@@ -1154,6 +1185,7 @@ endmodule : simd_div
 //
 // Date: 18.10.2018
 // Description: simple 64bit serial divider
+// MODIFICATION: the ready is kept asserted during handshake
 
 module serdiv_mod import ariane_pkg::*; #(
   parameter WIDTH       = 64
