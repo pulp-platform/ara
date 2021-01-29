@@ -43,10 +43,10 @@ package ara_pkg;
   localparam int unsigned MaxNrLanes = 16;
 
   // Multiplier latencies.
-  localparam int unsigned LatMultiplierEW64 = 2;
+  localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;
-  localparam int unsigned LatMultiplierEW16 = 1;
-  localparam int unsigned LatMultiplierEW8  = 1;
+  localparam int unsigned LatMultiplierEW16 = 0;
+  localparam int unsigned LatMultiplierEW8  = 0;
 
   /*****************
    *  Definitions  *
