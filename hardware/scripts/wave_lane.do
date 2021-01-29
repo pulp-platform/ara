@@ -25,6 +25,8 @@ add wave -noupdate -group ARA -group Lane[$1] -group vmfpu -group simd_vmul_ew64
 add wave -noupdate -group ARA -group Lane[$1] -group vmfpu -group simd_vmul_ew32 /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/i_simd_mul_ew32/*
 add wave -noupdate -group ARA -group Lane[$1] -group vmfpu -group simd_vmul_ew16 /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/i_simd_mul_ew16/*
 add wave -noupdate -group ARA -group Lane[$1] -group vmfpu -group simd_vmul_ew8 /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/i_simd_mul_ew8/*
+add wave -noupdate -group ARA -group Lane[$1] -group vmfpu -group simd_vdiv /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/i_simd_div/*
+add wave -noupdate -group ARA -group Lane[$1] -group vmfpu -group simd_vdiv -group serdiv_mod /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/i_simd_div/i_serdiv_mod/*
 add wave -noupdate -group ARA -group Lane[$1] -group vmfpu /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/*
 
 add wave -noupdate -group ARA -group Lane[$1] /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/*
