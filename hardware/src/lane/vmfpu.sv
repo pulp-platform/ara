@@ -843,16 +843,27 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
    *  Definitions  *
    *****************/
 
-  // The input CU loads the number of elements to process into the issue counter and commit counter.
-  // Then, it validates the inputs and waits until the last result is committed into the output
-  // buffer, before returning IDLE
-  typedef enum logic [2:0] {ISSUE_IDLE, LOAD, PROCESSING, ISSUE_SKIP, WAIT_DONE} issue_state_t;
+  // The issue CU accepts new requests and issue the operands to the serial divider (serdiv)
+  // It handles the input ready_o signal and the serdiv_in_valid
+  // When the main handshake is complete, it loads the issue counter and commit counter to track
+  //how many elements should be issued and committed.
+  // Then, it validates the valid input operands and skips the invalid ones
+  // When all the operands have been issued, it waits until the whole result is formed before
+  // accepting another external request, as vew_q is used by the serdiv output MUX and
+  // should therefore remain stable until the end
+  typedef enum logic [2:0] {ISSUE_IDLE, LOAD, ISSUE_VALID, ISSUE_SKIP, WAIT_DONE} issue_state_t;
+  // The commit CU stores the various serdiv results in the result buffer
+  // It handles the valid_o signal and the serdiv_out_ready
+  // After the issue CU has accepted a new request, the commit CU tracks how many operands
+  // should be still committed and which results to skip
+  // When the whole result is complete, it asserts the valid_o and waits until the result is
+  // accepted before committing new data
   typedef enum logic [1:0] {COMMIT_IDLE, COMMIT_READY, COMMIT_SKIP, COMMIT_DONE} commit_state_t;
 
   issue_state_t  issue_state_d, issue_state_q;
   commit_state_t commit_state_d, commit_state_q;
 
-  // Input registers, buffers for the input operands and information
+  // Input registers, buffers for the input operands and related data
   // Kept stable until the complete 64-bit result is formed
   typedef union packed {
     logic [0:0][63:0] w64;
@@ -860,7 +871,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     logic [3:0][15:0] w16;
     logic [7:0][ 7:0] w8;
   } operand_t;
-  operand_t opa_d, opa_q, opb_d, opb_q, serdiv_result, serdiv_result_masked;
+  operand_t opa_d, opa_q, opb_d, opb_q;
   vew_e     vew_d, vew_q;
   ara_op_e  op_d, op_q;
   strb_t    be_d, be_q;
@@ -871,13 +882,19 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   strb_t mask_d, mask_q;
   assign mask_o = mask_q;
 
-  logic load_cnt, issue_cnt_en, commit_cnt_en;
-  logic serdiv_out_ready, serdiv_out_valid, serdiv_in_valid, serdiv_in_ready;
+  // Counters
+  logic       load_cnt, issue_cnt_en, commit_cnt_en;
   logic [2:0] cnt_init_val, issue_cnt_d, issue_cnt_q, commit_cnt_d, commit_cnt_q;
 
-  elen_t opa_w8, opb_w8, opa_w16, opb_w16, opa_w32, opb_w32, opa_w64, opb_w64, serdiv_opa, serdiv_opb, shifted_result;
-
+  // Serial Divider
+  logic       serdiv_out_ready, serdiv_out_valid, serdiv_in_valid, serdiv_in_ready;
   logic [1:0] serdiv_opcode;
+  elen_t      serdiv_opa, serdiv_opb;
+  operand_t   serdiv_result;
+
+  // Partially processed data
+  elen_t      opa_w8, opb_w8, opa_w16, opb_w16, opa_w32, opb_w32, opa_w64, opb_w64;
+  operand_t   serdiv_result_masked, shifted_result;
 
   /**********************
    *  In/Out registers  *
@@ -906,16 +923,16 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     case (issue_state_q)
       ISSUE_IDLE: begin
         // We can accept a new request from the external environment
-        ready_o    = 1'b1;
+        ready_o       = 1'b1;
         issue_state_d = valid_i ? LOAD : ISSUE_IDLE;
       end
       LOAD: begin
         // The request was accepted: load how many elements to process/commit
-        load_cnt   = 1'b1;
+        load_cnt      = 1'b1;
         // Check if the next byte is valid or not. If not, skip it.
-        issue_state_d = (be_q[cnt_init_val]) ? PROCESSING : ISSUE_SKIP;
+        issue_state_d = (be_q[cnt_init_val]) ? ISSUE_VALID : ISSUE_SKIP;
       end
-      PROCESSING: begin
+      ISSUE_VALID: begin
         // The inputs are valid
         serdiv_in_valid = 1'b1;
         // Count down when these inputs are consumed by the serdiv
@@ -927,19 +944,19 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
             issue_state_d = WAIT_DONE;
           // If we are not issuing the last operands, decide if to process or skip the next byte
           end else begin
-            issue_state_d = (be_q[issue_cnt_d]) ? PROCESSING : ISSUE_SKIP;
+            issue_state_d = (be_q[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
           end
         end
       end
       ISSUE_SKIP: begin
         // Skip the invalid inputs
-        issue_cnt_en  = 1'b1;
+        issue_cnt_en = 1'b1;
         // If we are issuing the last operands, wait for the whole result to be completed
         if (issue_cnt_q == '0) begin
           issue_state_d = WAIT_DONE;
         // If we are not issuing the last operands, decide if to process or skip the next byte
         end else begin
-          issue_state_d = (be_q[issue_cnt_d]) ? PROCESSING : ISSUE_SKIP;
+          issue_state_d = (be_q[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
         end
       end
       WAIT_DONE: begin
@@ -958,7 +975,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     valid_o          = 1'b0;
     serdiv_out_ready = 1'b0;
     commit_cnt_en    = 1'b0;
-    commit_state_d      = commit_state_q;
+    commit_state_d   = commit_state_q;
 
   case (commit_state_q)
       COMMIT_IDLE: begin
@@ -994,7 +1011,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       end
       COMMIT_DONE: begin
         // The 64-bit result is complete, validate it
-        valid_o     = 1'b1;
+        valid_o        = 1'b1;
         commit_state_d = ready_i ? COMMIT_IDLE : COMMIT_DONE;
       end
       default: begin
@@ -1141,33 +1158,32 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       issue_state_q   <= ISSUE_IDLE;
       commit_state_q  <= COMMIT_IDLE;
 
-      opa_q        <= '0;
-      opb_q        <= '0;
-      vew_q        <= EW8;
-      op_q         <= VDIV;
-      be_q         <= '0;
-      mask_q       <= '0;
-      result_q     <= '0;
+      opa_q           <= '0;
+      opb_q           <= '0;
+      vew_q           <= EW8;
+      op_q            <= VDIV;
+      be_q            <= '0;
+      mask_q          <= '0;
+      result_q        <= '0;
 
-      issue_cnt_q  <= '0;
-      commit_cnt_q <= '0;
+      issue_cnt_q     <= '0;
+      commit_cnt_q    <= '0;
     end else begin
       issue_state_q   <= issue_state_d;
       commit_state_q  <= commit_state_d;
 
-      opa_q        <= opa_d;
-      opb_q        <= opb_d;
-      vew_q        <= vew_d;
-      op_q         <= op_d;
-      be_q         <= be_d;
-      mask_q       <= mask_d;
-      result_q     <= result_d;
+      opa_q           <= opa_d;
+      opb_q           <= opb_d;
+      vew_q           <= vew_d;
+      op_q            <= op_d;
+      be_q            <= be_d;
+      mask_q          <= mask_d;
+      result_q        <= result_d;
 
-      issue_cnt_q  <= issue_cnt_d;
-      commit_cnt_q <= commit_cnt_d;
+      issue_cnt_q     <= issue_cnt_d;
+      commit_cnt_q    <= commit_cnt_d;
     end
   end
-
 endmodule : simd_div
 
 // Copyright 2018 ETH Zurich and University of Bologna.
@@ -1185,7 +1201,7 @@ endmodule : simd_div
 //
 // Date: 18.10.2018
 // Description: simple 64bit serial divider
-// MODIFICATION: the ready is kept asserted during handshake
+// MODIFICATION: in_rdy_o is kept stable during handshake
 
 module serdiv_mod import ariane_pkg::*; #(
   parameter WIDTH       = 64
