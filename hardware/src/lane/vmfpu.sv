@@ -84,6 +84,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // issued/committed, to avoid accepting more instructions than
     // we can handle.
     logic [idx_width(VInsnQueueDepth):0] issue_cnt;
+    logic [idx_width(VInsnQueueDepth):0] processing_cnt;
     logic [idx_width(VInsnQueueDepth):0] commit_cnt;
   } vinsn_queue_d, vinsn_queue_q;
 
@@ -367,7 +368,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
             else
               vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
-            if (vinsn_queue_d.issue_pnt != 0)
+            if (vinsn_queue_d.issue_cnt != 0)
               issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
           end
         end
@@ -399,13 +400,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Finished issuing the micro-operations of this vector instruction
       if (to_process_cnt_d == '0) begin
+        vinsn_queue_d.processing_cnt -= 1;
         // Bump issue processing pointers
         if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1)
           vinsn_queue_d.processing_pnt = '0;
         else
           vinsn_queue_d.processing_pnt = vinsn_queue_q.processing_pnt + 1;
 
-        if (vinsn_queue_d.processing_pnt != 0)
+        if (vinsn_queue_d.processing_cnt != 0)
           to_process_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
       end
 
@@ -477,16 +479,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0) begin
-        issue_cnt_d      = vfu_operation_i.vl;
+      if (vinsn_queue_d.issue_cnt == '0)
+        issue_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.processing_cnt == '0)
         to_process_cnt_d = vfu_operation_i.vl;
-      end
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = vfu_operation_i.vl;
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
       vinsn_queue_d.issue_cnt += 1;
+      vinsn_queue_d.processing_cnt += 1;
       vinsn_queue_d.commit_cnt += 1;
     end
   end: p_vmfpu
