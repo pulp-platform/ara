@@ -138,13 +138,15 @@ tests := $(ara_tests) $(cva6_tests)
 verilate: $(buildpath) $(veril_library)/V$(veril_top) | bender
 
 $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
-	mkdir -p $(veril_library)
+	rm -rf $(veril_library); mkdir -p $(veril_library)
 	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script                     \
   -GNrLanes=$(nr_lanes)                                                         \
   --threads $(veril_threads)                                                    \
   --unroll-count 256                                                            \
+  --output-split 4000                                                           \
+  --output-split-cfuncs 4000                                                    \
   -Werror-IMPLICIT                                                              \
   -Wno-fatal                                                                    \
   -Wno-BLKANDNBLK                                                               \
@@ -173,7 +175,7 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
   --top-module $(veril_top)
 
 $(veril_library)/V$(veril_top): $(veril_library)/V$(veril_top).mk
-	cd $(veril_library) && rm -rf *.o && make -j4 -f V$(veril_top).mk
+	cd $(veril_library) && make -j4 -f V$(veril_top).mk
 
 # Simulation
 .PHONY: simv
