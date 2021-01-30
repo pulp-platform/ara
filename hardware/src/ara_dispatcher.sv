@@ -244,6 +244,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 end
               end
 
+              // Return the new vl
+              acc_resp_o.result = vl_d;
+
               // If the vtype has changed, wait for the backend before issuing any new instructions.
               if (vtype_d != vtype_q)
                 state_d = WAIT_IDLE;
