@@ -44,7 +44,7 @@ RISCV_LD      ?= $(RISCV_PREFIX)ld
 RISCV_STRIP   ?= $(RISCV_PREFIX)strip
 
 # Defines
-DEFINES :=
+DEFINES := -DNR_LANES=$(nr_lanes)
 
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra # -Werror
 RISCV_FLAGS    ?= -mcmodel=medany -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
