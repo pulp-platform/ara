@@ -148,8 +148,23 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
     case (state_q)
       IDLE: begin
+        // Sent a request, but the VFUs are not ready
+        if (pe_req_valid_o && !(&pe_req_ready_i)) begin
+          // Maintain output
+          pe_req_d               = pe_req_o;
+          pe_req_d.vinsn_running = vinsn_running_d;
+          pe_req_valid_d         = pe_req_valid_o;
+
+          // Recalculate the hazard bits
+          pe_req_d.hazard_vs1    &= vinsn_running_d;
+          pe_req_d.hazard_vs2    &= vinsn_running_d;
+          pe_req_d.hazard_vd     &= vinsn_running_d;
+          pe_req_d.hazard_vm     &= vinsn_running_d;
+
+          // We are not ready
+          ara_req_ready_o        = 1'b0;
         // Received a new request
-        if (ara_req_valid_i) begin
+        end else if (ara_req_valid_i) begin
           /************************
            *  Structural hazards  *
            ************************/
