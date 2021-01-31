@@ -1321,20 +1321,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             LMUL_2:
               if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
+                acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             LMUL_4:
               if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
+                acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             LMUL_8:
               if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
+                acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             LMUL_RSVD: begin
               acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
               ara_req_valid_d  = 1'b0;
             end
             default:;
@@ -1428,22 +1432,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // Instructions with an integer LMUL have extra constraints on the registers they can access.
           unique case (ara_req_d.emul)
             LMUL_2:
-              if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) begin
+              if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
+                acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             LMUL_4:
-              if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) begin
+              if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
+                acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             LMUL_8:
-              if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) begin
+              if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
+                acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             LMUL_RSVD: begin
               acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
               ara_req_valid_d  = 1'b0;
             end
             default:;
