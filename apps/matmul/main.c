@@ -104,6 +104,7 @@ int main() {
   asm volatile ("fence");
 
   // Verify the result
+  printf("Verifying result...\n");
   int error = verify_matrix(c, M, P, A_a, A_b, A_c, B_a, B_b, B_c);
   if (error != 0) {
     printf("Error code %d\n", error);
