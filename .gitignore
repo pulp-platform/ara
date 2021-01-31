@@ -28,3 +28,4 @@ uart
 .bender
 .dvt
 .settings
+*.o
