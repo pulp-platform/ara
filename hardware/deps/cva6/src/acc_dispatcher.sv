@@ -37,6 +37,8 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     output logic                                  acc_resp_ready_o
   );
 
+  `include "common_cells/registers.svh"
+
   /*************************
    *  Accelerator request  *
    *************************/
@@ -94,7 +96,17 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     .ready_i   (acc_ready     )
   );
 
+  // Store whether there was a match between acc_commit_trans_id_i and acc_data.trans_id
+  logic     acc_commit_trans_id_match_d, acc_commit_trans_id_match_q;
+  `FF(acc_commit_trans_id_match_q, acc_commit_trans_id_match_d, 1'b0)
+
   always_comb begin: accelerator_req_dispatcher
+    // Maintain state
+    acc_commit_trans_id_match_d = acc_commit_trans_id_match_q;
+    // No match. Compare the results.
+    if (!acc_commit_trans_id_match_q)
+      acc_commit_trans_id_match_d = acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id;
+
     // Unpack fu_data_t into accelerator_req_t
     acc_req_o = '{
       // Instruction is forwarded from the decoder as an immediate
@@ -105,8 +117,12 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     };
 
     // Wait until we receive the acc_commit_i signal
-    acc_req_valid_o = acc_valid && acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id;
-    acc_ready       = acc_req_ready_i && acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id;
+    acc_req_valid_o = acc_valid && acc_commit_trans_id_match_d;
+    acc_ready       = acc_req_ready_i && acc_commit_trans_id_match_d;
+
+    // Reset the match signal, if we acknowledged a request
+    if (acc_ready)
+      acc_commit_trans_id_match_d = 1'b0;
   end
 
   /**************************
