@@ -96,7 +96,6 @@ int main() {
   // Initialize Matrices
   init_matrix(a, M, N, A_a, A_b, A_c);
   init_matrix(b, N, P, B_a, B_b, B_c);
-  asm volatile ("fence");
 
   // Matrices are initialized --> Start calculating
   printf("Calculating matmul...\n");
