@@ -332,8 +332,33 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             requester_d.hazard = requester_q.hazard & vinsn_running_i;
 
             // Finished requesting all the elements
-            if (requester_d.len == '0)
+            if (requester_d.len == '0) begin
               state_d = IDLE;
+
+              // Accept a new instruction
+              if (operand_request_valid_i[requester]) begin
+                state_d                            = REQUESTING;
+                // Acknowledge the request
+                operand_request_ready_o[requester] = 1'b1;
+
+                // Send a command to the operand queue
+                operand_queue_cmd_o[requester] = '{
+                  eew : operand_request_i[requester].eew,
+                  vl  : operand_request_i[requester].vl,
+                  conv: operand_request_i[requester].conv
+                                                 };
+                operand_queue_cmd_valid_o[requester] = 1'b1;
+
+                // Store the request
+                requester_d = '{
+                  addr   : vaddr(operand_request_i[requester].vs, NrLanes) + (operand_request_i[requester].vstart >> (int'(EW64) - int'(operand_request_i[requester].eew))),
+                  len    : operand_request_i[requester].vl,
+                  vew    : operand_request_i[requester].eew,
+                  hazard : operand_request_i[requester].hazard,
+                  default: '0
+                };
+              end
+            end
           end
         end
       endcase
