@@ -261,14 +261,16 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       axi_b_ready_o = 1'b1;
 
       // Mark the vector instruction as being done
-      pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
+      if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin
+        pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
-      // Update the commit counters and pointers
-      vinsn_queue_d.commit_cnt -= 1;
-      if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1)
-        vinsn_queue_d.commit_pnt = '0;
-      else
-        vinsn_queue_d.commit_pnt += 1;
+        // Update the commit counters and pointers
+        vinsn_queue_d.commit_cnt -= 1;
+        if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1)
+          vinsn_queue_d.commit_pnt = '0;
+        else
+          vinsn_queue_d.commit_pnt += 1;
+      end
     end
 
     /****************************
