@@ -45,9 +45,9 @@
 #define B_b 1
 #define B_c 16
 
-int64_t a[M * N] __attribute__((aligned(4*NR_LANES)));
-int64_t b[N * P] __attribute__((aligned(4*NR_LANES)));
-int64_t c[M * P] __attribute__((aligned(4*NR_LANES)));
+int64_t a[M * N] __attribute__((aligned(4*NR_LANES), section(".l2")));
+int64_t b[N * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
+int64_t c[M * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
 
 // Initialize the matrices
 void init_matrix(int64_t *matrix, uint64_t num_rows, uint64_t num_columns,
