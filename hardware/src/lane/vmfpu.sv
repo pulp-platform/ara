@@ -385,7 +385,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // Check if we have a valid result and we can add it to the result queue
     if (vmul_out_valid && !result_queue_full) begin
       // How many elements have we processed?
-      automatic logic [3:0] processed_element_cnt    = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
+      automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
+      if (processed_element_cnt > to_process_cnt_q)
+        processed_element_cnt = to_process_cnt_q;
+
       // Store the result in the result queue
       result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing.id;
       result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) + ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
@@ -394,8 +397,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
       // Update the number of elements still to be processed
-      if (processed_element_cnt > to_process_cnt_q)
-        processed_element_cnt = to_process_cnt_q;
       to_process_cnt_d = to_process_cnt_q - processed_element_cnt;
 
       // Finished issuing the micro-operations of this vector instruction
