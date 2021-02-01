@@ -7,12 +7,12 @@
 
 int main(int argc, char **argv) {
   // Create an instance of the DUT
-  ara_tb_verilator *dut = new ara_tb_verilator;
+  ara_tb_verilator *tb = new ara_tb_verilator;
 
   // Initialize lowRISC's verilator utilities
   VerilatorMemUtil memutil;
   VerilatorSimCtrl &simctrl = VerilatorSimCtrl::GetInstance();
-  simctrl.SetTop(dut, &dut->clk_i, &dut->rst_ni,
+  simctrl.SetTop(tb, &tb->clk_i, &tb->rst_ni,
                  VerilatorSimCtrlFlags::ResetPolarityNegative);
 
   // Initialize the DRAM
@@ -36,9 +36,5 @@ int main(int argc, char **argv) {
 
   simctrl.RunSimulation();
 
-  if (!simctrl.WasSimulationSuccessful()) {
-    return 1;
-  }
-
-  return 0;
+  return tb->dut().exit_o >> 1;
 }

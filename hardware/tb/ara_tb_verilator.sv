@@ -15,8 +15,9 @@
 module ara_tb_verilator #(
     parameter int unsigned NrLanes = 0
   )(
-    input logic clk_i,
-    input logic rst_ni
+    input  logic        clk_i,
+    input  logic        rst_ni,
+    output logic [63:0] exit_o
   );
 
   /*****************
@@ -30,8 +31,6 @@ module ara_tb_verilator #(
    *  DUT  *
    *********/
 
-  logic [63:0] exit;
-
   ara_testharness #(
     .NrLanes     (NrLanes         ),
     .AxiAddrWidth(AxiAddrWidth    ),
@@ -39,7 +38,7 @@ module ara_tb_verilator #(
   ) dut (
     .clk_i (clk_i ),
     .rst_ni(rst_ni),
-    .exit_o(exit  )
+    .exit_o(exit_o)
   );
 
   /*********
@@ -47,14 +46,14 @@ module ara_tb_verilator #(
    *********/
 
   always @(posedge clk_i) begin
-    if (exit[0]) begin
-      if (exit >> 1) begin
-        $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
+    if (exit_o[0]) begin
+      if (exit_o >> 1) begin
+        $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit_o >> 1)));
       end else begin
-        $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
+        $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit_o >> 1)));
       end
 
-      $finish(exit >> 1);
+      $finish(exit_o >> 1);
     end
   end
 
