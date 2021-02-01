@@ -67,18 +67,6 @@ tc-isa-sim:
       - install/riscv-isa-sim
     expire_in: 1 day
 
-tc-verilator:
-  stage: toolchain
-  script:
-    - git submodule update --init --recursive -- toolchain/verilator
-    - git submodule foreach --recursive git reset --hard
-    - export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
-    - make verilator
-  artifacts:
-    paths:
-      - install/verilator
-    expire_in: 1 day
-
 ###################
 #  Compile stage  #
 ###################
@@ -118,7 +106,6 @@ compile_ara:
   artifacts:
     paths:
       - hardware/build/verilator/Vara_tb_verilator
-  needs: ["tc-verilator"]
 
 ####################
 #  Simulate stage  #
