@@ -143,9 +143,19 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       // We are not ready for another request.
       pe_req_ready_o        = 1'b0;
     end else begin
-      // We received a new vector instruction
       // If the operand requesters are busy, abort the request and wait for another cycle.
-      if (pe_req_valid_i && !vinsn_running_d[pe_req_i.id] && !(|operand_request_valid_o)) begin
+      if (pe_req_valid_i)
+        unique case (pe_req_i.vfu)
+          VFU_Alu      : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskM]);
+          VFU_MFpu     : pe_req_ready_o = !(operand_request_valid_o[MulFPUA] || operand_request_valid_o[MulFPUB] || operand_request_valid_o[MulFPUC] || operand_request_valid_o[MaskM]);
+          VFU_LoadUnit : pe_req_ready_o = !(operand_request_valid_o[MaskM]);
+          VFU_StoreUnit: pe_req_ready_o = !(operand_request_valid_o[StMaskA] || operand_request_valid_o[MaskM]);
+          VFU_MaskUnit : pe_req_ready_o = !(operand_request_valid_o[StMaskA] || operand_request_valid_o[MaskM]);
+          default:;
+        endcase
+
+      // We received a new vector instruction
+      if (pe_req_valid_i && pe_req_ready_o && !vinsn_running_d[pe_req_i.id]) begin
         // Populate the VFU request
         vfu_operation_d = '{
           id           : pe_req_i.id,
