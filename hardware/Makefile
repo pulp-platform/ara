@@ -144,24 +144,23 @@ $(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find sr
 	$(veril_path)/verilator -f $(veril_library)/bender_script                     \
   -GNrLanes=$(nr_lanes)                                                         \
   --threads $(veril_threads)                                                    \
-  --unroll-count 256                                                            \
-  --output-split 4000                                                           \
-  --output-split-cfuncs 4000                                                    \
-  -Werror-IMPLICIT                                                              \
-  -Wno-fatal                                                                    \
+  -O3                                                                           \
   -Wno-BLKANDNBLK                                                               \
-  -Wno-LITENDIAN                                                                \
   -Wno-CASEINCOMPLETE                                                           \
+  -Wno-CMPCONST                                                                 \
+  -Wno-LITENDIAN                                                                \
+  -Wno-MODDUP                                                                   \
+  -Wno-PINMISSING                                                               \
+  -Wno-SYMRSVDWORD                                                              \
+  -Wno-UNOPTFLAT                                                                \
+  -Wno-UNPACKED                                                                 \
+  -Wno-UNSIGNED                                                                 \
   -Wno-WIDTH                                                                    \
   -Wno-WIDTHCONCAT                                                              \
-  -Wno-UNOPTFLAT                                                                \
-  -Wno-UNSIGNED                                                                 \
-  -Wno-UNUSED                                                                   \
-  -Wno-fatal                                                                    \
   --Mdir $(veril_library) $(veril_trace_cmd)                                    \
   -Itb/dpi                                                                      \
   -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top)"                       \
-  -CFLAGS "-DNR_LANES=$(nr_lanes) -g"                                           \
+  -CFLAGS "-DNR_LANES=$(nr_lanes)"                                              \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp \
