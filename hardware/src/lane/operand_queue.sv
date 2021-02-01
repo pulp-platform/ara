@@ -149,6 +149,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
             EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = {{8 {ibuf_operand[16*e + 8*select + 7]}}, ibuf_operand[16*e + 8*select +: 8]};
             EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{16{ibuf_operand[32*e + 8*select + 15]}}, ibuf_operand[32*e + 8*select +: 16]};
             EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{32{ibuf_operand[64*e + 8*select + 31]}}, ibuf_operand[64*e + 8*select +: 32]};
+            default:;
           endcase
       end
       OpQueueConversionSExt4: begin
@@ -156,12 +157,14 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
           unique case (cmd.eew)
             EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {{24{ibuf_operand[32*e + 8*select + 7]}}, ibuf_operand[32*e + 8*select +: 8]};
             EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{48{ibuf_operand[64*e + 8*select + 15]}}, ibuf_operand[64*e + 8*select +: 16]};
+            default:;
           endcase
       end
       OpQueueConversionSExt8: begin
         if (SupportIntExt8)
           unique case (cmd.eew)
             EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {{56{ibuf_operand[64*e + 8*select + 7]}}, ibuf_operand[64*e + 8*select +: 8]};
+            default:;
           endcase
       end
 
@@ -172,6 +175,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
             EW8 : for (int e = 0; e < 4; e++) conv_operand[16*e +: 16] = { 8'b0, ibuf_operand[16*e + 8*select +: 8]};
             EW16: for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {16'b0, ibuf_operand[32*e + 8*select +: 16]};
             EW32: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {32'b0, ibuf_operand[64*e + 8*select +: 32]};
+            default:;
           endcase
       end
       OpQueueConversionZExt4: begin
@@ -179,12 +183,14 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
           unique case (cmd.eew)
             EW8 : for (int e = 0; e < 2; e++) conv_operand[32*e +: 32] = {24'b0, ibuf_operand[32*e + 8*select +: 8]};
             EW16: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {48'b0, ibuf_operand[64*e + 8*select +: 16]};
+            default:;
           endcase
       end
       OpQueueConversionZExt8: begin
         if (SupportIntExt8)
           unique case (cmd.eew)
             EW8: for (int e = 0; e < 1; e++) conv_operand[64*e +: 64] = {56'b0, ibuf_operand[64*e + 8*select +: 8]};
+            default:;
           endcase
       end
 

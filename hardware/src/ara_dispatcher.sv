@@ -88,8 +88,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
   // Calculates prev(prev(ew))
   function automatic vew_e prev_prev_ew(vew_e ew);
     unique case (ew)
-      EW64:    prev_prev_ew = EW16;
-      EW32:    prev_prev_ew = EW8;
+      EW64: prev_prev_ew    = EW16;
+      EW32: prev_prev_ew    = EW8;
       default: prev_prev_ew = EW1024;
     endcase
   endfunction: prev_prev_ew
@@ -181,7 +181,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
       acc_req_ready_o = ara_req_ready_i;
 
       // Decode the instructions based on their opcode
-      case (acc_req_i.insn.itype.opcode)
+      unique case (acc_req_i.insn.itype.opcode)
         /************************************
          *  Vector Arithmetic instructions  *
          ************************************/
@@ -194,7 +194,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           acc_resp_valid_o = 1'b1;
 
           // Decode based on their func3 field
-          case (insn.varith_type.func3)
+          unique case (insn.varith_type.func3)
             // Configuration instructions
             OPCFG: begin: opcfg
               // These can be acknowledged regardless of the state of Ara
@@ -220,7 +220,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               else begin
                 // Maximum vector length. VLMAX = LMUL * VLEN / SEW.
                 automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
-                case (vtype_d.vlmul)
+                unique case (vtype_d.vlmul)
                   LMUL_1  : vlmax <<= 0;
                   LMUL_2  : vlmax <<= 1;
                   LMUL_4  : vlmax <<= 2;
@@ -229,6 +229,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   LMUL_1_2: vlmax >>= 1;
                   LMUL_1_4: vlmax >>= 2;
                   LMUL_1_8: vlmax >>= 3;
+                  default:;
                 endcase
 
                 if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd == '0) begin
@@ -260,7 +261,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d   = 1'b1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 6'b000000: ara_req_d.op = ara_pkg::VADD;
                 6'b000010: ara_req_d.op = ara_pkg::VSUB;
                 6'b000100: ara_req_d.op = ara_pkg::VMINU;
@@ -324,7 +325,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   end
 
                   // Check whether we can access vs2
-                  case (ara_req_d.emul.next())
+                  unique case (ara_req_d.emul.next())
                     LMUL_2:
                       if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
                         acc_resp_o.error = 1'b1;
@@ -344,6 +345,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
+                    default:;
                   endcase
                 end
                 6'b101101: begin
@@ -359,7 +361,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   end
 
                   // Check whether we can access vs2
-                  case (ara_req_d.emul.next())
+                  unique case (ara_req_d.emul.next())
                     LMUL_2:
                       if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
                         acc_resp_o.error = 1'b1;
@@ -379,6 +381,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
+                    default:;
                   endcase
                 end
                 default: begin
@@ -389,7 +392,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              case (ara_req_d.emul)
+              unique case (ara_req_d.emul)
                 LMUL_2:
                   if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 || (insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
@@ -409,6 +412,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -430,7 +434,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d         = 1'b1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 6'b000000: ara_req_d.op = ara_pkg::VADD;
                 6'b000010: ara_req_d.op = ara_pkg::VSUB;
                 6'b000011: ara_req_d.op = ara_pkg::VRSUB;
@@ -495,7 +499,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   end
 
                   // Check whether we can access vs2
-                  case (ara_req_d.emul.next())
+                  unique case (ara_req_d.emul.next())
                     LMUL_2:
                       if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
                         acc_resp_o.error = 1'b1;
@@ -515,6 +519,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
+                    default:;
                   endcase
                 end
                 6'b101101: begin
@@ -530,7 +535,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   end
 
                   // Check whether we can access vs2
-                  case (ara_req_d.emul.next())
+                  unique case (ara_req_d.emul.next())
                     LMUL_2:
                       if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
                         acc_resp_o.error = 1'b1;
@@ -550,6 +555,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
+                    default:;
                   endcase
                 end
                 default: begin
@@ -560,7 +566,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              case (ara_req_d.emul)
+              unique case (ara_req_d.emul)
                 LMUL_2:
                   if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
@@ -580,6 +586,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -604,7 +611,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d         = 1'b1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 6'b000000: ara_req_d.op = ara_pkg::VADD;
                 6'b000011: ara_req_d.op = ara_pkg::VRSUB;
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
@@ -647,7 +654,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   end
 
                   // Check whether we can access vs2
-                  case (ara_req_d.emul.next())
+                  unique case (ara_req_d.emul.next())
                     LMUL_2:
                       if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
                         acc_resp_o.error = 1'b1;
@@ -667,6 +674,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
+                    default:;
                   endcase
                 end
                 6'b101101: begin
@@ -682,7 +690,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   end
 
                   // Check whether we can access vs2
-                  case (ara_req_d.emul.next())
+                  unique case (ara_req_d.emul.next())
                     LMUL_2:
                       if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
                         acc_resp_o.error = 1'b1;
@@ -702,6 +710,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
+                    default:;
                   endcase
                 end
                 default: begin
@@ -712,7 +721,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              case (ara_req_d.emul)
+              unique case (ara_req_d.emul)
                 LMUL_2:
                   if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
@@ -732,6 +741,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Instruction is invalid if the vtype is invalid
@@ -756,7 +766,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_d.emul = LMUL_1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 6'b011000: ara_req_d.op = ara_pkg::VMANDNOT;
                 6'b011001: ara_req_d.op = ara_pkg::VMAND;
                 6'b011010: ara_req_d.op = ara_pkg::VMOR;
@@ -994,7 +1004,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               end
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              case (ara_req_d.emul)
+              unique case (ara_req_d.emul)
                 LMUL_2:
                   if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 || (insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
@@ -1014,6 +1024,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Ara cannot support instructions who operates on more than 64 bits.
@@ -1041,7 +1052,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d         = 1'b1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 // Multiply instructions
                 6'b100100: ara_req_d.op = ara_pkg::VMULHU;
                 6'b100101: ara_req_d.op = ara_pkg::VMUL;
@@ -1187,7 +1198,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              case (ara_req_d.emul)
+              unique case (ara_req_d.emul)
                 LMUL_2:
                   if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
@@ -1207,6 +1218,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Ara cannot support instructions who operates on more than 64 bits.
@@ -1221,6 +1233,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 ara_req_valid_d  = 1'b0;
               end
             end
+
+            default:;
           endcase
         end
 
@@ -1243,7 +1257,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           ara_req_valid_d     = 1'b1;
 
           // Decode the addressing mode
-          case (insn.vmem_type.mop)
+          unique case (insn.vmem_type.mop)
             2'b00: begin
               ara_req_d.op = VLE;
 
@@ -1282,10 +1296,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_d.vs2     = insn.vmem_type.rs2;
               ara_req_d.use_vs2 = 1'b1;
             end
+            default:;
           endcase
 
           // Decode the element width
-          case ({insn.vmem_type.mew, insn.vmem_type.width})
+          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
             4'b0000: ara_req_d.vtype.vsew = EW8;
             4'b0101: ara_req_d.vtype.vsew = EW16;
             4'b0110: ara_req_d.vtype.vsew = EW32;
@@ -1299,7 +1314,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can access.
-          case (ara_req_d.emul)
+          unique case (ara_req_d.emul)
             LMUL_2:
               if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
@@ -1319,6 +1334,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               acc_resp_o.error = 1'b1;
               ara_req_valid_d  = 1'b0;
             end
+            default:;
           endcase
 
           // Vector register register loads are encoded as loads of length VLENB, length multiplier
@@ -1362,12 +1378,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           ara_req_valid_d     = 1'b1;
 
           // Decode the addressing mode
-          case (insn.vmem_type.mop)
+          unique case (insn.vmem_type.mop)
             2'b00: begin
               ara_req_d.op = VSE;
 
               // Decode the sumop field
-              case (insn.vmem_type.rs2)
+              unique case (insn.vmem_type.rs2)
                 5'b00000:;     // Unit-strided
                 5'b01000:;     // Unit-strided, whole registers
                 default: begin // Reserved
@@ -1389,10 +1405,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_d.vs2     = insn.vmem_type.rs2;
               ara_req_d.use_vs2 = 1'b1;
             end
+            default:;
           endcase
 
           // Decode the element width
-          case ({insn.vmem_type.mew, insn.vmem_type.width})
+          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
             4'b0000: ara_req_d.vtype.vsew = EW8;
             4'b0101: ara_req_d.vtype.vsew = EW16;
             4'b0110: ara_req_d.vtype.vsew = EW32;
@@ -1406,7 +1423,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can access.
-          case (ara_req_d.emul)
+          unique case (ara_req_d.emul)
             LMUL_2:
               if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) begin
                 acc_resp_o.error = 1'b1;
@@ -1426,6 +1443,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               acc_resp_o.error = 1'b1;
               ara_req_valid_d  = 1'b0;
             end
+            default:;
           endcase
 
           // Vector register register stores are encoded as stores of length VLENB, length multiplier
@@ -1458,7 +1476,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // These always respond at the same cycle
           acc_resp_valid_o = 1'b1;
 
-          case (acc_req_i.insn.itype.funct3)
+          unique case (acc_req_i.insn.itype.funct3)
             3'b001: begin // csrrw
               // Decode the CSR.
               case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
@@ -1576,7 +1594,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
             end
             3'b111: begin // csrrci
               // Decode the CSR.
-              case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+              unique case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
                 riscv::CSR_VSTART: begin
                   vstart_d          = vstart_q & ~vlen_t'(acc_req_i.insn.itype.rs1);
                   acc_resp_o.result = vstart_q;

@@ -302,6 +302,7 @@ package ara_pkg;
         for (vlen_t element = 0; element < 8*NrLanes; element++)
           for (int b = 0; b < 1; b++)
             element_shuffle_index[1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b] = 1*element + b;
+      default:;
     endcase
 
     return element_shuffle_index[byte_index];
@@ -328,6 +329,7 @@ package ara_pkg;
         for (vlen_t element = 0; element < 8*NrLanes; element++)
           for (int b = 0; b < 1; b++)
             element_deshuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
+      default:;
     endcase
 
     return element_deshuffle_index[byte_index];
@@ -417,7 +419,7 @@ package ara_pkg;
   // valid elements are there in that lane word, and the element width.
 
   function automatic logic [ELEN/8-1:0] be(logic [3:0] cnt, rvv_pkg::vew_e ew);
-    case (ew)
+    unique case (ew)
       rvv_pkg::EW8:
         for (int el = 0; el < 8; el++)
           for (int b = 0; b < 1; b++)
@@ -434,6 +436,7 @@ package ara_pkg;
         for (int el = 0; el < 1; el++)
           for (int b = 0; b < 8; b++)
             be[shuffle_index(8*el + b, 1, ew)] = el < cnt;
+      default:;
     endcase
   endfunction: be
 

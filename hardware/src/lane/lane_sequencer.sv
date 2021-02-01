@@ -110,9 +110,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   // Returns true if the corresponding lane VFU is ready.
   function automatic logic vfu_ready(vfu_e vfu, logic alu_ready_i, logic mfpu_ready_i);
     vfu_ready = 1'b1;
-    case (vfu)
+    unique case (vfu)
       VFU_Alu : vfu_ready = alu_ready_i;
       VFU_MFpu: vfu_ready = mfpu_ready_i;
+      default:;
     endcase
   endfunction
 
@@ -182,7 +183,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
          *  Operand requests  *
          **********************/
 
-        case (pe_req_i.vfu)
+        unique case (pe_req_i.vfu)
           VFU_Alu: begin
             operand_request_i[AluA] = '{
               id     : pe_req_i.id,
@@ -374,6 +375,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = pe_req_i.use_vs2;
           end
+          default:;
         endcase
       end
     end
