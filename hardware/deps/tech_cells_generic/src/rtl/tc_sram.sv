@@ -151,12 +151,14 @@ module tc_sram #(
       for (int unsigned i = 0; i < NumPorts; i++) begin
         if (req_i[i]) begin
           if (we_i[i]) begin
+            `ifndef VERILATOR
             // update value when write is set at clock
             for (int unsigned j = 0; j < DataWidth; j++) begin
               if (be_i[i][j/ByteWidth]) begin
                 sram[addr_i[i]][j] <= wdata_i[i][j];
               end
             end
+            `endif
           end else begin
             // otherwise update read address for subsequent non request cycles
             r_addr_q[i] <= addr_i[i];
@@ -165,6 +167,23 @@ module tc_sram #(
       end // for ports
     end // if !rst_ni
   end
+
+  `ifdef VERILATOR
+  for (genvar i = 0; i < NumPorts; i++) begin
+    // update value when write is set at clock
+    for (genvar j = 0; j < DataWidth; j++) begin
+      always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+        end else begin
+          if (req_i[i])
+            if (we_i[i])
+              if (be_i[i][j/ByteWidth])
+                sram[addr_i[i]][j] <= wdata_i[i][j];
+        end
+      end
+    end
+  end
+  `endif
 
 // Validate parameters.
 // pragma translate_off
