@@ -51,7 +51,7 @@ module ctrl_registers #(
     DRAMBaseAddr,
     0
   };
-  localparam logic [0:NumRegs-1][DataWidthInBytes-1:0] AxiReadOnly = '{
+  localparam logic [NumRegs-1:0][DataWidthInBytes-1:0] AxiReadOnly = '{
     ReadOnlyReg,
     ReadOnlyReg,
     ReadWriteReg
