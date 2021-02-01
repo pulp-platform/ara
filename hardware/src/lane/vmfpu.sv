@@ -179,6 +179,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       EW32: scalar_op = {2{vinsn_issue.scalar_op[31:0]}};
       EW16: scalar_op = {4{vinsn_issue.scalar_op[15:0]}};
       EW8 : scalar_op = {8{vinsn_issue.scalar_op[ 7:0]}};
+      default:;
     endcase
   end
 
@@ -278,24 +279,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   logic  vmul_out_valid;
   logic  vmul_out_ready;
   strb_t vmul_mask;
-  vew_e  vmul_ew;
-
-  fifo_v3 #(
-    .DEPTH(LatMultiplierEW64+1),
-    .dtype(vew_e              )
-  ) i_simd_mul_fifo (
-    .clk_i     (clk_i                           ),
-    .rst_ni    (rst_ni                          ),
-    .flush_i   (1'b0                            ),
-    .testmode_i(1'b0                            ),
-    .data_i    (vinsn_issue.vtype.vsew          ),
-    .push_i    (vmul_in_valid && vmul_in_ready  ),
-    .full_o    (/* Unused */                    ),
-    .data_o    (vmul_ew                         ),
-    .pop_i     (vmul_out_valid && vmul_out_ready),
-    .empty_o   (/* Unused */                    ),
-    .usage_o   (/* Unused */                    )
-  );
 
   always_comb begin
     // Only one SIMD Multiplier receives the request
@@ -304,11 +287,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     vmul_in_ready                              = vmul_simd_in_ready[vinsn_issue.vtype.vsew];
 
     // We read the responses of a single SIMD Multipler
-    vmul_result                  = vmul_simd_result[vmul_ew];
-    vmul_mask                    = vmul_simd_mask[vmul_ew];
-    vmul_out_valid               = vmul_simd_out_valid[vmul_ew];
-    vmul_simd_out_ready          = '0;
-    vmul_simd_out_ready[vmul_ew] = vmul_out_ready;
+    vmul_result                                      = vmul_simd_result[vinsn_processing.vtype.vsew];
+    vmul_mask                                        = vmul_simd_mask[vinsn_processing.vtype.vsew];
+    vmul_out_valid                                   = vmul_simd_out_valid[vinsn_processing.vtype.vsew];
+    vmul_simd_out_ready                              = '0;
+    vmul_simd_out_ready[vinsn_processing.vtype.vsew] = vmul_out_ready;
   end
 
   /*************
