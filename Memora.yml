@@ -14,3 +14,10 @@ artifacts:
       - toolchain/verilator
     outputs:
       - install/verilator
+
+  tc-isa-sim:
+    inputs:
+      - Makefile
+      - toolchain/riscv-isa-sim
+    outputs:
+      - install/riscv-isa-sim

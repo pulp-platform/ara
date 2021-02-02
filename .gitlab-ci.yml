@@ -59,14 +59,14 @@ tc-gcc:
 tc-isa-sim:
   stage: toolchain
   script:
-    - git submodule update --init --recursive -- toolchain/riscv-isa-sim
-    - git submodule foreach --recursive git reset --hard
-    - rm -rf toolchain/riscv-isa-sim/build
-    - make riscv-isa-sim
-  artifacts:
-    paths:
-      - install/riscv-isa-sim
-    expire_in: 1 day
+    - |
+      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-isa-sim; then
+        git submodule update --init --recursive -- toolchain/riscv-isa-sim
+        git submodule foreach --recursive git reset --hard
+        mkdir -p /usr/scratch2/dolent1/gitlabci/buildcache/ara
+        make riscv-isa-sim
+        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-isa-sim
+      fi
 
 tc-verilator:
   stage: toolchain
@@ -75,6 +75,7 @@ tc-verilator:
       if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-verilator; then
         export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
         git submodule update --init --recursive -- toolchain/verilator
+        mkdir -p /usr/scratch2/dolent1/gitlabci/buildcache/ara
         make verilator
         $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-verilator
       fi
@@ -97,9 +98,9 @@ compile_apps:
 compile_riscv_tests:
   stage: compile
   script:
-    - git submodule update --init --recursive -- toolchain/riscv-isa-sim
     - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C apps riscv_tests
   artifacts:
     paths:
@@ -117,7 +118,8 @@ compile_ara:
     - veril_trace=0 make -C hardware verilate
   artifacts:
     paths:
-      - hardware/build/verilator/
+      - hardware/build/verilator
+      - hardware/bender
 
 ####################
 #  Simulate stage  #
@@ -131,6 +133,11 @@ hello_world:
     paths:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
+  needs: ["tc-gcc", "compile_apps", "compile_ara"]
+  dependencies:
+    - tc-gcc
+    - compile_apps
+    - compile_ara
 
 riscv_tests_simv:
   stage: simulate
@@ -148,6 +155,7 @@ riscv_tests_spike:
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C apps/riscv-tests/isa clean
     - make -C apps riscv_tests_spike
   artifacts:

@@ -93,6 +93,7 @@ $(buildpath):
 	mkdir -p $(buildpath)
 
 # Bender
+.PHONY: bender
 bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
 	(curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
