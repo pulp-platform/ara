@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - Miscellaneous fixes for compatibility with Synopsys DC
+- Send the correct bits of the address to the Vector Register File's banks
+- Correctly calculate the initial address of each vector register in the VRF
 
 ## 0.2.0 - 2020-01-22
 
