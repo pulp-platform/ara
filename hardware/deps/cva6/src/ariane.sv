@@ -52,7 +52,7 @@ module ariane import ariane_pkg::*; #(
   input  logic                         inval_valid_i,
   output logic                         inval_ready_o,
   // Accelerator
-  input  logic                   [2:0] acc_fflags_ex_i,
+  input  logic                   [4:0] acc_fflags_ex_i,
   input  logic                         acc_fflags_ex_valid_i,
 `ifdef FIRESIM_TRACE
   // firesim trace port

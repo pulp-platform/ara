@@ -18,7 +18,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                         clk_i,
     input  logic                         rst_ni,
     // Interface with CVA6
-    output logic                   [2:0] fflags_ex_o,
+    output logic                   [4:0] fflags_ex_o,
     output logic                         fflags_ex_valid_o,
     // Interface with the lane sequencer
     input  vfu_operation_t               vfu_operation_i,

@@ -28,7 +28,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Lane ID
     input  logic     [cf_math_pkg::idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with CVA6
-    output logic                                     [2:0] fflags_ex_o,
+    output logic                                     [4:0] fflags_ex_o,
     output logic                                           fflags_ex_valid_o,
     // Interface with the sequencer
     input  pe_req_t                                        pe_req_i,

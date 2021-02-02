@@ -579,7 +579,7 @@ module ara_soc import axi_pkg::*; #(
   logic              [AxiAddrWidth-1:0] inval_addr;
   logic                                 inval_valid;
   logic                                 inval_ready;
-  logic              [2:0]              acc_fflags_ex;
+  logic              [4:0]              acc_fflags_ex;
   logic                                 acc_fflags_ex_valid;
 
   ariane #(
