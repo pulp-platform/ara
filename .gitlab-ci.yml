@@ -128,6 +128,7 @@ compile_ara:
 hello_world:
   stage: simulate
   script:
+    # Run this test on Questa
     - make -C hardware app=${CI_JOB_NAME} simc
   artifacts:
     paths:
@@ -137,6 +138,17 @@ hello_world:
   dependencies:
     - tc-gcc
     - compile_apps
+
+matmul:
+  stage: simulate
+  script:
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get ara_tb_verilator_model
+    - make -C hardware app=${CI_JOB_NAME} simv
+  needs: ["tc-gcc", "compile_apps", "compile_ara"]
+  dependencies:
+    - tc-gcc
+    - compile_apps
+    - compile_ara
 
 riscv_tests_simv:
   stage: simulate
