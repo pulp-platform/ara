@@ -350,7 +350,7 @@ package ara_pkg;
 
   // Find the starting address of a vector register vid
   function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB / NrLanes);
+    vaddr = vid * (VLENB / NrLanes / 8);
   endfunction: vaddr
 
   // This is the interface between the lane's sequencer and the operand request stage, which
