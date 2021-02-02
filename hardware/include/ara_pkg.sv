@@ -158,6 +158,9 @@ package ara_pkg;
     // Effective length multiplier
     rvv_pkg::vlmul_e emul;
 
+    // Rounding-Mode for FP operations
+    logic [2:0] fp_rm;
+
     // Vector machine metadata
     vlen_t vl;
     vlen_t vstart;
@@ -235,6 +238,9 @@ package ara_pkg;
 
     // Effective length multiplier
     rvv_pkg::vlmul_e emul;
+
+    // Rounding-Mode for FP operations
+    logic [2:0] fp_rm;
 
     // Vector machine metadata
     vlen_t vl;
@@ -469,6 +475,8 @@ package ara_pkg;
 
     logic [4:0] vd; // Vector destination register
     logic use_vd;
+
+    logic [2:0] fp_rm; // Rounding-Mode for FP operations
 
     // Vector machine metadata
     vlen_t vl;
