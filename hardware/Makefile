@@ -184,7 +184,7 @@ simv: verilate
 .PHONY: riscv_tests_veril
 riscv_tests_veril: $(tests)
 
-$(tests): rv%: $(app_path)/rv%
+$(tests): rv%: $(app_path)/rv% verilate
 	$(veril_library)/V$(veril_top) -l ram,$<,elf
 
 # DPIs
