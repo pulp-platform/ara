@@ -473,13 +473,18 @@ module issue_read_operands import ariane_pkg::*; #(
     //  Load/Store tracking
     // ---------------------
 
+    // Accelerator instruction is acknowleged and will be issued the next cycle
+    logic acc_valid_d;
+
+    assign acc_valid_d = !issue_instr_i.ex.valid && issue_instr_valid_i && issue_ack_o && (issue_instr_i.fu == ACCEL);
+
     // Loads
     logic       acc_spec_loads_overflow;
     logic [2:0] acc_spec_loads_pending;
     logic       acc_disp_loads_overflow;
     logic [2:0] acc_disp_loads_pending;
 
-    assign acc_no_ld_pending = acc_spec_loads_pending == '0 && acc_disp_loads_pending == '0;
+    assign acc_no_ld_pending = (acc_spec_loads_pending == 3'b0) && (acc_disp_loads_pending == 3'b0);
 
     // Count speculative loads. These can still be flushed.
     counter #(
@@ -489,7 +494,7 @@ module issue_read_operands import ariane_pkg::*; #(
         .clk_i           (clk_i                   ),
         .rst_ni          (rst_ni                  ),
         .clear_i         (flush_i                 ),
-        .en_i            ((acc_valid_q && operator_q == ACCEL_OP_LOAD) || acc_ld_disp_i),
+        .en_i            ((acc_valid_d && issue_instr_i.op == ACCEL_OP_LOAD) || acc_ld_disp_i),
         .load_i          (1'b0                    ),
         .down_i          (acc_ld_disp_i           ),
         .d_i             ('0                      ),
@@ -523,7 +528,7 @@ module issue_read_operands import ariane_pkg::*; #(
     logic       acc_disp_stores_overflow;
     logic [2:0] acc_disp_stores_pending;
 
-    assign acc_no_st_pending = acc_spec_stores_pending == '0 && acc_disp_stores_pending == '0;
+    assign acc_no_st_pending = (acc_spec_stores_pending == 3'b0) && (acc_disp_stores_pending == 3'b0);
 
     // Count speculative stores. These can still be flushed.
     counter #(
@@ -533,7 +538,7 @@ module issue_read_operands import ariane_pkg::*; #(
         .clk_i           (clk_i                   ),
         .rst_ni          (rst_ni                  ),
         .clear_i         (flush_i                 ),
-        .en_i            ((acc_valid_q && operator_q == ACCEL_OP_STORE) || acc_st_disp_i),
+        .en_i            ((acc_valid_d && issue_instr_i.op == ACCEL_OP_STORE) || acc_st_disp_i),
         .load_i          (1'b0                    ),
         .down_i          (acc_st_disp_i           ),
         .d_i             ('0                      ),
