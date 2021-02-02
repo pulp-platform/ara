@@ -304,7 +304,6 @@ package ariane_pkg;
       logic                     store_pending;
       logic                     store_complete;
       logic                     load_complete;
-      logic                     vfp;           // Was the issued request a vector FP instruction?
     } accelerator_resp_t;
 
     // ---------------

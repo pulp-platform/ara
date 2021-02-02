@@ -75,6 +75,7 @@ module decoder import ariane_pkg::*; (
     logic is_fs1;
     logic is_fs2;
     logic is_fd;
+    logic is_vfp;
     logic is_load;
     logic is_store;
 
@@ -91,6 +92,7 @@ module decoder import ariane_pkg::*; (
             .is_fs1_o(is_fs1),
             .is_fs2_o(is_fs2),
             .is_fd_o(is_fd),
+            .is_vfp_o(is_vfp),
             .is_load_o(is_load),
             .is_store_o(is_store)
         );
@@ -102,6 +104,7 @@ module decoder import ariane_pkg::*; (
         assign is_fs1   = 1'b0;
         assign is_fs2   = 1'b0;
         assign is_fd    = 1'b0;
+        assign is_vfp   = 1'b0;
         assign is_load  = 1'b0;
         assign is_store = 1'b0;
     end
@@ -1057,6 +1060,7 @@ module decoder import ariane_pkg::*; (
                 // TODO: Instruction going to other accelerators might need to distinguish whether the value of vs_i is needed or not.
                 // Send accelerator instructions to the coprocessor
                 instruction_o.fu  = ACCEL;
+                instruction_o.vfp = is_vfp;
                 instruction_o.rs1 = is_rs1 ? instr.rtype.rs1 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rs2 = is_rs2 ? instr.rtype.rs2 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rd  = is_rd ? instr.rtype.rd : {REG_ADDR_SIZE{1'b0}};

@@ -16,6 +16,7 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
     output logic        is_fs1_o,
     output logic        is_fs2_o,
     output logic        is_fd_o,
+    output logic        is_vfp_o,      // is a vector floating-point instruction
     output logic        is_load_o,
     output logic        is_store_o
   );
@@ -33,6 +34,7 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
     is_fs1_o   = 1'b0;
     is_fs2_o   = 1'b0;
     is_fd_o    = 1'b0;
+    is_vfp_o   = 1'b0;
     is_load_o  = instr.i_type.opcode == riscv::OpcodeLoadFp;
     is_store_o = instr.i_type.opcode == riscv::OpcodeStoreFp;
 
@@ -43,10 +45,16 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
       riscv::OpcodeVec: begin
         is_accel_o = 1'b1;
         case (instr.varith_type.func3)
-          OPFVV: is_fd_o  = instr.varith_type.func6 == 6'b010_000; // VFWUNARY0
+          OPFVV: begin
+            is_fd_o  = instr.varith_type.func6 == 6'b010_000; // VFWUNARY0
+            is_vfp_o = 1'b1;
+          end
           OPMVV: is_rd_o  = instr.varith_type.func6 == 6'b010_000; // VWXUNARY0
           OPIVX: is_rs1_o = 1'b1 ;
-          OPFVF: is_fs1_o = 1'b1 ;
+          OPFVF: begin
+            is_fs1_o = 1'b1;
+            is_vfp_o = 1'b1;
+          end
           OPMVX: is_rs1_o = 1'b1 ;
           OPCFG: begin
             is_rs1_o = 1'b1 ;

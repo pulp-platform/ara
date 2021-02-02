@@ -60,8 +60,7 @@ module scoreboard #(
   input logic [NR_WB_PORTS-1:0][ariane_pkg::TRANS_ID_BITS-1:0]  trans_id_i,  // transaction ID at which to write the result back
   input logic [NR_WB_PORTS-1:0][riscv::XLEN-1:0]                wbdata_i,    // write data in
   input ariane_pkg::exception_t [NR_WB_PORTS-1:0]               ex_i,        // exception from a functional unit (e.g.: ld/st exception)
-  input logic [NR_WB_PORTS-1:0]                                 wt_valid_i,  // data in is valid
-  input logic                                                   acc_vfp_i
+  input logic [NR_WB_PORTS-1:0]                                 wt_valid_i   // data in is valid
 );
   localparam int unsigned BITS_ENTRIES = $clog2(NR_ENTRIES);
 
@@ -146,8 +145,6 @@ module scoreboard #(
       if (wt_valid_i[i] && mem_q[trans_id_i[i]].issued) begin
         mem_n[trans_id_i[i]].sbe.valid  = 1'b1;
         mem_n[trans_id_i[i]].sbe.result = wbdata_i[i];
-        // If we dispatched a FP instruction to an accelerator, mark mstatus.FS as Dirty
-        mem_n[trans_id_i[i]].sbe.vfp = (mem_q[trans_id_i[i]].sbe.fu == ariane_pkg::ACCEL) && acc_vfp_i;
         // save the target address of a branch (needed for debug in commit stage)
         mem_n[trans_id_i[i]].sbe.bp.predict_address = resolved_branch_i.target_address;
         // write the exception back if it is valid

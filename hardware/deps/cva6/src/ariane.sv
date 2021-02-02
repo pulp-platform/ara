@@ -160,7 +160,6 @@ module ariane import ariane_pkg::*; #(
   riscv::xlen_t             acc_result_ex_id;
   logic                     acc_valid_ex_id;
   exception_t               acc_exception_ex_id;
-  logic                     acc_vfp_ex_id;
   // CSR
   logic                     csr_valid_id_ex;
   // --------------
@@ -390,7 +389,6 @@ module ariane import ariane_pkg::*; #(
     .wbdata_i                   ( {flu_result_ex_id,    load_result_ex_id,    store_result_ex_id,       fpu_result_ex_id,    acc_result_ex_id }),
     .ex_ex_i                    ( {flu_exception_ex_id, load_exception_ex_id, store_exception_ex_id, fpu_exception_ex_id, acc_exception_ex_id }),
     .wt_valid_i                 ( {flu_valid_ex_id,     load_valid_ex_id,     store_valid_ex_id,         fpu_valid_ex_id,     acc_valid_ex_id }),
-    .acc_vfp_i                  ( acc_vfp_ex_id                ),
 
     .waddr_i                    ( waddr_commit_id              ),
     .wdata_i                    ( wdata_commit_id              ),
@@ -485,7 +483,6 @@ module ariane import ariane_pkg::*; #(
     .acc_result_o           ( acc_result_ex_id            ),
     .acc_valid_o            ( acc_valid_ex_id             ),
     .acc_exception_o        ( acc_exception_ex_id         ),
-    .acc_vfp_o              ( acc_vfp_ex_id               ),
     .acc_cons_en_i          ( acc_cons_en_csr             ),
     // Performance counters
     .itlb_miss_o            ( itlb_miss_ex_perf           ),

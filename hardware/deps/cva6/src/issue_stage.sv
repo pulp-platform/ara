@@ -71,7 +71,6 @@ module issue_stage import ariane_pkg::*; #(
     input logic [NR_WB_PORTS-1:0][riscv::XLEN-1:0]   wbdata_i,
     input exception_t [NR_WB_PORTS-1:0]              ex_ex_i, // exception from execute stage
     input logic [NR_WB_PORTS-1:0]                    wt_valid_i,
-    input logic                                      acc_vfp_i, // From the accelerator dispatcher
 
     // commit port
     input  logic [NR_COMMIT_PORTS-1:0][4:0]          waddr_i,
@@ -157,7 +156,6 @@ module issue_stage import ariane_pkg::*; #(
         .trans_id_i            ( trans_id_i                                ),
         .wbdata_i              ( wbdata_i                                  ),
         .ex_i                  ( ex_ex_i                                   ),
-        .acc_vfp_i             ( acc_vfp_i                                 ),
         .*
     );
 

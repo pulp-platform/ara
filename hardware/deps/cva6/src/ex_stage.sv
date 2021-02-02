@@ -97,7 +97,6 @@ module ex_stage import ariane_pkg::*; #(
     output riscv::xlen_t                           acc_result_o,
     output logic                                   acc_valid_o,
     output exception_t                             acc_exception_o,
-    output logic                                   acc_vfp_o,
     // Memory Management
     input  logic                                   enable_translation_i,
     input  logic                                   en_ld_st_translation_i,
@@ -367,7 +366,6 @@ module ex_stage import ariane_pkg::*; #(
           .acc_result_o         (acc_result_o     ),
           .acc_valid_o          (acc_valid_o      ),
           .acc_exception_o      (acc_exception_o  ),
-          .acc_vfp_o            (acc_vfp_o        ),
           .acc_no_st_pending_i  (dcache_wbuffer_empty_i && no_st_pending_o),
           .acc_req_o            (acc_req_o        ),
           .acc_req_valid_o      (acc_req_valid_o  ),
