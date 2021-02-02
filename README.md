@@ -89,7 +89,7 @@ cd hardware
 # Verilate the design
 make verilate
 # Run the tests
-make riscv_tests_veril
+make riscv_tests_simv
 ```
 
 Alternatively, you can also use the `riscv_tests` target at Ara's top-level Makefile to both compile the RISC-V tests and run their simulation.

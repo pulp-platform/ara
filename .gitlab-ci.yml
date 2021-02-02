@@ -120,11 +120,11 @@ hello_world:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
 
-riscv_tests_veril:
+riscv_tests_simv:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
-    - make -C hardware riscv_tests_veril
+    - make -C hardware riscv_tests_simv
   needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
   dependencies:
     - tc-gcc

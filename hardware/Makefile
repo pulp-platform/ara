@@ -181,8 +181,8 @@ $(veril_library)/V$(veril_top): $(veril_library)/V$(veril_top).mk
 simv: verilate
 	$(veril_library)/V$(veril_top) -l ram,$(app_path)/$(app),elf
 
-.PHONY: riscv_tests_veril
-riscv_tests_veril: $(tests)
+.PHONY: riscv_tests_simv
+riscv_tests_simv: $(tests)
 
 $(tests): rv%: $(app_path)/rv% verilate
 	$(veril_library)/V$(veril_top) -l ram,$<,elf
