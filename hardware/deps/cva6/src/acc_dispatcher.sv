@@ -16,6 +16,8 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     input  logic                                  clk_i,
     input  logic                                  rst_ni,
     input  logic                                  flush_i,
+    // Interface with the CSR regfile
+    input  logic                                  acc_cons_en_i,        // Accelerator memory consistent mode
     // Interface with the issue stage
     input  fu_data_t                              acc_data_i,
     output logic                                  acc_ready_o,          // FU is ready
@@ -118,7 +120,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
       rs1          : acc_data.operand_a,
       rs2          : acc_data.operand_b,
       trans_id     : acc_data.trans_id,
-      store_pending: !acc_no_st_pending_i
+      store_pending: !acc_no_st_pending_i && acc_cons_en_i
     };
 
     // Wait until we receive the acc_commit_i signal

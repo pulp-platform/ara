@@ -86,6 +86,7 @@ module ex_stage import ariane_pkg::*; #(
     input  logic                                   acc_resp_valid_i,
     output logic                                   acc_resp_ready_o,
 
+    input  logic                                   acc_cons_en_i,    // Accelerator memory consistent mode
     output logic                                   acc_ready_o,      // FU is ready
     input logic                                    acc_valid_i,      // Output is valid
     input logic                                    acc_commit_i,
@@ -350,6 +351,7 @@ module ex_stage import ariane_pkg::*; #(
           .clk_i                (clk_i            ),
           .rst_ni               (rst_ni           ),
           .flush_i              (flush_i          ),
+          .acc_cons_en_i        (acc_cons_en_i    ),
           .acc_data_i           (acc_data         ),
           .acc_ready_o          (acc_ready_o      ),
           .acc_valid_i          (acc_valid_i      ),

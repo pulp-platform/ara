@@ -418,6 +418,8 @@ package riscv;
         // Cache Control (platform specifc)
         CSR_DCACHE         = 12'h701,
         CSR_ICACHE         = 12'h700,
+        // Accelerator memory consistency (platform specific)
+        CSR_ACC_CONS       = 12'h702,
         // Triggers
         CSR_TSELECT        = 12'h7A0,
         CSR_TDATA1         = 12'h7A1,

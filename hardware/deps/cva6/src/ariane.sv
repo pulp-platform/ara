@@ -207,6 +207,7 @@ module ariane import ariane_pkg::*; #(
   logic                     dcache_en_csr_nbdcache;
   logic                     csr_write_fflags_commit_cs;
   logic                     icache_en_csr;
+  logic                     acc_cons_en_csr;
   logic                     debug_mode;
   logic                     single_step_csr_commit;
   riscv::pmpcfg_t [15:0]    pmpcfg;
@@ -369,6 +370,7 @@ module ariane import ariane_pkg::*; #(
     .acc_st_disp_i              ( acc_st_disp_ex_id            ),
     .acc_ld_complete_i          ( acc_resp_i.load_complete     ),
     .acc_st_complete_i          ( acc_resp_i.store_complete    ),
+    .acc_cons_en_i              ( acc_cons_en_csr              ),
     // Commit
     .resolved_branch_i          ( resolved_branch              ),
     .trans_id_i                 ( {flu_trans_id_ex_id,  load_trans_id_ex_id,  store_trans_id_ex_id,   fpu_trans_id_ex_id,  acc_trans_id_ex_id }),
@@ -461,13 +463,14 @@ module ariane import ariane_pkg::*; #(
     .acc_resp_ready_o       ( acc_resp_ready_o            ),
     .acc_ready_o            ( acc_ready_ex_id             ),
     .acc_valid_i            ( acc_valid_id_ex             ),
-    .acc_ld_disp_o          ( acc_ld_disp_ex_id            ),
-    .acc_st_disp_o          ( acc_st_disp_ex_id            ),
+    .acc_ld_disp_o          ( acc_ld_disp_ex_id           ),
+    .acc_st_disp_o          ( acc_st_disp_ex_id           ),
     .acc_commit_i           ( acc_commit_commit_ex        ),
     .acc_trans_id_o         ( acc_trans_id_ex_id          ),
     .acc_result_o           ( acc_result_ex_id            ),
     .acc_valid_o            ( acc_valid_ex_id             ),
     .acc_exception_o        ( acc_exception_ex_id         ),
+    .acc_cons_en_i          ( acc_cons_en_csr             ),
     // Performance counters
     .itlb_miss_o            ( itlb_miss_ex_perf           ),
     .dtlb_miss_o            ( dtlb_miss_ex_perf           ),
@@ -589,6 +592,7 @@ module ariane import ariane_pkg::*; #(
     .single_step_o          ( single_step_csr_commit        ),
     .dcache_en_o            ( dcache_en_csr_nbdcache        ),
     .icache_en_o            ( icache_en_csr                 ),
+    .acc_cons_en_o          ( acc_cons_en_csr               ),
     .perf_addr_o            ( addr_csr_perf                 ),
     .perf_data_o            ( data_csr_perf                 ),
     .perf_data_i            ( data_perf_csr                 ),

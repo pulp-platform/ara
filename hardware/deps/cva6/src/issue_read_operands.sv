@@ -69,6 +69,7 @@ module issue_read_operands import ariane_pkg::*; #(
     input  logic                                   acc_st_disp_i,    // Store dispatched to accelerator
     input  logic                                   acc_ld_complete_i,// Load in accelerator complete
     input  logic                                   acc_st_complete_i,// Store in accelerator complete
+    input  logic                                   acc_cons_en_i,
     // commit port
     input  logic [NR_COMMIT_PORTS-1:0][4:0]        waddr_i,
     input  logic [NR_COMMIT_PORTS-1:0][riscv::XLEN-1:0] wdata_i,
@@ -207,11 +208,11 @@ module issue_read_operands import ariane_pkg::*; #(
             end
         end
 
-        if (issue_instr_i.fu == LOAD) begin
+        if (issue_instr_i.fu == LOAD && acc_cons_en_i) begin
             stall |= !acc_no_st_pending;
         end
 
-        if (issue_instr_i.fu == STORE) begin
+        if (issue_instr_i.fu == STORE && acc_cons_en_i) begin
             stall |= !(acc_no_ld_pending && acc_no_st_pending);
         end
     end
