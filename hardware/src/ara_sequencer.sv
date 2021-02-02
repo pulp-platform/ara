@@ -124,7 +124,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
     // Maintain request
     pe_req_d = '{
-      vinsn_running: vinsn_running_q,
+      vinsn_running: vinsn_running_d,
       default      : '0
     };
     pe_req_valid_d = 1'b0;
@@ -234,7 +234,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               vl            : ara_req_i.vl,
               vstart        : ara_req_i.vstart,
               vtype         : ara_req_i.vtype,
-              vinsn_running : vinsn_running_q,
+              vinsn_running : vinsn_running_d,
               default       : '0
             };
             pe_req_valid_d = 1'b1;
