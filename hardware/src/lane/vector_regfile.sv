@@ -76,14 +76,14 @@ module vector_regfile import ara_pkg::*; #(
       .DataWidth(DataWidth),
       .NumPorts (1        )
     ) data_sram (
-      .clk_i  (clk_i                                            ),
-      .rst_ni (rst_ni                                           ),
-      .req_i  (req_i[bank]                                      ),
-      .we_i   (wen_i[bank]                                      ),
-      .rdata_o(rdata[bank]                                      ),
-      .wdata_i(wdata_i[bank]                                    ),
-      .be_i   (be_i[bank]                                       ),
-      .addr_i (addr_i[bank][$clog2(NrBanks) +: $clog2(NumWords)])
+      .clk_i  (clk_i                             ),
+      .rst_ni (rst_ni                            ),
+      .req_i  (req_i[bank]                       ),
+      .we_i   (wen_i[bank]                       ),
+      .rdata_o(rdata[bank]                       ),
+      .wdata_i(wdata_i[bank]                     ),
+      .be_i   (be_i[bank]                        ),
+      .addr_i (addr_i[bank][$clog2(NumWords)-1:0])
     );
   end : gen_banks
 
