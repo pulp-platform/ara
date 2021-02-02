@@ -303,6 +303,7 @@ package ariane_pkg;
       logic                     store_pending;
       logic                     store_complete;
       logic                     load_complete;
+      logic                     vfp;           // Was the issued request a vector FP instruction?
     } accelerator_resp_t;
 
     // ---------------
@@ -645,6 +646,7 @@ package ariane_pkg;
         branchpredict_sbe_t       bp;            // branch predict scoreboard data structure
         logic                     is_compressed; // signals a compressed instructions, we need this information at the commit stage if
                                                  // we want jump accordingly e.g.: +4, +2
+        logic                     vfp;           // is this a vector floating-point instruction?
     } scoreboard_entry_t;
 
     // --------------------

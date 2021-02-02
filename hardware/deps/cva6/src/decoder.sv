@@ -123,6 +123,7 @@ module decoder import ariane_pkg::*; (
         instruction_o.is_compressed = is_compressed_i;
         instruction_o.use_zimm      = 1'b0;
         instruction_o.bp            = branch_predict_i;
+        instruction_o.vfp           = 1'b0;
         ecall                       = 1'b0;
         ebreak                      = 1'b0;
         check_fprm                  = 1'b0;

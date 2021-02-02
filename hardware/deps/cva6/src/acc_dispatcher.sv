@@ -29,6 +29,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     output xlen_t                                 acc_result_o,
     output logic                                  acc_valid_o,
     output exception_t                            acc_exception_o,
+    output logic                                  acc_vfp_o,            // Vector FP instruction?
     // Interface with the commit stage
     // This avoids sending speculative instructions to the accelerator.
     input  logic                                  acc_commit_i,
@@ -187,6 +188,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
       tval : '0,
       valid: acc_resp_i.error
     };
+  assign acc_vfp_o        = acc_resp_i.vfp;
   // Always ready to receive responses
   assign acc_resp_ready_o = 1'b1;
 
