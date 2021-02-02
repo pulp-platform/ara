@@ -1463,7 +1463,59 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               end
             end
 
-            default:;
+            OPFVV: begin: opfvv
+              // These generate a request to Ara's backend
+              ara_req_d.vs1     = insn.varith_type.rs1;
+              ara_req_d.use_vs1 = 1'b1;
+              ara_req_d.vs2     = insn.varith_type.rs2;
+              ara_req_d.use_vs2 = 1'b1;
+              ara_req_d.vd      = insn.varith_type.rd;
+              ara_req_d.use_vd  = 1'b1;
+              ara_req_d.vm      = insn.varith_type.vm;
+              ara_req_d.fp_rm   = acc_req_i.frm;
+              ara_req_valid_d   = 1'b1;
+
+              // Decode based on the func6 field
+              case (insn.varith_type.func6)
+                // VFP Addition
+                6'b000000: ara_req_d.op = ara_pkg::VFADD;
+              endcase
+
+              // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              case (ara_req_d.emul)
+                LMUL_2:
+                  if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 || (insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 || (insn.varith_type.rs2 & 5'b00011) != 5'b00000 || (insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 || (insn.varith_type.rs2 & 5'b00111) != 5'b00000 || (insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              endcase
+
+              // Ara cannot support instructions who operates on more than 64 bits.
+              if (int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+
+              // Instruction is invalid if the vtype is invalid
+              if (vtype_q.vill) begin
+                acc_resp_o.error = 1'b1;
+                ara_req_valid_d  = 1'b0;
+              end
+            end
           endcase
         end
 
