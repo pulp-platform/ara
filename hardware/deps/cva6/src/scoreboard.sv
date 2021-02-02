@@ -65,6 +65,11 @@ module scoreboard #(
 );
   localparam int unsigned BITS_ENTRIES = $clog2(NR_ENTRIES);
 
+  // Avoid accepting an ACCEL instruction if there are pending fcsr writes
+  // This is because we want to give the ACCEL an up-to-date FP rounding mode from fcsr
+  logic fcsr_write_ongoing;
+  logic fcsr_stall;
+
   // this is the FIFO struct of the issue queue
   struct packed {
     logic                          issued;         // this bit indicates whether we issued this instruction e.g.: if it is valid
@@ -99,8 +104,9 @@ module scoreboard #(
     issue_instr_o.trans_id = issue_pointer_q;
     // we are ready if we are not full and don't have any unresolved branches, but it can be
     // the case that we have an unresolved branch which is cleared in that cycle (resolved_branch_i == 1)
-    issue_instr_valid_o    = decoded_instr_valid_i & ~unresolved_branch_i & ~issue_full;
-    decoded_instr_ack_o    = issue_ack_i & ~issue_full;
+    // If we have an incoming Ara instruction but there are pending fcsr writes, wait for their commit (fcsr_stall)
+    issue_instr_valid_o    = decoded_instr_valid_i & ~unresolved_branch_i & ~issue_full & ~fcsr_stall;
+    decoded_instr_ack_o    = issue_ack_i & ~issue_full & ~fcsr_stall;
   end
 
   // maintain a FIFO with issued instructions
@@ -111,7 +117,8 @@ module scoreboard #(
     issue_en       = 1'b0;
 
     // if we got a acknowledge from the issue stage, put this scoreboard entry in the queue
-    if (decoded_instr_valid_i && decoded_instr_ack_o && !flush_unissued_instr_i) begin
+    // If we have an incoming Ara instruction but there are pending fcsr writes, wait for their commit (fcsr_stall)
+    if (decoded_instr_valid_i && decoded_instr_ack_o && !flush_unissued_instr_i && !fcsr_stall) begin
       // the decoded instruction we put in there is valid (1st bit)
       // increase the issue counter and advance issue pointer
       issue_en = 1'b1;
@@ -367,6 +374,31 @@ module scoreboard #(
       commit_pointer_q      <= commit_pointer_n;
     end
   end
+
+  // --------------------------------------------------
+  // Ongoing fcsr-writes radar (for Ara FP operations)
+  // --------------------------------------------------
+
+  // Ara requests for FP operations require information on the rounding mode, encoded in fcsr.
+  // This information is packed into the request
+  // Thus, Ara requests have to wait until there are no pending Ariane fcsr writes, to guarantee
+  // up-to-date information to Ara
+  // This is not worsen CPI since fcsr writes are not common
+
+  // fcsr_write_ongoing is sserted if there is an ongoing fcsr write
+  always_comb begin
+    fcsr_write_ongoing = 1'b0;
+    for (int e = 0; e < NR_ENTRIES; e++) begin
+      fcsr_write_ongoing |= (mem_q[e].sbe.op inside {ariane_pkg::CSR_WRITE, ariane_pkg::CSR_SET, ariane_pkg::CSR_CLEAR}) && (mem_q[e].sbe.result inside {12'h001, 12'h002, 12'h003, 12'h800}) && (mem_q[e].issued);
+    end
+  end
+
+  // Stall the issue if we are accepting an Ara instruction and there is an ongoing write to fcsr
+  assign fcsr_stall = (decoded_instr_i.fu == ariane_pkg::ACCEL) & fcsr_write_ongoing;
+
+  // -----------
+  // Assertions
+  // -----------
 
   //pragma translate_off
   `ifndef VERILATOR
