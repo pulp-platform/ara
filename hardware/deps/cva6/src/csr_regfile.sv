@@ -50,6 +50,9 @@ module csr_regfile import ariane_pkg::*; #(
     output logic                  eret_o,                     // Return from exception, set the PC of epc_o
     output logic  [riscv::VLEN-1:0] trap_vector_base_o,       // Output base of exception vector, correct CSR is output (mtvec, stvec)
     output riscv::priv_lvl_t      priv_lvl_o,                 // Current privilege level the CPU is in
+    // FP Imprecise exceptions
+    input  logic            [2:0] acc_fflags_ex_i,            // Imprecise FP exception from the accelerator (fcsr.fflags format)
+    input  logic                  acc_fflags_ex_valid_i,      // An FP exception from the accelerator occurred
     // FPU
     output riscv::xs_t            fs_o,                       // Floating point extension status
     output logic [4:0]            fflags_o,                   // Floating-Point Accured Exceptions
@@ -663,6 +666,15 @@ module csr_regfile import ariane_pkg::*; #(
         if (csr_write_fflags_i) begin
             fcsr_d.fflags = csr_wdata_i[4:0] | fcsr_q.fflags;
         end
+
+        // ----------------------------
+        // Ara FP imprecise exceptions
+        // ----------------------------
+
+        // Update fflags as soon as a FP exception occurs in the accelerator
+        // The exception is imprecise, and the fcsr.fflags update always happens immediately
+        fcsr_d.fflags |= acc_fflags_ex_valid_i ? acc_fflags_ex_i : 3'b0;
+
         // ---------------------
         // External Interrupts
         // ---------------------

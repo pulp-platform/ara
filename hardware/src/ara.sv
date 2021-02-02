@@ -37,6 +37,8 @@ module ara import ara_pkg::*; #(
     output accelerator_resp_t acc_resp_o,
     output logic              acc_resp_valid_o,
     input  logic              acc_resp_ready_i,
+    output logic        [2:0] acc_fflags_ex_o,
+    output logic              acc_fflags_ex_valid_o,
     // AXI interface
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i
@@ -142,6 +144,9 @@ module ara import ara_pkg::*; #(
    *  Lanes  *
    ***********/
 
+  // Interface with CVA6
+  logic   [NrLanes-1:0][2:0] fflags_ex;
+  logic   [NrLanes-1:0]      fflags_ex_valid;
   // Interface with the vector load/store unit
   // Store unit
   elen_t  [NrLanes-1:0]      stu_operand;
@@ -184,6 +189,9 @@ module ara import ara_pkg::*; #(
       .scan_data_i            (1'b0                        ),
       .scan_data_o            (/* Unused */                ),
       .lane_id_i              (lane[idx_width(NrLanes)-1:0]),
+      // Interface with CVA6
+      .fflags_ex_o            (fflags_ex[lane]             ),
+      .fflags_ex_valid_o      (fflags_ex_valid[lane]       ),
       // Interface with the sequencer
       .pe_req_i               (pe_req                      ),
       .pe_req_valid_i         (pe_req_valid                ),
@@ -226,6 +234,16 @@ module ara import ara_pkg::*; #(
       .mask_ready_o           (lane_mask_ready[lane]       )
     );
   end: gen_lanes
+
+  // Combine imprecise FP exception signals and send them to CVA6 to update fcsr.fflags
+  always_comb begin
+      acc_fflags_ex_o       = 3'b0;
+      acc_fflags_ex_valid_o = 1'b0;
+    for (int lane = 0; lane < NrLanes; lane++) begin
+      acc_fflags_ex_o       |= fflags_ex[lane];
+      acc_fflags_ex_valid_o |= fflags_ex_valid[lane];
+    end
+  end
 
   /****************************
    *  Vector Load/Store Unit  *

@@ -579,6 +579,8 @@ module ara_soc import axi_pkg::*; #(
   logic              [AxiAddrWidth-1:0] inval_addr;
   logic                                 inval_valid;
   logic                                 inval_ready;
+  logic              [2:0]              acc_fflags_ex;
+  logic                                 acc_fflags_ex_valid;
 
   ariane #(
     .ArianeCfg(ArianeAraConfig)
@@ -603,7 +605,9 @@ module ara_soc import axi_pkg::*; #(
     .acc_cons_en_o   (acc_cons_en           ),
     .inval_addr_i    (inval_addr            ),
     .inval_valid_i   (inval_valid           ),
-    .inval_ready_o   (inval_ready           )
+    .inval_ready_o   (inval_ready           ),
+    .acc_fflags_ex_i       (acc_fflags_ex      ),
+    .acc_fflags_ex_valid_i (acc_fflags_ex_valid)
   );
 
   axi_dw_converter #(
@@ -675,6 +679,8 @@ module ara_soc import axi_pkg::*; #(
     .acc_resp_o      (acc_resp      ),
     .acc_resp_valid_o(acc_resp_valid),
     .acc_resp_ready_i(acc_resp_ready),
+    .acc_fflags_ex_o       (acc_fflags_ex      ),
+    .acc_fflags_ex_valid_o (acc_fflags_ex_valid),
     .axi_req_o       (ara_axi_req   ),
     .axi_resp_i      (ara_axi_resp  )
   );
