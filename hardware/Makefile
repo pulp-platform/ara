@@ -167,11 +167,11 @@ $(veril_library)/V$(veril_top): Makefile ../Bender.yml $(shell find src -type f)
 
 # Simulation
 .PHONY: simv
-simv: verilate
+simv:
 	$(veril_library)/V$(veril_top) -l ram,$(app_path)/$(app),elf
 
 .PHONY: riscv_tests_simv
-riscv_tests_simv: verilate $(tests)
+riscv_tests_simv: $(tests)
 
 $(tests): rv%: $(app_path)/rv%
 	$(veril_library)/V$(veril_top) -l ram,$<,elf
