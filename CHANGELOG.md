@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 - Hardware compilation with Verilator
+- Software implementation of a matrix multiplication kernel
 
 ### Changed
 
