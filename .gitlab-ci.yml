@@ -111,16 +111,19 @@ compile_riscv_tests:
 compile_ara:
   stage: compile
   script:
-    - |
-      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup ara_tb_verilator_model; then
-        export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
-        # Download Verilator and add missing links
-        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
-        ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
-        ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
-        make -C hardware verilate
-        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert ara_tb_verilator_model
-      fi
+    - export CCACHE_DIR=$CI_PROJECT_DIR/.ccache
+    # Download Verilator and add missing links
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
+    - ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
+    - ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
+    - make -C hardware verilate
+  artifacts:
+    paths:
+      - hardware/build/verilator
+      - hardware/bender
+  needs: ["tc-verilator"]
+  dependencies:
+    - tc-verilator
 
 ####################
 #  Simulate stage  #
@@ -145,7 +148,6 @@ matmul:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
-    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get ara_tb_verilator_model
     - make -C hardware app=${CI_JOB_NAME} simv
   needs: ["tc-gcc", "compile_apps", "compile_ara"]
   dependencies:
@@ -157,7 +159,6 @@ riscv_tests_simv:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
-    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get ara_tb_verilator_model
     - make -C hardware riscv_tests_simv
   needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
   dependencies:
