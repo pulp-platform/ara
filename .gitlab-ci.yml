@@ -21,7 +21,7 @@ variables:
   VERILATOR_ROOT: '$CI_PROJECT_DIR/install/verilator'
   PATH: '/home/gitlabci/.cargo/bin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/usr/local/condor/bin:/usr/sepp/bin:$VERILATOR_ROOT/bin'
   CCACHE_DIR: $CI_PROJECT_DIR/.ccache
-  CCACHE_DISABLE: 1
+  OBJCACHE: ''
 
 workflow:
   rules:
