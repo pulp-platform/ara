@@ -144,10 +144,11 @@ riscv_tests_simv:
     - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get ara_tb_verilator_model
     - make -C hardware riscv_tests_simv
-  needs: ["tc-gcc", "compile_riscv_tests"]
+  needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
   dependencies:
     - tc-gcc
     - compile_riscv_tests
+    - compile_ara
 
 riscv_tests_spike:
   stage: simulate

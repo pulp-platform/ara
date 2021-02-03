@@ -137,7 +137,7 @@ tests := $(ara_tests) $(cva6_tests)
 .PHONY: verilate
 verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
-$(veril_library)/V$(veril_top).mk: Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+$(veril_library)/V$(veril_top): Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
 	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
@@ -171,9 +171,7 @@ $(veril_library)/V$(veril_top).mk: Makefile ../Bender.yml $(shell find src -type
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp/*.cc      \
   $(ROOT_DIR)/tb/verilator/ara_tb.cpp                                           \
   --cc                                                                          \
-  --top-module $(veril_top)
-
-$(veril_library)/V$(veril_top): $(veril_library)/V$(veril_top).mk
+  --top-module $(veril_top) &&                                                  \
 	cd $(veril_library) && make -j4 -f V$(veril_top).mk
 
 # Simulation
