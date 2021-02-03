@@ -93,7 +93,6 @@ $(buildpath):
 	mkdir -p $(buildpath)
 
 # Bender
-.PHONY: bender
 bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
 	(curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
@@ -108,8 +107,8 @@ $(buildpath)/$(library):
 
 # Compilation
 .PHONY: compile
-compile: dpi lib $(buildpath) $(buildpath)/compile.tcl | bender
-$(buildpath)/compile.tcl: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+compile: dpi lib $(buildpath) bender $(buildpath)/compile.tcl
+$(buildpath)/compile.tcl: Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test -t test $(bender_defs) > $(buildpath)/compile.tcl
 	echo "exit" >> $(buildpath)/compile.tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile.tcl
@@ -136,9 +135,9 @@ tests := $(ara_tests) $(cva6_tests)
 
 # Verilator
 .PHONY: verilate
-verilate: $(buildpath) $(veril_library)/V$(veril_top) | bender
+verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
-$(veril_library)/V$(veril_top).mk: Makefile bender ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+$(veril_library)/V$(veril_top).mk: Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
 	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script
 # Verilate the design
@@ -183,9 +182,9 @@ simv: verilate
 	$(veril_library)/V$(veril_top) -l ram,$(app_path)/$(app),elf
 
 .PHONY: riscv_tests_simv
-riscv_tests_simv: $(tests)
+riscv_tests_simv: verilate $(tests)
 
-$(tests): rv%: $(app_path)/rv% verilate
+$(tests): rv%: $(app_path)/rv%
 	$(veril_library)/V$(veril_top) -l ram,$<,elf
 
 # DPIs

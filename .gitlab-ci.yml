@@ -129,6 +129,10 @@ hello_world:
   stage: simulate
   script:
     - make -C hardware app=${CI_JOB_NAME} simc
+    # Download Verilator and add missing links
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
+    - ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
+    - ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
   artifacts:
     paths:
       - hardware/build/trace_hart_*.log
@@ -143,6 +147,10 @@ riscv_tests_simv:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
+    # Download Verilator and add missing links
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
+    - ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
+    - ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
     - make -C hardware riscv_tests_simv
   needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
   dependencies:
