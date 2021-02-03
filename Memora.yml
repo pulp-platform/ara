@@ -21,3 +21,15 @@ artifacts:
       - toolchain/riscv-isa-sim
     outputs:
       - install/riscv-isa-sim
+
+  ara_tb_verilator_model:
+    inputs:
+      - Makefile
+      - toolchain/verilator
+      - config/config.mk
+      - hardware/deps
+      - hardware/src
+      - hardware/tb
+      - hardware/Makefile
+    outputs:
+      - hardware/build/verilator/Vara_tb_verilator
