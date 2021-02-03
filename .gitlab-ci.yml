@@ -117,7 +117,7 @@ compile_ara:
         $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
         ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
         ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
-        veril_trace=0 make -C hardware verilate
+        make -C hardware verilate
         $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert ara_tb_verilator_model
       fi
 
