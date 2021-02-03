@@ -30,6 +30,7 @@ artifacts:
       - hardware/deps
       - hardware/src
       - hardware/tb
+      - hardware/include
       - hardware/Makefile
     outputs:
       - hardware/build/verilator/Vara_tb_verilator
