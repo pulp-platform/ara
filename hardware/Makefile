@@ -171,7 +171,7 @@ simv:
 riscv_tests_simv: $(tests)
 
 $(tests): rv%: $(app_path)/rv%
-	$(veril_library)/V$(veril_top) -l ram,$<,elf
+	$(veril_library)/V$(veril_top) -l ram,$<,elf &> $(buildpath)/$@.trace
 
 # DPIs
 .PHONY: dpi

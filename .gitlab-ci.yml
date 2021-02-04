@@ -160,12 +160,15 @@ riscv_tests_simv:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
-    - make -C hardware riscv_tests_simv
+    - make -C hardware -j4 riscv_tests_simv
   needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
   dependencies:
     - tc-gcc
     - compile_riscv_tests
     - compile_ara
+  artifacts:
+    paths:
+      - hardware/build/*.trace
 
 riscv_tests_spike:
   stage: simulate
