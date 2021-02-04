@@ -171,8 +171,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
     case (vinsn_issue_q.vtype.vsew)
       EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
-      EW32: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[64:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
-      EW16: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[64:16])) ?     {4{16'h7e00}} : {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW32: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[63:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[63:16])) ?     {4{16'h7e00}} : {4{vinsn_issue_q.scalar_op[15:0]}};
       EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
