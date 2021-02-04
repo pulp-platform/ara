@@ -62,6 +62,7 @@ module issue_stage import ariane_pkg::*; #(
     input  logic                                     acc_st_disp_i,
     input  logic                                     acc_ld_complete_i,
     input  logic                                     acc_st_complete_i,
+    input  logic                                     acc_flush_undisp_i,
     input  logic                                     acc_cons_en_i,
 
     // write back port

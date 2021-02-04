@@ -24,6 +24,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     input  logic                                  acc_valid_i,          // Output is valid
     output logic                                  acc_ld_disp_o,
     output logic                                  acc_st_disp_o,
+    output logic                                  acc_flush_undisp_o,
     output logic              [TRANS_ID_BITS-1:0] acc_trans_id_o,
     output xlen_t                                 acc_result_o,
     output logic                                  acc_valid_o,
@@ -44,6 +45,8 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
   );
 
   `include "common_cells/registers.svh"
+
+  assign acc_flush_undisp_o = flush_i;
 
   /*************************
    *  Accelerator request  *

@@ -147,6 +147,7 @@ module ariane import ariane_pkg::*; #(
   logic                     acc_valid_id_ex;
   logic                     acc_ld_disp_ex_id;
   logic                     acc_st_disp_ex_id;
+  logic                     acc_flush_undisp_ex_id;
   logic [TRANS_ID_BITS-1:0] acc_trans_id_ex_id;
   riscv::xlen_t             acc_result_ex_id;
   logic                     acc_valid_ex_id;
@@ -368,6 +369,7 @@ module ariane import ariane_pkg::*; #(
     .acc_valid_o                ( acc_valid_id_ex              ),
     .acc_ld_disp_i              ( acc_ld_disp_ex_id            ),
     .acc_st_disp_i              ( acc_st_disp_ex_id            ),
+    .acc_flush_undisp_i         ( acc_flush_undisp_ex_id       ),
     .acc_ld_complete_i          ( acc_resp_i.load_complete     ),
     .acc_st_complete_i          ( acc_resp_i.store_complete    ),
     .acc_cons_en_i              ( acc_cons_en_csr              ),
@@ -465,6 +467,7 @@ module ariane import ariane_pkg::*; #(
     .acc_valid_i            ( acc_valid_id_ex             ),
     .acc_ld_disp_o          ( acc_ld_disp_ex_id           ),
     .acc_st_disp_o          ( acc_st_disp_ex_id           ),
+    .acc_flush_undisp_o     ( acc_flush_undisp_ex_id      ),
     .acc_commit_i           ( acc_commit_commit_ex        ),
     .acc_trans_id_o         ( acc_trans_id_ex_id          ),
     .acc_result_o           ( acc_result_ex_id            ),

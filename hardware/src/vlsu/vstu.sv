@@ -262,11 +262,12 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       // Acknowledge the B beat
       axi_b_ready_o = 1'b1;
 
-      // Signal complete store
-      store_complete_o = 1'b1;
 
       // Mark the vector instruction as being done
       if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin
+        // Signal complete store
+        store_complete_o = 1'b1;
+
         pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
         // Update the commit counters and pointers
