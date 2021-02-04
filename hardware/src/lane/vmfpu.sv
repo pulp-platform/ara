@@ -305,7 +305,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   elen_t vdiv_result;
   // Short circuit to invalid input elements with a mask
-  strb_t vdiv_be;
+  strb_t issue_be;
 
   logic vdiv_in_valid;
   logic vdiv_out_valid;
@@ -323,7 +323,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_b_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
     .mask_i     (mask_i                                                     ),
     .op_i       (vinsn_issue_q.op                                           ),
-    .be_i       (vdiv_be                                                    ),
+    .be_i       (issue_be                                                   ),
     .vew_i      (vinsn_issue_q.vtype.vsew                                   ),
     .result_o   (vdiv_result                                                ),
     .mask_o     (vdiv_mask                                                  ),
@@ -541,7 +541,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     mask_ready_o = 1'b0;
 
     // Short-circuit invalid elements divisions with a mask
-    vdiv_be = '0;
+    issue_be = '0;
 
     /***************************************
      *  Issue the instruction to the unit  *
@@ -572,7 +572,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
             issue_cnt_d = issue_cnt_q - issue_element_cnt;
 
             // Give the divider the correct be signal
-            vdiv_be = be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i);
+            issue_be = be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i);
           end
           // Finished issuing the micro-operations of this vector instruction
           if (issue_cnt_d == '0) begin
