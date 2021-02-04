@@ -478,7 +478,7 @@ module issue_read_operands import ariane_pkg::*; #(
     // Accelerator instruction is acknowleged and will be issued the next cycle
     logic acc_valid_d;
 
-    assign acc_valid_d = !issue_instr_i.ex.valid && issue_instr_valid_i && issue_ack_o && (issue_instr_i.fu == ACCEL);
+    assign acc_valid_d = !issue_instr_i.ex.valid && issue_instr_valid_i && issue_ack_o && (issue_instr_i.fu == ACCEL) && !flush_i;
 
     // Loads
     logic       acc_spec_loads_overflow;
