@@ -1007,17 +1007,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 end
               endcase
 
-              // Ara can only support this kind of operation if vl mod 8 == 0.
-              // Otherwise, we would either need to have a 'bit enable' signal to leave
-              // individual bits untouched, or we would need to read back the destination
-              // register before writing the result back to the VRF.
-              if (ara_req_d.op inside {VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR}) begin
-                if (vl_q % 8 != '0) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end
-
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
               unique case (ara_req_d.emul)
                 LMUL_2:
