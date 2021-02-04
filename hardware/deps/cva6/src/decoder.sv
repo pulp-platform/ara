@@ -1081,8 +1081,8 @@ module decoder import ariane_pkg::*; (
                 // Forward the undecoded instruction in the `result` field
                 imm_select = INSN;
 
-                // At this step, consider the accelerator instructions are not illegal
-                illegal_instr = 1'b0;
+                // Check that mstatus.FS is not OFF if we have a FP instruction for the accelerator
+                illegal_instr = (is_vfp && (fs_i == riscv::Off)) ? 1'b1 : 1'b0;
             end
         end
     end
