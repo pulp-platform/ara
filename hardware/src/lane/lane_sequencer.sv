@@ -158,6 +158,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           use_scalar_op: pe_req_i.use_scalar_op,
           vd           : pe_req_i.vd,
           use_vd       : pe_req_i.use_vd,
+          fp_rm        : pe_req_i.fp_rm,
           vtype        : pe_req_i.vtype,
           default      : '0
         };
