@@ -156,6 +156,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  /******************
+   *  Help signals  *
+   ******************/
+
+   logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
+
+   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
+   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
+   assign vinsn_issue_fpu = vinsn_issue_q.op == VFADD;
+
   /********************
    *  Scalar operand  *
    ********************/
@@ -171,8 +181,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
     case (vinsn_issue_q.vtype.vsew)
       EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
-      EW32: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[63:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
-      EW16: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[63:16])) ?     {4{16'h7e00}} : {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW32: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:16])) ?     {4{16'h7e00}} : {4{vinsn_issue_q.scalar_op[15:0]}};
       EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
@@ -542,14 +552,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       // Do we have all the operands necessary for this instruction?
       if ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) && (mask_valid_i || vinsn_issue_q.vm)) begin
         // Validate the inputs of the correct unit
-        case (vinsn_issue_q.op) inside
-          [VMUL:VNMSUB]: vmul_in_valid = 1'b1;
-          [VDIVU:VREM] : vdiv_in_valid = 1'b1;
-          VFADD        : vfpu_in_valid = 1'b1;
-        endcase
+          vmul_in_valid = vinsn_issue_mul ? 1'b1 : 1'b0;
+          vdiv_in_valid = vinsn_issue_div ? 1'b1 : 1'b0;
+          vfpu_in_valid = vinsn_issue_fpu ? 1'b1 : 1'b0;
 
         // Is the unit in use ready?
-        if ((vinsn_issue_q.op inside {[VMUL:VNMSUB]} && vmul_in_ready) || (vinsn_issue_q.op inside {[VDIVU:VREM]} && vdiv_in_ready) || (vinsn_issue_q.op inside {VFADD} && vfpu_in_ready)) begin
+        if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) || (vinsn_issue_fpu && vfpu_in_ready)) begin
           // Acknowledge the operands of this instruction
           mfpu_operand_ready_o = {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
           // Acknowledge the mask unit
