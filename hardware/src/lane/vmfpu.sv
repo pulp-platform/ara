@@ -438,11 +438,31 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   end : vfpu_preprocessing
 
+  // If an element is masked, prevent it from raising an exception (all operands power of 2 should do the trick)
+  // TODO: this is overkill, make the FPU avoid the unwanted exceptions, internally
+  elen_t masked_operand_a, masked_operand_b, masked_operand_c;
+  elen_t safe_operand;
+  always_comb begin
+    // Create the power of 2 elements
+    safe_operand = 64'h4000000000000000;
+    case (vinsn_issue.vtype.vsew)
+      EW64: safe_operand = 64'h4000000000000000;
+      EW32: safe_operand = 64'h4000000040000000;
+      EW16: safe_operand = 64'h4000400040004000;
+    endcase
+    // Choose a safe element if the corresponding element is masked
+    for (int b = 0; b < 4; b++) begin
+      masked_operand_a[16*b +: 16] = issue_be[2*b] ? operand_a[16*b +: 16] : safe_operand[16*b +: 16];
+      masked_operand_b[16*b +: 16] = issue_be[2*b] ? operand_b[16*b +: 16] : safe_operand[16*b +: 16];
+      masked_operand_c[16*b +: 16] = issue_be[2*b] ? operand_c[16*b +: 16] : safe_operand[16*b +: 16];
+    end
+  end
+
   // FPU signals
   elen_t [2:0] vfpu_operands;
-  assign vfpu_operands[0] = operand_a;
-  assign vfpu_operands[1] = operand_b;
-  assign vfpu_operands[2] = operand_c;
+  assign vfpu_operands[0] = masked_operand_a;
+  assign vfpu_operands[1] = masked_operand_b;
+  assign vfpu_operands[2] = masked_operand_c;
 
   elen_t              vfpu_result;
   fpnew_pkg::status_t vfpu_ex_flag;
