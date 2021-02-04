@@ -1504,10 +1504,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 end
               endcase
 
+              // Ara supports 16-bit float, 32-bit float, 64-bit float.
               // Ara cannot support instructions who operates on more than 64 bits.
-              if (int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                acc_resp_o.error = 1'b1;
-                ara_req_valid_d  = 1'b0;
+              // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
+              if (ariane_pkg::XF16) begin
+                if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              end else begin
+                if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
               end
 
               // Instruction is invalid if the vtype is invalid
