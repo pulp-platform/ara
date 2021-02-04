@@ -33,8 +33,6 @@ dpi_library    ?= work-dpi
 veril_library  ?= $(buildpath)/verilator
 # verilator path
 veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
-# verilator threads
-veril_threads  ?= 4
 # verilator top-level
 veril_top      ?= ara_tb_verilator
 # Top level module to compile
@@ -134,7 +132,6 @@ $(veril_library)/V$(veril_top): Makefile ../Bender.yml $(shell find src -type f)
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script                     \
   -GNrLanes=$(nr_lanes)                                                         \
-  --threads $(veril_threads)                                                    \
   -O3                                                                           \
   -Wno-BLKANDNBLK                                                               \
   -Wno-CASEINCOMPLETE                                                           \
