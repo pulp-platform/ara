@@ -164,14 +164,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Replicate the scalar operand on the 64-bit word, depending
   // on the element width.
+  // Also check if the FP scalar is NaN boxed, otherwise return a qNaN
   always_comb begin
     // Default assignment
     scalar_op = '0;
 
     case (vinsn_issue_q.vtype.vsew)
       EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
-      EW32: scalar_op = {2{vinsn_issue_q.scalar_op[31:0]}};
-      EW16: scalar_op = {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW32: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[64:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: scalar_op = (vinsn_issue_q.op == VFADD && ~(&vinsn_issue_q.scalar_op[64:16])) ?     {4{16'h7e00}} : {4{vinsn_issue_q.scalar_op[15:0]}};
       EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
