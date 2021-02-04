@@ -177,7 +177,7 @@ package ariane_pkg;
     localparam bit ENABLE_ACCELERATOR = RVV;
 
     // Transprecision floating-point extensions configuration
-    localparam bit XF16    = 1'b0; // Is half-precision float extension (Xf16) enabled
+    localparam bit XF16    = 1'b1; // Is half-precision float extension (Xf16) enabled
     localparam bit XF16ALT = 1'b0; // Is alternative half-precision float extension (Xf16alt) enabled
     localparam bit XF8     = 1'b0; // Is quarter-precision float extension (Xf8) enabled
     localparam bit XFVEC   = 1'b0; // Is vectorial float extension (Xfvec) enabled
