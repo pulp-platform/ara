@@ -299,9 +299,10 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   // Serial divider
-  serdiv_mod #(
-    .WIDTH(ELEN)
-  ) i_serdiv_mod (
+  serdiv #(
+    .WIDTH(ELEN),
+    .STABLE_HANDSHAKE(1)
+  ) i_serdiv (
     .clk_i    (clk_i            ),
     .rst_ni   (rst_ni           ),
     .id_i     ('0               ),
