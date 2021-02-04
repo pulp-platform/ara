@@ -372,7 +372,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   // FPU preprocessing stage
   always_comb begin: vfpu_preprocessing
-    operand_a  = mfpu_operand_i[0];
+    operand_a  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0];
     operand_b  = mfpu_operand_i[1];
     operand_c  = mfpu_operand_i[2];
     // Default rounding-mode from fcsr.rm

@@ -1061,7 +1061,7 @@ module decoder import ariane_pkg::*; (
                 // Send accelerator instructions to the coprocessor
                 instruction_o.fu  = ACCEL;
                 instruction_o.vfp = is_vfp;
-                instruction_o.rs1 = is_rs1 ? instr.rtype.rs1 : {REG_ADDR_SIZE{1'b0}};
+                instruction_o.rs1 = (is_rs1 || is_fs1) ? instr.rtype.rs1 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rs2 = is_rs2 ? instr.rtype.rs2 : {REG_ADDR_SIZE{1'b0}};
                 instruction_o.rd  = is_rd ? instr.rtype.rd : {REG_ADDR_SIZE{1'b0}};
 
