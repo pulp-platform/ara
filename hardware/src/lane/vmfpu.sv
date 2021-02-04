@@ -381,6 +381,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     fp_opmod   = 1'b0;
     fp_fmt     = fpnew_pkg::FP64;
     fp_int_fmt = fpnew_pkg::int_format_e'(fp_fmt);
+    fp_sign    = 3'b0;
 
     case (vinsn_issue.op)
       VFADD: begin
@@ -601,7 +602,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VDIVU:VREM]:  begin
+      VFADD:  begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
