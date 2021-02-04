@@ -28,8 +28,9 @@ sources:
     - hardware/src/lane/lane_sequencer.sv
     - hardware/src/lane/operand_queue.sv
     - hardware/src/lane/operand_requester.sv
+    - hardware/src/lane/simd_div.sv
+    - hardware/src/lane/simd_mul.sv
     - hardware/src/lane/valu.sv
-    - hardware/src/lane/vmfpu.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/masku/masku.sv
     - hardware/src/vlsu/addrgen.sv
@@ -37,13 +38,15 @@ sources:
     - hardware/src/vlsu/vstu.sv
     # Level 2
     - hardware/src/lane/operand_queues_stage.sv
-    - hardware/src/lane/vector_fus_stage.sv
+    - hardware/src/lane/vmfpu.sv
     - hardware/src/vlsu/vlsu.sv
     # Level 3
-    - hardware/src/lane/lane.sv
+    - hardware/src/lane/vector_fus_stage.sv
     # Level 4
-    - hardware/src/ara.sv
+    - hardware/src/lane/lane.sv
     # Level 5
+    - hardware/src/ara.sv
+    # Level 6
     - hardware/src/ara_soc.sv
     #files:
     # Level 1
