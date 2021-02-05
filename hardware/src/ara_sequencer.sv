@@ -165,25 +165,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_ready_o        = 1'b0;
         // Received a new request
         end else if (ara_req_valid_i) begin
-          /************************
-           *  Structural hazards  *
-           ************************/
-          automatic logic structural_hazard = 1'b0;
-
-          case (vfu(ara_req_i.op))
-            // There is a structural hazard between the Store Unit and the Mask Unit (used for OPVMM instructions),
-            // since they share an instruction queue.
-            // If that hazard is active, do not activate the request and wait.
-            VFU_StoreUnit:
-              if (|pe_vinsn_running_q[NrLanes + OffsetMask])
-                structural_hazard = 1'b1;
-            VFU_MaskUnit:
-              if (|pe_vinsn_running_q[NrLanes + OffsetStore])
-                structural_hazard = 1'b1;
-          endcase
-
-          // PEs are ready, there is no structural hazard, and we can handle another running vector instruction
-          if (&pe_req_ready_i && !structural_hazard && !vinsn_running_full) begin
+          // PEs are ready, and we can handle another running vector instruction
+          if (&pe_req_ready_i && !vinsn_running_full) begin
             // Acknowledge instruction
             ara_req_ready_o = 1'b1;
 
