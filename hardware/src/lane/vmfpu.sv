@@ -389,18 +389,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_issue_valid) begin
       // Do we have all the operands necessary for this instruction?
       if ((mfpu_operand_valid_i[2] || !vinsn_issue.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (mfpu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm)) begin
-        // How many elements we want to issue?
-        automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
-        if (issue_element_cnt > issue_cnt_q)
-          issue_element_cnt = issue_cnt_q;
-
         // Validate the inputs of the correct unit
         case (vinsn_issue.op) inside
-          [VMUL:VNMSUB]: vmul_in_valid = 1'b1; // Pipelined:   it handshakes when it is ready to accept the inptus
-          [VDIVU:VREM] : vdiv_in_valid = 1'b1; // Multi-cycle: it handshakes when the output is valid
+          [VMUL:VNMSUB]: vmul_in_valid = 1'b1;
+          [VDIVU:VREM] : vdiv_in_valid = 1'b1;
         endcase
-        // Give the divider the correct be signal
-        vdiv_be = be(issue_element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm ? {StrbWidth{1'b1}} : mask_i);
 
         // Is the unit in use ready?
         if ((vinsn_issue.op inside {[VMUL:VNMSUB]} && vmul_in_ready) || (vinsn_issue.op inside {[VDIVU:VREM]} && vdiv_in_ready)) begin
@@ -409,9 +402,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
           // Acknowledge the mask unit
           mask_ready_o         = ~vinsn_issue.vm;
 
-          // Update the number of elements still to be issued
-          issue_cnt_d = issue_cnt_q - issue_element_cnt;
+          begin
+            // How many elements are we issuing?
+            automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+            // Update the number of elements still to be issued
+            if (issue_element_cnt > issue_cnt_q)
+              issue_element_cnt = issue_cnt_q;
+            issue_cnt_d = issue_cnt_q - issue_element_cnt;
 
+            // Give the divider the correct be signal
+            vdiv_be = be(issue_element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm ? {StrbWidth{1'b1}} : mask_i);
+          end
           // Finished issuing the micro-operations of this vector instruction
           if (issue_cnt_d == '0) begin
             // Bump issue counter and pointers
