@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Hardware support for:
+  - Vector single-width integer divide instructions (vdivu, vdiv, vremu, vrem)
+
 ## 0.4.0 - 2020-02-04
 
 ### Added
