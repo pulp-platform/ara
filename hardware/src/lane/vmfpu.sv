@@ -164,7 +164,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
    assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
    assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-   assign vinsn_issue_fpu = vinsn_issue_q.op == VFADD;
+   assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFMACC]};
 
   /********************
    *  Scalar operand  *
@@ -400,6 +400,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         // Addition is between operands B and C
         operand_c = operand_a;
       end
+      VFMACC: begin
+        fp_op     = fpnew_pkg::FMADD;
+      end
       /*
       VFSQRT: begin
         // Avoid a NaN on the unused operand of the FPU.
@@ -631,7 +634,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      VFADD:  begin
+      [VFADD:VFMACC]:  begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
