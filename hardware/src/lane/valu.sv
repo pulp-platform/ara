@@ -490,9 +490,14 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
 
     unique case (op_i)
       // Logical operations
-      VAND: res = operand_a_i & operand_b_i;
-      VOR : res = operand_a_i | operand_b_i;
-      VXOR: res = operand_a_i ^ operand_b_i;
+      VAND, VMAND: res = operand_a_i & operand_b_i;
+      VMANDNOT   : res = ~operand_a_i & operand_b_i;
+      VMNAND     : res = ~(operand_a_i & operand_b_i);
+      VOR, VMOR  : res = operand_a_i | operand_b_i;
+      VMNOR      : res = ~(operand_a_i | operand_b_i);
+      VMORNOT    : res = ~operand_a_i | operand_b_i;
+      VXOR, VMXOR: res = operand_a_i ^ operand_b_i;
+      VMXNOR     : res = ~(operand_a_i ^ operand_b_i);
 
       // Arithmetic instructions
       VADD, VADC: unique case (vew_i)
