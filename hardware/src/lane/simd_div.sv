@@ -73,16 +73,14 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     logic [3:0][15:0] w16;
     logic [7:0][ 7:0] w8;
   } operand_t;
-  operand_t opa_d, opa_q, opb_d, opb_q;
-  vew_e     vew_d, vew_q;
-  ara_op_e  op_d, op_q;
-  strb_t    be_d, be_q;
+  operand_t opa, opb;
+  assign opa = operand_t'(operand_a_i);
+  assign opb = operand_t'(operand_b_i);
   // Output buffer, directly linked to result_o
-  elen_t    result_d, result_q;
+  elen_t result_d, result_q;
   assign result_o = result_q;
-  // Mask buffer, directly linked to mask_o
-  strb_t mask_d, mask_q;
-  assign mask_o = mask_q;
+  // Mask input, directly linked to mask_o
+  assign mask_o = mask_i;
 
   // Counters
   logic       load_cnt, issue_cnt_en, commit_cnt_en;
@@ -97,18 +95,6 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   // Partially processed data
   elen_t    opa_w8, opb_w8, opa_w16, opb_w16, opa_w32, opb_w32, opa_w64, opb_w64;
   operand_t serdiv_result_masked, shifted_result;
-
-  /**********************
-   *  In/Out registers  *
-   **********************/
-
-  // Input registers
-  assign opa_d  = (valid_i && ready_o) ? operand_a_i : opa_q;
-  assign opb_d  = (valid_i && ready_o) ? operand_b_i : opb_q;
-  assign vew_d  = (valid_i && ready_o) ? vew_i       : vew_q;
-  assign op_d   = (valid_i && ready_o) ? op_i        : op_q;
-  assign be_d   = (valid_i && ready_o) ? be_i        : be_q;
-  assign mask_d = (valid_i && ready_o) ? mask_i      : mask_q;
 
   /************
    *  Control  *
@@ -125,14 +111,13 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     case (issue_state_q)
       ISSUE_IDLE: begin
         // We can accept a new request from the external environment
-        ready_o       = 1'b1;
         issue_state_d = valid_i ? LOAD : ISSUE_IDLE;
       end
       LOAD: begin
         // The request was accepted: load how many elements to process/commit
         load_cnt      = 1'b1;
         // Check if the next byte is valid or not. If not, skip it.
-        issue_state_d = (be_q[cnt_init_val]) ? ISSUE_VALID : ISSUE_SKIP;
+        issue_state_d = (be_i[cnt_init_val]) ? ISSUE_VALID : ISSUE_SKIP;
       end
       ISSUE_VALID: begin
         // The inputs are valid
@@ -146,7 +131,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
             issue_state_d = WAIT_DONE;
           // If we are not issuing the last operands, decide if to process or skip the next byte
           end else begin
-            issue_state_d = (be_q[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
+            issue_state_d = (be_i[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
           end
         end
       end
@@ -158,12 +143,13 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
           issue_state_d = WAIT_DONE;
         // If we are not issuing the last operands, decide if to process or skip the next byte
         end else begin
-          issue_state_d = (be_q[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
+          issue_state_d = (be_i[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
         end
       end
       WAIT_DONE: begin
         // Wait for the entire 64-bit result to be created
-        // We need vew_q stable when serdiv_result is produced
+        // We need vew_i stable when serdiv_result is produced
+        ready_o       = valid_o;
         issue_state_d = valid_o ? ISSUE_IDLE : WAIT_DONE;
       end
       default: begin
@@ -183,7 +169,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       COMMIT_IDLE: begin
         // Start if the issue CU has already started
         if (issue_state_q != ISSUE_IDLE) begin
-          commit_state_d = (be_q[cnt_init_val]) ? COMMIT_READY : COMMIT_SKIP;
+          commit_state_d = (be_i[cnt_init_val]) ? COMMIT_READY : COMMIT_SKIP;
         end
       end
       COMMIT_READY: begin
@@ -196,7 +182,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
             commit_state_d = COMMIT_DONE;
           // If we are not committing the last result, decide if to process or skip the next one
           end else begin
-            commit_state_d = (be_q[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
+            commit_state_d = (be_i[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
           end
         end
       end
@@ -208,7 +194,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
           commit_state_d = COMMIT_DONE;
         // If we are not committing the last result, decide if to process or skip the next one
         end else begin
-          commit_state_d = (be_q[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
+          commit_state_d = (be_i[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
         end
       end
       COMMIT_DONE: begin
@@ -231,7 +217,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     cnt_init_val = '0;
 
     // Track how many elements we should process (load #elements-1)
-    case (vew_q)
+    case (vew_i)
       EW8 : cnt_init_val = 3'h7;
       EW16: cnt_init_val = 3'h3;
       EW32: cnt_init_val = 3'h1;
@@ -251,7 +237,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
 
   // Opcode selection
   always_comb begin
-    case (op_q)
+    case (op_i)
       VDIVU: serdiv_opcode   = 2'b00;
       VDIV : serdiv_opcode   = 2'b01;
       VREMU: serdiv_opcode   = 2'b10;
@@ -267,17 +253,17 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   // serdiv input MUXes
   always_comb begin
     // First wall of MUXes: select one byte/halfword/word/dword from the inputs and fill it with zeroes/sign extend it
-    opa_w8  = op_q inside {VDIV, VREM} ? {{56{opa_q.w8 [issue_cnt_q[2:0]][ 7]}}, opa_q.w8 [issue_cnt_q[2:0]]} : {56'b0, opa_q.w8 [issue_cnt_q[2:0]]};
-    opb_w8  = op_q inside {VDIV, VREM} ? {{56{opb_q.w8 [issue_cnt_q[2:0]][ 7]}}, opb_q.w8 [issue_cnt_q[2:0]]} : {56'b0, opb_q.w8 [issue_cnt_q[2:0]]};
-    opa_w16 = op_q inside {VDIV, VREM} ? {{48{opa_q.w16[issue_cnt_q[1:0]][15]}}, opa_q.w16[issue_cnt_q[1:0]]} : {48'b0, opa_q.w16[issue_cnt_q[1:0]]};
-    opb_w16 = op_q inside {VDIV, VREM} ? {{48{opb_q.w16[issue_cnt_q[1:0]][15]}}, opb_q.w16[issue_cnt_q[1:0]]} : {48'b0, opb_q.w16[issue_cnt_q[1:0]]};
-    opa_w32 = op_q inside {VDIV, VREM} ? {{32{opa_q.w32[issue_cnt_q[0:0]][31]}}, opa_q.w32[issue_cnt_q[0:0]]} : {32'b0, opa_q.w32[issue_cnt_q[0:0]]};
-    opb_w32 = op_q inside {VDIV, VREM} ? {{32{opb_q.w32[issue_cnt_q[0:0]][31]}}, opb_q.w32[issue_cnt_q[0:0]]} : {32'b0, opb_q.w32[issue_cnt_q[0:0]]};
-    opa_w64 = opa_q.w64;
-    opb_w64 = opb_q.w64;
+    opa_w8  = op_i inside {VDIV, VREM} ? {{56{opa.w8 [issue_cnt_q[2:0]][ 7]}}, opa.w8 [issue_cnt_q[2:0]]} : {56'b0, opa.w8 [issue_cnt_q[2:0]]};
+    opb_w8  = op_i inside {VDIV, VREM} ? {{56{opb.w8 [issue_cnt_q[2:0]][ 7]}}, opb.w8 [issue_cnt_q[2:0]]} : {56'b0, opb.w8 [issue_cnt_q[2:0]]};
+    opa_w16 = op_i inside {VDIV, VREM} ? {{48{opa.w16[issue_cnt_q[1:0]][15]}}, opa.w16[issue_cnt_q[1:0]]} : {48'b0, opa.w16[issue_cnt_q[1:0]]};
+    opb_w16 = op_i inside {VDIV, VREM} ? {{48{opb.w16[issue_cnt_q[1:0]][15]}}, opb.w16[issue_cnt_q[1:0]]} : {48'b0, opb.w16[issue_cnt_q[1:0]]};
+    opa_w32 = op_i inside {VDIV, VREM} ? {{32{opa.w32[issue_cnt_q[0:0]][31]}}, opa.w32[issue_cnt_q[0:0]]} : {32'b0, opa.w32[issue_cnt_q[0:0]]};
+    opb_w32 = op_i inside {VDIV, VREM} ? {{32{opb.w32[issue_cnt_q[0:0]][31]}}, opb.w32[issue_cnt_q[0:0]]} : {32'b0, opb.w32[issue_cnt_q[0:0]]};
+    opa_w64 = opa.w64;
+    opb_w64 = opb.w64;
 
     // Last 64-bit wide selection MUX
-    unique case (vew_q)
+    unique case (vew_i)
       EW8: begin
         serdiv_opa = opa_w8;
         serdiv_opb = opb_w8;
@@ -294,7 +280,10 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
         serdiv_opa = opa_w64;
         serdiv_opb = opb_w64;
       end
-      default:;
+      default: begin
+        serdiv_opa = opa_w8;
+        serdiv_opb = opb_w8;
+      end
     endcase
   end
 
@@ -326,7 +315,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       shifted_result       = result_q << 8;
       serdiv_result_masked = '0;
     end else begin
-      case (vew_q)
+      case (vew_i)
         EW8: begin
           shifted_result       = result_q << 8;
           serdiv_result_masked = {56'b0, serdiv_result.w8[0]};
@@ -358,12 +347,6 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       issue_state_q  <= ISSUE_IDLE;
       commit_state_q <= COMMIT_IDLE;
 
-      opa_q    <= '0;
-      opb_q    <= '0;
-      vew_q    <= EW8;
-      op_q     <= VDIV;
-      be_q     <= '0;
-      mask_q   <= '0;
       result_q <= '0;
 
       issue_cnt_q  <= '0;
@@ -372,12 +355,6 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       issue_state_q  <= issue_state_d;
       commit_state_q <= commit_state_d;
 
-      opa_q    <= opa_d;
-      opb_q    <= opb_d;
-      vew_q    <= vew_d;
-      op_q     <= op_d;
-      be_q     <= be_d;
-      mask_q   <= mask_d;
       result_q <= result_d;
 
       issue_cnt_q  <= issue_cnt_d;
