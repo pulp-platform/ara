@@ -777,14 +777,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
 
               // Decode based on the func6 field
               unique case (insn.varith_type.func6)
-                6'b011000: ara_req_d.op = ara_pkg::VMANDNOT;
-                6'b011001: ara_req_d.op = ara_pkg::VMAND;
-                6'b011010: ara_req_d.op = ara_pkg::VMOR;
-                6'b011011: ara_req_d.op = ara_pkg::VMXOR;
-                6'b011100: ara_req_d.op = ara_pkg::VMORNOT;
-                6'b011101: ara_req_d.op = ara_pkg::VMNAND;
-                6'b011110: ara_req_d.op = ara_pkg::VMNOR;
-                6'b011111: ara_req_d.op = ara_pkg::VMXNOR;
+                6'b011000: begin
+                  ara_req_d.op        = ara_pkg::VMANDNOT;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011001: begin
+                  ara_req_d.op        = ara_pkg::VMAND;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011010: begin
+                  ara_req_d.op        = ara_pkg::VMOR;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011011: begin
+                  ara_req_d.op        = ara_pkg::VMXOR;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011100: begin
+                  ara_req_d.op        = ara_pkg::VMORNOT;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011101: begin
+                  ara_req_d.op        = ara_pkg::VMNAND;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011110: begin
+                  ara_req_d.op        = ara_pkg::VMNOR;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011111: begin
+                  ara_req_d.op        = ara_pkg::VMXNOR;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 6'b010010: begin // VXUNARY0
                   // These instructions do not use vs1
                   ara_req_d.use_vs1       = 1'b0;

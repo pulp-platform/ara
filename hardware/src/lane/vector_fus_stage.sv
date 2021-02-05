@@ -58,6 +58,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output strb_t                        mfpu_result_be_o,
     input  logic                         mfpu_result_gnt_i,
     // Interface with the Mask unit
+    output elen_t                        mask_operand_o,
+    output logic                         mask_operand_valid_o,
+    input  logic                         mask_operand_ready_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
     output logic                         mask_ready_o
@@ -98,6 +101,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .alu_result_be_o      (alu_result_be_o      ),
     .alu_result_gnt_i     (alu_result_gnt_i     ),
     // Interface with the Mask unit
+    .mask_operand_o       (mask_operand_o       ),
+    .mask_operand_valid_o (mask_operand_valid_o ),
+    .mask_operand_ready_i (mask_operand_ready_i ),
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
     .mask_ready_o         (alu_mask_ready       )
@@ -108,8 +114,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
    *****************/
 
   vmfpu #(
-    .NrLanes              (NrLanes              ),
-    .vaddr_t              (vaddr_t              )
+    .NrLanes(NrLanes),
+    .vaddr_t(vaddr_t)
   ) i_vmfpu (
     .clk_i                (clk_i                ),
     .rst_ni               (rst_ni               ),
@@ -132,7 +138,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the Mask unit
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
-    .mask_ready_o         (mfpu_mask_ready       )
+    .mask_ready_o         (mfpu_mask_ready      )
   );
 
 endmodule : vector_fus_stage

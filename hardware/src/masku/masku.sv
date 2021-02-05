@@ -37,9 +37,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     output logic                        pe_req_ready_o,
     output pe_resp_t                    pe_resp_o,
     // Interface with the lanes
-    input  elen_t    [NrLanes-1:0][1:0] masku_operand_i,
-    input  logic     [NrLanes-1:0][1:0] masku_operand_valid_i,
-    output logic     [NrLanes-1:0][1:0] masku_operand_ready_o,
+    input  elen_t    [NrLanes-1:0][2:0] masku_operand_i,
+    input  logic     [NrLanes-1:0][2:0] masku_operand_valid_i,
+    output logic     [NrLanes-1:0][2:0] masku_operand_ready_o,
     output logic     [NrLanes-1:0]      masku_result_req_o,
     output vid_t     [NrLanes-1:0]      masku_result_id_o,
     output vaddr_t   [NrLanes-1:0]      masku_result_addr_o,
@@ -64,6 +64,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes-1:0] masku_operand_a_valid_i;
   logic  [NrLanes-1:0] masku_operand_a_ready_o;
 
+  elen_t [NrLanes-1:0] masku_operand_b_i;
+  logic  [NrLanes-1:0] masku_operand_b_valid_i;
+  logic  [NrLanes-1:0] masku_operand_b_ready_o;
+
   elen_t [NrLanes-1:0] masku_operand_m_i;
   logic  [NrLanes-1:0] masku_operand_m_valid_i;
   logic  [NrLanes-1:0] masku_operand_m_ready_o;
@@ -72,6 +76,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     assign masku_operand_a_i[lane]        = masku_operand_i[lane][1];
     assign masku_operand_a_valid_i[lane]  = masku_operand_valid_i[lane][1];
     assign masku_operand_ready_o[lane][1] = masku_operand_a_ready_o[lane];
+
+    assign masku_operand_b_i[lane]        = masku_operand_i[lane][2];
+    assign masku_operand_b_valid_i[lane]  = masku_operand_valid_i[lane][2];
+    assign masku_operand_ready_o[lane][2] = masku_operand_b_ready_o[lane];
 
     assign masku_operand_m_i[lane]        = masku_operand_i[lane][0];
     assign masku_operand_m_valid_i[lane]  = masku_operand_valid_i[lane][0];
@@ -283,6 +291,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // We are not ready, by default
     pe_resp                 = '0;
     masku_operand_a_ready_o = '0;
+    masku_operand_b_ready_o = '0;
     masku_operand_m_ready_o = '0;
 
     // Inform the main sequencer if we are idle

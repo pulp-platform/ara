@@ -47,6 +47,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     output strb_t                        alu_result_be_o,
     input  logic                         alu_result_gnt_i,
     // Interface with the Mask unit
+    output elen_t                        mask_operand_o,
+    output logic                         mask_operand_valid_o,
+    input  logic                         mask_operand_ready_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
     output logic                         mask_ready_o
@@ -121,6 +124,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     vaddr_t addr;
     elen_t wdata;
     strb_t be;
+    logic mask;
   } payload_t;
 
   // Result queue
@@ -154,6 +158,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       result_queue_cnt_q       <= result_queue_cnt_d;
     end
   end
+
+  /*******************
+   *  Mask operands  *
+   *******************/
+
+  assign mask_operand_o       = result_queue_q[result_queue_read_pnt_q].wdata;
+  assign mask_operand_valid_o = result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
 
   /********************
    *  Scalar operand  *

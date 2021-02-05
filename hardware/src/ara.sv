@@ -164,9 +164,9 @@ module ara import ara_pkg::*; #(
   logic   [NrLanes-1:0]      addrgen_operand_valid;
   logic                      addrgen_operand_ready;
   // Mask unit operands
-  elen_t  [NrLanes-1:0][1:0] masku_operand;
-  logic   [NrLanes-1:0][1:0] masku_operand_valid;
-  logic   [NrLanes-1:0][1:0] masku_operand_ready;
+  elen_t  [NrLanes-1:0][2:0] masku_operand;
+  logic   [NrLanes-1:0][2:0] masku_operand_valid;
+  logic   [NrLanes-1:0][2:0] masku_operand_ready;
   strb_t  [NrLanes-1:0]      mask;
   logic   [NrLanes-1:0]      mask_valid;
   logic   [NrLanes-1:0]      lane_mask_ready;

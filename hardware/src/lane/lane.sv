@@ -67,9 +67,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          ldu_result_be_i,
     output logic                                           ldu_result_gnt_o,
     // Interface with the Mask unit
-    output elen_t    [1:0]                                 mask_operand_o,
-    output logic     [1:0]                                 mask_operand_valid_o,
-    input  logic     [1:0]                                 mask_operand_ready_i,
+    output elen_t    [2:0]                                 mask_operand_o,
+    output logic     [2:0]                                 mask_operand_valid_o,
+    input  logic     [2:0]                                 mask_operand_ready_i,
     input  logic                                           masku_result_req_i,
     input  vid_t                                           masku_result_id_i,
     input  vaddr_t                                         masku_result_addr_i,
@@ -260,37 +260,37 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic  [2:0] mfpu_operand_ready;
 
   operand_queues_stage i_operand_queues (
-    .clk_i                    (clk_i                  ),
-    .rst_ni                   (rst_ni                 ),
+    .clk_i                    (clk_i                    ),
+    .rst_ni                   (rst_ni                   ),
     // Interface with the Vector Register File
-    .operand_i                (vrf_operand            ),
-    .operand_valid_i          (vrf_operand_valid      ),
+    .operand_i                (vrf_operand              ),
+    .operand_valid_i          (vrf_operand_valid        ),
     // Interface with the operand requester
-    .operand_issued_i         (operand_issued         ),
-    .operand_queue_ready_o    (operand_queue_ready    ),
-    .operand_queue_cmd_i      (operand_queue_cmd      ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid),
+    .operand_issued_i         (operand_issued           ),
+    .operand_queue_ready_o    (operand_queue_ready      ),
+    .operand_queue_cmd_i      (operand_queue_cmd        ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid  ),
     // Interface with the VFUs
     // ALU
-    .alu_operand_o            (alu_operand            ),
-    .alu_operand_valid_o      (alu_operand_valid      ),
-    .alu_operand_ready_i      (alu_operand_ready      ),
+    .alu_operand_o            (alu_operand              ),
+    .alu_operand_valid_o      (alu_operand_valid        ),
+    .alu_operand_ready_i      (alu_operand_ready        ),
     // Multiplier/FPU
-    .mfpu_operand_o           (mfpu_operand           ),
-    .mfpu_operand_valid_o     (mfpu_operand_valid     ),
-    .mfpu_operand_ready_i     (mfpu_operand_ready     ),
+    .mfpu_operand_o           (mfpu_operand             ),
+    .mfpu_operand_valid_o     (mfpu_operand_valid       ),
+    .mfpu_operand_ready_i     (mfpu_operand_ready       ),
     // Store Unit
-    .stu_operand_o            (stu_operand_o          ),
-    .stu_operand_valid_o      (stu_operand_valid_o    ),
-    .stu_operand_ready_i      (stu_operand_ready_i    ),
+    .stu_operand_o            (stu_operand_o            ),
+    .stu_operand_valid_o      (stu_operand_valid_o      ),
+    .stu_operand_ready_i      (stu_operand_ready_i      ),
     // Address Generation Unit
-    .addrgen_operand_o        (addrgen_operand_o      ),
-    .addrgen_operand_valid_o  (addrgen_operand_valid_o),
-    .addrgen_operand_ready_i  (addrgen_operand_ready_i),
+    .addrgen_operand_o        (addrgen_operand_o        ),
+    .addrgen_operand_valid_o  (addrgen_operand_valid_o  ),
+    .addrgen_operand_ready_i  (addrgen_operand_ready_i  ),
     // Mask Unit
-    .mask_operand_o           (mask_operand_o         ),
-    .mask_operand_valid_o     (mask_operand_valid_o   ),
-    .mask_operand_ready_i     (mask_operand_ready_i   )
+    .mask_operand_o           (mask_operand_o[1:0]      ),
+    .mask_operand_valid_o     (mask_operand_valid_o[1:0]),
+    .mask_operand_ready_i     (mask_operand_ready_i[1:0])
   );
 
   /*****************************
@@ -301,43 +301,46 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes(NrLanes),
     .vaddr_t(vaddr_t)
   ) i_vfus (
-    .clk_i                (clk_i              ),
-    .rst_ni               (rst_ni             ),
+    .clk_i                (clk_i                  ),
+    .rst_ni               (rst_ni                 ),
     // Interface with the lane sequencer
-    .vfu_operation_i      (vfu_operation      ),
-    .vfu_operation_valid_i(vfu_operation_valid),
-    .alu_ready_o          (alu_ready          ),
-    .alu_vinsn_done_o     (alu_vinsn_done     ),
-    .mfpu_ready_o         (mfpu_ready         ),
-    .mfpu_vinsn_done_o    (mfpu_vinsn_done    ),
+    .vfu_operation_i      (vfu_operation          ),
+    .vfu_operation_valid_i(vfu_operation_valid    ),
+    .alu_ready_o          (alu_ready              ),
+    .alu_vinsn_done_o     (alu_vinsn_done         ),
+    .mfpu_ready_o         (mfpu_ready             ),
+    .mfpu_vinsn_done_o    (mfpu_vinsn_done        ),
     // Interface with the operand requester
     // ALU
-    .alu_result_req_o     (alu_result_req     ),
-    .alu_result_id_o      (alu_result_id      ),
-    .alu_result_addr_o    (alu_result_addr    ),
-    .alu_result_wdata_o   (alu_result_wdata   ),
-    .alu_result_be_o      (alu_result_be      ),
-    .alu_result_gnt_i     (alu_result_gnt     ),
+    .alu_result_req_o     (alu_result_req         ),
+    .alu_result_id_o      (alu_result_id          ),
+    .alu_result_addr_o    (alu_result_addr        ),
+    .alu_result_wdata_o   (alu_result_wdata       ),
+    .alu_result_be_o      (alu_result_be          ),
+    .alu_result_gnt_i     (alu_result_gnt         ),
     // MFPU
-    .mfpu_result_req_o    (mfpu_result_req    ),
-    .mfpu_result_id_o     (mfpu_result_id     ),
-    .mfpu_result_addr_o   (mfpu_result_addr   ),
-    .mfpu_result_wdata_o  (mfpu_result_wdata  ),
-    .mfpu_result_be_o     (mfpu_result_be     ),
-    .mfpu_result_gnt_i    (mfpu_result_gnt    ),
+    .mfpu_result_req_o    (mfpu_result_req        ),
+    .mfpu_result_id_o     (mfpu_result_id         ),
+    .mfpu_result_addr_o   (mfpu_result_addr       ),
+    .mfpu_result_wdata_o  (mfpu_result_wdata      ),
+    .mfpu_result_be_o     (mfpu_result_be         ),
+    .mfpu_result_gnt_i    (mfpu_result_gnt        ),
     // Interface with the operand queues
     // ALU
-    .alu_operand_i        (alu_operand        ),
-    .alu_operand_valid_i  (alu_operand_valid  ),
-    .alu_operand_ready_o  (alu_operand_ready  ),
+    .alu_operand_i        (alu_operand            ),
+    .alu_operand_valid_i  (alu_operand_valid      ),
+    .alu_operand_ready_o  (alu_operand_ready      ),
     // Multiplier/FPU
-    .mfpu_operand_i       (mfpu_operand       ),
-    .mfpu_operand_valid_i (mfpu_operand_valid ),
-    .mfpu_operand_ready_o (mfpu_operand_ready ),
+    .mfpu_operand_i       (mfpu_operand           ),
+    .mfpu_operand_valid_i (mfpu_operand_valid     ),
+    .mfpu_operand_ready_o (mfpu_operand_ready     ),
     // Interface with the Mask unit
-    .mask_i               (mask_i             ),
-    .mask_valid_i         (mask_valid_i       ),
-    .mask_ready_o         (mask_ready_o       )
+    .mask_operand_o       (mask_operand_o[2]      ),
+    .mask_operand_valid_o (mask_operand_valid_o[2]),
+    .mask_operand_ready_i (mask_operand_ready_i[2]),
+    .mask_i               (mask_i                 ),
+    .mask_valid_i         (mask_valid_i           ),
+    .mask_ready_o         (mask_ready_o           )
   );
 
   /****************
