@@ -273,6 +273,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
         result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew));
         result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue.id;
+        result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue.vfu == VFU_MaskUnit;
         if (!narrowing(vinsn_issue.op) || !narrowing_select_q)
           result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm || vinsn_issue.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
 
@@ -336,7 +337,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
      *  Write results into the VRF  *
      ********************************/
 
-    alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q];
+    alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask;
     alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
     alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
@@ -344,7 +345,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     // Received a grant from the VRF.
     // Deactivate the request.
-    if (alu_result_gnt_i) begin
+    if (alu_result_gnt_i || mask_operand_ready_i) begin
       result_queue_valid_d[result_queue_read_pnt_q] = 1'b0;
       result_queue_d[result_queue_read_pnt_q]       = '0;
 
@@ -384,7 +385,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
      *  Accept new instruction  *
      ****************************/
 
-    if (!vinsn_queue_full && vfu_operation_valid_i && vfu_operation_i.vfu == VFU_Alu) begin
+    if (!vinsn_queue_full && vfu_operation_valid_i && vfu_operation_i.vfu inside {VFU_Alu, VFU_MaskUnit}) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
@@ -490,14 +491,19 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
 
     unique case (op_i)
       // Logical operations
-      VAND, VMAND: res = operand_a_i & operand_b_i;
-      VMANDNOT   : res = ~operand_a_i & operand_b_i;
-      VMNAND     : res = ~(operand_a_i & operand_b_i);
-      VOR, VMOR  : res = operand_a_i | operand_b_i;
-      VMNOR      : res = ~(operand_a_i | operand_b_i);
-      VMORNOT    : res = ~operand_a_i | operand_b_i;
-      VXOR, VMXOR: res = operand_a_i ^ operand_b_i;
-      VMXNOR     : res = ~(operand_a_i ^ operand_b_i);
+      VAND: res = operand_a_i & operand_b_i;
+      VOR : res = operand_a_i | operand_b_i;
+      VXOR: res = operand_a_i ^ operand_b_i;
+
+      // Mask logical operations
+      VMAND   : res = operand_a_i & operand_b_i;
+      VMANDNOT: res = ~operand_a_i & operand_b_i;
+      VMNAND  : res = ~(operand_a_i & operand_b_i);
+      VMOR    : res = operand_a_i | operand_b_i;
+      VMNOR   : res = ~(operand_a_i | operand_b_i);
+      VMORNOT : res = ~operand_a_i | operand_b_i;
+      VMXOR   : res = operand_a_i ^ operand_b_i;
+      VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
       // Arithmetic instructions
       VADD, VADC: unique case (vew_i)

@@ -47,9 +47,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
     output logic                                     addrgen_operand_valid_o,
     input  logic                                     addrgen_operand_ready_i,
     // Mask unit
-    output elen_t              [1:0]                 mask_operand_o,
-    output logic               [1:0]                 mask_operand_valid_o,
-    input  logic               [1:0]                 mask_operand_ready_i
+    output elen_t                                    mask_operand_o,
+    output logic                                     mask_operand_valid_o,
+    input  logic                                     mask_operand_ready_i
   );
 
   /*********
@@ -64,12 +64,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   ) i_operand_queue_alu_a (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[AluA]      ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluA]),
-    .operand_i                (operand_i[AluA]                ),
-    .operand_valid_i          (operand_valid_i[AluA]          ),
-    .operand_issued_i         (operand_issued_i[AluA]         ),
-    .operand_queue_ready_o    (operand_queue_ready_o[AluA]    ),
+    .operand_queue_cmd_i      (operand_queue_cmd_i[AluMaskA]      ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluMaskA]),
+    .operand_i                (operand_i[AluMaskA]                ),
+    .operand_valid_i          (operand_valid_i[AluMaskA]          ),
+    .operand_issued_i         (operand_issued_i[AluMaskA]         ),
+    .operand_queue_ready_o    (operand_queue_ready_o[AluMaskA]    ),
     .operand_o                (alu_operand_o[0]               ),
     .operand_valid_o          (alu_operand_valid_o[0]         ),
     .operand_ready_i          (alu_operand_ready_i[0]         )
@@ -83,12 +83,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[AluB]      ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluB]),
-    .operand_i                (operand_i[AluB]                ),
-    .operand_valid_i          (operand_valid_i[AluB]          ),
-    .operand_issued_i         (operand_issued_i[AluB]         ),
-    .operand_queue_ready_o    (operand_queue_ready_o[AluB]    ),
+    .operand_queue_cmd_i      (operand_queue_cmd_i[AluMaskB]      ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluMaskB]),
+    .operand_i                (operand_i[AluMaskB]                ),
+    .operand_valid_i          (operand_valid_i[AluMaskB]          ),
+    .operand_issued_i         (operand_issued_i[AluMaskB]         ),
+    .operand_queue_ready_o    (operand_queue_ready_o[AluMaskB]    ),
     .operand_o                (alu_operand_o[1]               ),
     .operand_valid_o          (alu_operand_valid_o[1]         ),
     .operand_ready_i          (alu_operand_ready_i[1]         )
@@ -156,17 +156,17 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   operand_queue #(
     .BufferDepth(2)
   ) i_operand_queue_st_mask_a (
-    .clk_i                    (clk_i                                         ),
-    .rst_ni                   (rst_ni                                        ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[StMaskA]                  ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StMaskA]            ),
-    .operand_i                (operand_i[StMaskA]                            ),
-    .operand_valid_i          (operand_valid_i[StMaskA]                      ),
-    .operand_issued_i         (operand_issued_i[StMaskA]                     ),
-    .operand_queue_ready_o    (operand_queue_ready_o[StMaskA]                ),
-    .operand_o                (stu_operand_o                                 ),
-    .operand_valid_o          (stu_operand_valid_o                           ),
-    .operand_ready_i          (stu_operand_ready_i || mask_operand_ready_i[1])
+    .clk_i                    (clk_i                         ),
+    .rst_ni                   (rst_ni                        ),
+    .operand_queue_cmd_i      (operand_queue_cmd_i[StA]      ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StA]),
+    .operand_i                (operand_i[StA]                ),
+    .operand_valid_i          (operand_valid_i[StA]          ),
+    .operand_issued_i         (operand_issued_i[StA]         ),
+    .operand_queue_ready_o    (operand_queue_ready_o[StA]    ),
+    .operand_o                (stu_operand_o                 ),
+    .operand_valid_o          (stu_operand_valid_o           ),
+    .operand_ready_i          (stu_operand_ready_i           )
   );
 
   operand_queue #(
@@ -200,12 +200,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
     .operand_valid_i          (operand_valid_i[MaskM]           ),
     .operand_issued_i         (operand_issued_i[MaskM]          ),
     .operand_queue_ready_o    (operand_queue_ready_o[MaskM]     ),
-    .operand_o                (mask_operand_o[0]                ),
-    .operand_valid_o          (mask_operand_valid_o[0]          ),
-    .operand_ready_i          (mask_operand_ready_i[0]          )
+    .operand_o                (mask_operand_o                   ),
+    .operand_valid_o          (mask_operand_valid_o             ),
+    .operand_ready_i          (mask_operand_ready_i             )
   );
-
-  assign mask_operand_o[1]       = stu_operand_o;
-  assign mask_operand_valid_o[1] = stu_operand_valid_o;
 
 endmodule : operand_queues_stage
