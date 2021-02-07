@@ -107,11 +107,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   // This function determines the VFU responsible for handling this operation.
   function automatic vfu_e vfu(ara_op_e op);
     unique case (op) inside
-      [VADD:VMERGE]    : vfu = VFU_Alu;
-      [VMUL:VREM]      : vfu = VFU_MFpu;
-      [VMANDNOT:VMXNOR]: vfu = VFU_MaskUnit;
-      [VLE:VLXE]       : vfu = VFU_LoadUnit;
-      [VSE:VSXE]       : vfu = VFU_StoreUnit;
+      [VADD:VMERGE]   : vfu = VFU_Alu;
+      [VMUL:VREM]     : vfu = VFU_MFpu;
+      [VMANDNOT:VMSGT]: vfu = VFU_MaskUnit;
+      [VLE:VLXE]      : vfu = VFU_LoadUnit;
+      [VSE:VSXE]      : vfu = VFU_StoreUnit;
     endcase
   endfunction: vfu
 
@@ -156,13 +156,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           pe_req_valid_d         = pe_req_valid_o;
 
           // Recalculate the hazard bits
-          pe_req_d.hazard_vs1    &= vinsn_running_d;
-          pe_req_d.hazard_vs2    &= vinsn_running_d;
-          pe_req_d.hazard_vd     &= vinsn_running_d;
-          pe_req_d.hazard_vm     &= vinsn_running_d;
+          pe_req_d.hazard_vs1 &= vinsn_running_d;
+          pe_req_d.hazard_vs2 &= vinsn_running_d;
+          pe_req_d.hazard_vd &= vinsn_running_d;
+          pe_req_d.hazard_vm &= vinsn_running_d;
 
           // We are not ready
-          ara_req_ready_o        = 1'b0;
+          ara_req_ready_o = 1'b0;
         // Received a new request
         end else if (ara_req_valid_i) begin
           // PEs are ready, and we can handle another running vector instruction

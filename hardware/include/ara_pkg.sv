@@ -74,6 +74,8 @@ package ara_pkg;
     VDIVU, VDIV, VREMU, VREM,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
+    // Integer comparison instructions
+    VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSGT,
     // Load instructions
     VLE, VLSE, VLXE,
     // Store instructions

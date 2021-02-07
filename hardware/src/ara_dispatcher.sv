@@ -315,6 +315,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     ara_req_valid_d  = 1'b0;
                   end
                 end
+                6'b011000: begin
+                  ara_req_d.op        = VMSEQ;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011001: begin
+                  ara_req_d.op        = VMSNE;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011010: begin
+                  ara_req_d.op        = VMSLTU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011011: begin
+                  ara_req_d.op        = VMSLT;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011100: begin
+                  ara_req_d.op        = VMSLEU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011101: begin
+                  ara_req_d.op        = VMSLE;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 6'b010111: begin
                   ara_req_d.op      = ara_pkg::VMERGE;
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
@@ -489,6 +513,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     ara_req_valid_d  = 1'b0;
                   end
                 end
+                6'b011000: begin
+                  ara_req_d.op        = VMSEQ;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011001: begin
+                  ara_req_d.op        = VMSNE;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011010: begin
+                  ara_req_d.op        = VMSLTU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011011: begin
+                  ara_req_d.op        = VMSLT;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011100: begin
+                  ara_req_d.op        = VMSLEU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011101: begin
+                  ara_req_d.op        = VMSLE;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011110: begin
+                  ara_req_d.op        = VMSGTU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011111: begin
+                  ara_req_d.op        = VMSGT;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 6'b010111: begin
                   ara_req_d.op      = ara_pkg::VMERGE;
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.x does not use vs2
@@ -643,6 +699,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                end
+                6'b011000: begin
+                  ara_req_d.op        = VMSEQ;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011001: begin
+                  ara_req_d.op        = VMSNE;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011100: begin
+                  ara_req_d.op        = VMSLEU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011101: begin
+                  ara_req_d.op        = VMSLE;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011110: begin
+                  ara_req_d.op        = VMSGTU;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b011111: begin
+                  ara_req_d.op        = VMSGT;
+                  ara_req_d.use_vd_op = 1'b1;
                 end
                 6'b010111: begin
                   ara_req_d.op      = ara_pkg::VMERGE;
