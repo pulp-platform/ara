@@ -281,7 +281,7 @@ module ara_soc import axi_pkg::*; #(
 
   axi_llc_top #(
     .SetAssociativity (8                         ),
-    .NumLines         (1024                      ),
+    .NumLines         (64                        ),
     .NumBlocks        (8                         ),
     .AxiIdWidth       (AxiSocIdWidth             ),
     .AxiAddrWidth     (AxiAddrWidth              ),
@@ -313,51 +313,71 @@ module ara_soc import axi_pkg::*; #(
     .axi_llc_events_o    (/* Unused */                  )
   );
 
-  assign axi_aw_valid_o              = dram_wide_axi_req.aw_valid;
-  assign axi_aw_id_o                 = dram_wide_axi_req.aw.id;
-  assign axi_aw_addr_o               = dram_wide_axi_req.aw.addr;
-  assign axi_aw_len_o                = dram_wide_axi_req.aw.len;
-  assign axi_aw_size_o               = dram_wide_axi_req.aw.size;
-  assign axi_aw_burst_o              = dram_wide_axi_req.aw.burst;
-  assign axi_aw_lock_o               = dram_wide_axi_req.aw.lock;
-  assign axi_aw_cache_o              = dram_wide_axi_req.aw.cache;
-  assign axi_aw_prot_o               = dram_wide_axi_req.aw.prot;
-  assign axi_aw_qos_o                = dram_wide_axi_req.aw.qos;
-  assign axi_aw_region_o             = dram_wide_axi_req.aw.region;
-  assign axi_aw_atop_o               = dram_wide_axi_req.aw.atop;
-  assign axi_aw_user_o               = dram_wide_axi_req.aw.user;
-  assign dram_wide_axi_resp.aw_ready = axi_aw_ready_i;
-  assign axi_w_valid_o               = dram_wide_axi_req.w_valid;
-  assign axi_w_data_o                = dram_wide_axi_req.w.data;
-  assign axi_w_strb_o                = dram_wide_axi_req.w.strb;
-  assign axi_w_last_o                = dram_wide_axi_req.w.last;
-  assign axi_w_user_o                = dram_wide_axi_req.w.user;
-  assign dram_wide_axi_resp.w_ready  = axi_w_ready_i;
-  assign dram_wide_axi_resp.b_valid  = axi_b_valid_i;
-  assign dram_wide_axi_resp.b.id     = axi_b_id_i;
-  assign dram_wide_axi_resp.b.resp   = axi_b_resp_i;
-  assign dram_wide_axi_resp.b.user   = axi_b_user_i;
-  assign axi_b_ready_o               = dram_wide_axi_req.b_ready;
-  assign axi_ar_valid_o              = dram_wide_axi_req.ar_valid;
-  assign axi_ar_id_o                 = dram_wide_axi_req.ar.id;
-  assign axi_ar_addr_o               = dram_wide_axi_req.ar.addr;
-  assign axi_ar_len_o                = dram_wide_axi_req.ar.len;
-  assign axi_ar_size_o               = dram_wide_axi_req.ar.size;
-  assign axi_ar_burst_o              = dram_wide_axi_req.ar.burst;
-  assign axi_ar_lock_o               = dram_wide_axi_req.ar.lock;
-  assign axi_ar_cache_o              = dram_wide_axi_req.ar.cache;
-  assign axi_ar_prot_o               = dram_wide_axi_req.ar.prot;
-  assign axi_ar_qos_o                = dram_wide_axi_req.ar.qos;
-  assign axi_ar_region_o             = dram_wide_axi_req.ar.region;
-  assign axi_ar_user_o               = dram_wide_axi_req.ar.user;
-  assign dram_wide_axi_resp.ar_ready = axi_ar_ready_i;
-  assign dram_wide_axi_resp.r_valid  = axi_r_valid_i;
-  assign dram_wide_axi_resp.r.data   = axi_r_data_i;
-  assign dram_wide_axi_resp.r.id     = axi_r_id_i;
-  assign dram_wide_axi_resp.r.last   = axi_r_last_i;
-  assign dram_wide_axi_resp.r.resp   = axi_r_resp_i;
-  assign dram_wide_axi_resp.r.user   = axi_r_user_i;
-  assign axi_r_ready_o               = dram_wide_axi_req.r_ready;
+  axi_req_t  dram_wide_axi_req_cut;
+  axi_resp_t dram_wide_axi_resp_cut;
+
+  axi_cut #(
+    .ar_chan_t(ar_chan_t ),
+    .r_chan_t (r_chan_t  ),
+    .aw_chan_t(aw_chan_t ),
+    .w_chan_t (w_chan_t  ),
+    .b_chan_t (b_chan_t  ),
+    .req_t    (axi_req_t ),
+    .resp_t   (axi_resp_t)
+  ) i_dram_axi_cut (
+    .clk_i     (clk_i                 ),
+    .rst_ni    (rst_ni                ),
+    .slv_req_i (dram_wide_axi_req     ),
+    .slv_resp_o(dram_wide_axi_resp    ),
+    .mst_req_o (dram_wide_axi_req_cut ),
+    .mst_resp_i(dram_wide_axi_resp_cut)
+  );
+
+  assign axi_aw_valid_o                  = dram_wide_axi_req_cut.aw_valid;
+  assign axi_aw_id_o                     = dram_wide_axi_req_cut.aw.id;
+  assign axi_aw_addr_o                   = dram_wide_axi_req_cut.aw.addr;
+  assign axi_aw_len_o                    = dram_wide_axi_req_cut.aw.len;
+  assign axi_aw_size_o                   = dram_wide_axi_req_cut.aw.size;
+  assign axi_aw_burst_o                  = dram_wide_axi_req_cut.aw.burst;
+  assign axi_aw_lock_o                   = dram_wide_axi_req_cut.aw.lock;
+  assign axi_aw_cache_o                  = dram_wide_axi_req_cut.aw.cache;
+  assign axi_aw_prot_o                   = dram_wide_axi_req_cut.aw.prot;
+  assign axi_aw_qos_o                    = dram_wide_axi_req_cut.aw.qos;
+  assign axi_aw_region_o                 = dram_wide_axi_req_cut.aw.region;
+  assign axi_aw_atop_o                   = dram_wide_axi_req_cut.aw.atop;
+  assign axi_aw_user_o                   = dram_wide_axi_req_cut.aw.user;
+  assign dram_wide_axi_resp_cut.aw_ready = axi_aw_ready_i;
+  assign axi_w_valid_o                   = dram_wide_axi_req_cut.w_valid;
+  assign axi_w_data_o                    = dram_wide_axi_req_cut.w.data;
+  assign axi_w_strb_o                    = dram_wide_axi_req_cut.w.strb;
+  assign axi_w_last_o                    = dram_wide_axi_req_cut.w.last;
+  assign axi_w_user_o                    = dram_wide_axi_req_cut.w.user;
+  assign dram_wide_axi_resp_cut.w_ready  = axi_w_ready_i;
+  assign dram_wide_axi_resp_cut.b_valid  = axi_b_valid_i;
+  assign dram_wide_axi_resp_cut.b.id     = axi_b_id_i;
+  assign dram_wide_axi_resp_cut.b.resp   = axi_b_resp_i;
+  assign dram_wide_axi_resp_cut.b.user   = axi_b_user_i;
+  assign axi_b_ready_o                   = dram_wide_axi_req_cut.b_ready;
+  assign axi_ar_valid_o                  = dram_wide_axi_req_cut.ar_valid;
+  assign axi_ar_id_o                     = dram_wide_axi_req_cut.ar.id;
+  assign axi_ar_addr_o                   = dram_wide_axi_req_cut.ar.addr;
+  assign axi_ar_len_o                    = dram_wide_axi_req_cut.ar.len;
+  assign axi_ar_size_o                   = dram_wide_axi_req_cut.ar.size;
+  assign axi_ar_burst_o                  = dram_wide_axi_req_cut.ar.burst;
+  assign axi_ar_lock_o                   = dram_wide_axi_req_cut.ar.lock;
+  assign axi_ar_cache_o                  = dram_wide_axi_req_cut.ar.cache;
+  assign axi_ar_prot_o                   = dram_wide_axi_req_cut.ar.prot;
+  assign axi_ar_qos_o                    = dram_wide_axi_req_cut.ar.qos;
+  assign axi_ar_region_o                 = dram_wide_axi_req_cut.ar.region;
+  assign axi_ar_user_o                   = dram_wide_axi_req_cut.ar.user;
+  assign dram_wide_axi_resp_cut.ar_ready = axi_ar_ready_i;
+  assign dram_wide_axi_resp_cut.r_valid  = axi_r_valid_i;
+  assign dram_wide_axi_resp_cut.r.data   = axi_r_data_i;
+  assign dram_wide_axi_resp_cut.r.id     = axi_r_id_i;
+  assign dram_wide_axi_resp_cut.r.last   = axi_r_last_i;
+  assign dram_wide_axi_resp_cut.r.resp   = axi_r_resp_i;
+  assign dram_wide_axi_resp_cut.r.user   = axi_r_user_i;
+  assign axi_r_ready_o                   = dram_wide_axi_req_cut.r_ready;
 
   /**********
    *  UART  *
