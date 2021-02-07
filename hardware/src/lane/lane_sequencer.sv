@@ -358,15 +358,23 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               vs     : pe_req_i.vs1,
               eew    : pe_req_i.eew_vs1,
               vtype  : pe_req_i.vtype,
-              // Since this request goes outside of the lane, we might need to request an
-              // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs1)),
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[AluMaskA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes != pe_req_i.vl)
-              operand_request_i[AluMaskA].vl += 1;
+
+            // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
+            if (pe_req_i.op inside {[VMSEQ:VMSGT]}) begin
+              operand_request_i[AluMaskA].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
+            end
+            // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
+            else begin
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              operand_request_i[AluMaskA].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs1));
+              if ((operand_request_i[AluMaskA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes != pe_req_i.vl)
+                operand_request_i[AluMaskA].vl += 1;
+            end
             operand_request_push[AluMaskA] = pe_req_i.use_vs1;
 
             operand_request_i[AluMaskB] = '{
@@ -374,15 +382,22 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               vs     : pe_req_i.vs2,
               eew    : pe_req_i.eew_vs2,
               vtype  : pe_req_i.vtype,
-              // Since this request goes outside of the lane, we might need to request an
-              // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs2)),
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[AluMaskB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes != pe_req_i.vl)
-              operand_request_i[AluMaskB].vl += 1;
+            // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
+            if (pe_req_i.op inside {[VMSEQ:VMSGT]}) begin
+              operand_request_i[AluMaskB].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
+            end
+            // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
+            else begin
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              operand_request_i[AluMaskB].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs2));
+              if ((operand_request_i[AluMaskB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes != pe_req_i.vl)
+                operand_request_i[AluMaskB].vl += 1;
+            end
             operand_request_push[AluMaskB] = pe_req_i.use_vs2;
 
             operand_request_i[MaskM] = '{
