@@ -37,9 +37,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     output logic                        pe_req_ready_o,
     output pe_resp_t                    pe_resp_o,
     // Interface with the lanes
-    input  elen_t    [NrLanes-1:0][2:0] masku_operand_i,
-    input  logic     [NrLanes-1:0][2:0] masku_operand_valid_i,
-    output logic     [NrLanes-1:0][2:0] masku_operand_ready_o,
+    input  elen_t    [NrLanes-1:0][1:0] masku_operand_i,
+    input  logic     [NrLanes-1:0][1:0] masku_operand_valid_i,
+    output logic     [NrLanes-1:0][1:0] masku_operand_ready_o,
     output logic     [NrLanes-1:0]      masku_result_req_o,
     output vid_t     [NrLanes-1:0]      masku_result_id_o,
     output vaddr_t   [NrLanes-1:0]      masku_result_addr_o,
@@ -64,10 +64,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes-1:0] masku_operand_a_valid_i;
   logic  [NrLanes-1:0] masku_operand_a_ready_o;
 
-  elen_t [NrLanes-1:0] masku_operand_b_i;
-  logic  [NrLanes-1:0] masku_operand_b_valid_i;
-  logic  [NrLanes-1:0] masku_operand_b_ready_o;
-
   elen_t [NrLanes-1:0] masku_operand_m_i;
   logic  [NrLanes-1:0] masku_operand_m_valid_i;
   logic  [NrLanes-1:0] masku_operand_m_ready_o;
@@ -76,10 +72,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     assign masku_operand_a_i[lane]        = masku_operand_i[lane][1];
     assign masku_operand_a_valid_i[lane]  = masku_operand_valid_i[lane][1];
     assign masku_operand_ready_o[lane][1] = masku_operand_a_ready_o[lane];
-
-    assign masku_operand_b_i[lane]        = masku_operand_i[lane][2];
-    assign masku_operand_b_valid_i[lane]  = masku_operand_valid_i[lane][2];
-    assign masku_operand_ready_o[lane][2] = masku_operand_b_ready_o[lane];
 
     assign masku_operand_m_i[lane]        = masku_operand_i[lane][0];
     assign masku_operand_m_valid_i[lane]  = masku_operand_valid_i[lane][0];
@@ -229,19 +221,36 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
    *  Mask ALU  *
    **************/
 
-  elen_t [NrLanes-1:0] alu_result;
+  elen_t [NrLanes-1:0]      alu_result;
+  logic  [NrLanes*ELEN-1:0] bit_enable;
+  logic  [NrLanes*ELEN-1:0] bit_enable_shuffle;
 
   always_comb begin: p_mask_alu
+    // Calculate bit enable
+    // The result can be taken either from the result of an operation (mask_operand_a_i), or
+    // from the previous value of the destination register (mask_operand_m_i). Byte strobes
+    // do not work here, since this has to be done at a bit granularity. Therefore, the Mask Unit
+    // received both operands, and does a masking depending on the value of the vl.
+    bit_enable = '0;
+    if (vinsn_issue.vl > ELEN*NrLanes)
+      bit_enable = '1;
+    else begin
+      bit_enable[vinsn_issue.vl] = 1'b1;
+      bit_enable                 = bit_enable - 1;
+    end
+
+    // Shuffle the bit enable signal
+    for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
+      automatic int vrf_byte              = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.eew_vd_op);
+      bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*vrf_seq_byte +: 8];
+    end
+
+    // Evaluate the instruction
     unique case (vinsn_issue.op)
-      VMANDNOT: alu_result = ~masku_operand_a_i & masku_operand_m_i;
-      VMAND   : alu_result = masku_operand_a_i & masku_operand_m_i;
-      VMOR    : alu_result = masku_operand_a_i | masku_operand_m_i;
-      VMXOR   : alu_result = masku_operand_a_i ^ masku_operand_m_i;
-      VMORNOT : alu_result = ~masku_operand_a_i | masku_operand_m_i;
-      VMNAND  : alu_result = ~(masku_operand_a_i & masku_operand_m_i);
-      VMNOR   : alu_result = ~(masku_operand_a_i | masku_operand_m_i);
-      VMXNOR  : alu_result = ~(masku_operand_a_i ^ masku_operand_m_i);
-      default : alu_result = '0;
+      VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR: begin
+        alu_result = (masku_operand_a_i & bit_enable_shuffle) | (masku_operand_m_i & ~bit_enable_shuffle);
+      end
+      default: alu_result = '0;
     endcase
   end: p_mask_alu
 
@@ -291,7 +300,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // We are not ready, by default
     pe_resp                 = '0;
     masku_operand_a_ready_o = '0;
-    masku_operand_b_ready_o = '0;
     masku_operand_m_ready_o = '0;
 
     // Inform the main sequencer if we are idle
@@ -312,11 +320,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Did we receive operands on the MaskA channel?
         if (!result_queue_full && &masku_operand_a_valid_i) begin
           // How many elements are we committing in total?
-          // Since the MASKU instructions have vl mod 8 == 0 (non-default behaviour), we carry out
-          // the following calculation with vl/8 instead.
+          // Since we are committing bits instead of bytes, we carry out the following calculation with ceil(vl/8) instead.
           automatic int element_cnt_all_lanes = (NrLanes << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
-          if (element_cnt_all_lanes > issue_cnt_q / 8)
-            element_cnt_all_lanes = issue_cnt_q / 8;
+          if (element_cnt_all_lanes > (issue_cnt_q + 7) / 8)
+            element_cnt_all_lanes = (issue_cnt_q + 7) / 8;
 
           // Acknowledge the operands of this instruction
           masku_operand_a_ready_o = masku_operand_a_valid_i;
@@ -339,7 +346,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             };
           end
           result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
-
 
           // Increment result queue pointers and counters
           result_queue_cnt_d += 1;
