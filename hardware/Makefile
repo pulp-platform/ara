@@ -84,8 +84,7 @@ $(buildpath):
 # Bender
 bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
-	(curl --proto '=https' --tlsv1.2 -sSf https://iis-people.ee.ethz.ch/~andkurt/bender-init \
-		| bash -s -- 0.21.0)
+	(cat $(ARA_DIR)/scripts/bender-init | bash -s -- 0.21.0)
 	@echo "$$(./bender --version) available."
 
 # Library
