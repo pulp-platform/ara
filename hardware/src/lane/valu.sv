@@ -208,10 +208,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
    *********************/
 
   elen_t valu_result;
+  logic  valu_valid;
 
   simd_valu i_simd_valu (
     .operand_a_i       (vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
     .operand_b_i       (alu_operand_i[1]                                            ),
+    .valid_i           (valu_valid                                                  ),
     .mask_i            (mask_valid_i && !vinsn_issue.vm ? mask_i : {StrbWidth{1'b1}}),
     .narrowing_select_i(narrowing_select_q                                          ),
     .op_i              (vinsn_issue.op                                              ),
@@ -242,6 +244,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     narrowing_select_d = narrowing_select_q;
 
+    // Do not issue any operations
+    valu_valid = 1'b0;
+
     // Inform our status to the lane controller
     alu_ready_o      = !vinsn_queue_full;
     alu_vinsn_done_o = '0;
@@ -262,6 +267,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
         if (element_cnt > issue_cnt_q)
           element_cnt = issue_cnt_q;
+
+        // Issue the operation
+        valu_valid = 1'b1;
 
         // Acknowledge the operands of this instruction
         alu_operand_ready_o = {vinsn_issue.use_vs2, vinsn_issue.use_vs1};
@@ -431,6 +439,7 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
   ) (
     input  elen_t   operand_a_i,
     input  elen_t   operand_b_i,
+    input  logic    valid_i,
     input  strb_t   mask_i,
     input  logic    narrowing_select_i,
     input  ara_op_e op_i,
@@ -460,25 +469,37 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Comparison instructions that use signed operands
   logic is_signed;
-  assign is_signed = op_i inside {VMAX, VMIN};
+  assign is_signed = op_i inside {VMAX, VMIN, VMSLT, VMSLE, VMSGT};
   // Compare operands.
   // For vew_i = EW8, all bits are valid.
   // For vew_i = EW16, bits 0, 2, 4, and 6 are valid.
   // For vew_i = EW32, bits 0 and 4 are valid.
   // For vew_i = EW64, only bit 0 indicates the result of the comparison.
   logic [7:0] less;
+  logic [7:0] equal;
 
   always_comb begin: p_comparison
     // Default assignment
-    less = '0;
+    less  = '0;
+    equal = '0;
 
-    unique case (vew_i)
-      EW8 : for (int b = 0; b < 8; b++) less[1*b] = $signed({is_signed & opa.w8 [b][ 7], opa.w8 [b]}) < $signed({is_signed & opb.w8 [b][ 7], opb.w8 [b]});
-      EW16: for (int b = 0; b < 4; b++) less[2*b] = $signed({is_signed & opa.w16[b][15], opa.w16[b]}) < $signed({is_signed & opb.w16[b][15], opb.w16[b]});
-      EW32: for (int b = 0; b < 2; b++) less[4*b] = $signed({is_signed & opa.w32[b][31], opa.w32[b]}) < $signed({is_signed & opb.w32[b][31], opb.w32[b]});
-      EW64: for (int b = 0; b < 1; b++) less[8*b] = $signed({is_signed & opa.w64[b][63], opa.w64[b]}) < $signed({is_signed & opb.w64[b][63], opb.w64[b]});
-      default:;
-    endcase
+    if (valid_i) begin
+      unique case (vew_i)
+        EW8 : for (int b = 0; b < 8; b++) less[1*b] = $signed({is_signed & opb.w8 [b][ 7], opb.w8 [b]}) < $signed({is_signed & opa.w8 [b][ 7], opa.w8 [b]});
+        EW16: for (int b = 0; b < 4; b++) less[2*b] = $signed({is_signed & opb.w16[b][15], opb.w16[b]}) < $signed({is_signed & opa.w16[b][15], opa.w16[b]});
+        EW32: for (int b = 0; b < 2; b++) less[4*b] = $signed({is_signed & opb.w32[b][31], opb.w32[b]}) < $signed({is_signed & opa.w32[b][31], opa.w32[b]});
+        EW64: for (int b = 0; b < 1; b++) less[8*b] = $signed({is_signed & opb.w64[b][63], opb.w64[b]}) < $signed({is_signed & opa.w64[b][63], opa.w64[b]});
+        default:;
+      endcase
+
+      unique case (vew_i)
+        EW8 : for (int b = 0; b < 8; b++) equal[1*b] = opa.w8 [b] == opb.w8 [b];
+        EW16: for (int b = 0; b < 4; b++) equal[2*b] = opa.w16[b] == opb.w16[b];
+        EW32: for (int b = 0; b < 2; b++) equal[4*b] = opa.w32[b] == opb.w32[b];
+        EW64: for (int b = 0; b < 1; b++) equal[8*b] = opa.w64[b] == opb.w64[b];
+        default:;
+      endcase
+    end
   end: p_comparison
 
   /*********
@@ -489,100 +510,122 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
     // Default assignment
     res = '0;
 
-    unique case (op_i)
-      // Logical operations
-      VAND: res = operand_a_i & operand_b_i;
-      VOR : res = operand_a_i | operand_b_i;
-      VXOR: res = operand_a_i ^ operand_b_i;
+    if (valid_i)
+      unique case (op_i)
+        // Logical operations
+        VAND: res = operand_a_i & operand_b_i;
+        VOR : res = operand_a_i | operand_b_i;
+        VXOR: res = operand_a_i ^ operand_b_i;
 
-      // Mask logical operations
-      VMAND   : res = operand_a_i & operand_b_i;
-      VMANDNOT: res = ~operand_a_i & operand_b_i;
-      VMNAND  : res = ~(operand_a_i & operand_b_i);
-      VMOR    : res = operand_a_i | operand_b_i;
-      VMNOR   : res = ~(operand_a_i | operand_b_i);
-      VMORNOT : res = ~operand_a_i | operand_b_i;
-      VMXOR   : res = operand_a_i ^ operand_b_i;
-      VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
+        // Mask logical operations
+        VMAND   : res = operand_a_i & operand_b_i;
+        VMANDNOT: res = ~operand_a_i & operand_b_i;
+        VMNAND  : res = ~(operand_a_i & operand_b_i);
+        VMOR    : res = operand_a_i | operand_b_i;
+        VMNOR   : res = ~(operand_a_i | operand_b_i);
+        VMORNOT : res = ~operand_a_i | operand_b_i;
+        VMXOR   : res = operand_a_i ^ operand_b_i;
+        VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
-      // Arithmetic instructions
-      VADD, VADC: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] + opb.w8 [b] + logic'(op_i == VADC && mask_i[1*b]);
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] + opb.w16[b] + logic'(op_i == VADC && mask_i[2*b]);
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] + opb.w32[b] + logic'(op_i == VADC && mask_i[4*b]);
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] + opb.w64[b] + logic'(op_i == VADC && mask_i[8*b]);
-          default:;
-        endcase
-      VSUB, VSBC: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] - opa.w8 [b] - logic'(op_i == VSBC && mask_i[1*b]);
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] - opa.w16[b] - logic'(op_i == VSBC && mask_i[2*b]);
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] - opa.w32[b] - logic'(op_i == VSBC && mask_i[4*b]);
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] - opa.w64[b] - logic'(op_i == VSBC && mask_i[8*b]);
-          default:;
-        endcase
-      VRSUB: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] - opb.w8 [b];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] - opb.w16[b];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] - opb.w32[b];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] - opb.w64[b];
-          default:;
-        endcase
+        // Arithmetic instructions
+        VADD, VADC: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] + opb.w8 [b] + logic'(op_i == VADC && mask_i[1*b]);
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] + opb.w16[b] + logic'(op_i == VADC && mask_i[2*b]);
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] + opb.w32[b] + logic'(op_i == VADC && mask_i[4*b]);
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] + opb.w64[b] + logic'(op_i == VADC && mask_i[8*b]);
+            default:;
+          endcase
+        VSUB, VSBC: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] - opa.w8 [b] - logic'(op_i == VSBC && mask_i[1*b]);
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] - opa.w16[b] - logic'(op_i == VSBC && mask_i[2*b]);
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] - opa.w32[b] - logic'(op_i == VSBC && mask_i[4*b]);
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] - opa.w64[b] - logic'(op_i == VSBC && mask_i[8*b]);
+            default:;
+          endcase
+        VRSUB: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] - opb.w8 [b];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] - opb.w16[b];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] - opb.w32[b];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] - opb.w64[b];
+            default:;
+          endcase
 
-      // Shift instructions
-      VSLL: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] << opa.w8 [b][2:0];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] << opa.w16[b][3:0];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] << opa.w32[b][4:0];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] << opa.w64[b][5:0];
-          default:;
-        endcase
-      VSRL: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] >> opa.w8 [b][2:0];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] >> opa.w16[b][3:0];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] >> opa.w32[b][4:0];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] >> opa.w64[b][5:0];
-          default:;
-        endcase
-      VSRA: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = $signed(opb.w8 [b]) >>> opa.w8 [b][2:0];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
-          default:;
-        endcase
-      VNSRL: unique case (vew_i)
-          EW8 : for (int b = 0; b < 4; b++) res.w8 [2*b + narrowing_select_i] = opb.w16[b] >> opa.w16[b][3:0];
-          EW16: for (int b = 0; b < 2; b++) res.w16[2*b + narrowing_select_i] = opb.w32[b] >> opa.w32[b][4:0];
-          EW32: for (int b = 0; b < 1; b++) res.w32[2*b + narrowing_select_i] = opb.w64[b] >> opa.w64[b][5:0];
-          default:;
-        endcase
-      VNSRA: unique case (vew_i)
-          EW8 : for (int b = 0; b < 4; b++) res.w8 [2*b + narrowing_select_i] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
-          EW16: for (int b = 0; b < 2; b++) res.w16[2*b + narrowing_select_i] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
-          EW32: for (int b = 0; b < 1; b++) res.w32[2*b + narrowing_select_i] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
-          default:;
-        endcase
+        // Shift instructions
+        VSLL: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] << opa.w8 [b][2:0];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] << opa.w16[b][3:0];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] << opa.w32[b][4:0];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] << opa.w64[b][5:0];
+            default:;
+          endcase
+        VSRL: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] >> opa.w8 [b][2:0];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] >> opa.w16[b][3:0];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] >> opa.w32[b][4:0];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] >> opa.w64[b][5:0];
+            default:;
+          endcase
+        VSRA: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = $signed(opb.w8 [b]) >>> opa.w8 [b][2:0];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
+            default:;
+          endcase
+        VNSRL: unique case (vew_i)
+            EW8 : for (int b = 0; b < 4; b++) res.w8 [2*b + narrowing_select_i] = opb.w16[b] >> opa.w16[b][3:0];
+            EW16: for (int b = 0; b < 2; b++) res.w16[2*b + narrowing_select_i] = opb.w32[b] >> opa.w32[b][4:0];
+            EW32: for (int b = 0; b < 1; b++) res.w32[2*b + narrowing_select_i] = opb.w64[b] >> opa.w64[b][5:0];
+            default:;
+          endcase
+        VNSRA: unique case (vew_i)
+            EW8 : for (int b = 0; b < 4; b++) res.w8 [2*b + narrowing_select_i] = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
+            EW16: for (int b = 0; b < 2; b++) res.w16[2*b + narrowing_select_i] = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
+            EW32: for (int b = 0; b < 1; b++) res.w32[2*b + narrowing_select_i] = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
+            default:;
+          endcase
 
-      // Merge instructions
-      VMERGE: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = mask_i[b] ? opa.w8 [b] : opb.w8 [b];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = mask_i[2*b] ? opa.w16[b] : opb.w16[b];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = mask_i[4*b] ? opa.w32[b] : opb.w32[b];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = mask_i[8*b] ? opa.w64[b] : opb.w64[b];
-          default:;
-        endcase
+        // Merge instructions
+        VMERGE: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = mask_i[b] ? opa.w8 [b] : opb.w8 [b];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = mask_i[2*b] ? opa.w16[b] : opb.w16[b];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = mask_i[4*b] ? opa.w32[b] : opb.w32[b];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = mask_i[8*b] ? opa.w64[b] : opb.w64[b];
+            default:;
+          endcase
 
-      // Comparison instructions
-      VMIN, VMINU, VMAX, VMAXU: unique case (vew_i)
-          EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = (less[1*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opa.w8 [b] : opb.w8 [b];
-          EW16: for (int b = 0; b < 4; b++) res.w16[b] = (less[2*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opa.w16[b] : opb.w16[b];
-          EW32: for (int b = 0; b < 2; b++) res.w32[b] = (less[4*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opa.w32[b] : opb.w32[b];
-          EW64: for (int b = 0; b < 1; b++) res.w64[b] = (less[8*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opa.w64[b] : opb.w64[b];
-          default:;
-        endcase
+        // Comparison instructions
+        VMIN, VMINU, VMAX, VMAXU: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = (less[1*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w8 [b] : opa.w8 [b];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = (less[2*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w16[b] : opa.w16[b];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = (less[4*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w32[b] : opa.w32[b];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = (less[8*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w64[b] : opa.w64[b];
+            default:;
+          endcase
+        VMSEQ, VMSNE: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][0] = equal[1*b] ^ (op_i == VMSNE);
+            EW16: for (int b = 0; b < 4; b++) res.w16[b][0] = equal[2*b] ^ (op_i == VMSNE);
+            EW32: for (int b = 0; b < 2; b++) res.w32[b][0] = equal[4*b] ^ (op_i == VMSNE);
+            EW64: for (int b = 0; b < 1; b++) res.w64[b][0] = equal[8*b] ^ (op_i == VMSNE);
+            default:;
+          endcase
+        VMSLT, VMSLTU: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][0] = less[1*b];
+            EW16: for (int b = 0; b < 4; b++) res.w16[b][0] = less[2*b];
+            EW32: for (int b = 0; b < 2; b++) res.w32[b][0] = less[4*b];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b][0] = less[8*b];
+            default:;
+          endcase
+        VMSLE, VMSLEU, VMSGT, VMSGTU: unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][0] = (less[1*b] || equal[1*b]) ^ (op_i inside {VMSGT, VMSGTU});
+            EW16: for (int b = 0; b < 4; b++) res.w16[b][0] = (less[2*b] || equal[2*b]) ^ (op_i inside {VMSGT, VMSGTU});
+            EW32: for (int b = 0; b < 2; b++) res.w32[b][0] = (less[4*b] || equal[4*b]) ^ (op_i inside {VMSGT, VMSGTU});
+            EW64: for (int b = 0; b < 1; b++) res.w64[b][0] = (less[8*b] || equal[8*b]) ^ (op_i inside {VMSGT, VMSGTU});
+            default:;
+          endcase
 
-      default:;
-    endcase
+        default:;
+      endcase
   end: p_alu
 
   /****************
