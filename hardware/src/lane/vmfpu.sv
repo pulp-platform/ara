@@ -383,9 +383,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   // FPU preprocessing stage
   always_comb begin: vfpu_preprocessing
-    operand_a  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0];
-    operand_b  = mfpu_operand_i[1];
-    operand_c  = mfpu_operand_i[2];
+    operand_a  = mfpu_operand_i[1];                                         // vs2
+    operand_b  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
+    operand_c  = mfpu_operand_i[2];                                         // vd
     // Default rounding-mode from fcsr.rm
     fp_rm      = fpnew_pkg::roundmode_e'(vinsn_issue.fp_rm);
     fp_op      = fpnew_pkg::ADD;
@@ -402,18 +402,22 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       end
       VFSUB: begin
         fp_op      = fpnew_pkg::ADD;
-        fp_sign[2] = 1'b1;
+        fp_sign[1] = 1'b1;
         // Addition is between operands B and C
         operand_c = operand_a;
       end
       VFRSUB: begin
         fp_op      = fpnew_pkg::ADD;
-        fp_sign[1] = 1'b1;
+        fp_sign[2] = 1'b1;
         // Addition is between operands B and C
         operand_c = operand_a;
       end
       VFMUL: begin
         fp_op      = fpnew_pkg::MUL;
+      end
+      VFDIV: begin
+        // fdiv is vs2/vs1
+        fp_op      = fpnew_pkg::DIV;
       end
       VFMACC: begin
         fp_op     = fpnew_pkg::FMADD;
