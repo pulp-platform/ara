@@ -1480,6 +1480,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 // VFP Addition
                 6'b000000: ara_req_d.op = ara_pkg::VFADD;
                 6'b000010: ara_req_d.op = ara_pkg::VFSUB;
+                6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b101100: begin
                   ara_req_d.op = ara_pkg::VFMACC;
                   ara_req_d.use_vd_op = 1'b1;
@@ -1548,6 +1549,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 // VFP Addition
                 6'b000000: ara_req_d.op = ara_pkg::VFADD;
                 6'b000010: ara_req_d.op = ara_pkg::VFSUB;
+                6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b100111: ara_req_d.op = ara_pkg::VFRSUB;
                 6'b101100: begin
                   ara_req_d.op = ara_pkg::VFMACC;

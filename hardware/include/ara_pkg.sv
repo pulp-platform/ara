@@ -61,7 +61,7 @@ package ara_pkg;
     // Div
     VDIVU, VDIV, VREMU, VREM,
     // FPU
-    VFADD, VFSUB, VFRSUB, VFMACC,
+    VFADD, VFSUB, VFRSUB, VFMUL, VFMACC,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Integer comparison instructions
