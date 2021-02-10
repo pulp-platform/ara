@@ -400,6 +400,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         // Addition is between operands B and C
         operand_c = operand_a;
       end
+      VFSUB: begin
+        fp_op      = fpnew_pkg::ADD;
+        fp_sign[2] = 1'b1;
+        // Addition is between operands B and C
+        operand_c = operand_a;
+      end
+      VFRSUB: begin
+        fp_op      = fpnew_pkg::ADD;
+        fp_sign[1] = 1'b1;
+        // Addition is between operands B and C
+        operand_c = operand_a;
+      end
       VFMACC: begin
         fp_op     = fpnew_pkg::FMADD;
       end
