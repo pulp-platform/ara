@@ -100,7 +100,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
   always_comb begin: p_non_speculative_ff
     // Maintain state
     insn_pending_d = insn_pending_q;
-    insn_ready_d    = insn_ready_q;
+    insn_ready_d   = insn_ready_q;
 
     // We received a new instruction
     if (acc_valid_i)
@@ -111,7 +111,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
 
     // An accelerator instruction is no longer speculative.
     if (acc_commit_i && insn_pending_q[acc_commit_trans_id_i]) begin
-      insn_ready_d   [acc_commit_trans_id_i] = 1'b1;
+      insn_ready_d[acc_commit_trans_id_i]   = 1'b1;
       insn_pending_d[acc_commit_trans_id_i] = 1'b0;
     end
 
@@ -128,6 +128,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
   logic             acc_req_valid;
   logic             acc_req_ready;
 
+  accelerator_req_t acc_req_int;
   spill_register #(
     .T(accelerator_req_t)
   ) i_accelerator_req_register (
@@ -136,10 +137,18 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     .data_i (acc_req        ),
     .valid_i(acc_req_valid  ),
     .ready_o(acc_req_ready  ),
-    .data_o (acc_req_o      ),
+    .data_o (acc_req_int    ),
     .valid_o(acc_req_valid_o),
     .ready_i(acc_req_ready_i)
   );
+
+  assign acc_req_o = '{
+      insn         : acc_req_int.insn,
+      rs1          : acc_req_int.rs1,
+      rs2          : acc_req_int.rs2,
+      trans_id     : acc_req_int.trans_id,
+      store_pending: !acc_no_st_pending_i && acc_cons_en_i
+    };
 
   always_comb begin: accelerator_req_dispatcher
     // Do not fetch from the instruction queue
@@ -153,11 +162,11 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     if (!acc_insn_queue_empty && acc_req_ready) begin
       acc_req = '{
         // Instruction is forwarded from the decoder as an immediate
-        insn         : acc_insn_queue_o.imm[31:0],
-        rs1          : acc_insn_queue_o.operand_a,
-        rs2          : acc_insn_queue_o.operand_b,
-        trans_id     : acc_insn_queue_o.trans_id,
-        store_pending: !acc_no_st_pending_i && acc_cons_en_i
+        insn    : acc_insn_queue_o.imm[31:0],
+        rs1     : acc_insn_queue_o.operand_a,
+        rs2     : acc_insn_queue_o.operand_b,
+        trans_id: acc_insn_queue_o.trans_id,
+        default : '0
       };
       // Wait until the instruction is no longer speculative.
       acc_req_valid      = !acc_insn_queue_empty && insn_ready_d[acc_insn_queue_o.trans_id];
