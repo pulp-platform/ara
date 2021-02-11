@@ -46,93 +46,123 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
 
   `include "common_cells/registers.svh"
 
+  import cf_math_pkg::idx_width;
+
+  /***********************
+   *  Instruction queue  *
+   ***********************/
+
+  localparam InstructionQueueDepth = 3;
+
+  fu_data_t                                        acc_insn_queue_o;
+  logic                                            acc_insn_queue_pop;
+  logic                                            acc_insn_queue_empty;
+  logic     [idx_width(InstructionQueueDepth)-1:0] acc_insn_queue_usage;
+
+  fifo_v3 #(
+    .DEPTH       (InstructionQueueDepth),
+    .FALL_THROUGH(1'b1                 ),
+    .dtype       (fu_data_t            )
+  ) i_acc_insn_queue (
+    .clk_i     (clk_i               ),
+    .rst_ni    (rst_ni              ),
+    .flush_i   (flush_i             ),
+    .testmode_i(1'b0                ),
+    .data_i    (acc_data_i          ),
+    .push_i    (acc_valid_i         ),
+    .full_o    (/* Unused */        ),
+    .data_o    (acc_insn_queue_o    ),
+    .pop_i     (acc_insn_queue_pop  ),
+    .empty_o   (acc_insn_queue_empty),
+    .usage_o   (acc_insn_queue_usage)
+  );
+
+  // We are ready if the instruction queue is able to accept at least one more entry.
+  assign acc_ready_o = acc_insn_queue_usage < (InstructionQueueDepth-1);
+
+  // Flush undispatched accelerator instructions.
   assign acc_flush_undisp_o = flush_i;
+
+  /**********************************
+   *  Non-speculative instructions  *
+   **********************************/
+
+  // Keep track of the instructions that were received by the dispatcher.
+  logic [NR_SB_ENTRIES-1:0] insn_pending_d, insn_pending_q;
+  `FF(insn_pending_q, insn_pending_d, '0)
+
+  // Only non-speculative instructions can be issued to the accelerators.
+  // The following block keeps track of which transaction IDs reached the
+  // top of the scoreboard, and are therefore no longer speculative.
+  logic [NR_SB_ENTRIES-1:0] insn_ready_d, insn_ready_q;
+  `FF(insn_ready_q, insn_ready_d, '0)
+
+  always_comb begin: p_non_speculative_ff
+    // Maintain state
+    insn_pending_d = insn_pending_q;
+    insn_ready_d    = insn_ready_q;
+
+    // We received a new instruction
+    if (acc_valid_i)
+      insn_pending_d[acc_data_i.trans_id] = 1'b1;
+    // Flush all received instructions
+    if (flush_i)
+      insn_pending_d = '0;
+
+    // An accelerator instruction is no longer speculative.
+    if (acc_commit_i && insn_pending_q[acc_commit_trans_id_i]) begin
+      insn_ready_d   [acc_commit_trans_id_i] = 1'b1;
+      insn_pending_d[acc_commit_trans_id_i] = 1'b0;
+    end
+
+    // An accelerator instruction was issued.
+    if (acc_req_valid_o)
+      insn_ready_d[acc_req_o.trans_id] = 1'b0;
+  end: p_non_speculative_ff
 
   /*************************
    *  Accelerator request  *
    *************************/
 
-  // Capture any requests for which we are currently not ready in the
-  // following fall-through register.
-  fu_data_t acc_busy_data;
-  logic     acc_busy_valid;
-  logic     acc_busy_ready;
+  accelerator_req_t acc_req;
+  logic             acc_req_valid;
+  logic             acc_req_ready;
 
-  fall_through_register #(
-    .T(fu_data_t)
-  ) i_acc_busy_register (
-    .clk_i     (clk_i          ),
-    .rst_ni    (rst_ni         ),
-    .clr_i     (flush_i        ),
-    .testmode_i(1'b0           ),
-    .data_i    (acc_data_i     ),
-    .valid_i   (acc_valid_i    ),
-    .ready_o   (/* Unused */   ),
-    .data_o    (acc_busy_data  ),
-    .valid_o   (acc_busy_valid ),
-    .ready_i   (acc_busy_ready )
+  spill_register #(
+    .T(accelerator_req_t)
+  ) i_accelerator_req_register (
+    .clk_i  (clk_i          ),
+    .rst_ni (rst_ni         ),
+    .data_i (acc_req        ),
+    .valid_i(acc_req_valid  ),
+    .ready_o(acc_req_ready  ),
+    .data_o (acc_req_o      ),
+    .valid_o(acc_req_valid_o),
+    .ready_i(acc_req_ready_i)
   );
-
-  //pragma translate_off
-  `ifndef verilator
-
-  acc_dispatcher_fu_data_accepted: assert property (
-      @(posedge clk_i) disable iff (~rst_ni) i_acc_busy_register.valid_i |-> i_acc_busy_register.ready_o)
-  else $error("[acc_dispatcher] Accelerator request from the scoreboard was lost.");
-
-  `endif
-  //pragma translate_on
-
-  // All requests from the scoreboard should be stored in the following register
-  fu_data_t acc_data;
-  logic     acc_valid;
-  logic     acc_ready;
-  // The scoreboard ready signal comes from this register
-  assign acc_ready_o = acc_busy_ready;
-
-  stream_register #(
-    .T(fu_data_t)
-  ) i_acc_register (
-    .clk_i     (clk_i         ),
-    .rst_ni    (rst_ni        ),
-    .clr_i     (flush_i       ),
-    .testmode_i(1'b0          ),
-    .data_i    (acc_busy_data ),
-    .valid_i   (acc_busy_valid),
-    .ready_o   (acc_busy_ready),
-    .data_o    (acc_data      ),
-    .valid_o   (acc_valid     ),
-    .ready_i   (acc_ready     )
-  );
-
-  // Store whether there was a match between acc_commit_trans_id_i and acc_data.trans_id
-  logic     acc_commit_trans_id_match_d, acc_commit_trans_id_match_q;
-  `FF(acc_commit_trans_id_match_q, acc_commit_trans_id_match_d, 1'b0)
 
   always_comb begin: accelerator_req_dispatcher
-    // Maintain state
-    acc_commit_trans_id_match_d = acc_commit_trans_id_match_q;
-    // No match. Compare the results.
-    if (!acc_commit_trans_id_match_q)
-      acc_commit_trans_id_match_d = acc_commit_i && acc_commit_trans_id_i == acc_data.trans_id;
+    // Do not fetch from the instruction queue
+    acc_insn_queue_pop = 1'b0;
+
+    // Default values
+    acc_req       = '0;
+    acc_req_valid = 1'b0;
 
     // Unpack fu_data_t into accelerator_req_t
-    acc_req_o = '{
-      // Instruction is forwarded from the decoder as an immediate
-      insn         : acc_data.imm[31:0],
-      rs1          : acc_data.operand_a,
-      rs2          : acc_data.operand_b,
-      trans_id     : acc_data.trans_id,
-      store_pending: !acc_no_st_pending_i && acc_cons_en_i
-    };
-
-    // Wait until we receive the acc_commit_i signal
-    acc_req_valid_o = acc_valid && acc_commit_trans_id_match_d;
-    acc_ready       = acc_req_ready_i && acc_commit_trans_id_match_d;
-
-    // Reset the match signal, if we acknowledged a request
-    if (acc_ready)
-      acc_commit_trans_id_match_d = 1'b0;
+    if (!acc_insn_queue_empty && acc_req_ready) begin
+      acc_req = '{
+        // Instruction is forwarded from the decoder as an immediate
+        insn         : acc_insn_queue_o.imm[31:0],
+        rs1          : acc_insn_queue_o.operand_a,
+        rs2          : acc_insn_queue_o.operand_b,
+        trans_id     : acc_insn_queue_o.trans_id,
+        store_pending: !acc_no_st_pending_i && acc_cons_en_i
+      };
+      // Wait until the instruction is no longer speculative.
+      acc_req_valid      = !acc_insn_queue_empty && insn_ready_d[acc_insn_queue_o.trans_id];
+      acc_insn_queue_pop = acc_req_valid;
+    end
   end
 
   /**************************
@@ -144,14 +174,14 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
   assign acc_result_o    = acc_resp_i.result;
   assign acc_valid_o     = acc_resp_valid_i;
   assign acc_exception_o = '{
-            cause: riscv::ILLEGAL_INSTR,
-            tval : '0,
-            valid: acc_resp_i.error
-  };
+      cause: riscv::ILLEGAL_INSTR,
+      tval : '0,
+      valid: acc_resp_i.error
+    };
   // Always ready to receive responses
   assign acc_resp_ready_o = 1'b1;
 
   // Signal dispatched load/store to issue stage
-  assign acc_ld_disp_o = acc_req_ready_i && (acc_data.operator == ACCEL_OP_LOAD);
-  assign acc_st_disp_o = acc_req_ready_i && (acc_data.operator == ACCEL_OP_STORE);
+  assign acc_ld_disp_o = acc_req_valid && (acc_insn_queue_o.operator == ACCEL_OP_LOAD);
+  assign acc_st_disp_o = acc_req_valid && (acc_insn_queue_o.operator == ACCEL_OP_STORE);
 endmodule : acc_dispatcher
