@@ -105,6 +105,9 @@ reset_vector:
     // Enable Vector Extension
     li      t0, (MSTATUS_VS & (MSTATUS_VS >> 1))
     csrs    mstatus, t0
+    // Enable the counters
+    csrsi   mcounteren, 1
+    csrsi   scounteren, 1
     // Call the RISC-V Test initialization function, if it exists
     la t0, rvtest_init
     beqz t0, 1f
