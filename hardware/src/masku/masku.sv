@@ -235,6 +235,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [NrLanes-1:0]      alu_result;
   logic  [NrLanes*ELEN-1:0] bit_enable;
   logic  [NrLanes*ELEN-1:0] bit_enable_shuffle;
+  logic  [NrLanes*ELEN-1:0] bit_enable_mask;
 
   // Pointers
   //
@@ -245,6 +246,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     alu_result         = '0;
     bit_enable         = '0;
     bit_enable_shuffle = '0;
+    bit_enable_mask    = '0;
 
     if (vinsn_issue_valid) begin
       // Calculate bit enable
@@ -260,18 +262,24 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // Shuffle the bit enable signal
-      for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
-        automatic int vrf_byte              = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.eew_vd_op);
-        bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*vrf_seq_byte +: 8];
-      end
+      for (int b = 0; b < NrLanes*StrbWidth; b++) begin
+        automatic int vrf_byte              = shuffle_index(b, NrLanes, vinsn_issue.eew_vd_op);
+        bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*b +: 8];
 
-      // Take the mask into account
-      if (!vinsn_issue.vm)
-        bit_enable_shuffle = bit_enable_shuffle & masku_operand_m_i;
+        // Take the mask into account
+        if (!vinsn_issue.vm) begin
+          automatic int mask_byte          = shuffle_index(b, NrLanes, vinsn_issue.eew_vmask);
+          automatic int mask_byte_lane     = mask_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
+          automatic int mask_byte_offset   = mask_byte[idx_width(StrbWidth)-1:0];
+          bit_enable_mask[8*vrf_byte +: 8] = bit_enable_shuffle[8*vrf_byte +: 8] & masku_operand_m_i[mask_byte_lane][8*mask_byte_offset +: 8];
+        end else begin
+          bit_enable_mask[8*vrf_byte +: 8] = bit_enable_shuffle[8*vrf_byte +: 8];
+        end
+      end
 
       // Evaluate the instruction
       unique case (vinsn_issue.op) inside
-        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_shuffle) | (masku_operand_b_i & ~bit_enable_shuffle);
+        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) | (masku_operand_b_i & ~bit_enable_mask);
         [VMSEQ:VMSGT]    : begin
           automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
@@ -332,7 +340,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           endcase
 
           // Final assignment
-          alu_result = (alu_result_flat & bit_enable_shuffle) | (masku_operand_b_i & ~bit_enable_shuffle);
+          alu_result = (alu_result_flat & bit_enable_mask) | (masku_operand_b_i & ~bit_enable_mask);
         end
         default: alu_result = '0;
       endcase
