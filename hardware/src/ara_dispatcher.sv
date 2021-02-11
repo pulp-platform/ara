@@ -1476,7 +1476,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d   = 1'b1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 // VFP Addition
                 6'b000000: ara_req_d.op = ara_pkg::VFADD;
                 6'b000010: ara_req_d.op = ara_pkg::VFSUB;
@@ -1489,6 +1489,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b101100: begin
                   ara_req_d.op = ara_pkg::VFMACC;
                   ara_req_d.use_vd_op = 1'b1;
+                end
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
                 end
               endcase
 
@@ -1513,6 +1518,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Ara supports 16-bit float, 32-bit float, 64-bit float.
@@ -1550,7 +1556,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               ara_req_valid_d         = 1'b1;
 
               // Decode based on the func6 field
-              case (insn.varith_type.func6)
+              unique case (insn.varith_type.func6)
                 // VFP Addition
                 6'b000000: ara_req_d.op = ara_pkg::VFADD;
                 6'b000010: ara_req_d.op = ara_pkg::VFSUB;
@@ -1564,6 +1570,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b101100: begin
                   ara_req_d.op = ara_pkg::VFMACC;
                   ara_req_d.use_vd_op = 1'b1;
+                end
+                default: begin
+                  // Trigger an error
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
                 end
               endcase
 
@@ -1588,6 +1599,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+                default:;
               endcase
 
               // Ara supports 16-bit float, 32-bit float, 64-bit float.
