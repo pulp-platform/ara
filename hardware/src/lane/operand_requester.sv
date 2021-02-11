@@ -304,6 +304,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         end
 
         REQUESTING: begin
+          // Update hazards
+          requester_d.hazard = requester_q.hazard & vinsn_running_i;
+
           if (operand_queue_ready_i[requester]) begin
             // Bank we are currently requesting
             automatic int bank = requester_q.addr[idx_width(NrBanks)-1:0];
@@ -328,9 +331,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 requester_d.len = requester_q.len - (1 << (int'(EW64) - int'(requester_q.vew)));
             end
 
-            // Update hazards
-            requester_d.hazard = requester_q.hazard & vinsn_running_i;
-
             // Finished requesting all the elements
             if (requester_d.len == '0) begin
               state_d = IDLE;
@@ -346,7 +346,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   eew : operand_request_i[requester].eew,
                   vl  : operand_request_i[requester].vl,
                   conv: operand_request_i[requester].conv
-                                                 };
+                };
                 operand_queue_cmd_valid_o[requester] = 1'b1;
 
                 // Store the request
