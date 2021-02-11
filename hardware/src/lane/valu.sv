@@ -262,7 +262,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid && !result_queue_full) begin
       // Do we have all the operands necessary for this instruction?
-      if ((alu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm)) begin
+      if ((alu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit)) begin
         // How many elements are we committing with this word?
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
         if (element_cnt > issue_cnt_q)
@@ -274,7 +274,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         // Acknowledge the operands of this instruction
         alu_operand_ready_o = {vinsn_issue.use_vs2, vinsn_issue.use_vs1};
         // Narrowing instructions might need an extra cycle before acknowledging the mask operands
-        if (!narrowing(vinsn_issue.op))
+        // If the results are being sent to the Mask Unit, it is up to it to acknowledge the operands.
+        if (!narrowing(vinsn_issue.op) && vinsn_issue != VFU_MaskUnit)
           mask_ready_o = !vinsn_issue.vm;
 
         // Store the result in the result queue
@@ -303,7 +304,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
             result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
             // Acknowledge the mask operand, if needed
-            mask_ready_o = !vinsn_issue.vm;
+            if (vinsn_issue != VFU_MaskUnit)
+              mask_ready_o = !vinsn_issue.vm;
 
             // Bump pointers and counters of the result queue
             result_queue_cnt_d += 1;

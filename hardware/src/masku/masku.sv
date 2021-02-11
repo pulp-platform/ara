@@ -37,9 +37,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     output logic                        pe_req_ready_o,
     output pe_resp_t                    pe_resp_o,
     // Interface with the lanes
-    input  elen_t    [NrLanes-1:0][1:0] masku_operand_i,
-    input  logic     [NrLanes-1:0][1:0] masku_operand_valid_i,
-    output logic     [NrLanes-1:0][1:0] masku_operand_ready_o,
+    input  elen_t    [NrLanes-1:0][2:0] masku_operand_i,
+    input  logic     [NrLanes-1:0][2:0] masku_operand_valid_i,
+    output logic     [NrLanes-1:0][2:0] masku_operand_ready_o,
     output logic     [NrLanes-1:0]      masku_result_req_o,
     output vid_t     [NrLanes-1:0]      masku_result_id_o,
     output vaddr_t   [NrLanes-1:0]      masku_result_addr_o,
@@ -60,15 +60,26 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
    *  Operands  *
    **************/
 
+  // ALU result
   elen_t [NrLanes-1:0] masku_operand_a_i;
   logic  [NrLanes-1:0] masku_operand_a_valid_i;
   logic  [NrLanes-1:0] masku_operand_a_ready_o;
 
+  // Previous value of the destination vector register
+  elen_t [NrLanes-1:0] masku_operand_b_i;
+  logic  [NrLanes-1:0] masku_operand_b_valid_i;
+  logic  [NrLanes-1:0] masku_operand_b_ready_o;
+
+  // Mask
   elen_t [NrLanes-1:0] masku_operand_m_i;
   logic  [NrLanes-1:0] masku_operand_m_valid_i;
   logic  [NrLanes-1:0] masku_operand_m_ready_o;
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_unpack_masku_operands
+    assign masku_operand_b_i[lane]        = masku_operand_i[lane][2];
+    assign masku_operand_b_valid_i[lane]  = masku_operand_valid_i[lane][2];
+    assign masku_operand_ready_o[lane][2] = masku_operand_b_ready_o[lane];
+
     assign masku_operand_a_i[lane]        = masku_operand_i[lane][1];
     assign masku_operand_a_valid_i[lane]  = masku_operand_valid_i[lane][1];
     assign masku_operand_ready_o[lane][1] = masku_operand_a_ready_o[lane];
@@ -238,7 +249,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_issue_valid) begin
       // Calculate bit enable
       // The result can be taken either from the result of an operation (mask_operand_a_i), or
-      // from the previous value of the destination register (mask_operand_m_i). Byte strobes
+      // from the previous value of the destination register (mask_operand_b_i). Byte strobes
       // do not work here, since this has to be done at a bit granularity. Therefore, the Mask Unit
       // received both operands, and does a masking depending on the value of the vl.
       if (vinsn_issue.vl > ELEN*NrLanes)
@@ -254,14 +265,15 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*vrf_seq_byte +: 8];
       end
 
+      // Take the mask into account
+      if (!vinsn_issue.vm)
+        bit_enable_shuffle = bit_enable_shuffle & masku_operand_m_i;
+
       // Evaluate the instruction
       unique case (vinsn_issue.op) inside
-        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_shuffle) | (masku_operand_m_i & ~bit_enable_shuffle);
+        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_shuffle) | (masku_operand_b_i & ~bit_enable_shuffle);
         [VMSEQ:VMSGT]    : begin
-          automatic logic [ELEN*NrLanes-1:0] alu_result_flat;
-
-          // Keep previous value of the destination vector register
-          alu_result_flat = masku_operand_m_i & ~bit_enable_shuffle;
+          automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
           unique case (vinsn_issue.vtype.vsew)
             EW8: for (int b = 0; b < 8*NrLanes; b++) begin
@@ -320,7 +332,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           endcase
 
           // Final assignment
-          alu_result = alu_result_flat;
+          alu_result = (alu_result_flat & bit_enable_shuffle) | (masku_operand_b_i & ~bit_enable_shuffle);
         end
         default: alu_result = '0;
       endcase
@@ -368,6 +380,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // We are not ready, by default
     pe_resp                 = '0;
     masku_operand_a_ready_o = '0;
+    masku_operand_b_ready_o = '0;
     masku_operand_m_ready_o = '0;
 
     // Inform the main sequencer if we are idle
@@ -379,14 +392,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // We are ready to execute a vector mask instruction if the following are respected:
     // - There is an instruction ready to be issued.
-    // - We received operands on the MaskM channel.
-    if (vinsn_issue_valid && &masku_operand_m_valid_i) begin
+    if (vinsn_issue_valid) begin
       // Does this instruction execute on the Mask Unit, or does it only provide mask operands
       // for other functional units?
       if (vinsn_issue.vfu == VFU_MaskUnit) begin: opmvv_instruction
         // Is there place in the result queue to write the results?
         // Did we receive the operands?
-        if (!result_queue_full && &masku_operand_a_valid_i && (vinsn_issue.use_vd_op && &masku_operand_m_valid_i)) begin
+        if (!result_queue_full && &masku_operand_a_valid_i && (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i) && (vinsn_issue.vm || &masku_operand_m_valid_i)) begin
           // How many elements are we committing in total?
           // Since we are committing bits instead of bytes, we carry out the following calculation with ceil(vl/8) instead.
           automatic int element_cnt_all_lanes = (NrLanes << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
@@ -395,13 +407,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
           // Acknowledge the operands of this instruction.
           // At this stage, acknowledge only the first operand, "a", coming from the ALU.
-          // The operand "m" (i.e., the original value of the destination register) is acknowledged later.
           masku_operand_a_ready_o = masku_operand_a_valid_i;
 
           // Store the result in the operand queue
           for (int unsigned lane = 0; lane < NrLanes; lane++) begin
             // How many elements are we committing in this lane?
-            // Since the MASKU instructions have vl mod 8 == 0 (non-default behaviour), we carry out
+            // Since the MASKU instructions have vl mod 8 == 0 (non-default behavior), we carry out
             // the following calculation with vl/8 instead.
             automatic int element_cnt = element_cnt_all_lanes / NrLanes;
             if (lane < element_cnt_all_lanes[idx_width(NrLanes)-1:0])
@@ -423,7 +434,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             if (vrf_pnt_d == DataWidth*NrLanes || vrf_pnt_d >= issue_cnt_q) begin
               result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
-              // Acknowledge the operand "m", which has the original value of the destination register.
+              // Acknowledge the rest of the operands, which are accessed bit by bit.
+              masku_operand_b_ready_o = masku_operand_b_valid_i;
               masku_operand_m_ready_o = masku_operand_m_valid_i;
 
               // Reset VRF pointer
@@ -444,7 +456,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end else begin
             result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
-            // Acknowledge the operand "m", which has the original value of the destination register.
+            // Acknowledge the mask operand.
             masku_operand_m_ready_o = masku_operand_m_valid_i;
 
             // Increment result queue pointers and counters
@@ -462,7 +474,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
       end : opmvv_instruction else begin: mask_operands
         // Is there place in the mask queue to write the mask operands?
-        if (!mask_queue_full) begin
+        // Did we receive the mask bits on the MaskM channel?
+        if (!mask_queue_full && &masku_operand_m_valid_i) begin
           // Copy data from the mask operands into the mask queue
           for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
             // Map vrf_seq_byte to the corresponding byte in the VRF word.

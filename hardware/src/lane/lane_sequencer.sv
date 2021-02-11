@@ -111,8 +111,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   function automatic logic vfu_ready(vfu_e vfu, logic alu_ready_i, logic mfpu_ready_i);
     vfu_ready = 1'b1;
     unique case (vfu)
-      VFU_Alu : vfu_ready = alu_ready_i;
-      VFU_MFpu: vfu_ready = mfpu_ready_i;
+      VFU_Alu,
+      VFU_MaskUnit: vfu_ready = alu_ready_i;
+      VFU_MFpu    : vfu_ready = mfpu_ready_i;
       default:;
     endcase
   endfunction
@@ -146,11 +147,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       // If the operand requesters are busy, abort the request and wait for another cycle.
       if (pe_req_valid_i)
         unique case (pe_req_i.vfu)
-          VFU_Alu      : pe_req_ready_o = !(operand_request_valid_o[AluMaskA] || operand_request_valid_o[AluMaskB] || operand_request_valid_o[MaskM]);
+          VFU_Alu      : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskM]);
           VFU_MFpu     : pe_req_ready_o = !(operand_request_valid_o[MulFPUA] || operand_request_valid_o[MulFPUB] || operand_request_valid_o[MulFPUC] || operand_request_valid_o[MaskM]);
           VFU_LoadUnit : pe_req_ready_o = !(operand_request_valid_o[MaskM]);
           VFU_StoreUnit: pe_req_ready_o = !(operand_request_valid_o[StA] || operand_request_valid_o[MaskM]);
-          VFU_MaskUnit : pe_req_ready_o = !(operand_request_valid_o[AluMaskA] || operand_request_valid_o[AluMaskB] || operand_request_valid_o[MaskM]);
+          VFU_MaskUnit : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskB] || operand_request_valid_o[MaskM]);
           default:;
         endcase
 
@@ -195,7 +196,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
         unique case (pe_req_i.vfu)
           VFU_Alu: begin
-            operand_request_i[AluMaskA] = '{
+            operand_request_i[AluA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               eew    : pe_req_i.eew_vs1,
@@ -206,9 +207,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
-            operand_request_push[AluMaskA] = pe_req_i.use_vs1;
+            operand_request_push[AluA] = pe_req_i.use_vs1;
 
-            operand_request_i[AluMaskB] = '{
+            operand_request_i[AluB] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
               eew    : pe_req_i.eew_vs2,
@@ -219,7 +220,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
-            operand_request_push[AluMaskB] = pe_req_i.use_vs2;
+            operand_request_push[AluB] = pe_req_i.use_vs2;
 
             // This vector instruction uses masks
             operand_request_i[MaskM] = '{
@@ -353,7 +354,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_MaskUnit: begin
-            operand_request_i[AluMaskA] = '{
+            operand_request_i[AluA] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs1,
               eew    : pe_req_i.eew_vs1,
@@ -365,19 +366,19 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
             // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
             if (pe_req_i.op inside {[VMSEQ:VMSGT]}) begin
-              operand_request_i[AluMaskA].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
+              operand_request_i[AluA].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
             end
             // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
             else begin
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              operand_request_i[AluMaskA].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs1));
-              if ((operand_request_i[AluMaskA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes != pe_req_i.vl)
-                operand_request_i[AluMaskA].vl += 1;
+              operand_request_i[AluA].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs1));
+              if ((operand_request_i[AluA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes != pe_req_i.vl)
+                operand_request_i[AluA].vl += 1;
             end
-            operand_request_push[AluMaskA] = pe_req_i.use_vs1;
+            operand_request_push[AluA] = pe_req_i.use_vs1;
 
-            operand_request_i[AluMaskB] = '{
+            operand_request_i[AluB] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vs2,
               eew    : pe_req_i.eew_vs2,
@@ -388,33 +389,49 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             };
             // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
             if (pe_req_i.op inside {[VMSEQ:VMSGT]}) begin
-              operand_request_i[AluMaskB].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
+              operand_request_i[AluB].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
             end
             // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
             else begin
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              operand_request_i[AluMaskB].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs2));
-              if ((operand_request_i[AluMaskB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes != pe_req_i.vl)
-                operand_request_i[AluMaskB].vl += 1;
+              operand_request_i[AluB].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs2));
+              if ((operand_request_i[AluB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes != pe_req_i.vl)
+                operand_request_i[AluB].vl += 1;
             end
-            operand_request_push[AluMaskB] = pe_req_i.use_vs2;
+            operand_request_push[AluB] = pe_req_i.use_vs2;
 
-            operand_request_i[MaskM] = '{
+            operand_request_i[MaskB] = '{
               id     : pe_req_i.id,
               vs     : pe_req_i.vd,
               eew    : pe_req_i.eew_vd_op,
               vtype  : pe_req_i.vtype,
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              vl     : (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vd_op)),
+              vl     : (pe_req_i.vl / NrLanes / ELEN),
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.eew_vd_op))) * NrLanes != pe_req_i.vl)
+            if ((operand_request_i[MaskB].vl * NrLanes * ELEN) != pe_req_i.vl)
+              operand_request_i[MaskB].vl += 1;
+            operand_request_push[MaskB] = pe_req_i.use_vd_op;
+
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : VMASK,
+              eew    : pe_req_i.vtype.vsew,
+              vtype  : pe_req_i.vtype,
+              // Since this request goes outside of the lane, we might need to request an
+              // extra operand regardless of whether it is valid in this lane or not.
+              vl     : (pe_req_i.vl / NrLanes / ELEN),
+              vstart : vfu_operation_d.vstart,
+              hazard : pe_req_i.hazard_vm,
+              default: '0
+            };
+            if ((operand_request_i[MaskM].vl * NrLanes * ELEN) != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
-            operand_request_push[MaskM] = pe_req_i.use_vd_op;
+            operand_request_push[MaskM] = !pe_req_i.vm;
           end
           default:;
         endcase
