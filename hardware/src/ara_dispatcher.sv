@@ -183,7 +183,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
     if (state_q == WAIT_IDLE && ara_idle_i)
       state_d = NORMAL_OPERATION;
 
-    if (acc_req_valid_i && acc_resp_ready_i && state_d == NORMAL_OPERATION) begin
+    if (acc_req_valid_i && ara_req_ready_i && acc_resp_ready_i && state_d == NORMAL_OPERATION) begin
       // Acknowledge the request
       acc_req_ready_o = ara_req_ready_i;
 
