@@ -40,7 +40,7 @@ void matmul_vec_4x4_slice_init(int64_t *c, int64_t P) {
   asm volatile ("vle64.v v0,  (%0); add %0, %0, %1" : "+r" (c) : "r" (ldc));
   asm volatile ("vle64.v v4,  (%0); add %0, %0, %1" : "+r" (c) : "r" (ldc));
   asm volatile ("vle64.v v8,  (%0); add %0, %0, %1" : "+r" (c) : "r" (ldc));
-  asm volatile ("vle64.v v12, (%0); add %0, %0, %1" : "+r" (c) : "r" (ldc));
+  asm volatile ("vle64.v v12, (%0);"                : "+r" (c) : "r" (ldc));
 }
 
 void matmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N, int64_t P) {
@@ -108,5 +108,5 @@ void matmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N, i
   asm volatile ("vmacc.vx v8, %0, v20" :: "r" (t2));
   asm volatile ("vse64.v v8, (%0); add %0, %0, %1" : "+r" (c) : "r" (ldc));
   asm volatile ("vmacc.vx v12, %0, v20" :: "r" (t3));
-  asm volatile ("vse64.v v12, (%0); add %0, %0, %1" : "+r" (c) : "r" (ldc));
+  asm volatile ("vse64.v v12, (%0);"               : "+r" (c)            );
 }
