@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Hardware support for:
   - Vector single-width integer divide instructions (vdivu, vdiv, vremu, vrem)
+- Runtime measurement functions
+- Consistent mode which orders scalar and vector loads/stores.
+  - Conservative ordering without address comparison
+  - Consistent mode is enabled per default, can be disabled by clearing the LSB of CSR 0x702.
+
+### Fixed
+
+- Ariane's accelerator dispatcher module was rewritten, fixing a bug where instructions would get skipped.
 
 ## 0.4.0 - 2020-02-04
 
