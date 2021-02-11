@@ -232,7 +232,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
             // When performing VMADD or VNMSUB, swap "vs2" and "vd"
             // since "vs2" is the addend and "vd" is the multiplicand
-            automatic logic mac_vd_multiplied = pe_req_i.op inside {VMADD, VNMSUB};
+            automatic logic mac_vd_multiplied = pe_req_i.op inside {VMADD, VNMSUB, VFMADD};
 
             operand_request_i[MulFPUA] = '{
               id     : pe_req_i.id,
