@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "printf.h"
+#include "runtime.h"
 #include "kernel/matmul.h"
 
 // Define Matrix dimensions:
@@ -99,8 +100,13 @@ int main() {
 
   // Matrices are initialized --> Start calculating
   printf("Calculating matmul...\n");
+  start_timer();
   matmul(c, a, b, M, N, P);
+  stop_timer();
   asm volatile ("fence");
+
+  // Runtime
+  printf("The execution took %d cycles.\n", get_timer());
 
   // Verify the result
   printf("Verifying result...\n");
