@@ -346,22 +346,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     IntFmtMask:    {1'b0, 1'b0, 1'b0, 1'b0}
   };
 
-  localparam int unsigned LAT_COMP_VFP32    = 'd4;
-  localparam int unsigned LAT_COMP_VFP64    = 'd5;
-  localparam int unsigned LAT_COMP_VFP16    = 'd3;
-  localparam int unsigned LAT_COMP_VFP16ALT = 'd3;
-  localparam int unsigned LAT_COMP_VFP8     = 'd2;
-  localparam int unsigned LAT_VDIVSQRT      = 'd3;
-  localparam int unsigned LAT_VNONCOMP      = 'd1;
-  localparam int unsigned LAT_VCONV         = 'd2;
-
   // Implementation (number of registers etc)
   localparam fpnew_pkg::fpu_implementation_t FPU_IMPLEMENTATION = '{
     PipeRegs:  '{// FP32, FP64, FP16, FP8, FP16alt
-      '{LAT_COMP_VFP32, LAT_COMP_VFP64, LAT_COMP_VFP16, LAT_COMP_VFP8, LAT_COMP_VFP16ALT}, // ADDMUL
-      '{default: LAT_VDIVSQRT}, // DIVSQRT
-      '{default: LAT_VNONCOMP}, // NONCOMP
-      '{default: LAT_VCONV}},   // CONV
+      '{LatCompVFP32, LatCompVFP64, LatCompVFP16, LatCompVFP8, LatCompVFP16ALT}, // ADDMUL
+      '{default: LatVDivSqrt}, // DIVSQRT
+      '{default: LatVNonComp}, // NONCOMP
+      '{default: LatVConv}},   // CONV
     UnitTypes: '{'{default: fpnew_pkg::PARALLEL}, // ADDMUL
       '{default: fpnew_pkg::MERGED},   // DIVSQRT
       '{default: fpnew_pkg::PARALLEL}, // NONCOMP

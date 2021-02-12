@@ -36,6 +36,16 @@ package ara_pkg;
   localparam int unsigned LatMultiplierEW16 = 0;
   localparam int unsigned LatMultiplierEW8  = 0;
 
+  // FPU latencies.
+  localparam int unsigned LatCompVFP32      = 'd4;
+  localparam int unsigned LatCompVFP64      = 'd5;
+  localparam int unsigned LatCompVFP16      = 'd3;
+  localparam int unsigned LatCompVFP8       = 'd2;
+  localparam int unsigned LatCompVFP16ALT   = 'd3;
+  localparam int unsigned LatVDivSqrt       = 'd3;
+  localparam int unsigned LatVNonComp       = 'd1;
+  localparam int unsigned LatVConv          = 'd2;
+
   /*****************
    *  Definitions  *
    *****************/
