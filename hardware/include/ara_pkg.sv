@@ -64,6 +64,8 @@ package ara_pkg;
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Integer comparison instructions
     VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSGT,
+    // Integer add-with-carry and subtract-with-borrow carry-out instructions
+    VMADC, VMSBC,
     // Load instructions
     VLE, VLSE, VLXE,
     // Store instructions

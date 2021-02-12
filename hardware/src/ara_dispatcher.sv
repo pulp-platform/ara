@@ -286,6 +286,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     ara_req_valid_d  = 1'b0;
                   end
                 end
+                6'b010001: begin
+                  ara_req_d.op        = ara_pkg::VMADC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 6'b010010: begin
                   ara_req_d.op = ara_pkg::VSBC;
 
@@ -302,6 +306,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                end
+                6'b010011: begin
+                  ara_req_d.op        = ara_pkg::VMSBC;
+                  ara_req_d.use_vd_op = 1'b1;
                 end
                 6'b011000: begin
                   ara_req_d.op        = VMSEQ;
@@ -484,6 +492,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     ara_req_valid_d  = 1'b0;
                   end
                 end
+                6'b010001: begin
+                  ara_req_d.op        = ara_pkg::VMADC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
                 6'b010010: begin
                   ara_req_d.op = ara_pkg::VSBC;
 
@@ -500,6 +512,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                end
+                6'b010011: begin
+                  ara_req_d.op        = ara_pkg::VMSBC;
+                  ara_req_d.use_vd_op = 1'b1;
                 end
                 6'b011000: begin
                   ara_req_d.op        = VMSEQ;
@@ -687,6 +703,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
+                end
+                6'b010001: begin
+                  ara_req_d.op        = ara_pkg::VMADC;
+                  ara_req_d.use_vd_op = 1'b1;
                 end
                 6'b011000: begin
                   ara_req_d.op        = VMSEQ;
