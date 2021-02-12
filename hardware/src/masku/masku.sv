@@ -466,6 +466,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
             // Acknowledge the mask operand.
+            masku_operand_b_ready_o = masku_operand_b_valid_i;
             masku_operand_m_ready_o = masku_operand_m_valid_i;
 
             // Increment result queue pointers and counters
