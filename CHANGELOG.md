@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Hardware support for:
   - Vector single-width integer divide instructions (vdivu, vdiv, vremu, vrem)
+  - Vector integer comparison instructions (vmseq, vmsne, vmsltu, vmslt, vmsleu, vmsle, vmsgtu, vmsgt)
 - Runtime measurement functions
 - Consistent mode which orders scalar and vector loads/stores.
   - Conservative ordering without address comparison
@@ -18,6 +19,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - Ariane's accelerator dispatcher module was rewritten, fixing a bug where instructions would get skipped.
+- The Vector Store unit takes the EEW of the source vector register into account to shuffle the elements before writing them to memory.
+
+### Changed
+
+- Vector mask instructions (vmand, vmnand, vmandnot, vmxor, vmor, vmnor, vmornot, vmxnor) no longer require the non-compliant constraint that the vector length is divisible by eight.
 
 ## 0.4.0 - 2020-02-04
 
