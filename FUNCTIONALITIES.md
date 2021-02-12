@@ -17,6 +17,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector single-width integer add and subtract instructions: `vadd`, `vsub`, `vrsub`
 - Vector widening integer add and subtract instructions: `vwaddu`, `vwsubu`, `vwadd`, `vwsub`
 - Vector integer extension instructions: `vzext`, `vsext`
+- Vector integer add-with-carry/subtract-with-borrow instructions: `vadc`, `vmadc`, `vsbc`, `vmsbc`
 - Vector bitwise logical instructions: `vand`, `vor`, `vxor`
 - Vector single-width bit shift instructions: `vsll`, `vsrl`, `vsra`
 - Vector narrowing integer right shift instructions: `vnsrl`, `vnsra`

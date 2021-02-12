@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Hardware support for:
   - Vector single-width integer divide instructions (vdivu, vdiv, vremu, vrem)
   - Vector integer comparison instructions (vmseq, vmsne, vmsltu, vmslt, vmsleu, vmsle, vmsgtu, vmsgt)
+  - Vector carry-out of add-with-carry and subtract-with-borrow instructions (vmadc, vmsbc)
 - Runtime measurement functions
 - Consistent mode which orders scalar and vector loads/stores.
   - Conservative ordering without address comparison
