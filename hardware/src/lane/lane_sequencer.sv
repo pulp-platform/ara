@@ -353,7 +353,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             };
 
             // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
-            if (pe_req_i.op inside {[VMSEQ:VMSGT]}) begin
+            if (pe_req_i.op inside {[VMSEQ:VMSBC]}) begin
               operand_request_i[AluA].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
             end
             // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
@@ -376,7 +376,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               default: '0
             };
             // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
-            if (pe_req_i.op inside {[VMSEQ:VMSGT]}) begin
+            if (pe_req_i.op inside {[VMSEQ:VMSBC]}) begin
               operand_request_i[AluB].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
             end
             // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.

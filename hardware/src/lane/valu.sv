@@ -204,6 +204,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
     .operand_b_i       (alu_operand_i[1]                                              ),
     .valid_i           (valu_valid                                                    ),
+    .vm_i              (vinsn_issue_q.vm                                              ),
     .mask_i            (mask_valid_i && !vinsn_issue_q.vm ? mask_i : {StrbWidth{1'b1}}),
     .narrowing_select_i(narrowing_select_q                                            ),
     .op_i              (vinsn_issue_q.op                                              ),
@@ -432,6 +433,7 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t   operand_a_i,
     input  elen_t   operand_b_i,
     input  logic    valid_i,
+    input  logic    vm_i,
     input  strb_t   mask_i,
     input  logic    narrowing_select_i,
     input  ara_op_e op_i,
@@ -520,18 +522,42 @@ module simd_valu import ara_pkg::*; import rvv_pkg::*; #(
         VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
         // Arithmetic instructions
-        VADD, VADC: unique case (vew_i)
-            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opa.w8 [b] + opb.w8 [b] + logic'(op_i == VADC && mask_i[1*b]);
-            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opa.w16[b] + opb.w16[b] + logic'(op_i == VADC && mask_i[2*b]);
-            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opa.w32[b] + opb.w32[b] + logic'(op_i == VADC && mask_i[4*b]);
-            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opa.w64[b] + opb.w64[b] + logic'(op_i == VADC && mask_i[8*b]);
+        VADD, VADC, VMADC: unique case (vew_i)
+            EW8: for (int b = 0; b < 8; b++) begin
+                automatic logic [8:0] sum = opa.w8[b] + opb.w8[b] + logic'(op_i inside {VADC, VMADC} && mask_i[1*b] && vm_i);
+                res.w8[b]                 = (op_i == VMADC) ? {7'b0, sum[8]} : sum[7:0];
+              end
+            EW16: for (int b = 0; b < 4; b++) begin
+                automatic logic [16:0] sum = opa.w16[b] + opb.w16[b] + logic'(op_i inside {VADC, VMADC} && mask_i[2*b] && vm_i);
+                res.w16[b]                 = (op_i == VMADC) ? {15'b0, sum[16]} : sum[15:0];
+              end
+            EW32: for (int b = 0; b < 2; b++) begin
+                automatic logic [32:0] sum = opa.w32[b] + opb.w32[b] + logic'(op_i inside {VADC, VMADC} && mask_i[4*b] && vm_i);
+                res.w32[b]                 = (op_i == VMADC) ? {31'b0, sum[32]} : sum[31:0];
+              end
+            EW64: for (int b = 0; b < 1; b++) begin
+                automatic logic [64:0] sum = opa.w64[b] + opb.w64[b] + logic'(op_i inside {VADC, VMADC} && mask_i[8*b] && vm_i);
+                res.w64[b]                 = (op_i == VMADC) ? {63'b0, sum[64]} : sum[63:0];
+              end
             default:;
           endcase
-        VSUB, VSBC: unique case (vew_i)
-            EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] - opa.w8 [b] - logic'(op_i == VSBC && mask_i[1*b]);
-            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] - opa.w16[b] - logic'(op_i == VSBC && mask_i[2*b]);
-            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] - opa.w32[b] - logic'(op_i == VSBC && mask_i[4*b]);
-            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] - opa.w64[b] - logic'(op_i == VSBC && mask_i[8*b]);
+        VSUB, VSBC, VMSBC: unique case (vew_i)
+            EW8: for (int b = 0; b < 8; b++) begin
+                automatic logic [8:0] sub = $signed(opb.w8[b]) - $signed(opa.w8[b]) - $signed(logic'(op_i inside {VSBC, VMSBC} && mask_i[1*b] && vm_i));
+                res.w8[b]                 = (op_i == VMSBC) ? {7'b0, sub[8]} : sub[7:0];
+              end
+            EW16: for (int b = 0; b < 4; b++) begin
+                automatic logic [16:0] sub = $signed(opb.w16[b]) - $signed(opa.w16[b]) - $signed(logic'(op_i inside {VSBC, VMSBC} && mask_i[2*b] && vm_i));
+                res.w16[b]                 = (op_i == VMSBC) ? {15'b0, sub[16]} : sub[15:0];
+              end
+            EW32: for (int b = 0; b < 2; b++) begin
+                automatic logic [32:0] sub = $signed(opb.w32[b]) - $signed(opa.w32[b]) - $signed(logic'(op_i inside {VSBC, VMSBC} && mask_i[4*b] && vm_i));
+                res.w32[b]                 = (op_i == VMSBC) ? {31'b0, sub[32]} : sub[31:0];
+              end
+            EW64: for (int b = 0; b < 1; b++) begin
+                automatic logic [64:0] sub = $signed(opb.w64[b]) - $signed(opa.w64[b]) - $signed(logic'(op_i inside {VSBC, VMSBC} && mask_i[8*b] && vm_i));
+                res.w64[b]                 = (op_i == VMSBC) ? {63'b0, sub[64]} : sub[63:0];
+              end
             default:;
           endcase
         VRSUB: unique case (vew_i)

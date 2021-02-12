@@ -255,7 +255,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*b +: 8];
 
         // Take the mask into account
-        if (!vinsn_issue.vm) begin
+        if (!vinsn_issue.vm && !(vinsn_issue.op inside {VMADC, VMSBC})) begin
           automatic int mask_byte          = shuffle_index(b, NrLanes, vinsn_issue.eew_vmask);
           automatic int mask_byte_lane     = mask_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
           automatic int mask_byte_offset   = mask_byte[idx_width(StrbWidth)-1:0];
@@ -268,7 +268,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Evaluate the instruction
       unique case (vinsn_issue.op) inside
         [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) | (masku_operand_b_i & ~bit_enable_mask);
-        [VMSEQ:VMSGT]    : begin
+        [VMSEQ:VMSBC]    : begin
           automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
           unique case (vinsn_issue.vtype.vsew)
@@ -424,7 +424,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Increment the VRF pointer
-          if (vinsn_issue.op inside {VMSEQ, VMSNE, VMSLT, VMSLTU, VMSLE, VMSLEU, VMSGT, VMSGTU}) begin
+          if (vinsn_issue.op inside {VMSEQ, VMSNE, VMSLT, VMSLTU, VMSLE, VMSLEU, VMSGT, VMSGTU, VMADC, VMSBC}) begin
             vrf_pnt_d = vrf_pnt_q + NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew);
 
             // Filled-up a word, or finished execution
