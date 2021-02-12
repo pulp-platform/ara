@@ -409,9 +409,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         if (!result_queue_full && &masku_operand_a_valid_i && (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i) && (vinsn_issue.vm || &masku_operand_m_valid_i)) begin
           // How many elements are we committing in total?
           // Since we are committing bits instead of bytes, we carry out the following calculation with ceil(vl/8) instead.
-          automatic int element_cnt_all_lanes = (NrLanes << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
-          if (element_cnt_all_lanes > (issue_cnt_q + 7) / 8)
-            element_cnt_all_lanes = (issue_cnt_q + 7) / 8;
+          automatic int element_cnt_all_lanes           = (ELENB * NrLanes) >> int'(vinsn_issue.vtype.vsew);
+          // How many elements are remaining to be committed? Carry out the calculation with ceil(issue_cnt/8).
+          automatic int remaining_element_cnt_all_lanes = (issue_cnt_q + 7) / 8;
+          remaining_element_cnt_all_lanes               = (remaining_element_cnt_all_lanes + (1 << int'(vinsn_issue.vtype.vsew)) - 1) >> int'(vinsn_issue.vtype.vsew);
+          if (element_cnt_all_lanes > remaining_element_cnt_all_lanes)
+            element_cnt_all_lanes = remaining_element_cnt_all_lanes;
 
           // Acknowledge the operands of this instruction.
           // At this stage, acknowledge only the first operand, "a", coming from the ALU.
@@ -420,15 +423,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           // Store the result in the operand queue
           for (int unsigned lane = 0; lane < NrLanes; lane++) begin
             // How many elements are we committing in this lane?
-            // Since the MASKU instructions have vl mod 8 == 0 (non-default behavior), we carry out
-            // the following calculation with vl/8 instead.
             automatic int element_cnt = element_cnt_all_lanes / NrLanes;
             if (lane < element_cnt_all_lanes[idx_width(NrLanes)-1:0])
               element_cnt += 1;
 
             result_queue_d[result_queue_write_pnt_q][lane] = '{
               wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result[lane],
-              be   : be(element_cnt, EW8),
+              be   : be(element_cnt, vinsn_issue.vtype.vsew),
               addr : vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes / 8) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew))),
               id   : vinsn_issue.id
             };
