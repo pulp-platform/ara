@@ -292,6 +292,7 @@ package ariane_pkg;
       riscv::instruction_t      insn;
       riscv::xlen_t             rs1;
       riscv::xlen_t             rs2;
+      logic [2:0]               frm;
       logic [TRANS_ID_BITS-1:0] trans_id;
       logic                     store_pending;
     } accelerator_req_t;

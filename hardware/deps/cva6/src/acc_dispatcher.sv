@@ -18,6 +18,8 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     input  logic                                  flush_i,
     // Interface with the CSR regfile
     input  logic                                  acc_cons_en_i,        // Accelerator memory consistent mode
+    // Interface with the CSRs
+    input logic                             [2:0] fcsr_frm_i,
     // Interface with the issue stage
     input  fu_data_t                              acc_data_i,
     output logic                                  acc_ready_o,          // FU is ready
@@ -147,6 +149,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
       insn         : acc_req_int.insn,
       rs1          : acc_req_int.rs1,
       rs2          : acc_req_int.rs2,
+      frm          : acc_req_int.frm,
       trans_id     : acc_req_int.trans_id,
       store_pending: !acc_no_st_pending_i && acc_cons_en_i
     };
@@ -163,9 +166,14 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
     if (!acc_insn_queue_empty && acc_req_ready) begin
       acc_req = '{
         // Instruction is forwarded from the decoder as an immediate
+        // -
+        // frm rounding information is up to date during a valid request to Ara
+        // The scoreboard synchronizes it with previous fcsr writes, and future fcsr writes
+        // do not take place until Ara answers (Ariane commits in-order)
         insn    : acc_insn_queue_o.imm[31:0],
         rs1     : acc_insn_queue_o.operand_a,
         rs2     : acc_insn_queue_o.operand_b,
+        frm     : fcsr_frm_i,
         trans_id: acc_insn_queue_o.trans_id,
         default : '0
       };

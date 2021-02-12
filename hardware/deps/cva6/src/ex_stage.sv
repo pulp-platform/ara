@@ -354,6 +354,7 @@ module ex_stage import ariane_pkg::*; #(
           .rst_ni               (rst_ni           ),
           .flush_i              (flush_i          ),
           .acc_cons_en_i        (acc_cons_en_i    ),
+          .fcsr_frm_i           (fpu_frm_i        ),
           .acc_data_i           (acc_data         ),
           .acc_ready_o          (acc_ready_o      ),
           .acc_valid_i          (acc_valid_i      ),
