@@ -1490,6 +1490,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
           // These generate a request to Ara's backend
           ara_req_d.vs1       = insn.vmem_type.rd; // vs3 is encoded in the same position as rd
           ara_req_d.use_vs1   = 1'b1;
+          ara_req_d.eew_vs1   = eew_q[insn.vmem_type.rd];
           ara_req_d.vm        = insn.vmem_type.vm;
           ara_req_d.scalar_op = acc_req_i.rs1;
           ara_req_valid_d     = 1'b1;

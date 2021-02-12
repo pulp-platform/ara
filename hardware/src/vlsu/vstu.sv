@@ -193,10 +193,10 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           // Map axy_byte to the corresponding byte in the VRF word (sequential)
           automatic int vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
           // And then shuffle it
-          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.eew_vs1);
 
           // Is this byte a valid byte in the VRF word?
-          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.vtype.vsew)) begin
+          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew_vs1)) begin
             // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
             automatic int vrf_lane   = vrf_byte >> 3;
             automatic int vrf_offset = vrf_byte[2:0];
