@@ -169,6 +169,17 @@ matmul:
     - compile_apps
     - compile_ara
 
+matmul_fp:
+  stage: simulate
+  script:
+    - git submodule update --init --recursive -- apps/riscv-tests
+    - make -C hardware app=${CI_JOB_NAME} simv
+  needs: ["tc-gcc", "compile_apps", "compile_ara"]
+  dependencies:
+    - tc-gcc
+    - compile_apps
+    - compile_ara
+
 riscv_tests_simv:
   stage: simulate
   script:
