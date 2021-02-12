@@ -25,6 +25,7 @@ sources:
     - hardware/src/cva6_accel_first_pass_decoder.sv
     - hardware/src/ara_dispatcher.sv
     - hardware/src/ara_sequencer.sv
+    - hardware/src/axi_inval_filter.sv
     - hardware/src/lane/lane_sequencer.sv
     - hardware/src/lane/operand_queue.sv
     - hardware/src/lane/operand_requester.sv
