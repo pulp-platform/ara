@@ -683,7 +683,7 @@ module ariane import ariane_pkg::*; #(
     .clk_i                 ( clk_i                       ),
     .rst_ni                ( rst_ni                      ),
     // I$
-    .icache_en_i           ( 1'b0                        ),
+    .icache_en_i           ( icache_en_csr               ),
     .icache_flush_i        ( icache_flush_ctrl_cache     ),
     .icache_miss_o         ( icache_miss_cache_perf      ),
     .icache_areq_i         ( icache_areq_ex_cache        ),
