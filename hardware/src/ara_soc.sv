@@ -193,6 +193,8 @@ module ara_soc import axi_pkg::*; #(
   axi_core_wide_resp_t   ariane_axi_resp;
   axi_core_wide_req_t    ara_axi_req;
   axi_core_wide_resp_t   ara_axi_resp;
+  axi_core_wide_req_t    ara_axi_req_inval;
+  axi_core_wide_resp_t   ara_axi_resp_inval;
 
   axi_soc_wide_req_t    [NrAXISlaves-1:0] periph_wide_axi_req;
   axi_soc_wide_resp_t   [NrAXISlaves-1:0] periph_wide_axi_resp;
@@ -244,8 +246,8 @@ module ara_soc import axi_pkg::*; #(
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
     .test_i               (1'b0                           ),
-    .slv_ports_req_i      ({ariane_axi_req, ara_axi_req}  ),
-    .slv_ports_resp_o     ({ariane_axi_resp, ara_axi_resp}),
+    .slv_ports_req_i      ({ariane_axi_req, ara_axi_req_inval}  ),
+    .slv_ports_resp_o     ({ariane_axi_resp, ara_axi_resp_inval}),
     .mst_ports_req_o      (periph_wide_axi_req            ),
     .mst_ports_resp_i     (periph_wide_axi_resp           ),
     .addr_map_i           (routing_rules                  ),
@@ -558,6 +560,9 @@ module ara_soc import axi_pkg::*; #(
   ariane_pkg::accelerator_resp_t acc_resp;
   logic acc_resp_valid;
   logic acc_resp_ready;
+  logic [AxiAddrWidth-1:0] inval_addr;
+  logic                    inval_valid;
+  logic                    inval_ready;
 
   ariane #(
     .ArianeCfg(ariane_pkg::ArianeDefaultConfig)
@@ -578,7 +583,10 @@ module ara_soc import axi_pkg::*; #(
     .acc_req_ready_i (acc_req_ready         ),
     .acc_resp_i      (acc_resp              ),
     .acc_resp_valid_i(acc_resp_valid        ),
-    .acc_resp_ready_o(acc_resp_ready        )
+    .acc_resp_ready_o(acc_resp_ready        ),
+    .inval_addr_i    (inval_addr            ),
+    .inval_valid_i   (inval_valid           ),
+    .inval_ready_o   (inval_ready           )
   );
 
   axi_dw_converter #(
@@ -605,6 +613,25 @@ module ara_soc import axi_pkg::*; #(
     .slv_resp_o(ariane_narrow_axi_resp),
     .mst_req_o (ariane_axi_req        ),
     .mst_resp_i(ariane_axi_resp       )
+  );
+
+  axi_inval_filter #(
+    .MaxTxns    (4                   ),
+    .AddrWidth  (AxiAddrWidth        ),
+    .L1LineWidth(16                  ),
+    .aw_chan_t  (axi_core_aw_chan_t  ),
+    .req_t      (axi_core_wide_req_t ),
+    .resp_t     (axi_core_wide_resp_t)
+  ) i_axi_inval_filter (
+    .clk_i        (clk_i             ),
+    .rst_ni       (rst_ni            ),
+    .slv_req_i    (ara_axi_req       ),
+    .slv_resp_o   (ara_axi_resp      ),
+    .mst_req_o    (ara_axi_req_inval ),
+    .mst_resp_i   (ara_axi_resp_inval),
+    .inval_addr_o (inval_addr        ),
+    .inval_valid_o(inval_valid       ),
+    .inval_ready_i(inval_ready       )
   );
 
   ara #(

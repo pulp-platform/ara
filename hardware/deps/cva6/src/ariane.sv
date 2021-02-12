@@ -46,6 +46,10 @@ module ariane import ariane_pkg::*; #(
   input accelerator_resp_t             acc_resp_i,
   input  logic                         acc_resp_valid_i,
   output logic                         acc_resp_ready_o,
+  // Invalidation requests
+  input  logic [63:0]                  inval_addr_i,
+  input  logic                         inval_valid_i,
+  output logic                         inval_ready_o,
 `ifdef FIRESIM_TRACE
   // firesim trace port
   output traced_instr_pkg::trace_port_t trace_o,
@@ -679,7 +683,7 @@ module ariane import ariane_pkg::*; #(
     .clk_i                 ( clk_i                       ),
     .rst_ni                ( rst_ni                      ),
     // I$
-    .icache_en_i           ( icache_en_csr               ),
+    .icache_en_i           ( 1'b0                        ),
     .icache_flush_i        ( icache_flush_ctrl_cache     ),
     .icache_miss_o         ( icache_miss_cache_perf      ),
     .icache_areq_i         ( icache_areq_ex_cache        ),
@@ -687,7 +691,7 @@ module ariane import ariane_pkg::*; #(
     .icache_dreq_i         ( icache_dreq_if_cache        ),
     .icache_dreq_o         ( icache_dreq_cache_if        ),
     // D$
-    .dcache_enable_i       ( 1'b0                        ),
+    .dcache_enable_i       ( dcache_en_csr_nbdcache      ),
     .dcache_flush_i        ( dcache_flush_ctrl_cache     ),
     .dcache_flush_ack_o    ( dcache_flush_ack_cache_ctrl ),
     // to commit stage
@@ -702,12 +706,15 @@ module ariane import ariane_pkg::*; #(
     .wbuffer_not_ni_o      ( dcache_commit_wbuffer_not_ni ),
 `ifdef PITON_ARIANE
     .l15_req_o             ( l15_req_o                   ),
-    .l15_rtrn_i            ( l15_rtrn_i                  )
+    .l15_rtrn_i            ( l15_rtrn_i                  ),
 `else
     // memory side
     .axi_req_o             ( axi_req_o                   ),
-    .axi_resp_i            ( axi_resp_i                  )
+    .axi_resp_i            ( axi_resp_i                  ),
 `endif
+    .inval_addr_i          ( inval_addr_i                ),
+    .inval_valid_i         ( inval_valid_i               ),
+    .inval_ready_o         ( inval_ready_o               )
   );
 `else
 
@@ -747,6 +754,7 @@ module ariane import ariane_pkg::*; #(
     .axi_resp_i            ( axi_resp_i                  )
   );
   assign dcache_commit_wbuffer_not_ni = 1'b1;
+  assign inval_ready_o                = 1'b1;
 `endif
 
   // -------------------
