@@ -431,27 +431,27 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     endcase
 
     case (vinsn_issue.vtype.vsew)
-      rvv_pkg::EW64: fp_fmt = fpnew_pkg::FP64;
-      rvv_pkg::EW32: fp_fmt = fpnew_pkg::FP32;
-      rvv_pkg::EW16: fp_fmt = fpnew_pkg::FP16;
+      EW64: fp_fmt = fpnew_pkg::FP64;
+      EW32: fp_fmt = fpnew_pkg::FP32;
+      EW16: fp_fmt = fpnew_pkg::FP16;
     endcase
     fp_int_fmt = fpnew_pkg::int_format_e'(fp_fmt);
 
     // Sign injection
     case (vinsn_issue.vtype.vsew)
-      rvv_pkg::EW16:
+      EW16:
         for (int b = 0; b < 4; b++) begin
           operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
           operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
           operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
         end
-      rvv_pkg::EW32:
+      EW32:
         for (int b = 0; b < 2; b++) begin
           operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
           operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
           operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
         end
-      rvv_pkg::EW64:
+      EW64:
         for (int b = 0; b < 1; b++) begin
           operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
           operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
@@ -768,24 +768,24 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = vfu_operation_i.vl;
 
       // Bump pointers and counters of the vector instruction queue
-      vinsn_queue_d.accept_pnt += 1;
-      vinsn_queue_d.issue_cnt += 1;
+      vinsn_queue_d.accept_pnt     += 1;
+      vinsn_queue_d.issue_cnt      += 1;
       vinsn_queue_d.processing_cnt += 1;
-      vinsn_queue_d.commit_cnt += 1;
+      vinsn_queue_d.commit_cnt     += 1;
     end
   end: p_vmfpu
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      issue_cnt_q      <= '0;
-      to_process_cnt_q <= '0;
-      commit_cnt_q     <= '0;
+      issue_cnt_q       <= '0;
+      to_process_cnt_q  <= '0;
+      commit_cnt_q      <= '0;
       fflags_ex_valid_q <= 1'b0;
       fflags_ex_q       <= '0;
     end else begin
-      issue_cnt_q      <= issue_cnt_d;
-      to_process_cnt_q <= to_process_cnt_d;
-      commit_cnt_q     <= commit_cnt_d;
+      issue_cnt_q       <= issue_cnt_d;
+      to_process_cnt_q  <= to_process_cnt_d;
+      commit_cnt_q      <= commit_cnt_d;
       fflags_ex_valid_q <= fflags_ex_valid_d;
       fflags_ex_q       <= fflags_ex_d;
     end

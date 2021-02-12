@@ -237,8 +237,8 @@ module ara import ara_pkg::*; #(
 
   // Combine imprecise FP exception signals and send them to CVA6 to update fcsr.fflags
   always_comb begin
-      acc_fflags_ex_o       = 5'b0;
-      acc_fflags_ex_valid_o = 1'b0;
+      acc_fflags_ex_o        = 5'b0;
+      acc_fflags_ex_valid_o  = 1'b0;
     for (int lane = 0; lane < NrLanes; lane++) begin
       acc_fflags_ex_o       |= fflags_ex[lane];
       acc_fflags_ex_valid_o |= fflags_ex_valid[lane];

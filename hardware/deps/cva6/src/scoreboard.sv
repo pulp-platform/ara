@@ -365,10 +365,6 @@ module scoreboard #(
     end
   end
 
-  // -----------
-  // Assertions
-  // -----------
-
   //pragma translate_off
   `ifndef VERILATOR
   initial begin

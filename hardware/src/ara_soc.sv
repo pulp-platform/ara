@@ -596,16 +596,16 @@ module ara_soc import axi_pkg::*; #(
     .axi_req_o       (ariane_narrow_axi_req ),
     .axi_resp_i      (ariane_narrow_axi_resp),
     // Accelerator ports
-    .acc_req_o       (acc_req               ),
-    .acc_req_valid_o (acc_req_valid         ),
-    .acc_req_ready_i (acc_req_ready         ),
-    .acc_resp_i      (acc_resp              ),
-    .acc_resp_valid_i(acc_resp_valid        ),
-    .acc_resp_ready_o(acc_resp_ready        ),
-    .acc_cons_en_o   (acc_cons_en           ),
-    .inval_addr_i    (inval_addr            ),
-    .inval_valid_i   (inval_valid           ),
-    .inval_ready_o   (inval_ready           ),
+    .acc_req_o             (acc_req            ),
+    .acc_req_valid_o       (acc_req_valid      ),
+    .acc_req_ready_i       (acc_req_ready      ),
+    .acc_resp_i            (acc_resp           ),
+    .acc_resp_valid_i      (acc_resp_valid     ),
+    .acc_resp_ready_o      (acc_resp_ready     ),
+    .acc_cons_en_o         (acc_cons_en        ),
+    .inval_addr_i          (inval_addr         ),
+    .inval_valid_i         (inval_valid        ),
+    .inval_ready_o         (inval_ready        ),
     .acc_fflags_ex_i       (acc_fflags_ex      ),
     .acc_fflags_ex_valid_i (acc_fflags_ex_valid)
   );
@@ -668,21 +668,21 @@ module ara_soc import axi_pkg::*; #(
     .axi_req_t   (axi_core_wide_req_t   ),
     .axi_resp_t  (axi_core_wide_resp_t  )
   ) i_ara (
-    .clk_i           (clk_i         ),
-    .rst_ni          (rst_ni        ),
-    .scan_enable_i   (scan_enable_i ),
-    .scan_data_i     (1'b0          ),
-    .scan_data_o     (/* Unused */  ),
-    .acc_req_i       (acc_req       ),
-    .acc_req_valid_i (acc_req_valid ),
-    .acc_req_ready_o (acc_req_ready ),
-    .acc_resp_o      (acc_resp      ),
-    .acc_resp_valid_o(acc_resp_valid),
-    .acc_resp_ready_i(acc_resp_ready),
+    .clk_i                 (clk_i              ),
+    .rst_ni                (rst_ni             ),
+    .scan_enable_i         (scan_enable_i      ),
+    .scan_data_i           (1'b0               ),
+    .scan_data_o           (/* Unused */       ),
+    .acc_req_i             (acc_req            ),
+    .acc_req_valid_i       (acc_req_valid      ),
+    .acc_req_ready_o       (acc_req_ready      ),
+    .acc_resp_o            (acc_resp           ),
+    .acc_resp_valid_o      (acc_resp_valid     ),
+    .acc_resp_ready_i      (acc_resp_ready     ),
     .acc_fflags_ex_o       (acc_fflags_ex      ),
     .acc_fflags_ex_valid_o (acc_fflags_ex_valid),
-    .axi_req_o       (ara_axi_req   ),
-    .axi_resp_i      (ara_axi_resp  )
+    .axi_req_o             (ara_axi_req        ),
+    .axi_resp_i            (ara_axi_resp       )
   );
 
   /****************
