@@ -17,15 +17,13 @@
 /// Listen to AXI4 AW channel and issue single cacheline invalidations.
 /// All other channels are passed through.
 ///
-module axi_aw_to_wt_inval #(
+module axi_inval_filter #(
   // Maximum number of AXI write bursts outstanding at the same time
   parameter int unsigned MaxTxns      = 32'd0,
   // AXI Bus Types
   parameter int unsigned AddrWidth    = 32'd0,
-  parameter int unsigned DataWidth    = 32'd0,
-  parameter int unsigned IdWidth      = 32'd0,
-  parameter int unsigned UserWidth    = 32'd0,
   parameter int unsigned L1LineWidth  = 32'd0,
+  parameter type         aw_chan_t    = logic,
   parameter type         req_t        = logic,
   parameter type         resp_t       = logic
 ) (
@@ -46,15 +44,15 @@ module axi_aw_to_wt_inval #(
   input  logic inval_ready_i
 );
 
-  // AW fifo
+  // AW FIFO
   logic aw_fifo_full, aw_fifo_empty;
   logic aw_fifo_push, aw_fifo_pop;
-  logic aw_fifo_data;
+  aw_chan_t aw_fifo_data;
 
   assign aw_fifo_push = slv_req_i.aw_valid & slv_resp_o.aw_ready;
 
   // Invalidation requests
-  logic  inval_offset_d, inval_offset_q;
+  logic [AddrWidth-1:0] inval_offset_d, inval_offset_q;
 
   assign inval_addr_o  = aw_fifo_data.addr + inval_offset_q;
   assign inval_valid_o = ~aw_fifo_empty;
@@ -92,7 +90,7 @@ module axi_aw_to_wt_inval #(
           // Wait for the L1 to accept a new invalidation request
           if (inval_ready_i) begin
             // Continue if we are not done yet
-            if (L1LineWidth < (aw_fifo_data.len << aw_fifo_data.size)) begin
+            if (L1LineWidth < ((aw_fifo_data.len + 1) << aw_fifo_data.size)) begin
               state_d        = Invalidating;
               inval_offset_d = L1LineWidth;
             end else begin
@@ -108,7 +106,7 @@ module axi_aw_to_wt_inval #(
         if (inval_ready_i) begin
           inval_offset_d = inval_offset_q + L1LineWidth;
           // Are we done?
-          if (inval_offset_d >= (aw_fifo_data.len << aw_fifo_data.size)) begin
+          if (inval_offset_d >= ((aw_fifo_data.len + 1) << aw_fifo_data.size)) begin
             state_d        = Idle;
             inval_offset_d = '0;
             aw_fifo_pop    = 1'b1;
@@ -116,6 +114,16 @@ module axi_aw_to_wt_inval #(
         end
       end
     endcase
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q        <= Idle;
+      inval_offset_q <= '0;
+    end else begin
+      state_q        <= state_d;
+      inval_offset_q <= inval_offset_d;
+    end
   end
 
   fifo_v3 #(
@@ -136,4 +144,4 @@ module axi_aw_to_wt_inval #(
     .pop_i      ( aw_fifo_pop   )
   );
 
-endmodule : axi_aw_to_wt_inval
+endmodule : axi_inval_filter
