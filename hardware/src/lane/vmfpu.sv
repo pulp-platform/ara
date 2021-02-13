@@ -164,7 +164,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFMADD]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFMAX]};
 
   /********************
    *  Scalar operand  *
@@ -400,6 +400,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       VFMUL         : fp_op = MUL;
       VFDIV         : fp_op = DIV;
       VFMACC, VFMADD: fp_op = FMADD;
+      VFMIN: begin
+        fp_op = fpnew_pkg::MINMAX;
+        fp_rm = fpnew_pkg::RNE;
+      end
+      VFMAX: begin
+        fp_op = fpnew_pkg::MINMAX;
+        fp_rm = fpnew_pkg::RTZ;
+      end
     endcase
 
     case (vinsn_issue.vtype.vsew)
@@ -637,7 +645,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFMADD]: begin
+      [VFADD:VFMAX]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
