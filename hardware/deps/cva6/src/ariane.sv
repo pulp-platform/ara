@@ -51,9 +51,6 @@ module ariane import ariane_pkg::*; #(
   input  logic [63:0]                  inval_addr_i,
   input  logic                         inval_valid_i,
   output logic                         inval_ready_o,
-  // Accelerator
-  input  logic                   [4:0] acc_fflags_ex_i,
-  input  logic                         acc_fflags_ex_valid_i,
 `ifdef FIRESIM_TRACE
   // firesim trace port
   output traced_instr_pkg::trace_port_t trace_o,
@@ -585,8 +582,8 @@ module ariane import ariane_pkg::*; #(
     .set_debug_pc_o         ( set_debug_pc                  ),
     .trap_vector_base_o     ( trap_vector_base_commit_pcgen ),
     .priv_lvl_o             ( priv_lvl                      ),
-    .acc_fflags_ex_i        ( acc_fflags_ex_i               ),
-    .acc_fflags_ex_valid_i  ( acc_fflags_ex_valid_i         ),
+    .acc_fflags_ex_i        ( acc_resp_i.fflags             ),
+    .acc_fflags_ex_valid_i  ( acc_resp_i.fflags_valid       ),
     .fs_o                   ( fs                            ),
     .fflags_o               ( fflags_csr_commit             ),
     .frm_o                  ( frm_csr_id_issue_ex           ),

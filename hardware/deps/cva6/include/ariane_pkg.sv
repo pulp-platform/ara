@@ -301,9 +301,14 @@ package ariane_pkg;
       riscv::xlen_t             result;
       logic [TRANS_ID_BITS-1:0] trans_id;
       logic                     error;
+
+      // Metadata
       logic                     store_pending;
       logic                     store_complete;
       logic                     load_complete;
+
+      logic               [4:0] fflags;
+      logic                     fflags_valid;
     } accelerator_resp_t;
 
     // ---------------
