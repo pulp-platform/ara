@@ -27,7 +27,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                           scan_data_o,
     // Lane ID
     input  logic     [cf_math_pkg::idx_width(NrLanes)-1:0] lane_id_i,
-    // Interface with CVA6
+    // Interface with the dispatcher
     output logic     [4:0]                                 fflags_ex_o,
     output logic                                           fflags_ex_valid_o,
     // Interface with the sequencer

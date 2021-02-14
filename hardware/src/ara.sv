@@ -24,24 +24,22 @@ module ara import ara_pkg::*; #(
     parameter int  unsigned NrPEs        = NrLanes + 4
   ) (
     // Clock and Reset
-    input  logic                    clk_i,
-    input  logic                    rst_ni,
+    input  logic              clk_i,
+    input  logic              rst_ni,
     // Scan chain
-    input  logic                    scan_enable_i,
-    input  logic                    scan_data_i,
-    output logic                    scan_data_o,
+    input  logic              scan_enable_i,
+    input  logic              scan_data_i,
+    output logic              scan_data_o,
     // Interface with Ariane
-    input  accelerator_req_t        acc_req_i,
-    input  logic                    acc_req_valid_i,
-    output logic                    acc_req_ready_o,
-    output accelerator_resp_t       acc_resp_o,
-    output logic                    acc_resp_valid_o,
-    input  logic                    acc_resp_ready_i,
-    output logic              [4:0] acc_fflags_ex_o,
-    output logic                    acc_fflags_ex_valid_o,
+    input  accelerator_req_t  acc_req_i,
+    input  logic              acc_req_valid_i,
+    output logic              acc_req_ready_o,
+    output accelerator_resp_t acc_resp_o,
+    output logic              acc_resp_valid_o,
+    input  logic              acc_resp_ready_i,
     // AXI interface
-    output axi_req_t                axi_req_o,
-    input  axi_resp_t               axi_resp_i
+    output axi_req_t          axi_req_o,
+    input  axi_resp_t         axi_resp_i
   );
 
   import cf_math_pkg::idx_width;
@@ -65,19 +63,24 @@ module ara import ara_pkg::*; #(
    ****************/
 
   // Interface with the sequencer
-  ara_req_t  ara_req;
-  logic      ara_req_valid;
-  logic      ara_req_ready;
-  ara_resp_t ara_resp;
-  logic      ara_resp_valid;
-  logic      ara_idle;
+  ara_req_t                     ara_req;
+  logic                         ara_req_valid;
+  logic                         ara_req_ready;
+  ara_resp_t                    ara_resp;
+  logic                         ara_resp_valid;
+  logic                         ara_idle;
   // Interface with the VSTU
-  logic      core_st_pending;
-  logic      load_complete;
-  logic      store_complete;
-  logic      store_pending;
+  logic                         core_st_pending;
+  logic                         load_complete;
+  logic                         store_complete;
+  logic                         store_pending;
+  // Interface with the lanes
+  logic      [NrLanes-1:0][4:0] fflags_ex;
+  logic      [NrLanes-1:0]      fflags_ex_valid;
 
-  ara_dispatcher i_dispatcher (
+  ara_dispatcher #(
+    .NrLanes(NrLanes)
+  ) i_dispatcher (
     .clk_i            (clk_i           ),
     .rst_ni           (rst_ni          ),
     // Interface with Ariane
@@ -94,6 +97,9 @@ module ara import ara_pkg::*; #(
     .ara_resp_i       (ara_resp        ),
     .ara_resp_valid_i (ara_resp_valid  ),
     .ara_idle_i       (ara_idle        ),
+    // Interface with the lanes
+    .fflags_ex_i      (fflags_ex       ),
+    .fflags_ex_valid_i(fflags_ex_valid ),
     // Interface with the Vector Store Unit
     .core_st_pending_o(core_st_pending ),
     .load_complete_i  (load_complete   ),
@@ -144,9 +150,6 @@ module ara import ara_pkg::*; #(
    *  Lanes  *
    ***********/
 
-  // Interface with CVA6
-  logic   [NrLanes-1:0][4:0] fflags_ex;
-  logic   [NrLanes-1:0]      fflags_ex_valid;
   // Interface with the vector load/store unit
   // Store unit
   elen_t  [NrLanes-1:0]      stu_operand;
@@ -189,7 +192,7 @@ module ara import ara_pkg::*; #(
       .scan_data_i            (1'b0                        ),
       .scan_data_o            (/* Unused */                ),
       .lane_id_i              (lane[idx_width(NrLanes)-1:0]),
-      // Interface with CVA6
+      // Interface with the dispatcher
       .fflags_ex_o            (fflags_ex[lane]             ),
       .fflags_ex_valid_o      (fflags_ex_valid[lane]       ),
       // Interface with the sequencer
@@ -235,15 +238,6 @@ module ara import ara_pkg::*; #(
     );
   end: gen_lanes
 
-  // Combine imprecise FP exception signals and send them to CVA6 to update fcsr.fflags
-  always_comb begin
-    acc_fflags_ex_o       = 5'b0;
-    acc_fflags_ex_valid_o = 1'b0;
-    for (int lane = 0; lane < NrLanes; lane++) begin
-      acc_fflags_ex_o |= fflags_ex[lane];
-      acc_fflags_ex_valid_o |= fflags_ex_valid[lane];
-    end
-  end
 
   /****************************
    *  Vector Load/Store Unit  *

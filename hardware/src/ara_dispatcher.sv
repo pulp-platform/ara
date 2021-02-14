@@ -8,29 +8,34 @@
 // It also acknowledges instructions back to Ariane, perhaps with a
 // response or an error message.
 
-module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
+module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
+    parameter int unsigned NrLanes = 0
+  ) (
     // Clock and reset
-    input  logic              clk_i,
-    input  logic              rst_ni,
+    input  logic                                 clk_i,
+    input  logic                                 rst_ni,
     // Interfaces with Ariane
-    input  accelerator_req_t  acc_req_i,
-    input  logic              acc_req_valid_i,
-    output logic              acc_req_ready_o,
-    output accelerator_resp_t acc_resp_o,
-    output logic              acc_resp_valid_o,
-    input  logic              acc_resp_ready_i,
+    input  accelerator_req_t                     acc_req_i,
+    input  logic                                 acc_req_valid_i,
+    output logic                                 acc_req_ready_o,
+    output accelerator_resp_t                    acc_resp_o,
+    output logic                                 acc_resp_valid_o,
+    input  logic                                 acc_resp_ready_i,
     // Interface with Ara's backend
-    output ara_req_t          ara_req_o,
-    output logic              ara_req_valid_o,
-    input  logic              ara_req_ready_i,
-    input  ara_resp_t         ara_resp_i,
-    input  logic              ara_resp_valid_i,
-    input  logic              ara_idle_i,
+    output ara_req_t                             ara_req_o,
+    output logic                                 ara_req_valid_o,
+    input  logic                                 ara_req_ready_i,
+    input  ara_resp_t                            ara_resp_i,
+    input  logic                                 ara_resp_valid_i,
+    input  logic                                 ara_idle_i,
+    // Interface with the lanes
+    input  logic              [NrLanes-1:0][4:0] fflags_ex_i,
+    input  logic              [NrLanes-1:0]      fflags_ex_valid_i,
     // Interface with the Vector Store Unit
-    output logic              core_st_pending_o,
-    input  logic              load_complete_i,
-    input  logic              store_complete_i,
-    input  logic              store_pending_i
+    output logic                                 core_st_pending_o,
+    input  logic                                 load_complete_i,
+    input  logic                                 store_complete_i,
+    input  logic                                 store_pending_i
   );
 
   `include "common_cells/registers.svh"
@@ -151,8 +156,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
       load_complete : load_complete_i,
       store_complete: store_complete_i,
       store_pending : store_pending_i,
+      fflags_valid  : |fflags_ex_valid_i,
       default       : '0
     };
+
+    // fflags
+    for (int lane = 0; lane < NrLanes; lane++)
+      acc_resp_o.fflags |= fflags_ex_i[lane];
 
     ara_req_d = '{
       vl       : vl_q,
@@ -1485,25 +1495,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               unique case (insn.varith_type.func6)
                 // VFP Addition
                 6'b000000: begin
-                  ara_req_d.op = ara_pkg::VFADD;
+                  ara_req_d.op             = ara_pkg::VFADD;
                   // When performing a floating-point add/sub, fpnew adds the second and the third operand
                   // So, send the first operand (vs2) to the third result queue
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b000010: begin
-                  ara_req_d.op = ara_pkg::VFSUB;
+                  ara_req_d.op             = ara_pkg::VFSUB;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b100000: ara_req_d.op = ara_pkg::VFDIV;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b101000: begin
-                  ara_req_d.op = ara_pkg::VFMADD;
-                  ara_req_d.use_vd_op = 1'b1;
+                  ara_req_d.op             = ara_pkg::VFMADD;
+                  ara_req_d.use_vd_op      = 1'b1;
                   // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101100: begin
-                  ara_req_d.op = ara_pkg::VFMACC;
+                  ara_req_d.op        = ara_pkg::VFMACC;
                   ara_req_d.use_vd_op = 1'b1;
                 end
                 default: begin
@@ -1575,19 +1585,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               unique case (insn.varith_type.func6)
                 // VFP Addition
                 6'b000000: begin
-                  ara_req_d.op = ara_pkg::VFADD;
+                  ara_req_d.op             = ara_pkg::VFADD;
                   // When performing a floating-point add/sub, fpnew adds the second and the third operand
                   // So, send the first operand (vs2) to the third result queue
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b000010: begin
-                  ara_req_d.op = ara_pkg::VFSUB;
+                  ara_req_d.op             = ara_pkg::VFSUB;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b100000: ara_req_d.op = ara_pkg::VFDIV;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b100111: begin
-                  ara_req_d.op = ara_pkg::VFRSUB;
+                  ara_req_d.op             = ara_pkg::VFRSUB;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101000: begin
@@ -1597,7 +1607,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101100: begin
-                  ara_req_d.op = ara_pkg::VFMACC;
+                  ara_req_d.op        = ara_pkg::VFMACC;
                   ara_req_d.use_vd_op = 1'b1;
                 end
                 default: begin
