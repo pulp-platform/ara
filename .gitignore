@@ -29,3 +29,5 @@ uart
 .dvt
 .settings
 *.o
+install
+.project
