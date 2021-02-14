@@ -201,15 +201,15 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   logic  valu_valid;
 
   simd_alu i_simd_alu (
-    .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
-    .operand_b_i       (alu_operand_i[1]                                              ),
-    .valid_i           (valu_valid                                                    ),
-    .vm_i              (vinsn_issue_q.vm || (vinsn_issue_q.op inside {VADC, VSBC})    ),
-    .mask_i            (mask_valid_i && !vinsn_issue_q.vm ? mask_i : {StrbWidth{1'b1}}),
-    .narrowing_select_i(narrowing_select_q                                            ),
-    .op_i              (vinsn_issue_q.op                                              ),
-    .vew_i             (vinsn_issue_q.vtype.vsew                                      ),
-    .result_o          (valu_result                                                   )
+    .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]      ),
+    .operand_b_i       (alu_operand_i[1]                                                ),
+    .valid_i           (valu_valid                                                      ),
+    .vm_i              (vinsn_issue_q.vm                                                ),
+    .mask_i            ((mask_valid_i && !vinsn_issue_q.vm) ? mask_i : {StrbWidth{1'b1}}),
+    .narrowing_select_i(narrowing_select_q                                              ),
+    .op_i              (vinsn_issue_q.op                                                ),
+    .vew_i             (vinsn_issue_q.vtype.vsew                                        ),
+    .result_o          (valu_result                                                     )
   );
 
   /*************
@@ -253,7 +253,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid && !result_queue_full) begin
       // Do we have all the operands necessary for this instruction?
-      if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) && (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit)) begin
+      if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
+          (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
+          (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit)) begin
         // How many elements are we committing with this word?
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         if (element_cnt > issue_cnt_q)
