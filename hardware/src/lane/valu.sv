@@ -204,7 +204,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
     .operand_b_i       (alu_operand_i[1]                                              ),
     .valid_i           (valu_valid                                                    ),
-    .vm_i              (vinsn_issue_q.vm                                              ),
+    .vm_i              (vinsn_issue_q.vm || (vinsn_issue_q.op inside {VADC, VSBC})    ),
     .mask_i            (mask_valid_i && !vinsn_issue_q.vm ? mask_i : {StrbWidth{1'b1}}),
     .narrowing_select_i(narrowing_select_q                                            ),
     .op_i              (vinsn_issue_q.op                                              ),
