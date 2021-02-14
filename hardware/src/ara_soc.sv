@@ -585,16 +585,16 @@ module ara_soc import axi_pkg::*; #(
   ariane #(
     .ArianeCfg(ArianeAraConfig)
   ) i_ariane (
-    .clk_i           (clk_i                 ),
-    .rst_ni          (rst_ni                ),
-    .boot_addr_i     (DRAMBase              ), // start fetching from DRAM
-    .hart_id_i       ('0                    ),
-    .irq_i           ('0                    ),
-    .ipi_i           ('0                    ),
-    .time_irq_i      ('0                    ),
-    .debug_req_i     ('0                    ),
-    .axi_req_o       (ariane_narrow_axi_req ),
-    .axi_resp_i      (ariane_narrow_axi_resp),
+    .clk_i                 (clk_i                 ),
+    .rst_ni                (rst_ni                ),
+    .boot_addr_i           (DRAMBase              ), // start fetching from DRAM
+    .hart_id_i             ('0                    ),
+    .irq_i                 ('0                    ),
+    .ipi_i                 ('0                    ),
+    .time_irq_i            ('0                    ),
+    .debug_req_i           ('0                    ),
+    .axi_req_o             (ariane_narrow_axi_req ),
+    .axi_resp_i            (ariane_narrow_axi_resp),
     // Accelerator ports
     .acc_req_o             (acc_req            ),
     .acc_req_valid_o       (acc_req_valid      ),

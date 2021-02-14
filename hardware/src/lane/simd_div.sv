@@ -288,8 +288,8 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
 
   // Serial divider
   serdiv #(
-    .WIDTH(ELEN),
-    .STABLE_HANDSHAKE(1)
+    .WIDTH           (ELEN),
+    .STABLE_HANDSHAKE(1   )
   ) i_serdiv (
     .clk_i    (clk_i            ),
     .rst_ni   (rst_ni           ),

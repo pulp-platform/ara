@@ -24,24 +24,24 @@ module ara import ara_pkg::*; #(
     parameter int  unsigned NrPEs        = NrLanes + 4
   ) (
     // Clock and Reset
-    input  logic              clk_i,
-    input  logic              rst_ni,
+    input  logic                    clk_i,
+    input  logic                    rst_ni,
     // Scan chain
-    input  logic              scan_enable_i,
-    input  logic              scan_data_i,
-    output logic              scan_data_o,
+    input  logic                    scan_enable_i,
+    input  logic                    scan_data_i,
+    output logic                    scan_data_o,
     // Interface with Ariane
-    input  accelerator_req_t  acc_req_i,
-    input  logic              acc_req_valid_i,
-    output logic              acc_req_ready_o,
-    output accelerator_resp_t acc_resp_o,
-    output logic              acc_resp_valid_o,
-    input  logic              acc_resp_ready_i,
-    output logic        [4:0] acc_fflags_ex_o,
-    output logic              acc_fflags_ex_valid_o,
+    input  accelerator_req_t        acc_req_i,
+    input  logic                    acc_req_valid_i,
+    output logic                    acc_req_ready_o,
+    output accelerator_resp_t       acc_resp_o,
+    output logic                    acc_resp_valid_o,
+    input  logic                    acc_resp_ready_i,
+    output logic              [4:0] acc_fflags_ex_o,
+    output logic                    acc_fflags_ex_valid_o,
     // AXI interface
-    output axi_req_t          axi_req_o,
-    input  axi_resp_t         axi_resp_i
+    output axi_req_t                axi_req_o,
+    input  axi_resp_t               axi_resp_i
   );
 
   import cf_math_pkg::idx_width;
@@ -237,10 +237,10 @@ module ara import ara_pkg::*; #(
 
   // Combine imprecise FP exception signals and send them to CVA6 to update fcsr.fflags
   always_comb begin
-      acc_fflags_ex_o        = 5'b0;
-      acc_fflags_ex_valid_o  = 1'b0;
+    acc_fflags_ex_o       = 5'b0;
+    acc_fflags_ex_valid_o = 1'b0;
     for (int lane = 0; lane < NrLanes; lane++) begin
-      acc_fflags_ex_o       |= fflags_ex[lane];
+      acc_fflags_ex_o |= fflags_ex[lane];
       acc_fflags_ex_valid_o |= fflags_ex_valid[lane];
     end
   end
