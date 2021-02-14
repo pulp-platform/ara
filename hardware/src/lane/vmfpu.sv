@@ -7,7 +7,7 @@
 // Description:
 // Ara's integer multiplier and floating-point unit.
 
-module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
+module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     parameter int  unsigned NrLanes   = 0,
     // Type used to address vector register file elements
     parameter type          vaddr_t   = logic,
@@ -19,7 +19,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                         clk_i,
     input  logic                         rst_ni,
     // Interface with CVA6
-    output logic                   [4:0] fflags_ex_o,
+    output logic           [4:0]         fflags_ex_o,
     output logic                         fflags_ex_valid_o,
     // Interface with the lane sequencer
     input  vfu_operation_t               vfu_operation_i,
@@ -156,15 +156,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /******************
-   *  Help signals  *
-   ******************/
+  /********************
+   *  Helper signals  *
+   ********************/
 
-   logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
+  logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
 
-   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
-   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-   assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFMADD]};
+  assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
+  assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFMADD]};
 
   /********************
    *  Scalar operand  *
@@ -179,11 +179,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // Default assignment
     scalar_op = '0;
 
-    case (vinsn_issue_q.vtype.vsew)
-      EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
+    case (vinsn_issue.vtype.vsew)
+      EW64: scalar_op = {1{vinsn_issue.scalar_op[63:0]}};
       EW32: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
-      EW16: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:16])) ?     {4{16'h7e00}} : {4{vinsn_issue_q.scalar_op[15:0]}};
-      EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
+      EW16: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:16])) ? {4{16'h7e00}}     : {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW8 : scalar_op = {8{vinsn_issue.scalar_op[ 7:0]}};
       default:;
     endcase
   end
@@ -338,26 +338,27 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
    ********/
 
   // Features (enabled formats, vectors etc.)
-  localparam fpnew_pkg::fpu_features_t FPU_FEATURES = '{
-    Width:         64,
+  localparam fpu_features_t FPUFeatures = '{
+    Width        : 64,
     EnableVectors: 1'b1,
-    EnableNanBox:  1'b1,
-    FpFmtMask:     {1'b1, 1'b1, 1'b1, 1'b0, 1'b0},
-    IntFmtMask:    {1'b0, 1'b0, 1'b0, 1'b0}
+    EnableNanBox : 1'b1,
+    FpFmtMask    : {1'b1, 1'b1, 1'b1, 1'b0, 1'b0},
+    IntFmtMask   : {1'b0, 1'b0, 1'b0, 1'b0}
   };
 
   // Implementation (number of registers etc)
-  localparam fpnew_pkg::fpu_implementation_t FPU_IMPLEMENTATION = '{
-    PipeRegs:  '{// FP32, FP64, FP16, FP8, FP16alt
-      '{LatCompVFP32, LatCompVFP64, LatCompVFP16, LatCompVFP8, LatCompVFP16ALT}, // ADDMUL
-      '{default: LatVDivSqrt}, // DIVSQRT
-      '{default: LatVNonComp}, // NONCOMP
-      '{default: LatVConv}},   // CONV
-    UnitTypes: '{'{default: fpnew_pkg::PARALLEL}, // ADDMUL
-      '{default: fpnew_pkg::MERGED},   // DIVSQRT
-      '{default: fpnew_pkg::PARALLEL}, // NONCOMP
-      '{default: fpnew_pkg::MERGED}},  // CONV
-    PipeConfig: fpnew_pkg::DISTRIBUTED
+  localparam fpu_implementation_t FPUImplementation = '{
+    PipeRegs: '{
+      '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
+      '{default: LatFDivSqrt},
+      '{default: LatFNonComp},
+      '{default: LatFConv}},
+    UnitTypes: '{
+      '{default: PARALLEL}, // ADDMUL
+      '{default: MERGED},   // DIVSQRT
+      '{default: PARALLEL}, // NONCOMP
+      '{default: MERGED}}, // CONV
+    PipeConfig: BEFORE
   };
 
   // FPU preprocessed signals
@@ -365,65 +366,48 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t operand_b;
   elen_t operand_c;
 
-  fpnew_pkg::operation_e  fp_op;
-  logic                   fp_opmod;
-  fpnew_pkg::fp_format_e  fp_fmt;
-  fpnew_pkg::int_format_e fp_int_fmt;
-  fpnew_pkg::roundmode_e  fp_rm;
-  logic [2:0]             fp_sign;
+  operation_e        fp_op;
+  logic              fp_opmod;
+  fp_format_e        fp_fmt;
+  int_format_e       fp_int_fmt;
+  roundmode_e        fp_rm;
+  logic        [2:0] fp_sign;
 
   // FPU preprocessing stage
-  always_comb begin: vfpu_preprocessing
+  always_comb begin: fpu_operand_preprocessing_p
     operand_a  = mfpu_operand_i[1];                                         // vs2
     operand_b  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
     operand_c  = mfpu_operand_i[2];                                         // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
     // Default rounding-mode from fcsr.rm
-    fp_rm      = fpnew_pkg::roundmode_e'(vinsn_issue.fp_rm);
-    fp_op      = fpnew_pkg::ADD;
+    fp_rm      = roundmode_e'(vinsn_issue.fp_rm);
+    fp_op      = ADD;
     fp_opmod   = 1'b0;
-    fp_fmt     = fpnew_pkg::FP64;
-    fp_int_fmt = fpnew_pkg::int_format_e'(fp_fmt);
+    fp_fmt     = FP64;
+    fp_int_fmt = int_format_e'(fp_fmt);
     fp_sign    = 3'b0;
 
     case (vinsn_issue.op)
-      VFADD: begin
-        fp_op      = fpnew_pkg::ADD;
-        // Addition is between operands B and C, A was moved to C in the lane_sequencer
-      end
+      // Addition is between operands B and C, A was moved to C in the lane_sequencer
+      VFADD: fp_op = ADD;
       VFSUB: begin
-        fp_op      = fpnew_pkg::ADD;
+        fp_op      = ADD;
         fp_sign[1] = 1'b1;
-        // Addition is between operands B and C, A was moved to C in the lane_sequencer
       end
       VFRSUB: begin
-        fp_op      = fpnew_pkg::ADD;
+        fp_op      = ADD;
         fp_sign[2] = 1'b1;
-        // Addition is between operands B and C, A was moved to C in the lane_sequencer
       end
-      VFMUL: begin
-        fp_op      = fpnew_pkg::MUL;
-      end
-      VFDIV: begin
-        // fdiv is vs2/vs1
-        fp_op      = fpnew_pkg::DIV;
-      end
-      VFMACC, VFMADD: begin
-        fp_op      = fpnew_pkg::FMADD;
-      end
-      /*
-      VFSQRT: begin
-        // Avoid a NaN on the unused operand of the FPU.
-        operand_b = operand_a;
-      end
-      */
+      VFMUL         : fp_op = MUL;
+      VFDIV         : fp_op = DIV;
+      VFMACC, VFMADD: fp_op = FMADD;
     endcase
 
     case (vinsn_issue.vtype.vsew)
-      EW64: fp_fmt = fpnew_pkg::FP64;
-      EW32: fp_fmt = fpnew_pkg::FP32;
-      EW16: fp_fmt = fpnew_pkg::FP16;
+      EW64: fp_fmt = FP64;
+      EW32: fp_fmt = FP32;
+      EW16: fp_fmt = FP16;
     endcase
-    fp_int_fmt = fpnew_pkg::int_format_e'(fp_fmt);
+    fp_int_fmt = int_format_e'(fp_fmt);
 
     // Sign injection
     case (vinsn_issue.vtype.vsew)
@@ -446,7 +430,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
           operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
         end
     endcase
-  end : vfpu_preprocessing
+  end : fpu_operand_preprocessing_p
 
   // If an element is masked, prevent it from raising an exception (all operands power of 2 should do the trick)
   // TODO: this is overkill, make the FPU avoid the unwanted exceptions, internally
@@ -474,9 +458,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   assign vfpu_operands[1] = masked_operand_b;
   assign vfpu_operands[2] = masked_operand_c;
 
-  elen_t              vfpu_result;
-  fpnew_pkg::status_t vfpu_ex_flag;
-  strb_t              vfpu_mask;
+  elen_t   vfpu_result;
+  status_t vfpu_ex_flag;
+  strb_t   vfpu_mask;
 
   logic vfpu_in_valid;
   logic vfpu_out_valid;
@@ -484,30 +468,30 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   logic vfpu_out_ready;
 
   fpnew_top #(
-    .Features       ( FPU_FEATURES       ),
-    .Implementation ( FPU_IMPLEMENTATION ),
-    .TagType        ( strb_t             )
+    .Features      (FPUFeatures      ),
+    .Implementation(FPUImplementation),
+    .TagType       (strb_t           )
   ) i_fpnew_bulk (
-    .clk_i,
-    .rst_ni,
-    .operands_i     ( vfpu_operands      ),
-    .rnd_mode_i     ( fp_rm              ),
-    .op_i           ( fp_op              ),
-    .op_mod_i       ( fp_opmod           ),
-    .src_fmt_i      ( fp_fmt             ),
-    .dst_fmt_i      ( fp_fmt             ),
-    .int_fmt_i      ( fp_int_fmt         ),
-    .vectorial_op_i ( 1'b1               ),
-    .tag_i          ( mask_i             ),
-    .in_valid_i     ( vfpu_in_valid      ),
-    .in_ready_o     ( vfpu_in_ready      ),
-    .flush_i        ( 1'b0               ),
-    .result_o       ( vfpu_result        ),
-    .status_o       ( vfpu_ex_flag       ),
-    .tag_o          ( vfpu_mask          ),
-    .out_valid_o    ( vfpu_out_valid     ),
-    .out_ready_i    ( vfpu_out_ready     ),
-    .busy_o         ( /* unused */       )
+    .clk_i         (clk_i         ),
+    .rst_ni        (rst_ni        ),
+    .operands_i    (vfpu_operands ),
+    .rnd_mode_i    (fp_rm         ),
+    .op_i          (fp_op         ),
+    .op_mod_i      (fp_opmod      ),
+    .src_fmt_i     (fp_fmt        ),
+    .dst_fmt_i     (fp_fmt        ),
+    .int_fmt_i     (fp_int_fmt    ),
+    .vectorial_op_i(1'b1          ),
+    .tag_i         (mask_i        ),
+    .in_valid_i    (vfpu_in_valid ),
+    .in_ready_o    (vfpu_in_ready ),
+    .flush_i       (1'b0          ),
+    .result_o      (vfpu_result   ),
+    .status_o      (vfpu_ex_flag  ),
+    .tag_o         (vfpu_mask     ),
+    .out_valid_o   (vfpu_out_valid),
+    .out_ready_i   (vfpu_out_ready),
+    .busy_o        (/* Unused */  )
   );
 
   // Stabilize signals regardless of FPU latency (signals to CVA6)
@@ -542,15 +526,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   // If vs2 and vd were swapped, re-route the handshake signals to/from the operand queues
   assign operands_valid = vinsn_issue_q.swap_vs2_vd_op
-                        ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2  ) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
-                        : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2  ) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
+                        ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
+                        : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
 
   assign operands_ready = vinsn_issue_q.swap_vs2_vd_op
                         ? {vinsn_issue_q.use_vs2,   vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
                         : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2,   vinsn_issue_q.use_vs1};
 
   always_comb begin: p_vmfpu
-
     // Maintain state
     vinsn_queue_d    = vinsn_queue_q;
     issue_cnt_d      = issue_cnt_q;
@@ -595,9 +578,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
       // Do we have all the operands necessary for this instruction?
       if (operands_valid) begin
         // Validate the inputs of the correct unit
-          vmul_in_valid = vinsn_issue_mul ? 1'b1 : 1'b0;
-          vdiv_in_valid = vinsn_issue_div ? 1'b1 : 1'b0;
-          vfpu_in_valid = vinsn_issue_fpu ? 1'b1 : 1'b0;
+        vmul_in_valid = vinsn_issue_mul;
+        vdiv_in_valid = vinsn_issue_div;
+        vfpu_in_valid = vinsn_issue_fpu;
 
         // Is the unit in use ready?
         if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) || (vinsn_issue_fpu && vfpu_in_ready)) begin
@@ -649,12 +632,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         unit_out_result = vmul_result;
         unit_out_mask   = vmul_mask;
       end
-      [VDIVU:VREM]:  begin
+      [VDIVU:VREM]: begin
         unit_out_valid  = vdiv_out_valid;
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFMADD]:  begin
+      [VFADD:VFMADD]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
@@ -769,10 +752,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = vfu_operation_i.vl;
 
       // Bump pointers and counters of the vector instruction queue
-      vinsn_queue_d.accept_pnt     += 1;
-      vinsn_queue_d.issue_cnt      += 1;
+      vinsn_queue_d.accept_pnt += 1;
+      vinsn_queue_d.issue_cnt += 1;
       vinsn_queue_d.processing_cnt += 1;
-      vinsn_queue_d.commit_cnt     += 1;
+      vinsn_queue_d.commit_cnt += 1;
     end
   end: p_vmfpu
 
