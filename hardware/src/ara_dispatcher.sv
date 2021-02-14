@@ -289,6 +289,34 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b010001: begin
                   ara_req_d.op        = ara_pkg::VMADC;
                   ara_req_d.use_vd_op = 1'b1;
+
+                  // Check whether we can access vs1 and vs2
+                  unique case (ara_req_d.emul)
+                    LMUL_2:
+                      if (((insn.varith_type.rs1 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) ||
+                          ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (((insn.varith_type.rs1 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) ||
+                          ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (((insn.varith_type.rs1 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) ||
+                          ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    default:
+                      if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
+                          (insn.varith_type.rs2 == insn.varith_type.rd)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                  endcase
                 end
                 6'b010010: begin
                   ara_req_d.op = ara_pkg::VSBC;
@@ -310,6 +338,34 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b010011: begin
                   ara_req_d.op        = ara_pkg::VMSBC;
                   ara_req_d.use_vd_op = 1'b1;
+
+                  // Check whether we can access vs1 and vs2
+                  unique case (ara_req_d.emul)
+                    LMUL_2:
+                      if (((insn.varith_type.rs1 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) ||
+                          ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if (((insn.varith_type.rs1 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) ||
+                          ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if (((insn.varith_type.rs1 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) ||
+                          ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    default:
+                      if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
+                          (insn.varith_type.rs2 == insn.varith_type.rd)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                  endcase
                 end
                 6'b011000: begin
                   ara_req_d.op        = VMSEQ;
@@ -438,10 +494,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
                 default:;
               endcase
 
@@ -495,6 +547,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b010001: begin
                   ara_req_d.op        = ara_pkg::VMADC;
                   ara_req_d.use_vd_op = 1'b1;
+
+                  // Check whether we can access vs1 and vs2
+                  unique case (ara_req_d.emul)
+                    LMUL_2:
+                      if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    default:
+                      if (insn.varith_type.rs2 == insn.varith_type.rd) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                  endcase
                 end
                 6'b010010: begin
                   ara_req_d.op = ara_pkg::VSBC;
@@ -516,6 +592,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b010011: begin
                   ara_req_d.op        = ara_pkg::VMSBC;
                   ara_req_d.use_vd_op = 1'b1;
+
+                  // Check whether we can access vs1 and vs2
+                  unique case (ara_req_d.emul)
+                    LMUL_2:
+                      if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    default:
+                      if (insn.varith_type.rs2 == insn.varith_type.rd) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                  endcase
                 end
                 6'b011000: begin
                   ara_req_d.op        = VMSEQ;
@@ -652,10 +752,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
                 default:;
               endcase
 
@@ -707,6 +803,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 6'b010001: begin
                   ara_req_d.op        = ara_pkg::VMADC;
                   ara_req_d.use_vd_op = 1'b1;
+
+                  // Check whether we can access vs1 and vs2
+                  unique case (ara_req_d.emul)
+                    LMUL_2:
+                      if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_4:
+                      if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    LMUL_8:
+                      if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    default:
+                      if (insn.varith_type.rs2 == insn.varith_type.rd) begin
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                  endcase
                 end
                 6'b011000: begin
                   ara_req_d.op        = VMSEQ;
@@ -835,10 +955,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
                 default:;
               endcase
 
@@ -1136,10 +1252,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
                 default:;
               endcase
 
@@ -1335,10 +1447,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
                 default:;
               endcase
 
@@ -1454,11 +1562,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
-            LMUL_RSVD: begin
-              acc_resp_o.error = 1'b1;
-              acc_resp_valid_o = 1'b1;
-              ara_req_valid_d  = 1'b0;
-            end
             default:;
           endcase
 
@@ -1568,11 +1671,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 acc_resp_valid_o = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
-            LMUL_RSVD: begin
-              acc_resp_o.error = 1'b1;
-              acc_resp_valid_o = 1'b1;
-              ara_req_valid_d  = 1'b0;
-            end
             default:;
           endcase
 
