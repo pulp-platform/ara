@@ -156,7 +156,7 @@ hello_world:
     - tc-isa-sim
     - compile_apps
 
-matmul:
+imatmul:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
@@ -169,7 +169,7 @@ matmul:
     - compile_apps
     - compile_ara
 
-matmul_fp:
+fmatmul:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
