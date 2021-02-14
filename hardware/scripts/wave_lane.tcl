@@ -25,7 +25,7 @@ add wave -noupdate -group Ara -group Lane[$1] -group operand_queues -group mask_
 add wave -noupdate -group Ara -group Lane[$1] -group operand_queues -group mask_m /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_operand_queues/i_operand_queue_mask_m/*
 add wave -noupdate -group Ara -group Lane[$1] -group operand_queues /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_operand_queues/*
 
-add wave -noupdate -group Ara -group Lane[$1] -group valu -group simd_valu /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_valu/i_simd_valu/*
+add wave -noupdate -group Ara -group Lane[$1] -group valu -group simd_alu /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_valu/i_simd_alu/*
 add wave -noupdate -group Ara -group Lane[$1] -group valu /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_valu/*
 
 add wave -noupdate -group Ara -group Lane[$1] -group vmfpu -group simd_vmul_ew64 /ara_tb/dut/i_ara_soc/i_ara/gen_lanes[$1]/i_lane/i_vfus/i_vmfpu/i_simd_mul_ew64/*
