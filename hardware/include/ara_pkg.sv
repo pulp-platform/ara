@@ -172,7 +172,7 @@ package ara_pkg;
     rvv_pkg::vlmul_e emul;
 
     // Rounding-Mode for FP operations
-    logic [2:0] fp_rm;
+    fpnew_pkg::roundmode_e fp_rm;
 
     // Vector machine metadata
     vlen_t vl;
@@ -256,7 +256,7 @@ package ara_pkg;
     rvv_pkg::vlmul_e emul;
 
     // Rounding-Mode for FP operations
-    logic [2:0] fp_rm;
+    fpnew_pkg::roundmode_e fp_rm;
 
     // Vector machine metadata
     vlen_t vl;
@@ -494,7 +494,7 @@ package ara_pkg;
 
     logic swap_vs2_vd_op; // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
 
-    logic [2:0] fp_rm; // Rounding-Mode for FP operations
+    fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
 
     // Vector machine metadata
     vlen_t vl;

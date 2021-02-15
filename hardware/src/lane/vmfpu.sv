@@ -379,7 +379,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     operand_b  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
     operand_c  = mfpu_operand_i[2];                                         // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
     // Default rounding-mode from fcsr.rm
-    fp_rm      = roundmode_e'(vinsn_issue.fp_rm);
+    fp_rm      = vinsn_issue.fp_rm;
     fp_op      = ADD;
     fp_opmod   = 1'b0;
     fp_fmt     = FP64;
