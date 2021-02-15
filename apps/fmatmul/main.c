@@ -39,12 +39,12 @@
 //        + (A_b*B_a) * (N*(N-1)*(2*N-1))/6
 // Note: To keep the code simpler, we use indices that go from 0 to N-1 instead
 // of 1 to N as the mathematicians do. Hence, for A, i=[0,M-1] j=[0,M-1]
-#define A_a 1.313
-#define A_b 1.1515
-#define A_c -32.33
-#define B_a 2.51
-#define B_b 1.896
-#define B_c 16.11111
+#define A_a 1
+#define A_b 1
+#define A_c -32
+#define B_a 2
+#define B_b 1
+#define B_c 16
 
 double a[M * N] __attribute__((aligned(4*NR_LANES), section(".l2")));
 double b[N * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
