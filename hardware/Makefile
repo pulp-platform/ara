@@ -159,7 +159,7 @@ $(veril_library)/V$(veril_top): Makefile ../Bender.yml $(shell find src -type f)
   $(ROOT_DIR)/tb/verilator/ara_tb.cpp                                           \
   --cc                                                                          \
   --top-module $(veril_top) &&                                                  \
-	cd $(veril_library) && make -j4 -f V$(veril_top).mk
+	cd $(veril_library) && OBJCACHE='' make -j4 -f V$(veril_top).mk
 
 # Simulation
 .PHONY: simv
