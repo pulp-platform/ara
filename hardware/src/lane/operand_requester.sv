@@ -451,18 +451,64 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
   // Instantiate a RR arbiter per bank
   for (genvar bank = 0; bank < NrBanks; bank++) begin: gen_vrf_arbiters
+    // High-priority requests
+    payload_t payload_hp;
+    logic payload_hp_req;
+    logic payload_hp_gnt;
     rr_arb_tree #(
-      .NumIn    (NrMasters       ),
+      .NumIn    (int'(MulFPUC) - int'(AluA) + 1 + int'(VFU_MFpu) - int'(VFU_Alu) + 1),
+      .DataWidth($bits(payload_t)                                                   ),
+      .AxiVldRdy(1'b0                                                               )
+    ) i_hp_vrf_arbiter (
+      .clk_i  (clk_i                                                                                                     ),
+      .rst_ni (rst_ni                                                                                                    ),
+      .flush_i(1'b0                                                                                                      ),
+      .rr_i   ('0                                                                                                        ),
+      .data_i ({operand_payload[MulFPUC:AluA], operand_payload[NrOperandQueues + VFU_MFpu:NrOperandQueues + VFU_Alu]}    ),
+      .req_i  ({operand_req[bank][MulFPUC:AluA], operand_req[bank][NrOperandQueues + VFU_MFpu:NrOperandQueues + VFU_Alu]}),
+      .gnt_o  ({operand_gnt[bank][MulFPUC:AluA], operand_gnt[bank][NrOperandQueues + VFU_MFpu:NrOperandQueues + VFU_Alu]}),
+      .data_o (payload_hp                                                                                                ),
+      .idx_o  (/* Unused */                                                                                              ),
+      .req_o  (payload_hp_req                                                                                            ),
+      .gnt_i  (payload_hp_gnt                                                                                            )
+    );
+
+    // Low-priority requests
+    payload_t payload_lp;
+    logic payload_lp_req;
+    logic payload_lp_gnt;
+    rr_arb_tree #(
+      .NumIn    (int'(AddrGenA) - int'(MaskB) + 1 + int'(VFU_LoadUnit) - int'(VFU_SlideUnit) + 1),
+      .DataWidth($bits(payload_t)                                                               ),
+      .AxiVldRdy(1'b0                                                                           )
+    ) i_lp_vrf_arbiter (
+      .clk_i  (clk_i                                                                                                                 ),
+      .rst_ni (rst_ni                                                                                                                ),
+      .flush_i(1'b0                                                                                                                  ),
+      .rr_i   ('0                                                                                                                    ),
+      .data_i ({operand_payload[AddrGenA:MaskB], operand_payload[NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}    ),
+      .req_i  ({operand_req[bank][AddrGenA:MaskB], operand_req[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
+      .gnt_o  ({operand_gnt[bank][AddrGenA:MaskB], operand_gnt[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
+      .data_o (payload_lp                                                                                                            ),
+      .idx_o  (/* Unused */                                                                                                          ),
+      .req_o  (payload_lp_req                                                                                                        ),
+      .gnt_i  (payload_lp_gnt                                                                                                        )
+    );
+
+    // High-priority requests always mask low-priority requests
+    rr_arb_tree #(
+      .NumIn    (2               ),
       .DataWidth($bits(payload_t)),
-      .AxiVldRdy(1'b0            )
+      .AxiVldRdy(1'b0            ),
+      .ExtPrio  (1'b1            )
     ) i_vrf_arbiter (
       .clk_i  (clk_i                                                                                          ),
       .rst_ni (rst_ni                                                                                         ),
       .flush_i(1'b0                                                                                           ),
-      .rr_i   ('0                                                                                             ),
-      .data_i (operand_payload                                                                                ),
-      .req_i  (operand_req[bank]                                                                              ),
-      .gnt_o  (operand_gnt[bank]                                                                              ),
+      .rr_i   (1'b0                                                                                           ),
+      .data_i ({payload_lp, payload_hp}                                                                       ),
+      .req_i  ({payload_lp_req, payload_hp_req}                                                               ),
+      .gnt_o  ({payload_lp_gnt, payload_hp_gnt}                                                               ),
       .data_o ({vrf_addr_o[bank], vrf_wen_o[bank], vrf_wdata_o[bank], vrf_be_o[bank], vrf_tgt_opqueue_o[bank]}),
       .idx_o  (/* Unused */                                                                                   ),
       .req_o  (vrf_req_o[bank]                                                                                ),
