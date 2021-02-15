@@ -172,7 +172,7 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
         insn    : acc_insn_queue_o.imm[31:0],
         rs1     : acc_insn_queue_o.operand_a,
         rs2     : acc_insn_queue_o.operand_b,
-        frm     : fcsr_frm_i,
+        frm     : fpnew_pkg::roundmode_e'(fcsr_frm_i),
         trans_id: acc_insn_queue_o.trans_id,
         default : '0
       };
