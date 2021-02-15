@@ -87,7 +87,7 @@ void print_matrix(double const *matrix, uint64_t num_rows, uint64_t num_columns)
   printf("0x%8X\n", (uint64_t)matrix);
   for (uint64_t i = 0; i < num_rows; ++i) {
     for (uint64_t j = 0; j < num_columns; ++j) {
-      printf("%5d ", matrix[i * num_columns + j]);
+      printf("%5.1lf ", matrix[i * num_columns + j]);
     }
     printf("\n");
   }
