@@ -165,6 +165,9 @@ package ara_pkg;
     logic [4:0] vd;
     logic use_vd;
 
+    // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
+    logic swap_vs2_vd_op;
+
     // Effective length multiplier
     rvv_pkg::vlmul_e emul;
 
@@ -238,6 +241,9 @@ package ara_pkg;
     // Scalar operand
     elen_t scalar_op;
     logic use_scalar_op;
+
+    // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
+    logic swap_vs2_vd_op;
 
     // 2nd scalar operand: stride for constant-strided vector load/stores
     elen_t stride;
@@ -485,6 +491,8 @@ package ara_pkg;
 
     logic [4:0] vd; // Vector destination register
     logic use_vd;
+
+    logic swap_vs2_vd_op; // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
 
     logic [2:0] fp_rm; // Rounding-Mode for FP operations
 

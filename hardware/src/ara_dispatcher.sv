@@ -1108,12 +1108,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 // Multiply-Add instructions
                 // vd is also used as a source operand
                 6'b101001: begin
-                  ara_req_d.op        = ara_pkg::VMADD;
-                  ara_req_d.use_vd_op = 1'b1;
+                  ara_req_d.op             = ara_pkg::VMADD;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101011: begin
-                  ara_req_d.op        = ara_pkg::VNMSUB;
-                  ara_req_d.use_vd_op = 1'b1;
+                  ara_req_d.op             = ara_pkg::VNMSUB;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101101: begin
                   ara_req_d.op        = ara_pkg::VMACC;
@@ -1294,12 +1297,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
                 // Multiply-Add instructions
                 // vd is also used as a source operand
                 6'b101001: begin
-                  ara_req_d.op        = ara_pkg::VMADD;
-                  ara_req_d.use_vd_op = 1'b1;
+                  ara_req_d.op             = ara_pkg::VMADD;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101011: begin
-                  ara_req_d.op        = ara_pkg::VNMSUB;
-                  ara_req_d.use_vd_op = 1'b1;
+                  ara_req_d.op             = ara_pkg::VNMSUB;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101101: begin
                   ara_req_d.op        = ara_pkg::VMACC;
@@ -1478,13 +1484,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               // Decode based on the func6 field
               unique case (insn.varith_type.func6)
                 // VFP Addition
-                6'b000000: ara_req_d.op = ara_pkg::VFADD;
-                6'b000010: ara_req_d.op = ara_pkg::VFSUB;
+                6'b000000: begin
+                  ara_req_d.op = ara_pkg::VFADD;
+                  // When performing a floating-point add/sub, fpnew adds the second and the third operand
+                  // So, send the first operand (vs2) to the third result queue
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
+                6'b000010: begin
+                  ara_req_d.op = ara_pkg::VFSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
                 6'b100000: ara_req_d.op = ara_pkg::VFDIV;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b101000: begin
                   ara_req_d.op = ara_pkg::VFMADD;
                   ara_req_d.use_vd_op = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101100: begin
                   ara_req_d.op = ara_pkg::VFMACC;
@@ -1558,14 +1574,27 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; (
               // Decode based on the func6 field
               unique case (insn.varith_type.func6)
                 // VFP Addition
-                6'b000000: ara_req_d.op = ara_pkg::VFADD;
-                6'b000010: ara_req_d.op = ara_pkg::VFSUB;
+                6'b000000: begin
+                  ara_req_d.op = ara_pkg::VFADD;
+                  // When performing a floating-point add/sub, fpnew adds the second and the third operand
+                  // So, send the first operand (vs2) to the third result queue
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
+                6'b000010: begin
+                  ara_req_d.op = ara_pkg::VFSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
                 6'b100000: ara_req_d.op = ara_pkg::VFDIV;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
-                6'b100111: ara_req_d.op = ara_pkg::VFRSUB;
+                6'b100111: begin
+                  ara_req_d.op = ara_pkg::VFRSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
                 6'b101000: begin
-                  ara_req_d.op = ara_pkg::VFMADD;
-                  ara_req_d.use_vd_op = 1'b1;
+                  ara_req_d.op             = ara_pkg::VFMADD;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
                 6'b101100: begin
                   ara_req_d.op = ara_pkg::VFMACC;

@@ -201,6 +201,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               eew_vd_op     : ara_req_i.eew_vd_op,
               scalar_op     : ara_req_i.scalar_op,
               use_scalar_op : ara_req_i.use_scalar_op,
+              swap_vs2_vd_op: ara_req_i.swap_vs2_vd_op,
               stride        : ara_req_i.stride,
               vd            : ara_req_i.vd,
               use_vd        : ara_req_i.use_vd,

@@ -376,7 +376,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   always_comb begin: vfpu_preprocessing
     operand_a  = mfpu_operand_i[1];                                         // vs2
     operand_b  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
-    operand_c  = mfpu_operand_i[2];                                         // vd
+    operand_c  = mfpu_operand_i[2];                                         // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
     // Default rounding-mode from fcsr.rm
     fp_rm      = fpnew_pkg::roundmode_e'(vinsn_issue.fp_rm);
     fp_op      = fpnew_pkg::ADD;
@@ -387,21 +387,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
     case (vinsn_issue.op)
       VFADD: begin
-        fp_op     = fpnew_pkg::ADD;
-        // Addition is between operands B and C
-        operand_c = operand_a;
+        fp_op      = fpnew_pkg::ADD;
+        // Addition is between operands B and C, A was moved to C in the lane_sequencer
       end
       VFSUB: begin
         fp_op      = fpnew_pkg::ADD;
         fp_sign[1] = 1'b1;
-        // Addition is between operands B and C
-        operand_c = operand_a;
+        // Addition is between operands B and C, A was moved to C in the lane_sequencer
       end
       VFRSUB: begin
         fp_op      = fpnew_pkg::ADD;
         fp_sign[2] = 1'b1;
-        // Addition is between operands B and C
-        operand_c = operand_a;
+        // Addition is between operands B and C, A was moved to C in the lane_sequencer
       end
       VFMUL: begin
         fp_op      = fpnew_pkg::MUL;
@@ -411,7 +408,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         fp_op      = fpnew_pkg::DIV;
       end
       VFMACC, VFMADD: begin
-        fp_op     = fpnew_pkg::FMADD;
+        fp_op      = fpnew_pkg::FMADD;
       end
       /*
       VFSQRT: begin
@@ -527,6 +524,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
    *  Control  *
    *************/
 
+  // Helper signal to handshake with the correct operand queues
+  logic       operands_valid;
+  logic [2:0] operands_ready;
+
   // Remaining elements of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
   // Remaining elements of the current instruction in the processing phase
@@ -538,6 +539,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   logic  unit_out_valid;
   elen_t unit_out_result;
   strb_t unit_out_mask;
+
+  // If vs2 and vd were swapped, re-route the handshake signals to/from the operand queues
+  assign operands_valid = vinsn_issue_q.swap_vs2_vd_op
+                        ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2  ) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
+                        : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2  ) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
+
+  assign operands_ready = vinsn_issue_q.swap_vs2_vd_op
+                        ? {vinsn_issue_q.use_vs2,   vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
+                        : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2,   vinsn_issue_q.use_vs1};
 
   always_comb begin: p_vmfpu
 
@@ -583,7 +593,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid) begin
       // Do we have all the operands necessary for this instruction?
-      if ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) && (mask_valid_i || vinsn_issue_q.vm)) begin
+      if (operands_valid) begin
         // Validate the inputs of the correct unit
           vmul_in_valid = vinsn_issue_mul ? 1'b1 : 1'b0;
           vdiv_in_valid = vinsn_issue_div ? 1'b1 : 1'b0;
@@ -592,7 +602,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
         // Is the unit in use ready?
         if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) || (vinsn_issue_fpu && vfpu_in_ready)) begin
           // Acknowledge the operands of this instruction
-          mfpu_operand_ready_o = {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
+          mfpu_operand_ready_o = operands_ready;
           // Acknowledge the mask unit
           mask_ready_o         = ~vinsn_issue_q.vm;
 
