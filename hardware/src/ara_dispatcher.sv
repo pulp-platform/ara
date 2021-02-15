@@ -1542,10 +1542,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
                 default:;
               endcase
 
