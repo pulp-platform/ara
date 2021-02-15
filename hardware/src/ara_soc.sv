@@ -560,6 +560,7 @@ module ara_soc import axi_pkg::*; #(
   ariane_pkg::accelerator_resp_t acc_resp;
   logic acc_resp_valid;
   logic acc_resp_ready;
+  logic acc_cons_en;
   logic [AxiAddrWidth-1:0] inval_addr;
   logic                    inval_valid;
   logic                    inval_ready;
@@ -584,6 +585,7 @@ module ara_soc import axi_pkg::*; #(
     .acc_resp_i      (acc_resp              ),
     .acc_resp_valid_i(acc_resp_valid        ),
     .acc_resp_ready_o(acc_resp_ready        ),
+    .acc_cons_en_o   (acc_cons_en           ),
     .inval_addr_i    (inval_addr            ),
     .inval_valid_i   (inval_valid           ),
     .inval_ready_o   (inval_ready           )
@@ -625,6 +627,7 @@ module ara_soc import axi_pkg::*; #(
   ) i_axi_inval_filter (
     .clk_i        (clk_i             ),
     .rst_ni       (rst_ni            ),
+    .en_i         (acc_cons_en       ),
     .slv_req_i    (ara_axi_req       ),
     .slv_resp_o   (ara_axi_resp      ),
     .mst_req_o    (ara_axi_req_inval ),

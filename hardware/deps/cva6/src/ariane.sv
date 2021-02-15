@@ -47,6 +47,7 @@ module ariane import ariane_pkg::*; #(
   input  logic                         acc_resp_valid_i,
   output logic                         acc_resp_ready_o,
   // Invalidation requests
+  output logic                         acc_cons_en_o,
   input  logic [63:0]                  inval_addr_i,
   input  logic                         inval_valid_i,
   output logic                         inval_ready_o,
@@ -266,6 +267,8 @@ module ariane import ariane_pkg::*; #(
   dcache_req_o_t [2:0]      dcache_req_ports_cache_ex;
   logic                     dcache_commit_wbuffer_empty;
   logic                     dcache_commit_wbuffer_not_ni;
+
+  assign acc_cons_en_o = acc_cons_en_csr;
 
   // --------------
   // Frontend
