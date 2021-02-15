@@ -166,9 +166,9 @@ module acc_dispatcher import ariane_pkg::*; import riscv::*; (
       acc_req = '{
         // Instruction is forwarded from the decoder as an immediate
         // -
-        // frm rounding information is up to date during a valid request to Ara
+        // frm rounding information is up to date during a valid request to the accelerator
         // The scoreboard synchronizes it with previous fcsr writes, and future fcsr writes
-        // do not take place until Ara answers (Ariane commits in-order)
+        // do not take place until the accelerator answers (Ariane commits in-order)
         insn    : acc_insn_queue_o.imm[31:0],
         rs1     : acc_insn_queue_o.operand_a,
         rs2     : acc_insn_queue_o.operand_b,

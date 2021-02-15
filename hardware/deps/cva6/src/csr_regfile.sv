@@ -668,7 +668,7 @@ module csr_regfile import ariane_pkg::*; #(
         end
 
         // ----------------------------
-        // Ara FP imprecise exceptions
+        // Accelerator FP imprecise exceptions
         // ----------------------------
 
         // Update fflags as soon as a FP exception occurs in the accelerator
