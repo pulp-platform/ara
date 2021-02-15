@@ -30,8 +30,8 @@ module ara_testharness #(
     output logic [63:0] exit_o
   );
 
-  `include "axi/assign.svh"
   `include "axi/typedef.svh"
+  `include "common_cells/registers.svh"
 
   /*****************
    *  Definitions  *
@@ -160,9 +160,9 @@ module ara_testharness #(
     .pslverr_o(uart_pslverr)
   );
 
-  /********
-   *  L2  *
-   ********/
+  /**********
+   *  DRAM  *
+   **********/
 
   logic                      req;
   logic                      we;
@@ -170,32 +170,30 @@ module ara_testharness #(
   logic [AxiDataWidth/8-1:0] be;
   logic [AxiDataWidth-1:0]   wdata;
   logic [AxiDataWidth-1:0]   rdata;
+  logic                      rvalid;
 
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH(AxiAddrWidth),
-    .AXI_DATA_WIDTH(AxiDataWidth),
-    .AXI_ID_WIDTH  (AxiIdWidth  ),
-    .AXI_USER_WIDTH(AxiUserWidth)
-  ) axi_dram_slave ();
-
-  `AXI_ASSIGN_FROM_REQ(axi_dram_slave, dram_req)
-  `AXI_ASSIGN_TO_RESP(dram_resp, axi_dram_slave)
-
-  axi2mem #(
-    .AXI_ID_WIDTH  (AxiIdWidth  ),
-    .AXI_ADDR_WIDTH(AxiAddrWidth),
-    .AXI_DATA_WIDTH(AxiDataWidth),
-    .AXI_USER_WIDTH(AxiUserWidth)
-  ) i_axi2mem (
-    .clk_i (clk_i         ),
-    .rst_ni(rst_ni        ),
-    .slave (axi_dram_slave),
-    .req_o (req           ),
-    .we_o  (we            ),
-    .addr_o(addr          ),
-    .be_o  (be            ),
-    .data_o(wdata         ),
-    .data_i(rdata         )
+  axi_to_mem #(
+    .AddrWidth (AxiAddrWidth),
+    .DataWidth (AxiDataWidth),
+    .IdWidth   (AxiIdWidth  ),
+    .NumBanks  (1           ),
+    .axi_req_t (axi_req_t   ),
+    .axi_resp_t(axi_resp_t  )
+  ) i_axi_to_mem (
+    .clk_i       (clk_i       ),
+    .rst_ni      (rst_ni      ),
+    .axi_req_i   (dram_req    ),
+    .axi_resp_o  (dram_resp   ),
+    .mem_req_o   (req         ),
+    .mem_gnt_i   (req         ), // Always available
+    .mem_we_o    (we          ),
+    .mem_addr_o  (addr        ),
+    .mem_strb_o  (be          ),
+    .mem_wdata_o (wdata       ),
+    .mem_rdata_i (rdata       ),
+    .mem_rvalid_i(rvalid      ),
+    .mem_atop_o  (/* Unused */),
+    .busy_o      (/* Unused */)
   );
 
   tc_sram #(
@@ -212,5 +210,8 @@ module ara_testharness #(
     .be_i   (be                                                                    ),
     .rdata_o(rdata                                                                 )
   );
+
+  // One-cycle latency
+  `FF(rvalid, req, 1'b0);
 
 endmodule : ara_testharness
