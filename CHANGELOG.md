@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Support for a coherent mode between Ara and Ariane
+  - Snoop AW channel from Ara to L2
+  - Invalidate Ariane's L1 cache sets accordingly
+  - Coherent mode can be toggled together with consistent mode using the LSB of CSR 0x702
+
+### Changed
+
+- Ariane's data cache is active by default
+
 ## 0.5.0 - 2020-02-14
 
 ### Added
