@@ -167,29 +167,32 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
         end else if (ara_req_valid_i) begin
           // PEs are ready, and we can handle another running vector instruction
           if (&pe_req_ready_i && !vinsn_running_full) begin
-            // Acknowledge instruction
-            ara_req_ready_o = 1'b1;
+            /*************
+             *  Hazards  *
+             *************/
 
-            // Remember that the vector instruction is running
-            unique case (vfu(ara_req_i.op))
-              VFU_LoadUnit : pe_vinsn_running_d[NrLanes + OffsetLoad][vinsn_next_id]  = 1'b1;
-              VFU_StoreUnit: pe_vinsn_running_d[NrLanes + OffsetStore][vinsn_next_id] = 1'b1;
-              VFU_SlideUnit: pe_vinsn_running_d[NrLanes + OffsetSlide][vinsn_next_id] = 1'b1;
-              VFU_MaskUnit : pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_next_id]  = 1'b1;
-              default: // Instruction is running on the lanes
-                for (int l = 0; l < NrLanes; l++)
-                  pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
-            endcase
+            // RAW
+            if (ara_req_i.use_vs1)
+              pe_req_d.hazard_vs1[write_list_d[ara_req_i.vs1].vid] |= write_list_d[ara_req_i.vs1].valid;
+            if (ara_req_i.use_vs2)
+              pe_req_d.hazard_vs2[write_list_d[ara_req_i.vs2].vid] |= write_list_d[ara_req_i.vs2].valid;
+            if (!ara_req_i.vm)
+              pe_req_d.hazard_vm[write_list_d[VMASK].vid] |= write_list_d[VMASK].valid;
 
-            // Masked vector instructions also run on the mask unit
-            pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_next_id] = !ara_req_i.vm;
-
-            // Some instructions need to wait for an acknowledgment
-            // before being committed with Ariane
-            if (is_load(ara_req_i.op) || is_store(ara_req_i.op) || !ara_req_i.use_vd) begin
-              ara_req_ready_o = 1'b0;
-              state_d         = WAIT;
+            // WAR
+            if (ara_req_i.use_vd) begin
+              pe_req_d.hazard_vs1[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
+              pe_req_d.hazard_vs2[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
+              pe_req_d.hazard_vm[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
             end
+
+            // WAW
+            if (ara_req_i.use_vd)
+              pe_req_d.hazard_vd[write_list_d[ara_req_i.vd].vid] |= write_list_d[ara_req_i.vd].valid;
+
+            /***********
+             *  Issue  *
+             ***********/
 
             // Populate the PE request
             pe_req_d = '{
@@ -218,44 +221,58 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               vstart        : ara_req_i.vstart,
               vtype         : ara_req_i.vtype,
               vinsn_running : vinsn_running_d,
+              hazard_vd     : pe_req_d.hazard_vd,
+              hazard_vm     : pe_req_d.hazard_vm,
+              hazard_vs1    : pe_req_d.hazard_vs1,
+              hazard_vs2    : pe_req_d.hazard_vs2,
               default       : '0
             };
-            pe_req_valid_d = 1'b1;
 
-            /*************
-             *  Hazards  *
-             *************/
+            // We only issue instructions that take no operands if they have no hazards.
+            if (!(|{ara_req_i.use_vs1, ara_req_i.use_vs2, ara_req_i.use_vd_op, !ara_req_i.vm}) &&
+                |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2, pe_req_d.hazard_vm, pe_req_d.hazard_vd}) begin
+              ara_req_ready_o = 1'b0;
+              pe_req_valid_d  = 1'b0;
+            end else begin
+              // Acknowledge instruction
+              ara_req_ready_o = 1'b1;
 
-            // RAW
-            if (ara_req_i.use_vs1)
-              pe_req_d.hazard_vs1[write_list_d[ara_req_i.vs1].vid] |= write_list_d[ara_req_i.vs1].valid;
-            if (ara_req_i.use_vs2)
-              pe_req_d.hazard_vs2[write_list_d[ara_req_i.vs2].vid] |= write_list_d[ara_req_i.vs2].valid;
-            if (!ara_req_i.vm)
-              pe_req_d.hazard_vm[write_list_d[VMASK].vid] |= write_list_d[VMASK].valid;
+              // Remember that the vector instruction is running
+              unique case (vfu(ara_req_i.op))
+                VFU_LoadUnit : pe_vinsn_running_d[NrLanes + OffsetLoad][vinsn_next_id]  = 1'b1;
+                VFU_StoreUnit: pe_vinsn_running_d[NrLanes + OffsetStore][vinsn_next_id] = 1'b1;
+                VFU_SlideUnit: pe_vinsn_running_d[NrLanes + OffsetSlide][vinsn_next_id] = 1'b1;
+                VFU_MaskUnit : pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_next_id]  = 1'b1;
+                default : // Instruction is running on the lanes
+                  for (int l = 0; l < NrLanes; l++)
+                    pe_vinsn_running_d[l][vinsn_next_id] = 1'b1;
+              endcase
 
-            // WAR
-            if (ara_req_i.use_vd) begin
-              pe_req_d.hazard_vs1[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-              pe_req_d.hazard_vs2[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-              pe_req_d.hazard_vm[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
+              // Masked vector instructions also run on the mask unit
+              pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_next_id] = !ara_req_i.vm;
+
+              // Some instructions need to wait for an acknowledgment
+              // before being committed with Ariane
+              if (is_load(ara_req_i.op) || is_store(ara_req_i.op) || !ara_req_i.use_vd) begin
+                ara_req_ready_o = 1'b0;
+                state_d         = WAIT;
+              end
+
+              // Issue the instruction
+              pe_req_valid_d = 1'b1;
+
+              // Mark that this vector instruction is writing to vector vd
+              if (ara_req_i.use_vd)
+                write_list_d[ara_req_i.vd] = '{vid: vinsn_next_id, valid: 1'b1};
+
+              // Mark that this loop is reading vs
+              if (ara_req_i.use_vs1)
+                read_list_d[ara_req_i.vs1] = '{vid: vinsn_next_id, valid: 1'b1};
+              if (ara_req_i.use_vs2)
+                read_list_d[ara_req_i.vs2] = '{vid: vinsn_next_id, valid: 1'b1};
+              if (!ara_req_i.vm)
+                read_list_d[VMASK] = '{vid: vinsn_next_id, valid: 1'b1};
             end
-
-            // WAW
-            if (ara_req_i.use_vd)
-              pe_req_d.hazard_vd[write_list_d[ara_req_i.vd].vid] |= write_list_d[ara_req_i.vd].valid;
-
-            // Mark that this vector instruction is writing to vector vd
-            if (ara_req_i.use_vd)
-              write_list_d[ara_req_i.vd] = '{vid: vinsn_next_id, valid: 1'b1};
-
-            // Mark that this loop is reading vs
-            if (ara_req_i.use_vs1)
-              read_list_d[ara_req_i.vs1] = '{vid: vinsn_next_id, valid: 1'b1};
-            if (ara_req_i.use_vs2)
-              read_list_d[ara_req_i.vs2] = '{vid: vinsn_next_id, valid: 1'b1};
-            if (!ara_req_i.vm)
-              read_list_d[VMASK] = '{vid: vinsn_next_id, valid: 1'b1};
           end else begin
             // Wait until the PEs are ready
             ara_req_ready_o = 1'b0;

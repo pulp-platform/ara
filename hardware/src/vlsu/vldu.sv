@@ -95,7 +95,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     logic [idx_width(VInsnQueueDepth):0] commit_cnt;
   } vinsn_queue_d, vinsn_queue_q;
 
-  // Is the vector instructoin queue full?
+  // Is the vector instruction queue full?
   logic vinsn_queue_full;
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
