@@ -46,9 +46,9 @@
 #define B_b 1
 #define B_c 16
 
-int64_t a[M * N] __attribute__((aligned(4*NR_LANES), section(".l2")));
-int64_t b[N * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
-int64_t c[M * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
+int64_t a[M * N] __attribute__((aligned(32*NR_LANES), section(".l2")));
+int64_t b[N * P] __attribute__((aligned(32*NR_LANES), section(".l2")));
+int64_t c[M * P] __attribute__((aligned(32*NR_LANES), section(".l2")));
 
 // Initialize the matrices
 void init_matrix(int64_t *matrix, uint64_t num_rows, uint64_t num_columns,
@@ -61,20 +61,19 @@ void init_matrix(int64_t *matrix, uint64_t num_rows, uint64_t num_columns,
 }
 
 // Verify the matrices
-int verify_matrix(int64_t *matrix, uint64_t num_rows, uint64_t num_columns,
-                  int64_t aa, int64_t ab, int64_t ac, int64_t ba, int64_t bb,
-                  int64_t bc) {
-  for (int64_t i = 0; i < (int64_t)num_rows; ++i) {
-    for (int64_t j = 0; j < (int64_t)num_columns; ++j) {
-      int64_t lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * N;
-      int64_t qua =
-          ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (N * (N - 1))) / 2;
-      int64_t cub = ((ab * ba) * (N * (N - 1) * (2 * N - 1))) / 6;
+int verify_matrix(int64_t *matrix, int64_t m, int64_t n, int64_t p,
+                  int64_t aa, int64_t ab, int64_t ac, int64_t ba, int64_t bb, int64_t bc) {
+  for (int64_t i = 0; i < (int64_t)m; ++i) {
+    for (int64_t j = 0; j < (int64_t)p; ++j) {
+      int64_t lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * n;
+      int64_t qua = ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (n * (n - 1))) / 2;
+      int64_t cub = ((ab * ba) * (n * (n - 1) * (2 * n - 1))) / 6;
       int64_t golden = lin + qua + cub;
-      if (matrix[i * (int64_t)num_columns + j] != golden) {
-        return (i + j) == 0 ? -1 : i * (int64_t)num_columns + j;
+      if (matrix[i * (int64_t)p + j] != golden) {
+        printf("fehler row %d col %d golden %d act %d\n", i, j, golden, matrix[i * (int64_t)p + j]);
+        return (i + j) == 0 ? -1 : i * (int64_t)p + j;
       }
-      matrix[i * (int64_t)num_columns + j] = 0;
+      matrix[i * (int64_t)p + j] = 0;
     }
   }
   return 0;
@@ -113,7 +112,6 @@ int main() {
 
     // Matrices are initialized --> Start calculating
     printf("Calculating matmul...\n");
-    matmul(c, a, b, s, s, s);
     start_timer();
     matmul(c, a, b, s, s, s);
     stop_timer();
@@ -128,7 +126,7 @@ int main() {
 
     // Verify the result
     printf("Verifying result...\n");
-    int error = verify_matrix(c, s, s, A_a, A_b, A_c, B_a, B_b, B_c);
+    int error = verify_matrix(c, s, s, s, A_a, A_b, A_c, B_a, B_b, B_c);
     if (error != 0) {
       printf("Error code %d\n", error);
       printf("c[%d]=%d\n", error, c[error]);
