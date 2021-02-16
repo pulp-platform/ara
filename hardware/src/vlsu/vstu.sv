@@ -104,7 +104,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // Is the vector instruction queue empty?
   logic vinsn_queue_empty;
   assign vinsn_queue_empty = (vinsn_queue_q.commit_cnt == '0);
-  assign store_pending_o = !vinsn_queue_empty;
+  assign store_pending_o   = !vinsn_queue_empty;
 
   // Do we have a vector instruction ready to be issued?
   pe_req_t vinsn_issue;
@@ -208,34 +208,34 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
             // Account for this byte
             vrf_pnt_d++;
           end
-
-          // Send the W beat
-          axi_w_valid_o = 1'b1;
-          // Account for the beat we sent
-          len_d         = len_q + 1;
-          // We wrote all the beats for this AW burst
-          if ($unsigned(len_d) == $unsigned(axi_addrgen_req_i.len) + 1) begin
-            axi_w_o.last            = 1'b1;
-            // Ask for another burst by the address generator
-            axi_addrgen_req_ready_o = 1'b1;
-            // Reset AXI pointers
-            len_d                   = '0;
-          end
         end
+      end
 
-        // We consumed a whole word from the lanes
-        if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.vtype.vsew)))) begin
-          // Reset the pointer in the VRF word
-          vrf_pnt_d           = '0;
-          // Acknowledge the operands with the lanes
-          stu_operand_ready_o = '1;
-          // Acknowledge the mask operand
-          mask_ready_o        = !vinsn_issue.vm;
-          // Account for the results that were issued
-          issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
-          if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
-            issue_cnt_d = '0;
-        end
+      // Send the W beat
+      axi_w_valid_o = 1'b1;
+      // Account for the beat we sent
+      len_d         = len_q + 1;
+      // We wrote all the beats for this AW burst
+      if ($unsigned(len_d) == $unsigned(axi_addrgen_req_i.len) + 1) begin
+        axi_w_o.last            = 1'b1;
+        // Ask for another burst by the address generator
+        axi_addrgen_req_ready_o = 1'b1;
+        // Reset AXI pointers
+        len_d                   = '0;
+      end
+
+      // We consumed a whole word from the lanes
+      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.eew_vs1)))) begin
+        // Reset the pointer in the VRF word
+        vrf_pnt_d           = '0;
+        // Acknowledge the operands with the lanes
+        stu_operand_ready_o = '1;
+        // Acknowledge the mask operand
+        mask_ready_o        = !vinsn_issue.vm;
+        // Account for the results that were issued
+        issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1));
+        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1)))
+          issue_cnt_d = '0;
       end
     end
 
@@ -261,7 +261,6 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     if (axi_b_valid_i) begin
       // Acknowledge the B beat
       axi_b_ready_o = 1'b1;
-
 
       // Mark the vector instruction as being done
       if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin
