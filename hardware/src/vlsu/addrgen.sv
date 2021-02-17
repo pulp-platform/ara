@@ -58,6 +58,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
   import cf_math_pkg::ceil_div;
   import axi_pkg::aligned_addr;
+  import axi_pkg::BURST_INCR;
+  import axi_pkg::CACHE_MODIFIABLE;
 
   /*******************
    *  Address Queue  *
@@ -259,17 +261,18 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if (!axi_addrgen_queue_full && axi_ax_ready) begin
           if (axi_addrgen_q.is_burst) begin
             // AXI burst length
-            automatic int burst_length;
+            automatic int unsigned burst_length;
 
             // 1 - AXI bursts are at most 4KiB long
-            burst_length = (1 << 12) >> $clog2(AxiDataWidth/8);
-            // 2 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
+            // 2 - AXI bursts are at most 256 beats long.
+            if (((1 << 12) >> $clog2(AxiDataWidth/8)) > 256)
+              burst_length = (1 << 12) >> $clog2(AxiDataWidth/8);
+            else
+              burst_length = 256;
+            // 3 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
             // starts at the middle of a 4 KiB range, it cannot have the maximal
             // AXI burst length.
             burst_length = burst_length - (aligned_start_addr_q[11:0] >> $clog2(AxiDataWidth/8));
-            // 3 - AXI bursts are at most 256 beats long.
-            if (burst_length > $unsigned(256))
-              burst_length = 256;
             // 4 - The AXI burst length cannot be longer than the number of beats required
             //     to access the memory regions between aligned_start_addr and
             //     aligned_end_addr
@@ -282,8 +285,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 addr   : axi_addrgen_q.addr,
                 len    : burst_length - 1,
                 size   : $clog2(AxiDataWidth/8),
-                cache  : axi_pkg::CACHE_MODIFIABLE,
-                burst  : axi_pkg::BURST_INCR,
+                cache  : CACHE_MODIFIABLE,
+                burst  : BURST_INCR,
                 default: '0
               };
               axi_ar_valid_o = 1'b1;
@@ -294,8 +297,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 addr   : axi_addrgen_q.addr,
                 len    : burst_length - 1,
                 size   : $clog2(AxiDataWidth/8),
-                cache  : axi_pkg::CACHE_MODIFIABLE,
-                burst  : axi_pkg::BURST_INCR,
+                cache  : CACHE_MODIFIABLE,
+                burst  : BURST_INCR,
                 default: '0
               };
               axi_aw_valid_o = 1'b1;
