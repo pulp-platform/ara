@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - Ariane's data cache is active by default
+- The matrix multiplication kernel achieves better performance
+  - It reports the performance and the utilization for several matrix sizes
 
 ## 0.5.0 - 2020-02-14
 
