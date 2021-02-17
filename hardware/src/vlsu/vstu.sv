@@ -66,6 +66,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   import cf_math_pkg::idx_width;
   import axi_pkg::beat_lower_byte;
   import axi_pkg::beat_upper_byte;
+  import axi_pkg::BURST_INCR;
 
   /******************************
    *  Vector instruction queue  *
@@ -107,9 +108,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   assign store_pending_o   = !vinsn_queue_empty;
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue;
+  pe_req_t vinsn_issue_d, vinsn_issue_q;
   logic    vinsn_issue_valid;
-  assign vinsn_issue       = vinsn_queue_q.vinsn[vinsn_queue_q.issue_pnt];
+  assign vinsn_issue_d     = vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
   // Do we have a vector instruction with results being committed?
@@ -121,8 +122,10 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       vinsn_queue_q <= '0;
+      vinsn_issue_q <= '0;
     end else begin
       vinsn_queue_q <= vinsn_queue_d;
+      vinsn_issue_q <= vinsn_issue_d;
     end
   end
 
@@ -181,10 +184,10 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // - We received all the operands from the lanes
     // - The address generator generated an AXI AW request for this write beat
     // - The AXI subsystem is ready to accept this W beat
-    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && axi_w_ready_i) begin
+    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue_q.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && axi_w_ready_i) begin
       // Bytes valid in the current W beat
-      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, AxiDataWidth/8, len_q);
-      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, axi_pkg::BURST_INCR, AxiDataWidth/8, len_q);
+      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
+      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
 
       // Copy data from the operands into the W channel
       for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
@@ -193,22 +196,36 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           // Map axy_byte to the corresponding byte in the VRF word (sequential)
           automatic int vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
           // And then shuffle it
-          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.eew_vs1);
+          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.eew_vs1);
 
           // Is this byte a valid byte in the VRF word?
-          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue.eew_vs1)) begin
+          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue_q.eew_vs1)) begin
             // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
             automatic int vrf_lane   = vrf_byte >> 3;
             automatic int vrf_offset = vrf_byte[2:0];
 
             // Copy data
             axi_w_o.data[8*axi_byte +: 8] = stu_operand_i[vrf_lane][8*vrf_offset +: 8];
-            axi_w_o.strb[axi_byte]        = vinsn_issue.vm || mask_i[vrf_lane][vrf_offset];
-
-            // Account for this byte
-            vrf_pnt_d++;
+            axi_w_o.strb[axi_byte]        = vinsn_issue_q.vm || mask_i[vrf_lane][vrf_offset];
           end
         end
+      end
+
+      // Account for the issued bytes
+      begin
+        // How many bytes are valid in this AXI word
+        automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte + 1;
+        // How many bytes are valid in this VRF word
+        automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
+        // How many bytes are valid in this instruction
+        automatic vlen_t vinsn_valid_bytes = (issue_cnt_q << int'(vinsn_issue_q.eew_vs1)) - vrf_pnt_q;
+
+        // How many bytes are we committing?
+        automatic vlen_t valid_bytes;
+        valid_bytes = axi_valid_bytes < vrf_valid_bytes ? axi_valid_bytes : vrf_valid_bytes;
+        valid_bytes = valid_bytes < vinsn_valid_bytes ? valid_bytes       : vinsn_valid_bytes;
+
+        vrf_pnt_d = vrf_pnt_q + valid_bytes;
       end
 
       // Send the W beat
@@ -225,16 +242,16 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // We consumed a whole word from the lanes
-      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue.eew_vs1)))) begin
+      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue_q.eew_vs1)))) begin
         // Reset the pointer in the VRF word
         vrf_pnt_d           = '0;
         // Acknowledge the operands with the lanes
         stu_operand_ready_o = '1;
         // Acknowledge the mask operand
-        mask_ready_o        = !vinsn_issue.vm;
+        mask_ready_o        = !vinsn_issue_q.vm;
         // Account for the results that were issued
-        issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1));
-        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.eew_vs1)))
+        issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue_q.eew_vs1));
+        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue_q.eew_vs1)))
           issue_cnt_d = '0;
       end
     end
