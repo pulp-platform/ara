@@ -267,17 +267,17 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Account for the issued bytes
         begin
-          // How many bytes are valid in this AXI word
-          automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
           // How many bytes are valid in this VRF word
           automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
           // How many bytes are valid in this instruction
           automatic vlen_t vinsn_valid_bytes = (issue_cnt_q << int'(vinsn_issue_q.vtype.vsew)) - vrf_pnt_q;
+          // How many bytes are valid in this AXI word
+          automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
 
           // How many bytes are we committing?
           automatic vlen_t valid_bytes;
-          valid_bytes = axi_valid_bytes < vrf_valid_bytes ? axi_valid_bytes : vrf_valid_bytes;
-          valid_bytes = valid_bytes < vinsn_valid_bytes ? valid_bytes       : vinsn_valid_bytes;
+          valid_bytes = vinsn_valid_bytes < vrf_valid_bytes ? vinsn_valid_bytes : vrf_valid_bytes;
+          valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes             : axi_valid_bytes;
 
           r_pnt_d   = r_pnt_q + valid_bytes;
           vrf_pnt_d = vrf_pnt_q + valid_bytes;
