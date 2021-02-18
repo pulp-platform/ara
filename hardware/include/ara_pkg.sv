@@ -285,58 +285,135 @@ package ara_pkg;
   // to the lane's organization) and deshuffle (lane's organization to the natural
   // packing) functions.
 
-  function automatic vlen_t shuffle_index(vlen_t byte_index, int NrLanes, rvv_pkg::vew_e ew);
-    automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;
-
+  function automatic vlen_t shuffle_index(vlen_t byte_idx, int NrLanes, rvv_pkg::vew_e ew);
     // Generate the shuffling of the table above
-    unique case (ew)
-      rvv_pkg::EW64:
-        for (vlen_t element = 0; element < NrLanes; element++)
-          for (int b = 0; b < 8; b++)
-            element_shuffle_index[8*(element >> 0) + b] = 8*element + b;
-      rvv_pkg::EW32:
-        for (vlen_t element = 0; element < 2*NrLanes; element++)
-          for (int b = 0; b < 4; b++)
-            element_shuffle_index[4*((element >> 1) + int'(element[0]) * NrLanes*1) + b] = 4*element + b;
-      rvv_pkg::EW16:
-        for (vlen_t element = 0; element < 4*NrLanes; element++)
-          for (int b = 0; b < 2; b++)
-            element_shuffle_index[2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b] = 2*element + b;
-      rvv_pkg::EW8:
-        for (vlen_t element = 0; element < 8*NrLanes; element++)
-          for (int b = 0; b < 1; b++)
-            element_shuffle_index[1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b] = 1*element + b;
-      default:;
+    unique case (NrLanes)
+      1: unique case (ew)
+          rvv_pkg::EW64: begin
+            automatic vlen_t [7:0] idx;
+            idx[7] = 7; idx[6] = 6; idx[5] = 5; idx[4] = 4; idx[3] = 3; idx[2] = 2; idx[1] = 1; idx[0] = 0;
+            return idx[byte_idx[2:0]];
+          end
+          rvv_pkg::EW32: begin
+            automatic vlen_t [7:0] idx;
+            idx[7] = 7; idx[6] = 6; idx[5] = 5; idx[4] = 4; idx[3] = 3; idx[2] = 2; idx[1] = 1; idx[0] = 0;
+            return idx[byte_idx[2:0]];
+          end
+          rvv_pkg::EW16: begin
+            automatic vlen_t [7:0] idx;
+            idx[7] = 7; idx[6] = 6; idx[5] = 3; idx[4] = 2; idx[3] = 5; idx[2] = 4; idx[1] = 1; idx[0] = 0;
+            return idx[byte_idx[2:0]];
+          end
+          rvv_pkg::EW8: begin
+            automatic vlen_t [7:0] idx;
+            idx[7] = 7; idx[6] = 3; idx[5] = 5; idx[4] = 1; idx[3] = 6; idx[2] = 2; idx[1] = 4; idx[0] = 0;
+            return idx[byte_idx[2:0]];
+          end
+        endcase
+      4: unique case (ew)
+          rvv_pkg::EW64: begin
+            automatic vlen_t [31:0] idx;
+            idx[31] = 31; idx[30] = 30; idx[29] = 29; idx[28] = 28; idx[27] = 27; idx[26] = 26; idx[25] = 25; idx[24] = 24;
+            idx[23] = 23; idx[22] = 22; idx[21] = 21; idx[20] = 20; idx[19] = 19; idx[18] = 18; idx[17] = 17; idx[16] = 16;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12; idx[11] = 11; idx[10] = 10; idx[09] = 09; idx[08] = 08;
+            idx[07] = 07; idx[06] = 06; idx[05] = 05; idx[04] = 04; idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[4:0]];
+          end
+          rvv_pkg::EW32: begin
+            automatic vlen_t [31:0] idx;
+            idx[31] = 31; idx[30] = 30; idx[29] = 29; idx[28] = 28; idx[27] = 23; idx[26] = 22; idx[25] = 21; idx[24] = 20;
+            idx[23] = 15; idx[22] = 14; idx[21] = 13; idx[20] = 12; idx[19] = 07; idx[18] = 06; idx[17] = 05; idx[16] = 04;
+            idx[15] = 27; idx[14] = 26; idx[13] = 25; idx[12] = 24; idx[11] = 19; idx[10] = 18; idx[09] = 17; idx[08] = 16;
+            idx[07] = 11; idx[06] = 10; idx[05] = 09; idx[04] = 08; idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[4:0]];
+          end
+          rvv_pkg::EW16: begin
+            automatic vlen_t [31:0] idx;
+            idx[31] = 31; idx[30] = 30; idx[29] = 23; idx[28] = 22; idx[27] = 15; idx[26] = 14; idx[25] = 07; idx[24] = 06;
+            idx[23] = 27; idx[22] = 26; idx[21] = 19; idx[20] = 18; idx[19] = 11; idx[18] = 10; idx[17] = 03; idx[16] = 02;
+            idx[15] = 29; idx[14] = 28; idx[13] = 21; idx[12] = 20; idx[11] = 13; idx[10] = 12; idx[09] = 05; idx[08] = 04;
+            idx[07] = 25; idx[06] = 24; idx[05] = 17; idx[04] = 16; idx[03] = 09; idx[02] = 08; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[4:0]];
+          end
+          rvv_pkg::EW8: begin
+            automatic vlen_t [31:0] idx;
+            idx[31] = 31; idx[30] = 23; idx[29] = 15; idx[28] = 07; idx[27] = 27; idx[26] = 19; idx[25] = 11; idx[24] = 03;
+            idx[23] = 29; idx[22] = 21; idx[21] = 13; idx[20] = 05; idx[19] = 25; idx[18] = 17; idx[17] = 09; idx[16] = 01;
+            idx[15] = 30; idx[14] = 22; idx[13] = 14; idx[12] = 06; idx[11] = 26; idx[10] = 18; idx[09] = 10; idx[08] = 02;
+            idx[07] = 28; idx[06] = 20; idx[05] = 12; idx[04] = 04; idx[03] = 24; idx[02] = 16; idx[01] = 08; idx[00] = 00;
+            return idx[byte_idx[4:0]];
+          end
+        endcase
+    // TODO: Remaining NrLanes. Generalize this case accordingly to the function below.
     endcase
 
-    return element_shuffle_index[byte_index];
+  /*automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;
+
+   unique case (ew)
+   rvv_pkg::EW64:
+   for (vlen_t element = 0; element < NrLanes; element++)
+   for (int b = 0; b < 8; b++)
+   element_shuffle_index[8*(element >> 0) + b] = 8*element + b;
+   rvv_pkg::EW32:
+   for (vlen_t element = 0; element < 2*NrLanes; element++)
+   for (int b = 0; b < 4; b++)
+   element_shuffle_index[4*((element >> 1) + int'(element[0]) * NrLanes*1) + b] = 4*element + b;
+   rvv_pkg::EW16:
+   for (vlen_t element = 0; element < 4*NrLanes; element++)
+   for (int b = 0; b < 2; b++)
+   element_shuffle_index[2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b] = 2*element + b;
+   rvv_pkg::EW8:
+   for (vlen_t element = 0; element < 8*NrLanes; element++)
+   for (int b = 0; b < 1; b++)
+   element_shuffle_index[1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b] = 1*element + b;
+   default:;
+   endcase
+
+   return element_shuffle_index[byte_index];*/
   endfunction: shuffle_index
 
   function automatic vlen_t deshuffle_index(vlen_t byte_index, int NrLanes, rvv_pkg::vew_e ew);
-    automatic vlen_t [8*MaxNrLanes-1:0] element_deshuffle_index;
-
-    // Generate the deshuffling table above
-    unique case (ew)
-      rvv_pkg::EW64:
-        for (vlen_t element = 0; element < NrLanes; element++)
-          for (int b = 0; b < 8; b++)
-            element_deshuffle_index[8*element + b] = 8*(element >> 0) + b;
-      rvv_pkg::EW32:
-        for (vlen_t element = 0; element < 2*NrLanes; element++)
-          for (int b = 0; b < 4; b++)
-            element_deshuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
-      rvv_pkg::EW16:
-        for (vlen_t element = 0; element < 4*NrLanes; element++)
-          for (int b = 0; b < 2; b++)
-            element_deshuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
-      rvv_pkg::EW8:
-        for (vlen_t element = 0; element < 8*NrLanes; element++)
-          for (int b = 0; b < 1; b++)
-            element_deshuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
-      default:;
+    // Generate the deshuffling of the table above
+    unique case (NrLanes)
+      1: begin
+        automatic vlen_t [7:0] index;
+        for (int b = 0; b < 8; b++)
+          index[shuffle_index(b, NrLanes, ew)] = b;
+        return index[byte_index[2:0]];
+      end
+      4: begin
+        automatic vlen_t [31:0] index;
+        for (int b = 0; b < 32; b++)
+          index[shuffle_index(b, NrLanes, ew)] = b;
+        return index[byte_index[4:0]];
+      end
+    // TODO: Remaining NrLanes. Generalize this case accordingly to the function below.
     endcase
 
-    return element_deshuffle_index[byte_index];
+  /*automatic vlen_t [8*MaxNrLanes-1:0] element_deshuffle_index;
+
+   // Generate the deshuffling table above
+   unique case (ew)
+   rvv_pkg::EW64:
+   for (vlen_t element = 0; element < NrLanes; element++)
+   for (int b = 0; b < 8; b++)
+   element_deshuffle_index[8*element + b] = 8*(element >> 0) + b;
+   rvv_pkg::EW32:
+   for (vlen_t element = 0; element < 2*NrLanes; element++)
+   for (int b = 0; b < 4; b++)
+   element_deshuffle_index[4*element + b] = 4*((element >> 1) + int'(element[0]) * NrLanes*1) + b;
+   rvv_pkg::EW16:
+   for (vlen_t element = 0; element < 4*NrLanes; element++)
+   for (int b = 0; b < 2; b++)
+   element_deshuffle_index[2*element + b] = 2*((element >> 2) + int'(element[1]) * NrLanes*1 + int'(element[0]) * NrLanes*2) + b;
+   rvv_pkg::EW8:
+   for (vlen_t element = 0; element < 8*NrLanes; element++)
+   for (int b = 0; b < 1; b++)
+   element_deshuffle_index[1*element + b] = 1*((element >> 3) + int'(element[2]) * NrLanes*1 + int'(element[1]) * NrLanes*2 + int'(element[0]) * NrLanes*4) + b;
+   default:;
+   endcase
+
+   return element_deshuffle_index[byte_index];*/
   endfunction: deshuffle_index
 
   /**********************
