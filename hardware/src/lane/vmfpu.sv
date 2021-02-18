@@ -88,14 +88,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     logic [idx_width(VInsnQueueDepth):0] commit_cnt;
   } vinsn_queue_d, vinsn_queue_q;
 
-  // Is the vector instructoin queue full?
+  // Is the vector instruction queue full?
   logic vinsn_queue_full;
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  vfu_operation_t vinsn_issue;
+  vfu_operation_t vinsn_issue_d, vinsn_issue_q;
   logic           vinsn_issue_valid;
-  assign vinsn_issue       = vinsn_queue_q.vinsn[vinsn_queue_q.issue_pnt];
+  assign vinsn_issue_d     = vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
   // Do we have a vector instruction being processed?
@@ -111,8 +111,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       vinsn_queue_q <= '0;
+      vinsn_issue_q <= '0;
     end else begin
       vinsn_queue_q <= vinsn_queue_d;
+      vinsn_issue_q <= vinsn_issue_d;
     end
   end
 
@@ -175,11 +177,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // Default assignment
     scalar_op = '0;
 
-    case (vinsn_issue.vtype.vsew)
-      EW64: scalar_op = {1{vinsn_issue.scalar_op[63:0]}};
-      EW32: scalar_op = {2{vinsn_issue.scalar_op[31:0]}};
-      EW16: scalar_op = {4{vinsn_issue.scalar_op[15:0]}};
-      EW8 : scalar_op = {8{vinsn_issue.scalar_op[ 7:0]}};
+    case (vinsn_issue_q.vtype.vsew)
+      EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
+      EW32: scalar_op = {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: scalar_op = {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
   end
@@ -201,76 +203,76 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     .NumPipeRegs (LatMultiplierEW64),
     .ElementWidth(EW64             )
   ) i_simd_mul_ew64 (
-    .clk_i      (clk_i                                                    ),
-    .rst_ni     (rst_ni                                                   ),
-    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                        ),
-    .operand_c_i(mfpu_operand_i[2]                                        ),
-    .mask_i     (mask_i                                                   ),
-    .op_i       (vinsn_issue.op                                           ),
-    .result_o   (vmul_simd_result[EW64]                                   ),
-    .mask_o     (vmul_simd_mask[EW64]                                     ),
-    .valid_i    (vmul_simd_in_valid[EW64]                                 ),
-    .ready_o    (vmul_simd_in_ready[EW64]                                 ),
-    .ready_i    (vmul_simd_out_ready[EW64]                                ),
-    .valid_o    (vmul_simd_out_valid[EW64]                                )
+    .clk_i      (clk_i                                                      ),
+    .rst_ni     (rst_ni                                                     ),
+    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                          ),
+    .operand_c_i(mfpu_operand_i[2]                                          ),
+    .mask_i     (mask_i                                                     ),
+    .op_i       (vinsn_issue_q.op                                           ),
+    .result_o   (vmul_simd_result[EW64]                                     ),
+    .mask_o     (vmul_simd_mask[EW64]                                       ),
+    .valid_i    (vmul_simd_in_valid[EW64]                                   ),
+    .ready_o    (vmul_simd_in_ready[EW64]                                   ),
+    .ready_i    (vmul_simd_out_ready[EW64]                                  ),
+    .valid_o    (vmul_simd_out_valid[EW64]                                  )
   );
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW32),
     .ElementWidth(EW32             )
   ) i_simd_mul_ew32 (
-    .clk_i      (clk_i                                                    ),
-    .rst_ni     (rst_ni                                                   ),
-    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                        ),
-    .operand_c_i(mfpu_operand_i[2]                                        ),
-    .mask_i     (mask_i                                                   ),
-    .op_i       (vinsn_issue.op                                           ),
-    .result_o   (vmul_simd_result[EW32]                                   ),
-    .mask_o     (vmul_simd_mask[EW32]                                     ),
-    .valid_i    (vmul_simd_in_valid[EW32]                                 ),
-    .ready_o    (vmul_simd_in_ready[EW32]                                 ),
-    .ready_i    (vmul_simd_out_ready[EW32]                                ),
-    .valid_o    (vmul_simd_out_valid[EW32]                                )
+    .clk_i      (clk_i                                                      ),
+    .rst_ni     (rst_ni                                                     ),
+    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                          ),
+    .operand_c_i(mfpu_operand_i[2]                                          ),
+    .mask_i     (mask_i                                                     ),
+    .op_i       (vinsn_issue_q.op                                           ),
+    .result_o   (vmul_simd_result[EW32]                                     ),
+    .mask_o     (vmul_simd_mask[EW32]                                       ),
+    .valid_i    (vmul_simd_in_valid[EW32]                                   ),
+    .ready_o    (vmul_simd_in_ready[EW32]                                   ),
+    .ready_i    (vmul_simd_out_ready[EW32]                                  ),
+    .valid_o    (vmul_simd_out_valid[EW32]                                  )
   );
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW16),
     .ElementWidth(EW16             )
   ) i_simd_mul_ew16 (
-    .clk_i      (clk_i                                                    ),
-    .rst_ni     (rst_ni                                                   ),
-    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                        ),
-    .operand_c_i(mfpu_operand_i[2]                                        ),
-    .mask_i     (mask_i                                                   ),
-    .op_i       (vinsn_issue.op                                           ),
-    .result_o   (vmul_simd_result[EW16]                                   ),
-    .mask_o     (vmul_simd_mask[EW16]                                     ),
-    .valid_i    (vmul_simd_in_valid[EW16]                                 ),
-    .ready_o    (vmul_simd_in_ready[EW16]                                 ),
-    .ready_i    (vmul_simd_out_ready[EW16]                                ),
-    .valid_o    (vmul_simd_out_valid[EW16]                                )
+    .clk_i      (clk_i                                                      ),
+    .rst_ni     (rst_ni                                                     ),
+    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                          ),
+    .operand_c_i(mfpu_operand_i[2]                                          ),
+    .mask_i     (mask_i                                                     ),
+    .op_i       (vinsn_issue_q.op                                           ),
+    .result_o   (vmul_simd_result[EW16]                                     ),
+    .mask_o     (vmul_simd_mask[EW16]                                       ),
+    .valid_i    (vmul_simd_in_valid[EW16]                                   ),
+    .ready_o    (vmul_simd_in_ready[EW16]                                   ),
+    .ready_i    (vmul_simd_out_ready[EW16]                                  ),
+    .valid_o    (vmul_simd_out_valid[EW16]                                  )
   );
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW8),
     .ElementWidth(EW8             )
   ) i_simd_mul_ew8 (
-    .clk_i      (clk_i                                                    ),
-    .rst_ni     (rst_ni                                                   ),
-    .operand_a_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                        ),
-    .operand_c_i(mfpu_operand_i[2]                                        ),
-    .mask_i     (mask_i                                                   ),
-    .op_i       (vinsn_issue.op                                           ),
-    .result_o   (vmul_simd_result[EW8]                                    ),
-    .mask_o     (vmul_simd_mask[EW8]                                      ),
-    .valid_i    (vmul_simd_in_valid[EW8]                                  ),
-    .ready_o    (vmul_simd_in_ready[EW8]                                  ),
-    .ready_i    (vmul_simd_out_ready[EW8]                                 ),
-    .valid_o    (vmul_simd_out_valid[EW8]                                 )
+    .clk_i      (clk_i                                                      ),
+    .rst_ni     (rst_ni                                                     ),
+    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .operand_b_i(mfpu_operand_i[1]                                          ),
+    .operand_c_i(mfpu_operand_i[2]                                          ),
+    .mask_i     (mask_i                                                     ),
+    .op_i       (vinsn_issue_q.op                                           ),
+    .result_o   (vmul_simd_result[EW8]                                      ),
+    .mask_o     (vmul_simd_mask[EW8]                                        ),
+    .valid_i    (vmul_simd_in_valid[EW8]                                    ),
+    .ready_o    (vmul_simd_in_ready[EW8]                                    ),
+    .ready_i    (vmul_simd_out_ready[EW8]                                   ),
+    .valid_o    (vmul_simd_out_valid[EW8]                                   )
   );
 
   // The outputs of the SIMD multipliers are read in order
@@ -283,11 +285,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_comb begin
     // Only one SIMD Multiplier receives the request
-    vmul_simd_in_valid                         = '0;
-    vmul_simd_in_valid[vinsn_issue.vtype.vsew] = vmul_in_valid;
-    vmul_in_ready                              = vmul_simd_in_ready[vinsn_issue.vtype.vsew];
+    vmul_simd_in_valid                           = '0;
+    vmul_simd_in_valid[vinsn_issue_q.vtype.vsew] = vmul_in_valid;
+    vmul_in_ready                                = vmul_simd_in_ready[vinsn_issue_q.vtype.vsew];
 
-    // We read the responses of a single SIMD Multipler
+    // We read the responses of a single SIMD Multiplier
     vmul_result                                      = vmul_simd_result[vinsn_processing.vtype.vsew];
     vmul_mask                                        = vmul_simd_mask[vinsn_processing.vtype.vsew];
     vmul_out_valid                                   = vmul_simd_out_valid[vinsn_processing.vtype.vsew];
@@ -313,20 +315,20 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
   strb_t vdiv_mask;
 
   simd_div i_simd_div (
-    .clk_i      (clk_i                                                    ),
-    .rst_ni     (rst_ni                                                   ),
-    .operand_a_i(mfpu_operand_i[1]                                        ),
-    .operand_b_i(vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .mask_i     (mask_i                                                   ),
-    .op_i       (vinsn_issue.op                                           ),
-    .be_i       (vdiv_be                                                  ),
-    .vew_i      (vinsn_issue.vtype.vsew                                   ),
-    .result_o   (vdiv_result                                              ),
-    .mask_o     (vdiv_mask                                                ),
-    .valid_i    (vdiv_in_valid                                            ),
-    .ready_o    (vdiv_in_ready                                            ),
-    .ready_i    (vdiv_out_ready                                           ),
-    .valid_o    (vdiv_out_valid                                           )
+    .clk_i      (clk_i                                                      ),
+    .rst_ni     (rst_ni                                                     ),
+    .operand_a_i(mfpu_operand_i[1]                                          ),
+    .operand_b_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
+    .mask_i     (mask_i                                                     ),
+    .op_i       (vinsn_issue_q.op                                           ),
+    .be_i       (vdiv_be                                                    ),
+    .vew_i      (vinsn_issue_q.vtype.vsew                                   ),
+    .result_o   (vdiv_result                                                ),
+    .mask_o     (vdiv_mask                                                  ),
+    .valid_i    (vdiv_in_valid                                              ),
+    .ready_o    (vdiv_in_ready                                              ),
+    .ready_i    (vdiv_out_ready                                             ),
+    .valid_o    (vdiv_out_valid                                             )
   );
 
   /*************
@@ -388,30 +390,30 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid) begin
       // Do we have all the operands necessary for this instruction?
-      if ((mfpu_operand_valid_i[2] || !vinsn_issue.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (mfpu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm)) begin
+      if ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) && (mask_valid_i || vinsn_issue_q.vm)) begin
         // Validate the inputs of the correct unit
-        case (vinsn_issue.op) inside
+        case (vinsn_issue_q.op) inside
           [VMUL:VNMSUB]: vmul_in_valid = 1'b1;
           [VDIVU:VREM] : vdiv_in_valid = 1'b1;
         endcase
 
         // Is the unit in use ready?
-        if ((vinsn_issue.op inside {[VMUL:VNMSUB]} && vmul_in_ready) || (vinsn_issue.op inside {[VDIVU:VREM]} && vdiv_in_ready)) begin
+        if ((vinsn_issue_q.op inside {[VMUL:VNMSUB]} && vmul_in_ready) || (vinsn_issue_q.op inside {[VDIVU:VREM]} && vdiv_in_ready)) begin
           // Acknowledge the operands of this instruction
-          mfpu_operand_ready_o = {vinsn_issue.use_vd_op, vinsn_issue.use_vs2, vinsn_issue.use_vs1};
+          mfpu_operand_ready_o = {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
           // Acknowledge the mask unit
-          mask_ready_o         = ~vinsn_issue.vm;
+          mask_ready_o         = ~vinsn_issue_q.vm;
 
           begin
             // How many elements are we issuing?
-            automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+            automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
             // Update the number of elements still to be issued
             if (issue_element_cnt > issue_cnt_q)
               issue_element_cnt = issue_cnt_q;
             issue_cnt_d = issue_cnt_q - issue_element_cnt;
 
             // Give the divider the correct be signal
-            vdiv_be = be(issue_element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm ? {StrbWidth{1'b1}} : mask_i);
+            vdiv_be = be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i);
           end
           // Finished issuing the micro-operations of this vector instruction
           if (issue_cnt_d == '0) begin

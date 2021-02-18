@@ -87,14 +87,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     logic [idx_width(VInsnQueueDepth):0] commit_cnt;
   } vinsn_queue_d, vinsn_queue_q;
 
-  // Is the vector instructoin queue full?
+  // Is the vector instruction queue full?
   logic vinsn_queue_full;
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  vfu_operation_t vinsn_issue;
+  vfu_operation_t vinsn_issue_d, vinsn_issue_q;
   logic           vinsn_issue_valid;
-  assign vinsn_issue       = vinsn_queue_q.vinsn[vinsn_queue_q.issue_pnt];
+  assign vinsn_issue_d     = vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
   // Do we have a vector instruction with results being committed?
@@ -106,8 +106,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       vinsn_queue_q <= '0;
+      vinsn_issue_q <= '0;
     end else begin
       vinsn_queue_q <= vinsn_queue_d;
+      vinsn_issue_q <= vinsn_issue_d;
     end
   end
 
@@ -178,11 +180,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // Default assignment
     scalar_op = '0;
 
-    case (vinsn_issue.vtype.vsew)
-      EW64: scalar_op = {1{vinsn_issue.scalar_op[63:0]}};
-      EW32: scalar_op = {2{vinsn_issue.scalar_op[31:0]}};
-      EW16: scalar_op = {4{vinsn_issue.scalar_op[15:0]}};
-      EW8 : scalar_op = {8{vinsn_issue.scalar_op[ 7:0]}};
+    case (vinsn_issue_q.vtype.vsew)
+      EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
+      EW32: scalar_op = {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: scalar_op = {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
   end
@@ -211,14 +213,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   logic  valu_valid;
 
   simd_valu i_simd_valu (
-    .operand_a_i       (vinsn_issue.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
-    .operand_b_i       (alu_operand_i[1]                                            ),
-    .valid_i           (valu_valid                                                  ),
-    .mask_i            (mask_valid_i && !vinsn_issue.vm ? mask_i : {StrbWidth{1'b1}}),
-    .narrowing_select_i(narrowing_select_q                                          ),
-    .op_i              (vinsn_issue.op                                              ),
-    .vew_i             (vinsn_issue.vtype.vsew                                      ),
-    .result_o          (valu_result                                                 )
+    .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]    ),
+    .operand_b_i       (alu_operand_i[1]                                              ),
+    .valid_i           (valu_valid                                                    ),
+    .mask_i            (mask_valid_i && !vinsn_issue_q.vm ? mask_i : {StrbWidth{1'b1}}),
+    .narrowing_select_i(narrowing_select_q                                            ),
+    .op_i              (vinsn_issue_q.op                                              ),
+    .vew_i             (vinsn_issue_q.vtype.vsew                                      ),
+    .result_o          (valu_result                                                   )
   );
 
   /*************
@@ -262,9 +264,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid && !result_queue_full) begin
       // Do we have all the operands necessary for this instruction?
-      if ((alu_operand_valid_i[1] || !vinsn_issue.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue.use_vs1) && (mask_valid_i || vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit)) begin
+      if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) && (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit)) begin
         // How many elements are we committing with this word?
-        automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+        automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         if (element_cnt > issue_cnt_q)
           element_cnt = issue_cnt_q;
 
@@ -272,24 +274,24 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         valu_valid = 1'b1;
 
         // Acknowledge the operands of this instruction
-        alu_operand_ready_o = {vinsn_issue.use_vs2, vinsn_issue.use_vs1};
+        alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
         // Narrowing instructions might need an extra cycle before acknowledging the mask operands
         // If the results are being sent to the Mask Unit, it is up to it to acknowledge the operands.
-        if (!narrowing(vinsn_issue.op) && vinsn_issue != VFU_MaskUnit)
-          mask_ready_o = !vinsn_issue.vm;
+        if (!narrowing(vinsn_issue_q.op) && vinsn_issue_q != VFU_MaskUnit)
+          mask_ready_o = !vinsn_issue_q.vm;
 
         // Store the result in the result queue
         result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
-        result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew));
-        result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue.id;
-        result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue.vfu == VFU_MaskUnit;
-        if (!narrowing(vinsn_issue.op) || !narrowing_select_q)
-          result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue.vtype.vsew) & (vinsn_issue.vm || vinsn_issue.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
+        result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
+        result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
+        result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
+        if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
+          result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
 
         // Is this a narrowing instruction?
-        if (narrowing(vinsn_issue.op)) begin
+        if (narrowing(vinsn_issue_q.op)) begin
           // How many elements did we calculate in this iteration?
-          automatic logic [3:0] element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_issue.vtype.vsew))) / 2;
+          automatic logic [3:0] element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
           if (element_cnt_narrow > issue_cnt_q)
             element_cnt_narrow = issue_cnt_q;
 
@@ -304,8 +306,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
             result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
             // Acknowledge the mask operand, if needed
-            if (vinsn_issue != VFU_MaskUnit)
-              mask_ready_o = !vinsn_issue.vm;
+            if (vinsn_issue_q != VFU_MaskUnit)
+              mask_ready_o = !vinsn_issue_q.vm;
 
             // Bump pointers and counters of the result queue
             result_queue_cnt_d += 1;
