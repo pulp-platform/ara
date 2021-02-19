@@ -243,16 +243,16 @@ module ara_soc import axi_pkg::*; #(
     .mst_resp_t   (axi_soc_wide_resp_t    ),
     .rule_t       (axi_pkg::xbar_rule_64_t)
   ) i_soc_xbar (
-    .clk_i                (clk_i                          ),
-    .rst_ni               (rst_ni                         ),
-    .test_i               (1'b0                           ),
+    .clk_i                (clk_i                                ),
+    .rst_ni               (rst_ni                               ),
+    .test_i               (1'b0                                 ),
     .slv_ports_req_i      ({ariane_axi_req, ara_axi_req_inval}  ),
     .slv_ports_resp_o     ({ariane_axi_resp, ara_axi_resp_inval}),
-    .mst_ports_req_o      (periph_wide_axi_req            ),
-    .mst_ports_resp_i     (periph_wide_axi_resp           ),
-    .addr_map_i           (routing_rules                  ),
-    .en_default_mst_port_i('0                             ),
-    .default_mst_port_i   ('0                             )
+    .mst_ports_req_o      (periph_wide_axi_req                  ),
+    .mst_ports_resp_i     (periph_wide_axi_resp                 ),
+    .addr_map_i           (routing_rules                        ),
+    .en_default_mst_port_i('0                                   ),
+    .default_mst_port_i   ('0                                   )
   );
 
   /********
@@ -553,20 +553,47 @@ module ara_soc import axi_pkg::*; #(
    *  Ara and Ariane  *
    ********************/
 
+  import ariane_pkg::accelerator_req_t;
+  import ariane_pkg::accelerator_resp_t;
+
+  localparam ariane_pkg::ariane_cfg_t ArianeAraConfig = '{
+    RASDepth             : 2,
+    BTBEntries           : 32,
+    BHTEntries           : 128,
+    // idempotent region
+    NrNonIdempotentRules : 2,
+    NonIdempotentAddrBase: {64'b0, 64'b0},
+    NonIdempotentLength  : {64'b0, 64'b0},
+    NrExecuteRegionRules : 3,
+    //                      DRAM,       Boot ROM,   Debug Module
+    ExecuteRegionAddrBase: {DRAMBase,   64'h1_0000, 64'h0},
+    ExecuteRegionLength  : {DRAMLength, 64'h10000,  64'h1000},
+    // cached region
+    NrCachedRegionRules  : 1,
+    CachedRegionAddrBase : {DRAMBase},
+    CachedRegionLength   : {DRAMLength},
+    //  cache config
+    Axi64BitCompliant    : 1'b1,
+    SwapEndianess        : 1'b0,
+    // debug
+    DmBaseAddress        : 64'h0,
+    NrPMPEntries         : 0
+  };
+
   // Accelerator ports
-  ariane_pkg::accelerator_req_t acc_req;
-  logic acc_req_valid;
-  logic acc_req_ready;
-  ariane_pkg::accelerator_resp_t acc_resp;
-  logic acc_resp_valid;
-  logic acc_resp_ready;
-  logic acc_cons_en;
-  logic [AxiAddrWidth-1:0] inval_addr;
-  logic                    inval_valid;
-  logic                    inval_ready;
+  accelerator_req_t                     acc_req;
+  logic                                 acc_req_valid;
+  logic                                 acc_req_ready;
+  accelerator_resp_t                    acc_resp;
+  logic                                 acc_resp_valid;
+  logic                                 acc_resp_ready;
+  logic                                 acc_cons_en;
+  logic              [AxiAddrWidth-1:0] inval_addr;
+  logic                                 inval_valid;
+  logic                                 inval_ready;
 
   ariane #(
-    .ArianeCfg(ariane_pkg::ArianeDefaultConfig)
+    .ArianeCfg(ArianeAraConfig)
   ) i_ariane (
     .clk_i           (clk_i                 ),
     .rst_ni          (rst_ni                ),
