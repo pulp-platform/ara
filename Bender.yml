@@ -2,7 +2,10 @@ package:
   name: ara
   authors:
     - "Matheus Cavalcante <matheusd@iis.ee.ethz.ch>"
+    - "Matteo Perotti <mperotti@iis.ee.ethz.ch>"
     - "Basile Bougenot <basileb@student.ethz.ch>"
+    - "Nils Wistoff <nwistoff@iis.ee.ethz.ch>"
+    - "Paul Scheffler <pscheffler@iis.ee.ethz.ch>"
 
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                rev: axi_llc    }
