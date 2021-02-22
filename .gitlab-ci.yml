@@ -37,9 +37,19 @@ after_script:
   - env
 
 stages:
+  - linting
   - toolchain
   - compile
   - simulate
+
+###################
+#  Linting stage  #
+###################
+
+check-license:
+  stage: linting
+  script:
+    - python3.6 scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
 
 #####################
 #  Toolchain stage  #

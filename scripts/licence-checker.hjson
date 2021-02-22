@@ -1,0 +1,17 @@
+// Copyright lowRISC contributors.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+{
+    // We cover ETH Zurich and lowRISC licenses and Apache 2.0 (mostly for SW)
+    // and Solderpad for the hardware.
+    licence:
+        '''
+        Copyright (\d{4}(-\d{4})?\s)?(ETH Zurich and University of Bologna|lowRISC contributors).
+        (Solderpad Hardware License, Version 0.51|Licensed under the Apache License, Version 2.0), see LICENSE for details.
+        SPDX-License-Identifier: (SHL-0.51|Apache-2.0)
+        ''',
+    match_regex: 'true',
+    exclude_paths: [
+      'hardware/deps/*',
+    ],
+}
