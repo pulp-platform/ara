@@ -1,3 +1,9 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+
 add wave -noupdate -group CVA6 -group core /ara_tb/dut/i_ara_soc/i_ariane/*
 
 add wave -noupdate -group CVA6 -group frontend /ara_tb/dut/i_ara_soc/i_ariane/i_frontend/*
