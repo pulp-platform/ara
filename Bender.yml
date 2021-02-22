@@ -49,35 +49,6 @@ sources:
     - hardware/src/ara.sv
     # Level 6
     - hardware/src/ara_soc.sv
-    #files:
-    # Level 1
-    #- hardware/include/ara_pkg.sv
-    #- hardware/src/lane/vaccess_stage.sv
-    # Level 2
-    #- hardware/src/ara_sequencer.sv
-    #- hardware/src/lane/lane_sequencer.sv
-    #- hardware/src/lane/opqueue.sv
-    #- hardware/src/lane/simd_alu.sv
-    #- hardware/src/lane/simd_mul.sv
-    #- hardware/src/lane/vrf_arbiter.sv
-    #- hardware/src/slide/slide_unit.sv
-    #- hardware/src/util/ara_axi_master_connect.sv
-    #- hardware/src/util/ara_axi_slave_connect.sv
-    #- hardware/src/vlsu/addrgen.sv
-    #- hardware/src/vlsu/vldu.sv
-    #- hardware/src/vlsu/vstu.sv
-    # Level 3
-    #- hardware/src/lane/opreq_stage.sv
-    #- hardware/src/lane/valu.sv
-    #- hardware/src/lane/vmfpu.sv
-    #- hardware/src/lane/vconv_stage.sv
-    #- hardware/src/vlsu/vlsu.sv
-    # Level 4
-    #- hardware/src/lane/vex_stage.sv
-    # Level 5
-    #- hardware/src/lane/lane.sv
-    # Level 6
-    #- hardware/src/ara.sv
 
     - target: ara_test
       files:
