@@ -117,7 +117,7 @@ compile_riscv_tests:
   artifacts:
     paths:
       - apps/bin
-  needs: ["tc-gcc"]
+  needs: ["tc-gcc", "tc-isa-sim"]
 
 compile_ara:
   stage: compile
@@ -125,6 +125,7 @@ compile_ara:
     - git submodule update --init --recursive -- apps/riscv-tests
     # Download Verilator and add missing links
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
     - ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
     - make -C hardware verilate
@@ -132,9 +133,7 @@ compile_ara:
     paths:
       - hardware/build/verilator
       - hardware/bender
-  needs: ["tc-verilator"]
-  dependencies:
-    - tc-verilator
+  needs: ["tc-verilator", "tc-isa-sim"]
 
 ####################
 #  Simulate stage  #
@@ -144,25 +143,29 @@ hello_world:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     # Run this test on Questa
     - make -C hardware app=${CI_JOB_NAME} simc
   artifacts:
     paths:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
-  needs: ["tc-gcc", "compile_apps"]
+  needs: ["tc-gcc", "tc-isa-sim", "compile_apps"]
   dependencies:
     - tc-gcc
+    - tc-isa-sim
     - compile_apps
 
 matmul:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware app=${CI_JOB_NAME} simv
-  needs: ["tc-gcc", "compile_apps", "compile_ara"]
+  needs: ["tc-gcc", "tc-isa-sim", "compile_apps", "compile_ara"]
   dependencies:
     - tc-gcc
+    - tc-isa-sim
     - compile_apps
     - compile_ara
 
@@ -170,10 +173,12 @@ riscv_tests_simv:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware -j4 riscv_tests_simv
-  needs: ["tc-gcc", "compile_riscv_tests", "compile_ara"]
+  needs: ["tc-gcc", "tc-isa-sim", "compile_riscv_tests", "compile_ara"]
   dependencies:
     - tc-gcc
+    - tc-isa-sim
     - compile_riscv_tests
     - compile_ara
   artifacts:

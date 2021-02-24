@@ -56,7 +56,7 @@ questa_args += -sv_lib $(dpi_library)/ara_dpi -work $(library) -voptargs=+acc
 questa_args += -suppress vsim-3009 -suppress vopt-7033
 
 # DPI source files
-dpi   := $(patsubst tb/dpi/%.cpp,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/dpi/*.cpp))
+dpi   := $(patsubst tb/dpi/%.cc,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/dpi/*.cc))
 
 vlog_args += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233
 vlog_args += -work $(library)
@@ -166,9 +166,9 @@ $(tests): rv%: $(app_path)/rv%
 .PHONY: dpi
 dpi: $(buildpath)/$(dpi_library)/ara_dpi.so
 
-$(buildpath)/$(dpi_library)/%.o: tb/dpi/%.cpp
+$(buildpath)/$(dpi_library)/%.o: tb/dpi/%.cc
 	mkdir -p $(buildpath)/$(dpi_library)
-	$(CXX) -shared -fPIC -std=c++11 -Bsymbolic -c $< -I$(QUESTASIM_HOME)/include -o $@
+	$(CXX) -shared -fPIC -std=c++11 -Bsymbolic -c $< -I$(QUESTASIM_HOME)/include -I$(INSTALL_DIR)/riscv-isa-sim/include -o $@
 
 $(buildpath)/$(dpi_library)/ara_dpi.so: $(dpi)
 	mkdir -p $(buildpath)/$(dpi_library)
