@@ -179,11 +179,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     // Default assignment
     scalar_op = '0;
 
-    case (vinsn_issue.vtype.vsew)
-      EW64: scalar_op = {1{vinsn_issue.scalar_op[63:0]}};
+    case (vinsn_issue_q.vtype.vsew)
+      EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
       EW32: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
       EW16: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:16])) ? {4{16'h7e00}}     : {4{vinsn_issue_q.scalar_op[15:0]}};
-      EW8 : scalar_op = {8{vinsn_issue.scalar_op[ 7:0]}};
+      EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
   end
@@ -376,17 +376,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   // FPU preprocessing stage
   always_comb begin: fpu_operand_preprocessing_p
     operand_a  = mfpu_operand_i[1];                                         // vs2
-    operand_b  = vinsn_issue.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
+    operand_b  = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
     operand_c  = mfpu_operand_i[2];                                         // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
     // Default rounding-mode from fcsr.rm
-    fp_rm      = vinsn_issue.fp_rm;
+    fp_rm      = vinsn_issue_q.fp_rm;
     fp_op      = ADD;
     fp_opmod   = 1'b0;
     fp_fmt     = FP64;
     fp_int_fmt = int_format_e'(fp_fmt);
     fp_sign    = 3'b0;
 
-    case (vinsn_issue.op)
+    case (vinsn_issue_q.op)
       // Addition is between operands B and C, A was moved to C in the lane_sequencer
       VFADD: fp_op = ADD;
       VFSUB: begin
@@ -410,7 +410,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       end
     endcase
 
-    case (vinsn_issue.vtype.vsew)
+    case (vinsn_issue_q.vtype.vsew)
       EW64: fp_fmt = FP64;
       EW32: fp_fmt = FP32;
       EW16: fp_fmt = FP16;
@@ -418,7 +418,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     fp_int_fmt = int_format_e'(fp_fmt);
 
     // Sign injection
-    case (vinsn_issue.vtype.vsew)
+    case (vinsn_issue_q.vtype.vsew)
       EW16:
         for (int b = 0; b < 4; b++) begin
           operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
@@ -447,7 +447,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   always_comb begin
     // Create the power of 2 elements
     safe_operand = 64'h4000000000000000;
-    case (vinsn_issue.vtype.vsew)
+    case (vinsn_issue_q.vtype.vsew)
       EW64: safe_operand = 64'h4000000000000000;
       EW32: safe_operand = 64'h4000000040000000;
       EW16: safe_operand = 64'h4000400040004000;
