@@ -93,3 +93,20 @@ make riscv_tests_simv
 ```
 
 Alternatively, you can also use the `riscv_tests` target at Ara's top-level Makefile to both compile the RISC-V tests and run their simulation.
+
+## Publication
+
+If you want to use Ara, you can cite us:
+
+```
+@Article{Ara2020,
+  author = {Matheus Cavalcante and Fabian Schuiki and Florian Zaruba and Michael Schaffner and Luca Benini},
+  journal= {IEEE Transactions on Very Large Scale Integration (VLSI) Systems},
+  title  = {Ara: A 1-GHz+ Scalable and Energy-Efficient RISC-V Vector Processor With Multiprecision Floating-Point Support in 22-nm FD-SOI},
+  year   = {2020},
+  volume = {28},
+  number = {2},
+  pages  = {530-543},
+  doi    = {10.1109/TVLSI.2019.2950087}
+}
+```
