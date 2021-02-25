@@ -133,7 +133,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // Interface with the main sequencer
   pe_resp_t pe_resp;
 
-  // Remaining elements of the current instruction in the issue phase
+  // Remaining bytes of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
 
   // Pointers
@@ -193,7 +193,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.eew_vs1);
 
           // Is this byte a valid byte in the VRF word?
-          if (vrf_seq_byte < (issue_cnt_q << vinsn_issue_q.eew_vs1)) begin
+          if (vrf_seq_byte < issue_cnt_q) begin
             // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
             automatic int vrf_lane   = vrf_byte >> 3;
             automatic int vrf_offset = vrf_byte[2:0];
@@ -210,7 +210,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         // How many bytes are valid in this VRF word
         automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
         // How many bytes are valid in this instruction
-        automatic vlen_t vinsn_valid_bytes = (issue_cnt_q << int'(vinsn_issue_q.eew_vs1)) - vrf_pnt_q;
+        automatic vlen_t vinsn_valid_bytes = issue_cnt_q - vrf_pnt_q;
         // How many bytes are valid in this AXI word
         automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte + 1;
 
@@ -236,7 +236,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // We consumed a whole word from the lanes
-      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue_q.eew_vs1)))) begin
+      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == issue_cnt_q) begin
         // Reset the pointer in the VRF word
         vrf_pnt_d           = '0;
         // Acknowledge the operands with the lanes
@@ -244,8 +244,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         // Acknowledge the mask operand
         mask_ready_o        = !vinsn_issue_q.vm;
         // Account for the results that were issued
-        issue_cnt_d         = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue_q.eew_vs1));
-        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue_q.eew_vs1)))
+        issue_cnt_d         = issue_cnt_q - NrLanes * 8;
+        if (issue_cnt_q < NrLanes * 8)
           issue_cnt_d = '0;
       end
     end
@@ -260,7 +260,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.issue_pnt += 1;
 
       if (vinsn_queue_d.issue_cnt != 0)
-        issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+        issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].eew_vs1);
     end
 
     /**************************
@@ -299,7 +299,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d = pe_req_i.vl;
+        issue_cnt_d = pe_req_i.vl << int'(pe_req_i.eew_vs1);
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;

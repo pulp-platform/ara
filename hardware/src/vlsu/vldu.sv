@@ -170,9 +170,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   // Interface with the main sequencer
   pe_resp_t pe_resp;
 
-  // Remaining elements of the current instruction in the issue phase
+  // Remaining bytes of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
-  // Remaining elements of the current instruction in the commit phase
+  // Remaining bytes of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
   // Pointers
@@ -241,7 +241,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
-            if (vrf_seq_byte < (issue_cnt_q << vinsn_issue_q.vtype.vsew)) begin
+            if (vrf_seq_byte < issue_cnt_q) begin
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int vrf_lane   = vrf_byte >> 3;
               automatic int vrf_offset = vrf_byte[2:0];
@@ -258,7 +258,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
           // How many bytes are valid in this VRF word
           automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
           // How many bytes are valid in this instruction
-          automatic vlen_t vinsn_valid_bytes = (issue_cnt_q << int'(vinsn_issue_q.vtype.vsew)) - vrf_pnt_q;
+          automatic vlen_t vinsn_valid_bytes = issue_cnt_q - vrf_pnt_q;
           // How many bytes are valid in this AXI word
           automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
 
@@ -274,12 +274,12 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Initialize id and addr fields of the result queue requests
         for (int lane = 0; lane < NrLanes; lane++) begin
           result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
-          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue_q.vd, NrLanes) + (((vinsn_issue_q.vl - issue_cnt_q) / NrLanes) >> (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue_q.vd, NrLanes) + (((vinsn_issue_q.vl - (issue_cnt_q >> int'(vinsn_issue_q.vtype.vsew))) / NrLanes) >> (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         end
       end
 
       // We have a word ready to be sent to the lanes
-      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == (issue_cnt_q << (int'(vinsn_issue_q.vtype.vsew)))) begin
+      if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == issue_cnt_q) begin
         // Increment result queue pointers and counters
         result_queue_cnt_d += 1;
         if (result_queue_write_pnt_q == ResultQueueDepth-1)
@@ -296,8 +296,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Reset the pointer in the VRF word
         vrf_pnt_d   = '0;
         // Account for the results that were issued
-        issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue_q.vtype.vsew));
-        if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue_q.vtype.vsew)))
+        issue_cnt_d = issue_cnt_q - NrLanes * 8;
+        if (issue_cnt_q < NrLanes * 8)
           issue_cnt_d = '0;
       end
 
@@ -330,7 +330,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Prepare for the next vector instruction
         if (vinsn_queue_d.issue_cnt != 0)
-          issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+          issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
       end
     end
 
@@ -367,8 +367,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_cnt_d -= 1;
 
         // Decrement the counter of remaining vector elements waiting to be written
-        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
-        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew))))
+        commit_cnt_d = commit_cnt_q - NrLanes * 8;
+        if (commit_cnt_q < (NrLanes * 8))
           commit_cnt_d = '0;
       end
 
@@ -389,7 +389,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0)
-        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
     end
 
     /****************************
@@ -402,9 +402,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d = pe_req_i.vl;
+        issue_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
       if (vinsn_queue_d.commit_cnt == '0)
-        commit_cnt_d = pe_req_i.vl;
+        commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
