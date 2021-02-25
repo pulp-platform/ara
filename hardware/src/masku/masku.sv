@@ -227,7 +227,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // Pointers
   //
-  // We need a pointer to which bit on the full VRF word we are reading mask data from/writing results to.
+  // We need a pointer to which bit on the full VRF word we are reading mask operands from.
+  logic [idx_width(DataWidth*NrLanes):0] mask_pnt_d, mask_pnt_q;
+  // We need a pointer to which bit on the full VRF word we are writing results to.
   logic [idx_width(DataWidth*NrLanes):0] vrf_pnt_d, vrf_pnt_q;
 
   always_comb begin: p_mask_alu
@@ -345,6 +347,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Interface with the main sequencer
   pe_resp_t pe_resp;
 
+  // Remaining elements of the current instruction in the read operand phase
+  vlen_t read_cnt_d, read_cnt_q;
   // Remaining elements of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
   // Remaining elements of the current instruction in the commit phase
@@ -353,10 +357,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   always_comb begin: p_masku
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;
+    read_cnt_d    = read_cnt_q;
     issue_cnt_d   = issue_cnt_q;
     commit_cnt_d  = commit_cnt_q;
 
-    vrf_pnt_d = vrf_pnt_q;
+    mask_pnt_d = mask_pnt_q;
+    vrf_pnt_d  = vrf_pnt_q;
 
     mask_queue_d           = mask_queue_q;
     mask_queue_valid_d     = mask_queue_valid_q;
@@ -382,19 +388,85 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
-    /******************************
-     *  Read data from the lanes  *
-     ******************************/
+    /*******************
+     *  Mask Operands  *
+     *******************/
 
-    // We are ready to execute a vector mask instruction if the following are respected:
-    // - There is an instruction ready to be issued.
+    // Is there an instruction ready to be issued?
     if (vinsn_issue_valid) begin
-      // Does this instruction execute on the Mask Unit, or does it only provide mask operands
-      // for other functional units?
-      if (vinsn_issue.vfu == VFU_MaskUnit) begin: opmvv_instruction
+      // Is there place in the mask queue to write the mask operands?
+      // Did we receive the mask bits on the MaskM channel?
+      if (!vinsn_issue.vm && !mask_queue_full && &masku_operand_m_valid_i) begin
+        // Copy data from the mask operands into the mask queue
+        for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
+          // Map vrf_seq_byte to the corresponding byte in the VRF word.
+          automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+
+          // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
+          // NOTE: This does not work if the number of lanes is not a power of two.
+          // If that is needed, the following two lines must be changed accordingly.
+          automatic int vrf_lane   = vrf_byte >> $clog2(StrbWidth);
+          automatic int vrf_offset = vrf_byte[idx_width(StrbWidth)-1:0];
+
+          // The VRF pointer can be broken into a byte offset, and a bit offset
+          automatic int vrf_pnt_byte_offset = mask_pnt_q >> $clog2(StrbWidth);
+          automatic int vrf_pnt_bit_offset  = mask_pnt_q[idx_width(StrbWidth)-1:0];
+
+          // A single bit from the mask operands can be used several times, depending on the eew.
+          automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
+          automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
+          // Shuffle this source byte
+          automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
+          // Account for the bit offset
+          automatic int mask_bit      = (mask_byte << $clog2(StrbWidth)) + mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
+
+          // At which lane, and what is the bit offset in that lane, of the mask operand from mask_seq_bit?
+          automatic int mask_lane   = mask_bit >> idx_width(DataWidth);
+          automatic int mask_offset = mask_bit[idx_width(DataWidth)-1:0];
+
+          // Copy the mask operand
+          mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_m_i[mask_lane][mask_offset];
+        end
+
+        // Account for the used operands
+        mask_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
+
+        // Increment result queue pointers and counters
+        mask_queue_cnt_d += 1;
+        if (mask_queue_write_pnt_q == MaskQueueDepth-1)
+          mask_queue_write_pnt_d = '0;
+        else
+          mask_queue_write_pnt_d = mask_queue_write_pnt_q + 1;
+
+        // Trigger the request signal
+        mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};
+
+        // Account for the operands that were issued
+        read_cnt_d = read_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
+        if (read_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
+          read_cnt_d = '0;
+
+        // Consumed all valid bytes from the lane operands
+        if (mask_pnt_d == NrLanes*64 || read_cnt_d == '0) begin
+          // Request another beat
+          masku_operand_m_ready_o = '1;
+          // Reset the pointer
+          mask_pnt_d              = '0;
+        end
+      end
+    end
+
+    /********************************
+     *  Write results to the lanes  *
+     ********************************/
+
+    // Is there an instruction ready to be issued?
+    if (vinsn_issue_valid) begin
+      // This instruction executes on the Mask Unit
+      if (vinsn_issue.vfu == VFU_MaskUnit) begin
         // Is there place in the result queue to write the results?
         // Did we receive the operands?
-        if (!result_queue_full && &masku_operand_a_valid_i && (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i) && (vinsn_issue.vm || &masku_operand_m_valid_i)) begin
+        if (!result_queue_full && &masku_operand_a_valid_i && (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i)) begin
           // How many elements are we committing in total?
           // Since we are committing bits instead of bytes, we carry out the following calculation with ceil(vl/8) instead.
           automatic int element_cnt_all_lanes           = (ELENB * NrLanes) >> int'(vinsn_issue.vtype.vsew);
@@ -433,7 +505,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
               // Acknowledge the rest of the operands, which are accessed bit by bit.
               masku_operand_b_ready_o = masku_operand_b_valid_i;
-              masku_operand_m_ready_o = masku_operand_m_valid_i;
 
               // Reset VRF pointer
               vrf_pnt_d = '0;
@@ -453,9 +524,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end else begin
             result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
-            // Acknowledge the mask operand.
+            // Acknowledge the previous value of the destination vector register.
             masku_operand_b_ready_o = masku_operand_b_valid_i;
-            masku_operand_m_ready_o = masku_operand_m_valid_i;
 
             // Increment result queue pointers and counters
             result_queue_cnt_d += 1;
@@ -470,72 +540,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               issue_cnt_d = '0;
           end
         end
-      end : opmvv_instruction else begin: mask_operands
-        // Is there place in the mask queue to write the mask operands?
-        // Did we receive the mask bits on the MaskM channel?
-        if (!mask_queue_full && &masku_operand_m_valid_i) begin
-          // Copy data from the mask operands into the mask queue
-          for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
-            // Map vrf_seq_byte to the corresponding byte in the VRF word.
-            automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
-
-            // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
-            // NOTE: This does not work if the number of lanes is not a power of two.
-            // If that is needed, the following two lines must be changed accordingly.
-            automatic int vrf_lane   = vrf_byte >> $clog2(StrbWidth);
-            automatic int vrf_offset = vrf_byte[idx_width(StrbWidth)-1:0];
-
-            // The VRF pointer can be broken into a byte offset, and a bit offset
-            automatic int vrf_pnt_byte_offset = vrf_pnt_q >> $clog2(StrbWidth);
-            automatic int vrf_pnt_bit_offset  = vrf_pnt_q[idx_width(StrbWidth)-1:0];
-
-            // A single bit from the mask operands can be used several times, depending on the eew.
-            automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
-            automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
-            // Shuffle this source byte
-            automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
-            // Account for the bit offset
-            automatic int mask_bit      = (mask_byte << $clog2(StrbWidth)) + mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
-
-            // At which lane, and what is the bit offset in that lane, of the mask operand from mask_seq_bit?
-            automatic int mask_lane   = mask_bit >> idx_width(DataWidth);
-            automatic int mask_offset = mask_bit[idx_width(DataWidth)-1:0];
-
-            // Copy the mask operand
-            mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_m_i[mask_lane][mask_offset];
-          end
-
-          // Account for the used operands
-          vrf_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
-
-          // Increment result queue pointers and counters
-          mask_queue_cnt_d += 1;
-          if (mask_queue_write_pnt_q == MaskQueueDepth-1)
-            mask_queue_write_pnt_d = '0;
-          else
-            mask_queue_write_pnt_d = mask_queue_write_pnt_q + 1;
-
-          // Trigger the request signal
-          mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};
-
-          // Account for the results that were issued
-          issue_cnt_d = issue_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
-          if (issue_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
-            issue_cnt_d = '0;
-
-          // Consumed all valid bytes from the lane operands
-          if (vrf_pnt_d == NrLanes*64 || issue_cnt_d == '0) begin
-            // Request another beat
-            masku_operand_m_ready_o = '1;
-            // Reset the pointer
-            vrf_pnt_d               = '0;
-          end
-        end
-      end : mask_operands
+      end
     end
 
     // Finished issuing results
-    if (vinsn_issue_valid && issue_cnt_d == '0) begin
+    if (vinsn_issue_valid && (
+          ( (vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit) && issue_cnt_d == '0) ||
+          (!(vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit) && read_cnt_d == '0))) begin
       // Increment vector instruction queue pointers and counters
       vinsn_queue_d.issue_cnt -= 1;
     end
@@ -637,8 +648,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_running_d[pe_req_i.id] = 1'b1;
 
       // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0)
+      if (vinsn_queue_d.issue_cnt == '0) begin
         issue_cnt_d = pe_req_i.vl;
+        read_cnt_d  = pe_req_i.vl;
+      end
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = pe_req_i.vl;
 
@@ -651,15 +664,19 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       vinsn_running_q <= '0;
+      read_cnt_q      <= '0;
       issue_cnt_q     <= '0;
       commit_cnt_q    <= '0;
       vrf_pnt_q       <= '0;
+      mask_pnt_q      <= '0;
       pe_resp_o       <= '0;
     end else begin
       vinsn_running_q <= vinsn_running_d;
+      read_cnt_q      <= read_cnt_d;
       issue_cnt_q     <= issue_cnt_d;
       commit_cnt_q    <= commit_cnt_d;
       vrf_pnt_q       <= vrf_pnt_d;
+      mask_pnt_q      <= mask_pnt_d;
       pe_resp_o       <= pe_resp;
     end
   end
