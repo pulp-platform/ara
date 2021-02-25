@@ -255,7 +255,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       // Do we have all the operands necessary for this instruction?
       if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
           (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
-          (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit)) begin
+          (mask_valid_i || vinsn_issue_q.vm)) begin
         // How many elements are we committing with this word?
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         if (element_cnt > issue_cnt_q)

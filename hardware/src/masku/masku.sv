@@ -257,7 +257,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*b +: 8];
 
         // Take the mask into account
-        if (!vinsn_issue.vm && !(vinsn_issue.op inside {VMADC, VMSBC})) begin
+        if (!vinsn_issue.vm) begin
           automatic int mask_byte          = shuffle_index(b, NrLanes, vinsn_issue.eew_vmask);
           automatic int mask_byte_lane     = mask_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
           automatic int mask_byte_offset   = mask_byte[idx_width(StrbWidth)-1:0];
@@ -285,7 +285,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW8);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             EW16: for (int b = 0; b < 4*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
@@ -298,7 +298,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW16);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             EW32: for (int b = 0; b < 2*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
@@ -311,7 +311,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW32);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             EW64: for (int b = 0; b < 1*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
@@ -324,13 +324,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW64);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             default:;
           endcase
 
           // Final assignment
-          alu_result = (alu_result_flat & bit_enable_mask) | (masku_operand_b_i & ~bit_enable_mask);
+          alu_result = (alu_result_flat & bit_enable_shuffle) | (masku_operand_b_i & ~bit_enable_shuffle);
         end
         default: alu_result = '0;
       endcase

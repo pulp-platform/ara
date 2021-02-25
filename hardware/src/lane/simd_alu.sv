@@ -119,37 +119,37 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VADD, VADC, VMADC: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b] + logic'(op_i inside {VADC, VMADC} && mask_i[1*b] && !vm_i);
-                res.w8[b]                 = (op_i == VMADC) ? {7'b0, sum[8]} : sum[7:0];
+                res.w8[b]                 = (op_i == VMADC) ? {6'b0, 1'b1, sum[8]} : sum[7:0];
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [16:0] sum = opa.w16[b] + opb.w16[b] + logic'(op_i inside {VADC, VMADC} && mask_i[2*b] && !vm_i);
-                res.w16[b]                 = (op_i == VMADC) ? {15'b0, sum[16]} : sum[15:0];
+                res.w16[b]                 = (op_i == VMADC) ? {14'b0, 1'b1, sum[16]} : sum[15:0];
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [32:0] sum = opa.w32[b] + opb.w32[b] + logic'(op_i inside {VADC, VMADC} && mask_i[4*b] && !vm_i);
-                res.w32[b]                 = (op_i == VMADC) ? {31'b0, sum[32]} : sum[31:0];
+                res.w32[b]                 = (op_i == VMADC) ? {30'b0, 1'b1, sum[32]} : sum[31:0];
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [64:0] sum = opa.w64[b] + opb.w64[b] + logic'(op_i inside {VADC, VMADC} && mask_i[8*b] && !vm_i);
-                res.w64[b]                 = (op_i == VMADC) ? {63'b0, sum[64]} : sum[63:0];
+                res.w64[b]                 = (op_i == VMADC) ? {62'b0, 1'b1, sum[64]} : sum[63:0];
               end
           endcase
         VSUB, VSBC, VMSBC: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sub = opb.w8 [b] - opa.w8 [b] - logic'(op_i inside {VSBC, VMSBC} && mask_i[1*b] && !vm_i);
-                res.w8[b]                  = (op_i == VMSBC) ? {7'b0, sub[8]} : sub[7:0];
+                res.w8[b]                  = (op_i == VMSBC) ? {6'b0, 1'b1, sub[8]} : sub[7:0];
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [16:0] sub = opb.w16[b] - opa.w16[b] - logic'(op_i inside {VSBC, VMSBC} && mask_i[2*b] && !vm_i);
-                res.w16[b]                 = (op_i == VMSBC) ? {15'b0, sub[16]} : sub[15:0];
+                res.w16[b]                 = (op_i == VMSBC) ? {14'b0, 1'b1, sub[16]} : sub[15:0];
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [32:0] sub = opb.w32[b] - opa.w32[b] - logic'(op_i inside {VSBC, VMSBC} && mask_i[4*b] && !vm_i);
-                res.w32[b]                 = (op_i == VMSBC) ? {31'b0, sub[32]} : sub[31:0];
+                res.w32[b]                 = (op_i == VMSBC) ? {30'b0, 1'b1, sub[32]} : sub[31:0];
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [64:0] sub = opb.w64[b] - opa.w64[b] - logic'(op_i inside {VSBC, VMSBC} && mask_i[8*b] && !vm_i);
-                res.w64[b]                 = (op_i == VMSBC) ? {63'b0, sub[64]} : sub[63:0];
+                res.w64[b]                 = (op_i == VMSBC) ? {62'b0, 1'b1, sub[64]} : sub[63:0];
               end
           endcase
         VRSUB: unique case (vew_i)
@@ -205,22 +205,22 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
             EW64: for (int b = 0; b < 1; b++) res.w64[b] = (less[8*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w64[b] : opa.w64[b];
           endcase
         VMSEQ, VMSNE: unique case (vew_i)
-            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][0] = equal[1*b] ^ (op_i == VMSNE);
-            EW16: for (int b = 0; b < 4; b++) res.w16[b][0] = equal[2*b] ^ (op_i == VMSNE);
-            EW32: for (int b = 0; b < 2; b++) res.w32[b][0] = equal[4*b] ^ (op_i == VMSNE);
-            EW64: for (int b = 0; b < 1; b++) res.w64[b][0] = equal[8*b] ^ (op_i == VMSNE);
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][1:0] = {mask_i[1*b], equal[1*b] ^ (op_i == VMSNE)};
+            EW16: for (int b = 0; b < 4; b++) res.w16[b][1:0] = {mask_i[2*b], equal[2*b] ^ (op_i == VMSNE)};
+            EW32: for (int b = 0; b < 2; b++) res.w32[b][1:0] = {mask_i[4*b], equal[4*b] ^ (op_i == VMSNE)};
+            EW64: for (int b = 0; b < 1; b++) res.w64[b][1:0] = {mask_i[8*b], equal[8*b] ^ (op_i == VMSNE)};
           endcase
         VMSLT, VMSLTU: unique case (vew_i)
-            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][0] = less[1*b];
-            EW16: for (int b = 0; b < 4; b++) res.w16[b][0] = less[2*b];
-            EW32: for (int b = 0; b < 2; b++) res.w32[b][0] = less[4*b];
-            EW64: for (int b = 0; b < 1; b++) res.w64[b][0] = less[8*b];
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][1:0] = {mask_i[1*b], less[1*b]};
+            EW16: for (int b = 0; b < 4; b++) res.w16[b][1:0] = {mask_i[2*b], less[2*b]};
+            EW32: for (int b = 0; b < 2; b++) res.w32[b][1:0] = {mask_i[4*b], less[4*b]};
+            EW64: for (int b = 0; b < 1; b++) res.w64[b][1:0] = {mask_i[8*b], less[8*b]};
           endcase
         VMSLE, VMSLEU, VMSGT, VMSGTU: unique case (vew_i)
-            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][0] = (less[1*b] || equal[1*b]) ^ (op_i inside {VMSGT, VMSGTU});
-            EW16: for (int b = 0; b < 4; b++) res.w16[b][0] = (less[2*b] || equal[2*b]) ^ (op_i inside {VMSGT, VMSGTU});
-            EW32: for (int b = 0; b < 2; b++) res.w32[b][0] = (less[4*b] || equal[4*b]) ^ (op_i inside {VMSGT, VMSGTU});
-            EW64: for (int b = 0; b < 1; b++) res.w64[b][0] = (less[8*b] || equal[8*b]) ^ (op_i inside {VMSGT, VMSGTU});
+            EW8 : for (int b = 0; b < 8; b++) res.w8 [b][1:0] = {mask_i[1*b], (less[1*b] || equal[1*b]) ^ (op_i inside {VMSGT, VMSGTU})};
+            EW16: for (int b = 0; b < 4; b++) res.w16[b][1:0] = {mask_i[2*b], (less[2*b] || equal[2*b]) ^ (op_i inside {VMSGT, VMSGTU})};
+            EW32: for (int b = 0; b < 2; b++) res.w32[b][1:0] = {mask_i[4*b], (less[4*b] || equal[4*b]) ^ (op_i inside {VMSGT, VMSGTU})};
+            EW64: for (int b = 0; b < 1; b++) res.w64[b][1:0] = {mask_i[8*b], (less[8*b] || equal[8*b]) ^ (op_i inside {VMSGT, VMSGTU})};
           endcase
 
         default:;
