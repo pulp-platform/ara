@@ -173,10 +173,12 @@ fmatmul:
   stage: simulate
   script:
     - git submodule update --init --recursive -- apps/riscv-tests
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware app=${CI_JOB_NAME} simv
-  needs: ["tc-gcc", "compile_apps", "compile_ara"]
+  needs: ["tc-gcc", "tc-isa-sim", "compile_apps", "compile_ara"]
   dependencies:
     - tc-gcc
+    - tc-isa-sim
     - compile_apps
     - compile_ara
 
