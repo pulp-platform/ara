@@ -70,7 +70,6 @@ int verify_matrix(int64_t *matrix, int64_t m, int64_t n, int64_t p,
       int64_t cub = ((ab * ba) * (n * (n - 1) * (2 * n - 1))) / 6;
       int64_t golden = lin + qua + cub;
       if (matrix[i * (int64_t)p + j] != golden) {
-        printf("fehler row %d col %d golden %d act %d\n", i, j, golden, matrix[i * (int64_t)p + j]);
         return (i + j) == 0 ? -1 : i * (int64_t)p + j;
       }
       matrix[i * (int64_t)p + j] = 0;

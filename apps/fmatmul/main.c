@@ -26,9 +26,9 @@
 
 // Define Matrix dimensions:
 // C = AB with A=[MxN], B=[NxP], C=[MxP]
-#define M 64
-#define N 64
-#define P 64
+#define M 128
+#define N 128
+#define P 128
 // Specify how the matrices A and B should be initialized
 // The entries will follow this format:
 // a(i,j) = A_a*i + A_b*j + A_c
@@ -64,20 +64,18 @@ void init_matrix(double *matrix, uint64_t num_rows, uint64_t num_columns,
 }
 
 // Verify the matrices
-int verify_matrix(double *matrix, uint64_t num_rows, uint64_t num_columns,
-                  double aa, double ab, double ac, double ba, double bb,
-                  double bc) {
-  for (uint64_t i = 0; i < num_rows; ++i) {
-    for (uint64_t j = 0; j < num_columns; ++j) {
-      double lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * N;
-      double qua =
-          ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (N * (N - 1))) / 2;
-      double cub = ((ab * ba) * (N * (N - 1) * (2 * N - 1))) / 6;
+int verify_matrix(double *matrix, int64_t m, int64_t n, int64_t p,
+                  double aa, double ab, double ac, double ba, double bb, double bc) {
+  for (int64_t i = 0; i < (int64_t)m; ++i) {
+    for (int64_t j = 0; j < (int64_t)p; ++j) {
+      double lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * n;
+      double qua = ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (n * (n - 1))) / 2;
+      double cub = ((ab * ba) * (n * (n - 1) * (2 * n - 1))) / 6;
       double golden = lin + qua + cub;
-      if ((matrix[i * num_columns + j] > golden + DELTA) || (matrix[i * num_columns + j] < golden - DELTA)) {
-        return (i + j) == 0 ? -1 : (int64_t)i * (int64_t)num_columns + (int64_t)j;
+      if (matrix[i * (int64_t)p + j] != golden) {
+        return (i + j) == 0 ? -1 : i * (int64_t)p + j;
       }
-      matrix[i * num_columns + j] = 0;
+      matrix[i * (int64_t)p + j] = 0;
     }
   }
   return 0;
@@ -94,29 +92,50 @@ void print_matrix(double const *matrix, uint64_t num_rows, uint64_t num_columns)
 }
 
 int main() {
-  printf("Initializing matrices...\n");
+  printf("\n");
+  printf("============\n");
+  printf("=  MATMUL  =\n");
+  printf("============\n");
+  printf("\n");
+  printf("\n");
 
-  // Initialize Matrices
-  init_matrix(a, M, N, A_a, A_b, A_c);
-  init_matrix(b, N, P, B_a, B_b, B_c);
-  asm volatile ("fence");
+  for (int s = 4; s <= M; s *= 2) {
+    printf("\n");
+    printf("------------------------------------------------------------\n");
+    printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", s, s, s, s);
+    printf("------------------------------------------------------------\n");
+    printf("\n");
 
-  // Matrices are initialized --> Start calculating
-  printf("Calculating matmul...\n");
-  start_timer();
-  matmul(c, a, b, M, N, P);
-  stop_timer();
-  asm volatile ("fence");
+    // Initialize Matrices
+    printf("Initializing matrices...\n");
+    init_matrix(a, s, s, A_a, A_b, A_c);
+    init_matrix(b, s, s, B_a, B_b, B_c);
 
-  // Runtime
-  printf("The execution took %d cycles.\n", get_timer());
+    // Matrices are initialized --> Start calculating
+    printf("Calculating matmul...\n");
+    start_timer();
+    matmul(c, a, b, s, s, s);
+    stop_timer();
 
-  // Verify the result
-  printf("Verifying result...\n");
-  int error = verify_matrix(c, M, P, A_a, A_b, A_c, B_a, B_b, B_c);
-  if (error != 0) {
-    printf("Error code %d\n", error);
-    printf("c[%d]=%d\n", error, c[error]);
+    // Metrics
+    int64_t   runtime = get_timer();
+    float performance = 2.0*s*s*s/runtime;
+    float utilization = 100 * performance / (2.0 * NR_LANES);
+
+    printf("The execution took %d cycles.\n", runtime);
+    printf("The performance is %f FLOP/cycle (%f%% utilization).\n", performance, utilization);
+
+    // Verify the result
+    printf("Verifying result...\n");
+    int error = verify_matrix(c, s, s, s, A_a, A_b, A_c, B_a, B_b, B_c);
+    if (error != 0) {
+      printf("Error code %d\n", error);
+      printf("c[%d]=%d\n", error, c[error]);
+      return error;
+    } else {
+      printf("Passed.\n");
+    }
   }
-  return error;
+
+  return 0;
 }
