@@ -355,7 +355,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       '{default: LatFConv}},
     UnitTypes: '{
       '{default: PARALLEL}, // ADDMUL
-      '{default: MERGED},   // DIVSQRT
+      '{default: DISABLED}, // DIVSQRT
       '{default: PARALLEL}, // NONCOMP
       '{default: MERGED}}, // CONV
     PipeConfig: BEFORE
@@ -398,7 +398,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         fp_sign[2] = 1'b1;
       end
       VFMUL         : fp_op = MUL;
-      VFDIV         : fp_op = DIV;
       VFMACC, VFMADD: fp_op = FMADD;
       VFMIN: begin
         fp_op = fpnew_pkg::MINMAX;
