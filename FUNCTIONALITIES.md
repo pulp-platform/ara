@@ -31,6 +31,13 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector integer merge instructions: `vmerge`
 - Vector integer move instructions: `vmv`
 
+## Vector Floating-Point Instructions
+
+- Vector single-width floating-point add/subtract instructions: `vfadd`, `vfsub`, `vfrsub`
+- Vector single-width floating-point multiply/divide instructions: `vfmul`
+- Vector single-width floating-point fused multiply-add instructions: `vfmacc`, `vfnmacc`, `vfmsac`, `vfnmsac`, `vfmadd`, `vfnmadd`, `vfmsub`, `vfnmsub`
+- Vector floating-point min/max instructions: `vfmin`, `vfmax`
+
 ## Vector mask instructions
 
 - Vector mask-register logical instructions: `vmand`, `vmnand`, `vmandnot`, `vmxor`, `vmor`, `vmnor`, `vmornot`, `vmxnor`
