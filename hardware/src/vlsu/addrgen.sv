@@ -60,7 +60,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   logic             axi_addrgen_queue_empty;
 
   fifo_v3 #(
-    .DEPTH(4                ),
+    .DEPTH(2                ),
     .dtype(addrgen_axi_req_t)
   ) i_addrgen_req_queue (
     .clk_i     (clk_i                                                    ),
