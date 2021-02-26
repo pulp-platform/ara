@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Hardware support for:
+  - Vector single-width floating-point add/subtract instructions (vfadd, vfsub, vfrsub)
+  - Vector single-width floating-point multiply instructions (vfmul)
+  - Vector single-width floating-point fused multiply-add instructions (vfmacc, vfmadd)
+  - Vector single-width floating-point min/max instructions (vfmin, vfmax)
+- Software implementation of a floating-point matrix multiplication kernel
+
 ## 0.6.0 - 2020-02-24
 
 ### Added
@@ -14,12 +23,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Snoop AW channel from Ara to L2
   - Invalidate Ariane's L1 cache sets accordingly
   - Coherent mode can be toggled together with consistent mode using the LSB of CSR 0x702
-- Hardware support for:
-  - Vector single-width floating-point add/subtract instructions (vfadd, vfsub, vfrsub)
-  - Vector single-width floating-point multiply instructions (vfmul)
-  - Vector single-width floating-point fused multiply-add instructions (vfmacc, vfmadd)
-  - Vector single-width floating-point min/max instructions (vfmin, vfmax)
-- Software implementation of a floating-point matrix multiplication kernel
 
 ### Changed
 
