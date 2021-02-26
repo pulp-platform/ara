@@ -181,8 +181,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
     case (vinsn_issue_q.vtype.vsew)
       EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
-      EW32: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:32])) ? {2{32'h7fc00000}} : {2{vinsn_issue_q.scalar_op[31:0]}};
-      EW16: scalar_op = (vinsn_issue_fpu && ~(&vinsn_issue_q.scalar_op[63:16])) ? {4{16'h7e00}}     : {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW32: scalar_op = {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: scalar_op = {4{vinsn_issue_q.scalar_op[15:0]}};
       EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
@@ -760,6 +760,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         to_process_cnt_d = vfu_operation_i.vl;
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = vfu_operation_i.vl;
+
+      // Check for NaN boxing of scalar operands
+      if (vfu_operation_i.op inside {[VFADD:VFMAX]} && vfu_operation_i.use_scalar_op)
+        case (vfu_operation_i.vtype.vsew)
+          EW16: if (~(&vfu_operation_i.scalar_op[63:16])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h0000000000007e00;
+          EW32: if (~(&vfu_operation_i.scalar_op[63:32])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h000000007fc00000;
+        endcase
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
