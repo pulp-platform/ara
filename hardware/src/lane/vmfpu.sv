@@ -361,6 +361,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     PipeConfig: BEFORE
   };
 
+  localparam FPU_SIMD_LANES = fpnew_pkg::max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
+
   // FPU preprocessed signals
   elen_t operand_a;
   elen_t operand_b;
@@ -442,26 +444,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     endcase
   end : fpu_operand_preprocessing_p
 
-  // If an element is masked, prevent it from raising an exception (all operands power of 2 should do the trick)
-  // TODO: this is overkill, make the FPU avoid the unwanted exceptions, internally
-  /*elen_t masked_operand_a, masked_operand_b, masked_operand_c;
-   elen_t safe_operand;
-   always_comb begin
-   // Create the power of 2 elements
-   safe_operand = 64'h4000000000000000;
-   case (vinsn_issue_q.vtype.vsew)
-   EW64: safe_operand = 64'h4000000000000000;
-   EW32: safe_operand = 64'h4000000040000000;
-   EW16: safe_operand = 64'h4000400040004000;
-   endcase
-   // Choose a safe element if the corresponding element is masked
-   for (int b = 0; b < 4; b++) begin
-   masked_operand_a[16*b +: 16] = issue_be[2*b] ? operand_a[16*b +: 16] : safe_operand[16*b +: 16];
-   masked_operand_b[16*b +: 16] = issue_be[2*b] ? operand_b[16*b +: 16] : safe_operand[16*b +: 16];
-   masked_operand_c[16*b +: 16] = issue_be[2*b] ? operand_c[16*b +: 16] : safe_operand[16*b +: 16];
-   end
-   end*/
-
   // FPU signals
   elen_t [2:0] vfpu_operands;
   assign vfpu_operands[0] = operand_a;
@@ -471,6 +453,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   elen_t   vfpu_result;
   status_t vfpu_ex_flag;
   strb_t   vfpu_mask;
+  // Do not raise exceptions on inactive elements
+  logic [FPU_SIMD_LANES-1:0] vfpu_simd_mask;
+  always_comb for (int b = 0; b < FPU_SIMD_LANES; b++) vfpu_simd_mask[b] = issue_be[2*b];
 
   logic vfpu_in_valid;
   logic vfpu_out_valid;
@@ -480,7 +465,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   fpnew_top #(
     .Features      (FPUFeatures      ),
     .Implementation(FPUImplementation),
-    .TagType       (strb_t           )
+    .TagType       (strb_t           ),
+    .NumLanes      (FPU_SIMD_LANES   ),
+    .MaskType      (logic [FPU_SIMD_LANES-1:0])
   ) i_fpnew_bulk (
     .clk_i         (clk_i         ),
     .rst_ni        (rst_ni        ),
@@ -491,6 +478,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     .vectorial_op_i(1'b1          ),
     .operands_i    (vfpu_operands ),
     .tag_i         (mask_i        ),
+    .simd_mask_i   (vfpu_simd_mask),
     .src_fmt_i     (fp_fmt        ),
     .dst_fmt_i     (fp_fmt        ),
     .int_fmt_i     (INT8          ),
