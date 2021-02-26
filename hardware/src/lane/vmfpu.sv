@@ -366,58 +366,60 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   elen_t operand_b;
   elen_t operand_c;
 
-  operation_e        fp_op;
-  logic              fp_opmod;
-  fp_format_e        fp_fmt;
-  int_format_e       fp_int_fmt;
-  roundmode_e        fp_rm;
-  logic        [2:0] fp_sign;
+  operation_e       fp_op;
+  logic             fp_opmod;
+  fp_format_e       fp_fmt;
+  roundmode_e       fp_rm;
+  logic       [2:0] fp_sign;
 
   // FPU preprocessing stage
   always_comb begin: fpu_operand_preprocessing_p
-    operand_a  = mfpu_operand_i[1];                                           // vs2
-    operand_b  = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
-    operand_c  = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
+    operand_a = mfpu_operand_i[1];                                           // vs2
+    operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
+    operand_c = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
     // Default rounding-mode from fcsr.rm
-    fp_rm      = vinsn_issue_q.fp_rm;
-    fp_op      = ADD;
-    fp_opmod   = 1'b0;
-    fp_fmt     = FP64;
-    fp_int_fmt = int_format_e'(fp_fmt);
-    fp_sign    = 3'b0;
+    fp_rm     = vinsn_issue_q.fp_rm;
+    fp_op     = ADD;
+    fp_opmod  = 1'b0;
+    fp_fmt    = FP64;
+    fp_sign   = 3'b0;
 
-    case (vinsn_issue_q.op)
+    unique case (vinsn_issue_q.op)
       // Addition is between operands B and C, A was moved to C in the lane_sequencer
-      VFADD: fp_op = ADD;
+      VFADD:
+        fp_op = ADD;
       VFSUB: begin
-        fp_op      = ADD;
-        fp_sign[1] = 1'b1;
+        fp_op    = ADD;
+        fp_opmod = 1'b1;
       end
       VFRSUB: begin
         fp_op      = ADD;
         fp_sign[2] = 1'b1;
       end
-      VFMUL         : fp_op = MUL;
-      VFMACC, VFMADD: fp_op = FMADD;
-      VFMIN         : begin
-        fp_op = fpnew_pkg::MINMAX;
-        fp_rm = fpnew_pkg::RNE;
+      VFMUL :
+        fp_op = MUL;
+      VFMACC, VFMADD:
+        fp_op = FMADD;
+      VFMIN : begin
+        fp_op = MINMAX;
+        fp_rm = RNE;
       end
       VFMAX: begin
-        fp_op = fpnew_pkg::MINMAX;
-        fp_rm = fpnew_pkg::RTZ;
+        fp_op = MINMAX;
+        fp_rm = RTZ;
       end
+      default:;
     endcase
 
-    case (vinsn_issue_q.vtype.vsew)
+    unique case (vinsn_issue_q.vtype.vsew)
       EW64: fp_fmt = FP64;
       EW32: fp_fmt = FP32;
       EW16: fp_fmt = FP16;
+      default:;
     endcase
-    fp_int_fmt = int_format_e'(fp_fmt);
 
     // Sign injection
-    case (vinsn_issue_q.vtype.vsew)
+    unique case (vinsn_issue_q.vtype.vsew)
       EW16:
         for (int b = 0; b < 4; b++) begin
           operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
@@ -436,6 +438,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
           operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
         end
+      default:;
     endcase
   end : fpu_operand_preprocessing_p
 
@@ -481,18 +484,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   ) i_fpnew_bulk (
     .clk_i         (clk_i         ),
     .rst_ni        (rst_ni        ),
-    .operands_i    (vfpu_operands ),
+    .flush_i       (1'b0          ),
     .rnd_mode_i    (fp_rm         ),
     .op_i          (fp_op         ),
     .op_mod_i      (fp_opmod      ),
+    .vectorial_op_i(1'b1          ),
+    .operands_i    (vfpu_operands ),
+    .tag_i         (mask_i        ),
     .src_fmt_i     (fp_fmt        ),
     .dst_fmt_i     (fp_fmt        ),
-    .int_fmt_i     (fp_int_fmt    ),
-    .vectorial_op_i(1'b1          ),
-    .tag_i         (mask_i        ),
+    .int_fmt_i     (INT8          ),
     .in_valid_i    (vfpu_in_valid ),
     .in_ready_o    (vfpu_in_ready ),
-    .flush_i       (1'b0          ),
     .result_o      (vfpu_result   ),
     .status_o      (vfpu_ex_flag  ),
     .tag_o         (vfpu_mask     ),
