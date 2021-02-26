@@ -107,7 +107,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VADD, VADC, VMADC: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b] + logic'(op_i inside {VADC, VMADC} && mask_i[1*b] && !vm_i);
-                res.w8[b]                 = (op_i == VMADC) ? {6'b0, 1'b1, sum[8]} : sum[7:0];
+                res.w8[b]                  = (op_i == VMADC) ? {6'b0, 1'b1, sum[8]} : sum[7:0];
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [16:0] sum = opa.w16[b] + opb.w16[b] + logic'(op_i inside {VADC, VMADC} && mask_i[2*b] && !vm_i);

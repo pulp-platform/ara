@@ -375,9 +375,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   // FPU preprocessing stage
   always_comb begin: fpu_operand_preprocessing_p
-    operand_a  = mfpu_operand_i[1];                                         // vs2
+    operand_a  = mfpu_operand_i[1];                                           // vs2
     operand_b  = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
-    operand_c  = mfpu_operand_i[2];                                         // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
+    operand_c  = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
     // Default rounding-mode from fcsr.rm
     fp_rm      = vinsn_issue_q.fp_rm;
     fp_op      = ADD;
@@ -399,7 +399,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       end
       VFMUL         : fp_op = MUL;
       VFMACC, VFMADD: fp_op = FMADD;
-      VFMIN: begin
+      VFMIN         : begin
         fp_op = fpnew_pkg::MINMAX;
         fp_rm = fpnew_pkg::RNE;
       end
@@ -537,8 +537,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
                         : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
 
   assign operands_ready = vinsn_issue_q.swap_vs2_vd_op
-                        ? {vinsn_issue_q.use_vs2,   vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
-                        : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2,   vinsn_issue_q.use_vs1};
+                        ? {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
+                        : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
 
   always_comb begin: p_vmfpu
     // Maintain state
