@@ -391,12 +391,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       VFADD:
         fp_op = ADD;
       VFSUB: begin
-        fp_op    = ADD;
-        fp_opmod = 1'b1;
+        fp_op      = ADD;
+        fp_sign[1] = 1'b1;
       end
       VFRSUB: begin
-        fp_op      = ADD;
-        fp_sign[2] = 1'b1;
+        fp_op    = ADD;
+        fp_opmod = 1'b1;
       end
       VFMUL :
         fp_op = MUL;
