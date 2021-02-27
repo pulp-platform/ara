@@ -361,8 +361,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     PipeConfig: BEFORE
   };
 
-  localparam FPU_SIMD_LANES = fpnew_pkg::max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
-
   // FPU preprocessed signals
   elen_t operand_a;
   elen_t operand_b;
@@ -453,9 +451,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   elen_t   vfpu_result;
   status_t vfpu_ex_flag;
   strb_t   vfpu_mask;
+
   // Do not raise exceptions on inactive elements
-  logic [FPU_SIMD_LANES-1:0] vfpu_simd_mask;
-  always_comb for (int b = 0; b < FPU_SIMD_LANES; b++) vfpu_simd_mask[b] = issue_be[2*b];
+  localparam FPULanes = max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
+  typedef logic [FPULanes-1:0] fpu_mask_t;
+
+  fpu_mask_t vfpu_simd_mask;
+  for (genvar b = 0; b < FPULanes; b++) begin: gen_vfpu_simd_mask
+    assign vfpu_simd_mask[b] = issue_be[2*b];
+  end: gen_vfpu_simd_mask
 
   logic vfpu_in_valid;
   logic vfpu_out_valid;
@@ -466,8 +470,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     .Features      (FPUFeatures      ),
     .Implementation(FPUImplementation),
     .TagType       (strb_t           ),
-    .NumLanes      (FPU_SIMD_LANES   ),
-    .MaskType      (logic [FPU_SIMD_LANES-1:0])
+    .NumLanes      (FPULanes         ),
+    .MaskType      (fpu_mask_t       )
   ) i_fpnew_bulk (
     .clk_i         (clk_i         ),
     .rst_ni        (rst_ni        ),
