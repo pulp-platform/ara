@@ -46,9 +46,9 @@
 #define B_b 1
 #define B_c 16
 
-double a[M * N] __attribute__((aligned(4*NR_LANES), section(".l2")));
-double b[N * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
-double c[M * P] __attribute__((aligned(4*NR_LANES), section(".l2")));
+double a[M * N] __attribute__((aligned(32*NR_LANES), section(".l2")));
+double b[N * P] __attribute__((aligned(32*NR_LANES), section(".l2")));
+double c[M * P] __attribute__((aligned(32*NR_LANES), section(".l2")));
 
 // Define half of the range for FP comparison on the results
 #define DELTA 0.001
