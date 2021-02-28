@@ -355,10 +355,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       '{default: LatFConv}},
     UnitTypes: '{
       '{default: PARALLEL}, // ADDMUL
-      '{default: DISABLED}, // DIVSQRT
+      '{default: MERGED},   // DIVSQRT
       '{default: PARALLEL}, // NONCOMP
-      '{default: MERGED}}, // CONV
-    PipeConfig: BEFORE
+      '{default: MERGED}},  // CONV
+    PipeConfig: DISTRIBUTED
   };
 
   // FPU preprocessed signals
