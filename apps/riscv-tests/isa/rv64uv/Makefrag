@@ -1,0 +1,83 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+#         Basile Bougenot <bbougenot@student.ethz.ch>
+
+rv64uv_sc_tests = vadd \
+                  vsub \
+                  vrsub \
+                  vwaddu \
+                  vwsubu \
+                  vwadd \
+                  vwsub \
+                  vsext \
+                  vzext \
+                  vadc \
+                  vmadc \
+                  vsbc \
+                  vmsbc \
+                  vand \
+                  vor \
+                  vxor \
+                  vsll \
+                  vsrl \
+                  vsra \
+                  vnsrl \
+                  vnsra \
+                  vmseq \
+                  vmsne \
+                  vmsltu \
+                  vmslt \
+                  vmsleu \
+                  vmsle \
+                  vmsgtu \
+                  vmsgt \
+                  vminu \
+                  vmin \
+                  vmaxu \
+                  vmax \
+                  vmul \
+                  vmulh \
+                  vmulhu \
+                  vmulhsu \
+                  vwmul \
+                  vwmulu \
+                  vwmulsu \
+                  vmacc \
+                  vnmsac \
+                  vmadd \
+                  vnmsub \
+                  vwmaccu \
+                  vwmacc \
+                  vwmaccsu \
+                  vwmaccus \
+                  vdivu \
+                  vdiv \
+                  vremu \
+                  vrem \
+                  vfadd \
+                  vfsub \
+                  vfrsub \
+                  vfmul \
+                  vfmacc \
+                  vfmadd \
+                  vfmin \
+                  vfmax \
+                  vmerge \
+                  vmv \
+                  vmand \
+                  vmnand \
+                  vmandnot \
+                  vmor \
+                  vmnor \
+                  vmornot \
+                  vmxor \
+                  vmxnor
+
+#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfadd vfclass vfcvt vfdiv vfirst vfmacc vfmadd vfmax vfmerge vfmin vfmsac vfmsub vfmul vfmv vfncvt vfnmacc vfnmadd vfnmsac vfnmsub vfrdiv vfrsub vfsgnj vfsgnjn vfsgnjx vfsqrt vfsub vfwadd vfwcvt vfwmacc vfwmsac vfwmul vfwnmacc vfwnmsac vfwsub vid viota vl1r vl vlff vl_nocheck vls vlx vmfeq vmfge vmfgt vmfle vmflt vmfne vmsbf vmsif vmsof vpopc_m vrgather vs1r vsadd vsaddu vs vsetvl vsetvli vslide1down vslide1up vslidedown vslideup vsmul vss vssra vssrl vssub vssubu vsux vsx
+
+rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
+
+spike_ctests += $(rv64uv_p_tests)

@@ -97,7 +97,6 @@ tc-verilator:
 compile_apps:
   stage: compile
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - make -C apps
@@ -109,7 +108,6 @@ compile_apps:
 compile_riscv_tests:
   stage: compile
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
@@ -122,7 +120,6 @@ compile_riscv_tests:
 compile_ara:
   stage: compile
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     # Download Verilator and add missing links
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
@@ -142,7 +139,6 @@ compile_ara:
 hello_world:
   stage: simulate
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     # Run this test on Questa
     - make -C hardware app=${CI_JOB_NAME} simc
@@ -159,7 +155,6 @@ hello_world:
 imatmul:
   stage: simulate
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware app=${CI_JOB_NAME} simv
   needs: ["tc-gcc", "tc-isa-sim", "compile_apps", "compile_ara"]
@@ -172,7 +167,6 @@ imatmul:
 fmatmul:
   stage: simulate
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware app=${CI_JOB_NAME} simv
   needs: ["tc-gcc", "tc-isa-sim", "compile_apps", "compile_ara"]
@@ -185,7 +179,6 @@ fmatmul:
 riscv_tests_simv:
   stage: simulate
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware -j4 riscv_tests_simv
   needs: ["tc-gcc", "tc-isa-sim", "compile_riscv_tests", "compile_ara"]
@@ -201,7 +194,6 @@ riscv_tests_simv:
 riscv_tests_spike:
   stage: simulate
   script:
-    - git submodule update --init --recursive -- apps/riscv-tests
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C apps/riscv-tests/isa clean
