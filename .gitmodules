@@ -15,3 +15,6 @@
 [submodule "hardware/deps/common_cells"]
 	path = hardware/deps/common_cells
 	url = https://github.com/pulp-platform/common_cells.git
+[submodule "hardware/deps/tech_cells_generic"]
+	path = hardware/deps/tech_cells_generic
+	url = https://github.com/pulp-platform/tech_cells_generic.git
