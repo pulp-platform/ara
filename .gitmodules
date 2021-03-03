@@ -12,3 +12,6 @@
 [submodule "hardware/deps/axi"]
 	path = hardware/deps/axi
 	url = https://github.com/pulp-platform/axi.git
+[submodule "hardware/deps/common_cells"]
+	path = hardware/deps/common_cells
+	url = https://github.com/pulp-platform/common_cells.git
