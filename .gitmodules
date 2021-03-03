@@ -9,3 +9,6 @@
 [submodule "toolchain/verilator"]
 	path = toolchain/verilator
 	url = https://github.com/verilator/verilator
+[submodule "hardware/deps/axi"]
+	path = hardware/deps/axi
+	url = https://github.com/pulp-platform/axi.git

@@ -1,6 +1,0 @@
-.*
-!.git*
-!.ci/
-/.git/
-/build
-/Bender.local
