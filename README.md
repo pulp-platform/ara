@@ -75,6 +75,8 @@ To simulate the Ara system with ModelSim, go to the `hardware` folder, which con
 ```bash
 # Go to the hardware folder
 cd hardware
+# Apply the patches (only need to run this once)
+make apply-patches
 # Only compile the hardware without running the simulation.
 make build
 # Run the simulation with the *hello_world* binary loaded
@@ -90,6 +92,8 @@ It is also possible to simulate the unit tests compiled in the `apps` folder. Gi
 ```bash
 # Go to the hardware folder
 cd hardware
+# Apply the patches (only need to run this once)
+make apply-patches
 # Verilate the design
 make verilate
 # Run the tests

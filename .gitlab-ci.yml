@@ -126,6 +126,7 @@ compile_ara:
     - ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
     - ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
     - git submodule update --init --recursive -- hardware
+    - make -C hardware apply-patches
     - make -C hardware verilate
   artifacts:
     paths:
@@ -141,8 +142,9 @@ hello_world:
   stage: simulate
   script:
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
-    # Run this test on Questa
     - git submodule update --init --recursive -- hardware
+    - make -C hardware apply-patches
+    # Run this test on Questa
     - make -C hardware app=${CI_JOB_NAME} simc
   artifacts:
     paths:

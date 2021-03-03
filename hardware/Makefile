@@ -77,6 +77,11 @@ bender:
 	(cat $(ARA_DIR)/scripts/bender-init | bash -s -- 0.21.0)
 	@echo "$$(./bender --version) available."
 
+# Patches
+.PHONY: apply-patches
+apply-patches: patches
+	cd deps/tech_cells_generic && git apply ../../patches/0001-tech-cells-generic-sram.patch
+
 # Library
 .PHONY: lib
 lib: $(buildpath) $(buildpath)/$(library)
