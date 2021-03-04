@@ -19,6 +19,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: none
   RUST_LOG: 'memora=debug'
   VERILATOR_ROOT: '$CI_PROJECT_DIR/install/verilator'
+  QUESTASIM_HOME: '/usr/pack/questa-2020.1-kgf/questasim'
   PATH: '/home/gitlabci/.cargo/bin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/usr/local/condor/bin:/usr/sepp/bin:$VERILATOR_ROOT/bin'
   OBJCACHE: ''
 

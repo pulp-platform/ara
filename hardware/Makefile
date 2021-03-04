@@ -43,8 +43,6 @@ ifeq (, $(shell which $(questa_cmd)))
   questa_cmd =
 endif
 
-QUESTASIM_HOME ?= /usr/pack/questa-$(questa_version)-kgf/questasim
-
 questa_args += +UVM_NO_RELNOTES
 ifdef app
 	preload ?= "$(app_path)/$(app)"
