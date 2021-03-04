@@ -1,5 +1,0 @@
-xlnx*/*
-!xlnx*/tcl
-!Makefile
-!common.mk
-!*.prj

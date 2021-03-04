@@ -1,8 +1,0 @@
-/work/*
-
-/*.log
-/*.out
-/*.wlf
-
-/modelsim.ini
-/transcript

@@ -1,5 +1,0 @@
-.*
-!.git*
-!.editorconfig
-build
-Bender.lock

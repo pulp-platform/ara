@@ -21,3 +21,6 @@
 [submodule "hardware/deps/common_verification"]
 	path = hardware/deps/common_verification
 	url = https://github.com/pulp-platform/common_verification.git
+[submodule "hardware/deps/cva6"]
+	path = hardware/deps/cva6
+	url = git@iis-git.ee.ethz.ch:ara_release/cva6.git
