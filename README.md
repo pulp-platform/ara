@@ -3,6 +3,10 @@
 Ara is a vector unit working as a coprocessor for the CVA6 core.
 It supports the RISC-V Vector Extension, [version 0.9](https://github.com/riscv/riscv-v-spec/releases/tag/0.9).
 
+## Dependencies
+
+Check `DEPENDENCIES.md` for a list of hardware and software dependencies of Ara.
+
 ## Supported instructions
 
 Check `FUNCTIONALITIES.md` to check which instructions are currently support by Ara.
