@@ -16,11 +16,21 @@ All of them are licensed under the Solderpad 0.51 license.
 
 ## Software
 
-In order to compile the benchmarks, you will need the RISC-V GCC toolchain with support for the Vector Extension.
+In order to compile the benchmarks, you will need the RISC-V GCC toolchain with support for the Vector Extension, version 0.9.
+This is included as a submodule (`toolchain/riscv-gnu-toolchain`).
 
-Unit tests for the vector instructions are given in a patched version of the [riscv\_tests](https://github.com/riscv/riscv-tests/) repository.
+Unit tests for the vector instructions are given in a patched version of the [riscv\_tests](https://github.com/riscv/riscv-tests/) repository (`apps/riscv-tests`).
+The riscv-tests repository is licensed under the BSD license.
+
+The unit tests can also run on Spike, the RISC-V ISA Simulator, which is also included as a submodule (`toolchain/riscv-isa-sim`).
+This version of Spike is patched to align the behavior of the `vcsr` CSR with the toolchain and with RVV v0.9.
 
 ### Verilator simulations
 
 In order to run Verilator simulations, you will need a modern Verilator installation.
-It is licensed under the GPL version 3.0.
+Ara was tested with Verilator v4.106, included as a submodule (`toolchain/verilator`).
+Verilator is licensed under the GPL version 3.0.
+
+Verilator simulations also need some testbench helper files, which were adapted from lowRISC.
+Such files can be seen in `hardware/tb/verilator/`.
+They are licensed under the Apache license version 2.0.
