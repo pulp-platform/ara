@@ -1,3 +1,9 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# Author: Andreas Kurth <akurth@iis.ee.ethz.ch>
+
 #!/bin/bash
 
 # This is just a little script that can be downloaded from the internet to
