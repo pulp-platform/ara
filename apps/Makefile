@@ -67,6 +67,19 @@ $(foreach extension, $(CVA6_EXTENSIONS), $(eval $(call rvtest_compile_template,$
 # Ara tests are written in C
 $(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template,$(extension),c)))
 
+# Run Spike tests
+.PHONY: riscv_tests_spike
+riscv_tests_spike:
+	# Compile the tests
+	PATH=$(GCC_INSTALL_DIR)/bin:${PATH} make -j4 -C riscv-tests/isa
+	# Run the tests
+	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
+
+# Clean Spike simulation
+.PHONY: riscv_tests_spike_clean
+riscv_tests_spike_clean:
+	make -C riscv-tests/isa clean
+
 .PHONY: clean
 clean: riscv_tests_spike_clean
 	rm -vf $(BINARIES)
