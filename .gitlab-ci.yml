@@ -142,6 +142,7 @@ compile_ara:
 hello_world:
   stage: simulate
   script:
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-verilator
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - git submodule update --init --recursive -- hardware
     - make -C hardware apply-patches
@@ -151,9 +152,10 @@ hello_world:
     paths:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
-  needs: ["tc-gcc", "tc-isa-sim", "compile_apps"]
+  needs: ["tc-gcc", "tc-verilator", "tc-isa-sim", "compile_apps"]
   dependencies:
     - tc-gcc
+    - tc-verilator
     - tc-isa-sim
     - compile_apps
 
