@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector single-width floating-point fused multiply-add instructions (vfmacc, vfmadd)
   - Vector single-width floating-point min/max instructions (vfmin, vfmax)
   - Vector single-width floating-point/integer type-convert instructions (vfcvt.xu.f, vfcvt.x.f, vfcvt.rtz.xu.f, vfcvt.rtz.x.f, vfcvt.f.xu, vfcvt.f.x)
+  - Vector widening floating-point/integer type-convert instructions (vfwcvt.xu.f, vfwcvt.x.f, vfwcvt.rtz.xu.f, vfwcvt.rtz.x.f, vfwcvt.f.xu, vfwcvt.f.x, vfwcvt.f.f)
 - Software implementation of a floating-point matrix multiplication kernel
 
 ## 0.6.0 - 2021-02-24
