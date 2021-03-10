@@ -160,8 +160,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
    *  Helper signals  *
    ********************/
 
-  logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
+  logic vinsn_issue_vfmerge, vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
 
+  assign vinsn_issue_vfmerge = vinsn_issue_q.op == VFMERGE;
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
   assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX]};
@@ -523,6 +524,30 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   assign fflags_ex_o       = fflags_ex_q;
   assign fflags_ex_valid_o = fflags_ex_valid_q;
 
+  /****************
+   *  MERGE UNIT  *
+   ****************/
+
+  logic vfmerge_in_valid, vfmerge_out_valid;
+  logic vfmerge_in_ready, vfmerge_out_ready;
+  elen_t vfmerge_result;
+
+  always_comb begin
+    // Default assignment
+    vfmerge_result = '0;
+    // Mask the logic if the unit is not used
+    if (vinsn_issue_q.op == VFMERGE)
+      case (vinsn_issue_q.vtype.vsew)
+        EW64: for (int e = 0; e < 1; e++) vfmerge_result[64*e +: 64] = (vinsn_issue_q.vm | mask_i[8*e]) ? vinsn_issue_q.scalar_op[63:0] : mfpu_operand_i[1][64*e +: 64];
+        EW32: for (int e = 0; e < 2; e++) vfmerge_result[32*e +: 32] = (vinsn_issue_q.vm | mask_i[4*e]) ? vinsn_issue_q.scalar_op[31:0] : mfpu_operand_i[1][32*e +: 32];
+        EW16: for (int e = 0; e < 4; e++) vfmerge_result[16*e +: 16] = (vinsn_issue_q.vm | mask_i[2*e]) ? vinsn_issue_q.scalar_op[15:0] : mfpu_operand_i[1][16*e +: 16];
+        default:;
+      endcase
+  end
+
+  assign vfmerge_out_valid = vfmerge_in_valid;
+  assign vfmerge_in_ready  = vfmerge_out_ready;
+
   /*************
    *  Control  *
    *************/
@@ -573,6 +598,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     mfpu_operand_ready_o = '0;
 
     // Inputs to the units are not valid by default
+    vfmerge_in_valid = 1'b0;
     vmul_in_valid = 1'b0;
     vdiv_in_valid = 1'b0;
     vfpu_in_valid = 1'b0;
@@ -597,12 +623,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       // Do we have all the operands necessary for this instruction?
       if (operands_valid) begin
         // Validate the inputs of the correct unit
+        vfmerge_in_valid = vinsn_issue_vfmerge;
         vmul_in_valid = vinsn_issue_mul;
         vdiv_in_valid = vinsn_issue_div;
         vfpu_in_valid = vinsn_issue_fpu;
 
         // Is the unit in use ready?
-        if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) || (vinsn_issue_fpu && vfpu_in_ready)) begin
+        if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) || (vinsn_issue_fpu && vfpu_in_ready) || (vinsn_issue_vfmerge && vfmerge_in_ready)) begin
           // Acknowledge the operands of this instruction
           mfpu_operand_ready_o = operands_ready;
           // Acknowledge the mask unit
@@ -640,12 +667,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
      **************************************/
 
     // If the result queue is not full, it is ready to accept a result
+    vfmerge_out_ready = ~result_queue_full;
     vmul_out_ready = ~result_queue_full;
     vdiv_out_ready = ~result_queue_full;
     vfpu_out_ready = ~result_queue_full;
 
     // Select the correct valid, result, and mask, to write in the result queue
     case (vinsn_processing.op) inside
+      VFMERGE: begin
+        unit_out_valid  = vfmerge_out_valid;
+        unit_out_result = vfmerge_result;
+      end
       [VMUL:VNMSUB]: begin
         unit_out_valid  = vmul_out_valid;
         unit_out_result = vmul_result;
@@ -676,7 +708,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing.id;
       result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) + ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
       result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
-      result_queue_d[result_queue_write_pnt_q].be    = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ? {StrbWidth{1'b1}} : unit_out_mask);
+      result_queue_d[result_queue_write_pnt_q].be    = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm || vinsn_issue_q.op == VFMERGE ? {StrbWidth{1'b1}} : unit_out_mask);
       result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
       // Update the number of elements still to be processed
@@ -771,7 +803,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         commit_cnt_d = vfu_operation_i.vl;
 
       // Check for NaN boxing of scalar operands
-      if (vfu_operation_i.op inside {[VFADD:VFSGNJX]} && vfu_operation_i.use_scalar_op) begin
+      if (vfu_operation_i.op inside {[VFADD:VFMERGE]} && vfu_operation_i.use_scalar_op) begin
         case (vfu_operation_i.vtype.vsew)
           EW16: if (~(&vfu_operation_i.scalar_op[63:16])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h0000000000007e00;
           EW32: if (~(&vfu_operation_i.scalar_op[63:32])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h000000007fc00000;
