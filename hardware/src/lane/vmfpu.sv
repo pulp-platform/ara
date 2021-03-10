@@ -353,7 +353,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   ///////////
 
   // FPU-related signals
-  elen_t         vfpu_result;
+  elen_t         vfpu_result, vfpu_processed_result;
   status_t       vfpu_ex_flag;
   strb_t         vfpu_mask;
   logic          vfpu_in_valid;
@@ -540,6 +540,20 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       .busy_o        (/* Unused */  )
     );
 
+    always_comb begin: fpu_result_processing_p
+      // Forward the result
+      vfpu_processed_result = vfpu_result;
+      // After a comparison, send the mask back to the mask unit
+      // Encode the mask in the bit after each comparison result
+      if (vinsn_issue_q.op == VMFEQ) begin
+        unique case (vinsn_issue_q.vtype.vsew)
+          EW16: for (int b = 0; b < 4; b++) vfpu_processed_result[16*b+1] = vfpu_mask[2*b];
+          EW32: for (int b = 0; b < 2; b++) vfpu_processed_result[32*b+1] = vfpu_mask[4*b];
+          EW64: for (int b = 0; b < 1; b++) vfpu_processed_result[   b+1] = vfpu_mask[8*b];
+        endcase
+      end
+    end
+
     // Stabilize signals regardless of FPU latency (signals to CVA6)
     assign fflags_ex_d       = vfpu_ex_flag;
     assign fflags_ex_valid_d = vfpu_out_valid & vfpu_out_ready;
@@ -699,7 +713,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       end
       [VFADD:VFSGNJX], VMFEQ: begin
         unit_out_valid  = vfpu_out_valid;
-        unit_out_result = vfpu_result;
+        unit_out_result = vfpu_processed_result;
         unit_out_mask   = vfpu_mask;
       end
     endcase
