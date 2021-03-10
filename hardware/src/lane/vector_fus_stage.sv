@@ -54,6 +54,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
     input  logic                         mask_operand_ready_i,
+    input  masku_fu_e                    mask_operand_fu_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
     output logic                         mask_ready_o
@@ -66,6 +67,19 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   logic alu_mask_ready;
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
+
+  elen_t alu_mask_operand, mfpu_mask_operand;
+  logic  alu_mask_operand_ready, mfpu_mask_operand_ready;
+  logic  alu_mask_operand_valid, mfpu_mask_operand_valid;
+  // The Mask unit waits for a result from a specific FU. This ready signal should be
+  // routed to a unit only when the mask unit is waiting for a result from it.
+  // An asserted ready here means that a valid handshake occurred with the mask unit, and that
+  // a FU result was consumed. If the ready is given to a unit that has not started an handshake
+  // with the mask unit, expect undefined behaviour.
+  assign alu_mask_operand_ready  = mask_operand_fu_i == MaskFUAlu  ? mask_operand_ready_i : 1'b0;
+  assign mfpu_mask_operand_ready = mask_operand_fu_i == MaskFUMFpu ? mask_operand_ready_i : 1'b0;
+  assign mask_operand_o          = mask_operand_fu_i == MaskFUAlu  ? alu_mask_operand : mfpu_mask_operand;
+  assign mask_operand_valid_o    = mask_operand_fu_i == MaskFUAlu  ? alu_mask_operand_valid : mfpu_mask_operand_valid;
 
   //////////////////
   //  Vector ALU  //
@@ -94,9 +108,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .alu_result_be_o      (alu_result_be_o      ),
     .alu_result_gnt_i     (alu_result_gnt_i     ),
     // Interface with the Mask unit
-    .mask_operand_o       (mask_operand_o       ),
-    .mask_operand_valid_o (mask_operand_valid_o ),
-    .mask_operand_ready_i (mask_operand_ready_i ),
+    .mask_operand_o       (alu_mask_operand     ),
+    .mask_operand_valid_o (alu_mask_operand_valid),
+    .mask_operand_ready_i (alu_mask_operand_ready),
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
     .mask_ready_o         (alu_mask_ready       )
@@ -133,6 +147,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .mfpu_result_be_o     (mfpu_result_be_o     ),
     .mfpu_result_gnt_i    (mfpu_result_gnt_i    ),
     // Interface with the Mask unit
+    .mask_operand_o       (mfpu_mask_operand   ),
+    .mask_operand_valid_o (mfpu_mask_operand_valid),
+    .mask_operand_ready_i (mfpu_mask_operand_ready),
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
     .mask_ready_o         (mfpu_mask_ready      )

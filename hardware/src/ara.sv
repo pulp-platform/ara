@@ -165,6 +165,7 @@ module ara import ara_pkg::*; #(
   elen_t  [NrLanes-1:0][2:0] masku_operand;
   logic   [NrLanes-1:0][2:0] masku_operand_valid;
   logic   [NrLanes-1:0][2:0] masku_operand_ready;
+  masku_fu_e                 masku_operand_fu;
   strb_t  [NrLanes-1:0]      mask;
   logic   [NrLanes-1:0]      mask_valid;
   logic   [NrLanes-1:0]      lane_mask_ready;
@@ -237,6 +238,7 @@ module ara import ara_pkg::*; #(
       .mask_operand_o              (masku_operand[lane]              ),
       .mask_operand_valid_o        (masku_operand_valid[lane]        ),
       .mask_operand_ready_i        (masku_operand_ready[lane]        ),
+      .mask_operand_fu_i           (masku_operand_fu                 ),
       .masku_result_req_i          (masku_result_req[lane]           ),
       .masku_result_addr_i         (masku_result_addr[lane]          ),
       .masku_result_id_i           (masku_result_id[lane]            ),
@@ -364,6 +366,7 @@ module ara import ara_pkg::*; #(
     .masku_operand_i      (masku_operand                   ),
     .masku_operand_valid_i(masku_operand_valid             ),
     .masku_operand_ready_o(masku_operand_ready             ),
+    .masku_operand_fu_o   (masku_operand_fu                ),
     .masku_result_req_o   (masku_result_req                ),
     .masku_result_addr_o  (masku_result_addr               ),
     .masku_result_id_o    (masku_result_id                 ),
