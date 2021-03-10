@@ -470,7 +470,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               if ((operand_request_i[AluA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes !=
                   pe_req_i.vl) operand_request_i[AluA].vl += 1;
             end
-            operand_request_push[AluA] = pe_req_i.use_vs1;
+            operand_request_push[AluA] = (pe_req_i.use_vs1 && !(pe_req_i.op == VMFEQ)) ? 1'b1 : 1'b0;
 
             operand_request_i[AluB] = '{
               id     : pe_req_i.id,
@@ -496,7 +496,34 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               if ((operand_request_i[AluB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes !=
                   pe_req_i.vl) operand_request_i[AluB].vl += 1;
             end
-            operand_request_push[AluB] = pe_req_i.use_vs2;
+            operand_request_push[AluB] = (pe_req_i.use_vs2 && !(pe_req_i.op == VMFEQ)) ? 1'b1 : 1'b0;
+
+            operand_request_i[MulFPUA] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs1,
+              eew    : pe_req_i.eew_vs1,
+              vtype  : pe_req_i.vtype,
+              vstart : vfu_operation_d.vstart,
+              hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
+              default: '0
+            };
+
+            // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
+            operand_request_i[MulFPUA].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
+            operand_request_push[MulFPUA] = (pe_req_i.use_vs1 && pe_req_i.op == VMFEQ) ? 1'b1 : 1'b0;
+
+            operand_request_i[MulFPUB] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew_vs2,
+              vtype  : pe_req_i.vtype,
+              vstart : vfu_operation_d.vstart,
+              hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+              default: '0
+            };
+            // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
+            operand_request_i[MulFPUB].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
+            operand_request_push[MulFPUB] = (pe_req_i.use_vs2 && pe_req_i.op == VMFEQ) ? 1'b1 : 1'b0;
 
             operand_request_i[MaskB] = '{
               id     : pe_req_i.id,
