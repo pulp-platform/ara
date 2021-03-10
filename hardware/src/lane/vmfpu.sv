@@ -170,7 +170,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFCVTRTZXF], [VMFEQ:VMFGE]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFCVTFF], [VMFEQ:VMFGE]};
 
   //////////////////////
   //  Scalar operand  //
@@ -415,26 +415,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       fp_int_fmt = INT64;
       fp_sign   = 3'b0;
 
-      // vtype.vsew encodes the source format for widening instructins, and the destination format for the narrowing ones
-      unique case (vinsn_issue_q.vtype.vsew)
-        EW16: begin
-          fp_src_fmt = FP16;
-          fp_dst_fmt = FP16;
-          fp_int_fmt = INT16;
-        end
-        EW32: begin
-          fp_src_fmt = FP32;
-          fp_dst_fmt = FP32;
-          fp_int_fmt = INT32;
-        end
-        EW64: begin
-          fp_src_fmt = FP64;
-          fp_dst_fmt = FP64;
-          fp_int_fmt = INT64;
-        end
-        default:;
-      endcase
-
       unique case (vinsn_issue_q.op)
         // Addition is between operands B and C, A was moved to C in the lane_sequencer
         VFADD: fp_op = ADD;
@@ -504,6 +484,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_sign[1] = 1'b1;
           fp_op = CMP;
           fp_rm = RNE;
+        end
         VFCVTXUF: begin
           fp_op    = F2I;
           fp_opmod = 1'b1;
@@ -530,13 +511,27 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_opmod = 1'b0;
           fp_rm    = RTZ;
         end
+        VFCVTFF: fp_op = F2F;
         default:;
       endcase
 
+      // vtype.vsew encodes the destination format
       unique case (vinsn_issue_q.vtype.vsew)
-        EW64: fp_fmt = FP64;
-        EW32: fp_fmt = FP32;
-        EW16: fp_fmt = FP16;
+        EW16: begin
+          fp_src_fmt = FP16;
+          fp_dst_fmt = FP16;
+          fp_int_fmt = INT16;
+        end
+        EW32: begin
+          fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP16 : FP32;
+          fp_dst_fmt = FP32;
+          fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT16 : INT32;
+        end
+        EW64: begin
+          fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP32 : FP64;
+          fp_dst_fmt = FP64;
+          fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT32 : INT64;
+        end
         default:;
       endcase
 
@@ -798,7 +793,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFCVTRTZXF], [VMFEQ:VMFGE]: begin
+      [VFADD:VFCVTFF], [VMFEQ:VMFGE]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_processed_result;
         unit_out_mask   = vfpu_mask;

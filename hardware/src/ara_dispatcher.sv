@@ -201,6 +201,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_vs2  : vtype_q.vsew,
       eew_vd_op: vtype_q.vsew,
       eew_vmask: eew_q[VMASK],
+      fp_cvt_resize: CVT_SAME,
       default  : '0
     };
     ara_req_valid_d = 1'b0;
@@ -1344,6 +1345,55 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       5'b00011: ara_req_d.op = VFCVTFX;
                       5'b00110: ara_req_d.op = VFCVTRTZXUF;
                       5'b00111: ara_req_d.op = VFCVTRTZXF;
+                      5'b01000: begin // Widening VFCVTXUF
+                        ara_req_d.op             = VFCVTXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01001: begin // Widening VFCVTXF
+                        ara_req_d.op             = VFCVTXF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01010: begin // Widening VFCVTFXU
+                        ara_req_d.op             = VFCVTFXU;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01011: begin // Widening VFCVTFX
+                        ara_req_d.op             = VFCVTFX;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01100: begin // Widening VFCVTFF
+                        ara_req_d.op             = VFCVTFF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01110: begin // Widening VFCVTRTZXUF
+                        ara_req_d.op             = VFCVTRTZXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01111: begin // Widening VFCVTRTZXF
+                        ara_req_d.op             = VFCVTRTZXF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
                       default: begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;
