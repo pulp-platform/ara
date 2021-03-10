@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 - GitHub Actions-based CI
+- Hardware support for:
+  - Vector single-width floating-point fused multiply-add instructions (vfnmacc, vfmsac, vfnmsac, vfnmadd, vfmsub, vfnmsub)
+
+## 1.0.0 - 2020-03-10
 
 ### Added
 
