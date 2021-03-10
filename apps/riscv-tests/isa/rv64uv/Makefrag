@@ -64,6 +64,7 @@ rv64uv_sc_tests = vadd \
                   vfmacc \
                   vfnmacc \
                   vfmsac \
+                  vfnmsac \
                   vfmadd \
                   vfmin \
                   vfmax \
