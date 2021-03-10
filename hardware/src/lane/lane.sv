@@ -65,6 +65,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t    [2:0]                                 mask_operand_o,
     output logic     [2:0]                                 mask_operand_valid_o,
     input  logic     [2:0]                                 mask_operand_ready_i,
+    input  masku_fu_e                                      mask_operand_fu_i,
     input  logic                                           masku_result_req_i,
     input  vid_t                                           masku_result_id_i,
     input  vaddr_t                                         masku_result_addr_i,
@@ -338,6 +339,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_o       (mask_operand_o[1]      ),
     .mask_operand_valid_o (mask_operand_valid_o[1]),
     .mask_operand_ready_i (mask_operand_ready_i[1]),
+    .mask_operand_fu_i    (mask_operand_fu_i      ),
     .mask_i               (mask_i                 ),
     .mask_valid_i         (mask_valid_i           ),
     .mask_ready_o         (mask_ready_o           )

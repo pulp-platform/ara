@@ -29,6 +29,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrLanes-1:0][2:0] masku_operand_valid_i,
     output logic     [NrLanes-1:0][2:0] masku_operand_ready_o,
     output logic     [NrLanes-1:0]      masku_result_req_o,
+    output masku_fu_e                   masku_operand_fu_o,
     output vid_t     [NrLanes-1:0]      masku_result_id_o,
     output vaddr_t   [NrLanes-1:0]      masku_result_addr_o,
     output elen_t    [NrLanes-1:0]      masku_result_wdata_o,
@@ -374,6 +375,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
+  // Always broadcast information about which is the target FU of the request
+  assign masku_operand_fu_o = (vinsn_issue.op == VMFEQ) ? MaskFUMFpu : MaskFUAlu;
+
   always_comb begin: p_masku
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;
@@ -504,7 +508,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             element_cnt_all_lanes = remaining_element_cnt_all_lanes;
 
           // Acknowledge the operands of this instruction.
-          // At this stage, acknowledge only the first operand, "a", coming from the ALU.
+          // At this stage, acknowledge only the first operand, "a", coming from the ALU/VMFpu.
           masku_operand_a_ready_o = masku_operand_a_valid_i;
 
           // Store the result in the operand queue
