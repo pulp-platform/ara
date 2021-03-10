@@ -669,7 +669,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
 
     // Finished committing the results of a vector instruction
-    if (vinsn_commit_valid && commit_cnt_d == '0) begin
+    if (vinsn_commit_valid && commit_cnt_d == '0 && masku_result_gnt_i) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
