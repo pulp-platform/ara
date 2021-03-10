@@ -1347,6 +1347,41 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                         ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
                       end
+                      5'b10000: begin // Narrowing VFCVTXUF
+                        ara_req_d.op             = VFCVTXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10001: begin // Narrowing VFCVTXF
+                        ara_req_d.op             = VFCVTXF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10010: begin // Narrowing VFCVTFXU
+                        ara_req_d.op             = VFCVTFXU;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10011: begin // Narrowing VFCVTFX
+                        ara_req_d.op             = VFCVTFX;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10100: begin // Narrowing VFCVTFF
+                        ara_req_d.op             = VFCVTFF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10110: begin // Narrowing VFCVTRTZXUF
+                        ara_req_d.op             = VFCVTRTZXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10111: begin // Narrowing VFCVTRTZXF
+                        ara_req_d.op             = VFCVTRTZXF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
                       default: begin
                         // Trigger an error
                         acc_resp_o.error = 1'b1;

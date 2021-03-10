@@ -189,6 +189,29 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     endcase
   end
 
+  //////////////////////////////
+  //  Narrowing instructions  //
+  //////////////////////////////
+
+  // This function returns 1'b1 if `op` is a narrowing instruction, i.e.,
+  // it produces only EEW/2 per cycle.
+  function automatic logic narrowing(fp_resize_e resize);
+    narrowing = 1'b0;
+    if (resize == CVT_NARROW)
+      narrowing = 1'b1;
+  endfunction: narrowing
+
+  // If this is a narrowing instruction, point to which half of the
+  // output EEW word we are producing.
+  // Input selector, used to acknowledge the mask operands once every two cycles
+  logic narrowing_select_in_d, narrowing_select_in_q;
+  // Output selector, used to control the Result MUX and validate the results
+  logic narrowing_select_out_d, narrowing_select_out_q;
+  // FPU SIMD result needs to be shuffled for narrowing instructions before commit
+  elen_t narrowing_shuffled_result;
+  // Helper signal to shuffle the narrowed result
+  logic [3:0] narrowing_shuffle_be;
+
   //////////////////
   //  Multiplier  //
   //////////////////
@@ -340,7 +363,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   //  FPU  //
   ///////////
 
-<<<<<<< HEAD
   // FPU-related signals
   elen_t         vfpu_result;
   status_t       vfpu_ex_flag;
@@ -403,160 +425,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       fp_dst_fmt = FP64;
       fp_int_fmt = INT64;
       fp_sign   = 3'b0;
-
-      // vtype.vsew encodes the source format for widening instructins, and the destination format for the narrowing ones
-      unique case (vinsn_issue_q.vtype.vsew)
-        EW16: begin
-          fp_src_fmt = FP16;
-          fp_dst_fmt = FP16;
-          fp_int_fmt = INT16;
-=======
-  // Features (enabled formats, vectors etc.)
-  localparam fpu_features_t FPUFeatures = '{
-    Width        : 64,
-    EnableVectors: 1'b1,
-    EnableNanBox : 1'b1,
-    FpFmtMask    : {1'b1, 1'b1, 1'b1, 1'b0, 1'b0},
-    IntFmtMask   : {1'b0, 1'b1, 1'b1, 1'b1}
-  };
-
-  // Implementation (number of registers etc)
-  localparam fpu_implementation_t FPUImplementation = '{
-    PipeRegs: '{
-      '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
-      '{default: LatFDivSqrt},
-      '{default: LatFNonComp},
-      '{default: LatFConv}},
-    UnitTypes: '{
-      '{default: PARALLEL}, // ADDMUL
-      '{default: MERGED},   // DIVSQRT
-      '{default: PARALLEL}, // NONCOMP
-      '{default: MERGED}},  // CONV
-    PipeConfig: DISTRIBUTED
-  };
-
-  // FPU preprocessed signals
-  elen_t operand_a;
-  elen_t operand_b;
-  elen_t operand_c;
-
-  operation_e       fp_op;
-  logic             fp_opmod;
-  fp_format_e       fp_src_fmt, fp_dst_fmt;
-  int_format_e      fp_int_fmt;
-  roundmode_e       fp_rm;
-  logic       [2:0] fp_sign;
-
-  // FPU preprocessing stage
-  always_comb begin: fpu_operand_preprocessing_p
-    operand_a = mfpu_operand_i[1];                                           // vs2
-    operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
-    operand_c = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
-    // Default rounding-mode from fcsr.rm
-    fp_rm      = vinsn_issue_q.fp_rm;
-    fp_op      = ADD;
-    fp_opmod   = 1'b0;
-    fp_src_fmt = FP64;
-    fp_dst_fmt = FP64;
-    fp_int_fmt = INT64;
-    fp_sign    = 3'b0;
-
-    unique case (vinsn_issue_q.op)
-      // Addition is between operands B and C, A was moved to C in the lane_sequencer
-      VFADD:
-        fp_op = ADD;
-      VFSUB: begin
-        fp_op      = ADD;
-        fp_sign[1] = 1'b1;
-      end
-      VFRSUB: begin
-        fp_op    = ADD;
-        fp_opmod = 1'b1;
-      end
-      VFMUL :
-        fp_op = MUL;
-      VFMACC, VFMADD:
-        fp_op = FMADD;
-      VFMIN : begin
-        fp_op = MINMAX;
-        fp_rm = RNE;
-      end
-      VFMAX: begin
-        fp_op = MINMAX;
-        fp_rm = RTZ;
-      end
-      VFCVTXUF: begin
-        fp_op    = F2I;
-        fp_opmod = 1'b1;
-      end
-      VFCVTXF: begin
-        fp_op    = F2I;
-        fp_opmod = 1'b0;
-      end
-      VFCVTFXU: begin
-        fp_op    = I2F;
-        fp_opmod = 1'b1;
-      end
-      VFCVTFX: begin
-        fp_op    = I2F;
-        fp_opmod = 1'b0;
-      end
-      VFCVTRTZXUF: begin
-        fp_op    = F2I;
-        fp_opmod = 1'b1;
-        fp_rm    = RTZ;
-      end
-      VFCVTRTZXF: begin
-        fp_op    = F2I;
-        fp_opmod = 1'b0;
-        fp_rm    = RTZ;
-      end
-      VFCVTFF:
-        fp_op = F2F;
-      default:;
-    endcase
-
-    // vtype.vsew encodes the destination format
-    unique case (vinsn_issue_q.vtype.vsew)
-      EW16: begin
-        fp_src_fmt = FP16;
-        fp_dst_fmt = FP16;
-        fp_int_fmt = INT16;
-      end
-      EW32: begin
-        fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP16 : FP32;
-        fp_dst_fmt = FP32;
-        fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT16 : INT32;
-      end
-      EW64: begin
-        fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP32 : FP64;
-        fp_dst_fmt = FP64;
-        fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT32 : INT64;
-      end
-      default:;
-    endcase
-
-    // Sign injection
-    unique case (vinsn_issue_q.vtype.vsew)
-      EW16:
-        for (int b = 0; b < 4; b++) begin
-          operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
-          operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
-          operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
->>>>>>> [hardware] Add support for FP widening type-convert instructions
-        end
-        EW32: begin
-          fp_src_fmt = FP32;
-          fp_dst_fmt = FP32;
-          fp_int_fmt = INT32;
-        end
-        EW64: begin
-          fp_src_fmt = FP64;
-          fp_dst_fmt = FP64;
-          fp_int_fmt = INT64;
-        end
-        default:;
-      endcase
 
       unique case (vinsn_issue_q.op)
         // Addition is between operands B and C, A was moved to C in the lane_sequencer
@@ -630,13 +498,28 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_opmod = 1'b0;
           fp_rm    = RTZ;
         end
+        VFCVTFF:
+          fp_op = F2F;
         default:;
       endcase
 
+      // vtype.vsew encodes the destination format
       unique case (vinsn_issue_q.vtype.vsew)
-        EW64: fp_fmt = FP64;
-        EW32: fp_fmt = FP32;
-        EW16: fp_fmt = FP16;
+        EW16: begin
+          fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_NARROW) ? FP32 : FP16;
+          fp_dst_fmt = FP16;
+          fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_NARROW && fp_op == I2F) ? INT32 : INT16;
+        end
+        EW32: begin
+          fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP16 : ((vinsn_issue_q.fp_cvt_resize == CVT_NARROW) ? FP64 : FP32);
+          fp_dst_fmt = FP32;
+          fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT16 : ((vinsn_issue_q.fp_cvt_resize == CVT_NARROW && fp_op == I2F) ? INT64 : INT32);
+        end
+        EW64: begin
+          fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP32 : FP64;
+          fp_dst_fmt = FP64;
+          fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT32 : INT64;
+        end
         default:;
       endcase
 
@@ -773,6 +656,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     result_queue_write_pnt_d = result_queue_write_pnt_q;
     result_queue_cnt_d       = result_queue_cnt_q;
 
+    narrowing_select_in_d  = narrowing_select_in_q;
+    narrowing_select_out_d = narrowing_select_out_q;
+
     // Inform our status to the lane controller
     mfpu_ready_o      = !vinsn_queue_full;
     mfpu_vinsn_done_o = '0;
@@ -814,24 +700,51 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
             (vinsn_issue_fpu && vfpu_in_ready)) begin
           // Acknowledge the operands of this instruction
           mfpu_operand_ready_o = operands_ready;
-          // Acknowledge the mask unit
-          mask_ready_o         = ~vinsn_issue_q.vm;
 
+          // Update the element issue counter and the related issue_be signal for the divider
           begin
             // How many elements are we issuing?
-            automatic logic [3:0] issue_element_cnt =
+            automatic logic [3:0] issue_element_cnt = 
               (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+            automatic logic [3:0] issue_element_cnt_narrow = 
+              (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
+
             // Update the number of elements still to be issued
             if (issue_element_cnt > issue_cnt_q) issue_element_cnt = issue_cnt_q;
-            issue_cnt_d = issue_cnt_q - issue_element_cnt;
+            if (issue_element_cnt_narrow > issue_cnt_q) issue_element_cnt_narrow = issue_cnt_q;
 
-            // Give the divider the correct be signal
-            issue_be = be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ?
-              {StrbWidth{1'b1}} :
-              mask_i);
+            // If the instruction is a narrowing one, we are issuing elements for one half of vtype.vsew
+            issue_cnt_d = (narrowing(vinsn_issue_q.fp_cvt_resize)) ? (issue_cnt_q - issue_element_cnt_narrow) : (issue_cnt_q - issue_element_cnt);
+
+            // Give the correct be signal to the divider/FPU
+            issue_be = narrowing(vinsn_issue_q.fp_cvt_resize) ? 
+              be(issue_element_cnt_narrow, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i) : 
+              be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i);
           end
+
+          // Update the narrowing selector and acknowledge the mask operatnds if needed
+          if (narrowing(vinsn_issue_q.fp_cvt_resize)) begin
+            // Issued one half of the elements for the related narrowed result
+            narrowing_select_in_d = ~narrowing_select_in_q;
+
+            // Did we fill up a word?
+            if (issue_cnt_d == '0 || narrowing_select_in_q) begin
+
+              // Acknowledge the mask operand, if needed
+              if (vinsn_issue_q != VFU_MaskUnit)
+                mask_ready_o = ~vinsn_issue_q.vm;
+            end
+          end else begin
+            // Immediately acknowledge the mask unit M operands if this is a VMFPU operation
+            if (vinsn_issue_q != VFU_MaskUnit)
+              mask_ready_o = ~vinsn_issue_q.vm;
+          end
+
           // Finished issuing the micro-operations of this vector instruction
           if (issue_cnt_d == '0) begin
+            // Reset the input narrowing pointer
+            narrowing_select_in_d = 1'b0;
+
             // Bump issue counter and pointers
             vinsn_queue_d.issue_cnt -= 1;
             if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
@@ -872,31 +785,89 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       end
     endcase
 
+    // Narrowing FPU results need to be shuffled before being saved for storing
+    unique case (vinsn_processing.vtype.vsew)
+      EW16: begin
+        narrowing_shuffled_result[63:48] = unit_out_result[31:16];
+        narrowing_shuffled_result[47:32] = unit_out_result[31:16];
+        narrowing_shuffled_result[31:16] = unit_out_result[15:0];
+        narrowing_shuffled_result[15:0]  = unit_out_result[15:0];
+        narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
+      end
+      EW32: begin
+        narrowing_shuffled_result[63:32] = unit_out_result[31:0];
+        narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
+        narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0011 : 4'b1100;
+      end
+      default: begin
+        narrowing_shuffled_result[63:32] = unit_out_result[31:0];
+        narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
+        narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
+      end
+    endcase
+
     // Check if we have a valid result and we can add it to the result queue
     if (unit_out_valid && !result_queue_full) begin
       // How many elements have we processed?
-      automatic logic [3:0] processed_element_cnt =
-        (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
+      automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
+      automatic logic [3:0] processed_element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew))) / 2;
 
       // Update the number of elements still to be processed
-      if (processed_element_cnt > to_process_cnt_q) processed_element_cnt = to_process_cnt_q;
+      if (processed_element_cnt > to_process_cnt_q)
+        processed_element_cnt = to_process_cnt_q;
+      if (processed_element_cnt_narrow > to_process_cnt_q)
+        processed_element_cnt_narrow = to_process_cnt_q;
+
+      // Update the number of elements still to be processed
+      // If the instruction is a narrowing one, we have processed elements for one half of vtype.vsew
+      to_process_cnt_d = (narrowing(vinsn_processing.fp_cvt_resize)) ? (to_process_cnt_q - processed_element_cnt_narrow) : (to_process_cnt_q - processed_element_cnt);
 
       // Store the result in the result queue
-      result_queue_d[result_queue_write_pnt_q].id   = vinsn_processing.id;
-      result_queue_d[result_queue_write_pnt_q].addr = vaddr(vinsn_processing.vd, NrLanes) +
-        ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
-      result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
-      result_queue_d[result_queue_write_pnt_q].be    =
-        be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ?
-          {StrbWidth{1'b1}} :
-          unit_out_mask);
-      result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+      result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing.id;
+      result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) + ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
+      // FP narrowing instructions pack the result in two different cycles, and only some 16-bit slices are active
+      if (narrowing(vinsn_processing.fp_cvt_resize)) begin
+        for (int b = 0; b < 4; b++) begin
+          if (narrowing_shuffle_be[b])
+            result_queue_d[result_queue_write_pnt_q].wdata[b*16 +: 16] = narrowing_shuffled_result[b*16 +: 16];
+        end
+      end else begin
+        result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
+      end
+      if (!narrowing(vinsn_processing.fp_cvt_resize) || !narrowing_select_out_q)
+        result_queue_d[result_queue_write_pnt_q].be  = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ? {StrbWidth{1'b1}} : unit_out_mask);
 
-      // Update the number of elements still to be processed
-      to_process_cnt_d = to_process_cnt_q - processed_element_cnt;
+      // Update the narrowing selector, validate the result, bump result queue pointers/counters
+      if (narrowing(vinsn_processing.fp_cvt_resize)) begin
+        // Processed one half of the elements for the related narrowed result
+        narrowing_select_out_d = ~narrowing_select_out_q;
+
+        // Did we fill up a word?
+        if (to_process_cnt_d == '0 || narrowing_select_out_q) begin
+          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+
+          // Bump pointers and counters of the result queue
+          result_queue_cnt_d += 1;
+          if (result_queue_write_pnt_q == ResultQueueDepth-1)
+            result_queue_write_pnt_d = 0;
+          else
+            result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+        end
+      end else begin
+        result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+
+        // Bump pointers and counters of the result queue
+        result_queue_cnt_d += 1;
+        if (result_queue_write_pnt_q == ResultQueueDepth-1)
+          result_queue_write_pnt_d = 0;
+        else
+          result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+      end
 
       // Finished issuing the micro-operations of this vector instruction
       if (to_process_cnt_d == '0) begin
+        narrowing_select_out_d = 1'b0;
+
         vinsn_queue_d.processing_cnt -= 1;
         // Bump issue processing pointers
         if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1) vinsn_queue_d.processing_pnt = '0;
@@ -905,11 +876,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
           vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
       end
-
-      // Bump pointers and counters of the result queue
-      result_queue_cnt_d += 1;
-      if (result_queue_write_pnt_q == ResultQueueDepth-1) result_queue_write_pnt_d = 0;
-      else result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
     end
 
     //////////////////////////////////
@@ -1019,12 +985,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       issue_cnt_q       <= '0;
       to_process_cnt_q  <= '0;
       commit_cnt_q      <= '0;
+      narrowing_select_in_q  <= 1'b0;
+      narrowing_select_out_q <= 1'b0;
       fflags_ex_valid_q <= 1'b0;
       fflags_ex_q       <= '0;
     end else begin
       issue_cnt_q       <= issue_cnt_d;
       to_process_cnt_q  <= to_process_cnt_d;
       commit_cnt_q      <= commit_cnt_d;
+      narrowing_select_in_q  <= narrowing_select_in_d;
+      narrowing_select_out_q <= narrowing_select_out_d;
       fflags_ex_valid_q <= fflags_ex_valid_d;
       fflags_ex_q       <= fflags_ex_d;
     end
