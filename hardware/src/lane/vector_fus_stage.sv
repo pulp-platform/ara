@@ -64,6 +64,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   //  Signals  //
   ///////////////
 
+  // If the mask unit has instruction queue depth > 1, change the following lines.
+  // If we have concurrent masked MUL and ADD operations, mask_i and mask_valid_i are
+  // erroneously broadcasted and accepted to/by both the units. The mask unit must tag its
+  // broadcasted signals if more masked instructions can be in different units at the same time.
   logic alu_mask_ready;
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
