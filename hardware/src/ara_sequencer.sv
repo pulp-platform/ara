@@ -97,7 +97,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     unique case (op) inside
       [VADD:VMERGE]        : vfu = VFU_Alu;
       [VMUL:VFSGNJX]       : vfu = VFU_MFpu;
-      [VMANDNOT:VMSBC]     : vfu = VFU_MaskUnit;
+      [VMANDNOT:VMFEQ]     : vfu = VFU_MaskUnit;
       [VLE:VLXE]           : vfu = VFU_LoadUnit;
       [VSE:VSXE]           : vfu = VFU_StoreUnit;
       [VSLIDEUP:VSLIDEDOWN]: vfu = VFU_SlideUnit;

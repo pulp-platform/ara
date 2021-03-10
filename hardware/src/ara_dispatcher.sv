@@ -1286,6 +1286,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
                   6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
                   6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                  6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b101000: begin
                     ara_req_d.op             = ara_pkg::VFMADD;
@@ -1494,6 +1495,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.stride = 1;
                   end
                   6'b010111: ara_req_d.op = ara_pkg::VMERGE;
+                  6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b100111: begin
                     ara_req_d.op             = ara_pkg::VFRSUB;
