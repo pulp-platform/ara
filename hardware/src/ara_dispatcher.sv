@@ -1513,8 +1513,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
+                6'b101001: begin
+                  ara_req_d.op             = ara_pkg::VFNMADD;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
+                6'b101010: begin
+                  ara_req_d.op             = ara_pkg::VFMSUB;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
+                6'b101011: begin
+                  ara_req_d.op             = ara_pkg::VFNMSUB;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
                 6'b101100: begin
                   ara_req_d.op        = ara_pkg::VFMACC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101101: begin
+                  ara_req_d.op        = ara_pkg::VFNMACC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101110: begin
+                  ara_req_d.op        = ara_pkg::VFMSAC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101111: begin
+                  ara_req_d.op        = ara_pkg::VFNMSAC;
                   ara_req_d.use_vd_op = 1'b1;
                 end
                 default: begin
@@ -1608,8 +1638,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
+                6'b101001: begin
+                  ara_req_d.op             = ara_pkg::VFNMADD;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
+                6'b101010: begin
+                  ara_req_d.op             = ara_pkg::VFMSUB;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
+                6'b101011: begin
+                  ara_req_d.op             = ara_pkg::VFNMSUB;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                end
                 6'b101100: begin
                   ara_req_d.op        = ara_pkg::VFMACC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101101: begin
+                  ara_req_d.op        = ara_pkg::VFNMACC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101110: begin
+                  ara_req_d.op        = ara_pkg::VFMSAC;
+                  ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b101111: begin
+                  ara_req_d.op        = ara_pkg::VFNMSAC;
                   ara_req_d.use_vd_op = 1'b1;
                 end
                 default: begin
