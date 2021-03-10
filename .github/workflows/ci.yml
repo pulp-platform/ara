@@ -47,7 +47,9 @@ jobs:
       run: |
         git submodule update --init --recursive -- toolchain/verilator
     - name: Compile Verilator
-      run: make verilator
+      run: |
+        sudo apt-get install flex libfl-dev
+        make verilator
     - name: Upload Verilator
       uses: actions/upload-artifact@v2
       with:
