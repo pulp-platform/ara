@@ -1,0 +1,55 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+
+# Run functional regression checks
+name: ci
+on: [push]
+
+jobs:
+  tc-gcc:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download the GCC toolchain
+      run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+    - name: Compile GCC
+      run: make toolchain
+    - name: Upload GCC
+      uses: actions/upload-artifact@v2
+      with:
+        name: tc-gcc
+        path: install/riscv-gcc
+
+  tc-isa-sim:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download Spike
+      run: |
+        git submodule update --init --recursive -- toolchain/riscv-isa-sim
+        git submodule foreach --recursive git reset --hard
+    - name: Compile Spike
+      run: make riscv-isa-sim
+    - name: Upload Spike
+      uses: actions/upload-artifact@v2
+      with:
+        name: tc-isa-sim
+        path: install/riscv-isa-sim
+
+  tc-verilator:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download Verilator
+      run: |
+        git submodule update --init --recursive -- toolchain/verilator
+    - name: Compile Verilator
+      run: make verilator
+    - name: Upload Verilator
+      uses: actions/upload-artifact@v2
+      with:
+        name: tc-verilator
+        path: install/verilator
