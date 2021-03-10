@@ -383,7 +383,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     if (!vinsn_queue_full && vfu_operation_valid_i &&
-      vfu_operation_i.vfu inside {VFU_Alu, VFU_MaskUnit}) begin
+      (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMANDNOT:VMSBC]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
