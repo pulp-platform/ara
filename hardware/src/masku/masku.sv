@@ -273,7 +273,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       unique case (vinsn_issue.op) inside
         [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) |
           (masku_operand_b_i & ~bit_enable_mask);
-        [VMSEQ:VMSBC] : begin
+        [VMSEQ:VMFEQ] : begin
           automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
           unique case (vinsn_issue.vtype.vsew)
@@ -529,7 +529,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Increment the VRF pointer
-          if (vinsn_issue.op inside {[VMSEQ:VMSBC]}) begin
+          if (vinsn_issue.op inside {[VMSEQ:VMFEQ]}) begin
             vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
 
             // Filled-up a word, or finished execution

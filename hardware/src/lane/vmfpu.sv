@@ -40,6 +40,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     output strb_t                        mfpu_result_be_o,
     input  logic                         mfpu_result_gnt_i,
     // Interface with the Mask unit
+    output elen_t                        mask_operand_o,
+    output logic                         mask_operand_valid_o,
+    input  logic                         mask_operand_ready_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
     output logic                         mask_ready_o
@@ -124,6 +127,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     vaddr_t addr;
     elen_t wdata;
     strb_t be;
+    logic mask;
   } payload_t;
 
   // Result queue
@@ -166,7 +170,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX], VMFEQ};
 
   //////////////////////
   //  Scalar operand  //
@@ -188,6 +192,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       default:;
     endcase
   end
+
+  /////////////////////
+  //  Mask operands  //
+  /////////////////////
+
+  assign mask_operand_o       = result_queue_q[result_queue_read_pnt_q].wdata;
+  assign mask_operand_valid_o =
+    result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
 
   //////////////////
   //  Multiplier  //
@@ -446,6 +458,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_op = SGNJ;
           fp_rm = RDN;
         end
+        VMFEQ: begin
+          fp_op = CMP;
+          fp_rm = RDN;
+        end
         default:;
       endcase
 
@@ -565,11 +581,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   assign operands_valid = vinsn_issue_q.swap_vs2_vd_op
                         ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2) &&
                            (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) &&
-                           (mask_valid_i || vinsn_issue_q.vm) &&
+                           (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit) &&
                            (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
                         : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) &&
                            (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
-                           (mask_valid_i || vinsn_issue_q.vm) &&
+                           (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit) &&
                            (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
 
   assign operands_ready = vinsn_issue_q.swap_vs2_vd_op
@@ -681,7 +697,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFSGNJX]: begin
+      [VFADD:VFSGNJX], VMFEQ: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
@@ -706,6 +722,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ?
           {StrbWidth{1'b1}} :
           unit_out_mask);
+      result_queue_d[result_queue_write_pnt_q].mask  = vinsn_processing.vfu == VFU_MaskUnit;
       result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
       // Update the number of elements still to be processed
@@ -733,15 +750,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     //////////////////////////////////
 
     // Send result information to the VRF
-    mfpu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q];
+    mfpu_result_req_o   = (result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask) ? 1'b1 : 1'b0;
     mfpu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
     mfpu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
     mfpu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
     mfpu_result_be_o    = result_queue_q[result_queue_read_pnt_q].be;
 
-    // Received a grant from the VRF.
+    // Received a grant from the VRF, or the mask unit ate the result.
     // Deactivate the request.
-    if (mfpu_result_gnt_i) begin
+    if (mfpu_result_gnt_i || mask_operand_ready_i) begin
       // How many elements are we committing?
       automatic logic [3:0] commit_element_cnt =
         (1 << (int'(EW64) - int'(vinsn_commit.vtype.vsew)));
@@ -780,7 +797,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     //  Accept new instruction  //
     //////////////////////////////
 
-    if (!vinsn_queue_full && vfu_operation_valid_i && vfu_operation_i.vfu == VFU_MFpu) begin
+    if (!vinsn_queue_full && vfu_operation_valid_i && (vfu_operation_i.vfu == VFU_MFpu || vfu_operation_i.op == VMFEQ)) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
