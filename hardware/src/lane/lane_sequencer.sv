@@ -180,6 +180,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           swap_vs2_vd_op : pe_req_i.swap_vs2_vd_op,
           fp_rm          : pe_req_i.fp_rm,
           wide_fp_imm    : pe_req_i.wide_fp_imm,
+          fp_cvt_resize  : pe_req_i.fp_cvt_resize,
           vtype          : pe_req_i.vtype,
           default        : '0
         };

@@ -166,7 +166,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFCVTRTZXF]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFCVTFF]};
 
   //////////////////////
   //  Scalar operand  //
@@ -340,6 +340,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   //  FPU  //
   ///////////
 
+<<<<<<< HEAD
   // FPU-related signals
   elen_t         vfpu_result;
   status_t       vfpu_ex_flag;
@@ -409,6 +410,140 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_src_fmt = FP16;
           fp_dst_fmt = FP16;
           fp_int_fmt = INT16;
+=======
+  // Features (enabled formats, vectors etc.)
+  localparam fpu_features_t FPUFeatures = '{
+    Width        : 64,
+    EnableVectors: 1'b1,
+    EnableNanBox : 1'b1,
+    FpFmtMask    : {1'b1, 1'b1, 1'b1, 1'b0, 1'b0},
+    IntFmtMask   : {1'b0, 1'b1, 1'b1, 1'b1}
+  };
+
+  // Implementation (number of registers etc)
+  localparam fpu_implementation_t FPUImplementation = '{
+    PipeRegs: '{
+      '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
+      '{default: LatFDivSqrt},
+      '{default: LatFNonComp},
+      '{default: LatFConv}},
+    UnitTypes: '{
+      '{default: PARALLEL}, // ADDMUL
+      '{default: MERGED},   // DIVSQRT
+      '{default: PARALLEL}, // NONCOMP
+      '{default: MERGED}},  // CONV
+    PipeConfig: DISTRIBUTED
+  };
+
+  // FPU preprocessed signals
+  elen_t operand_a;
+  elen_t operand_b;
+  elen_t operand_c;
+
+  operation_e       fp_op;
+  logic             fp_opmod;
+  fp_format_e       fp_src_fmt, fp_dst_fmt;
+  int_format_e      fp_int_fmt;
+  roundmode_e       fp_rm;
+  logic       [2:0] fp_sign;
+
+  // FPU preprocessing stage
+  always_comb begin: fpu_operand_preprocessing_p
+    operand_a = mfpu_operand_i[1];                                           // vs2
+    operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
+    operand_c = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
+    // Default rounding-mode from fcsr.rm
+    fp_rm      = vinsn_issue_q.fp_rm;
+    fp_op      = ADD;
+    fp_opmod   = 1'b0;
+    fp_src_fmt = FP64;
+    fp_dst_fmt = FP64;
+    fp_int_fmt = INT64;
+    fp_sign    = 3'b0;
+
+    unique case (vinsn_issue_q.op)
+      // Addition is between operands B and C, A was moved to C in the lane_sequencer
+      VFADD:
+        fp_op = ADD;
+      VFSUB: begin
+        fp_op      = ADD;
+        fp_sign[1] = 1'b1;
+      end
+      VFRSUB: begin
+        fp_op    = ADD;
+        fp_opmod = 1'b1;
+      end
+      VFMUL :
+        fp_op = MUL;
+      VFMACC, VFMADD:
+        fp_op = FMADD;
+      VFMIN : begin
+        fp_op = MINMAX;
+        fp_rm = RNE;
+      end
+      VFMAX: begin
+        fp_op = MINMAX;
+        fp_rm = RTZ;
+      end
+      VFCVTXUF: begin
+        fp_op    = F2I;
+        fp_opmod = 1'b1;
+      end
+      VFCVTXF: begin
+        fp_op    = F2I;
+        fp_opmod = 1'b0;
+      end
+      VFCVTFXU: begin
+        fp_op    = I2F;
+        fp_opmod = 1'b1;
+      end
+      VFCVTFX: begin
+        fp_op    = I2F;
+        fp_opmod = 1'b0;
+      end
+      VFCVTRTZXUF: begin
+        fp_op    = F2I;
+        fp_opmod = 1'b1;
+        fp_rm    = RTZ;
+      end
+      VFCVTRTZXF: begin
+        fp_op    = F2I;
+        fp_opmod = 1'b0;
+        fp_rm    = RTZ;
+      end
+      VFCVTFF:
+        fp_op = F2F;
+      default:;
+    endcase
+
+    // vtype.vsew encodes the destination format
+    unique case (vinsn_issue_q.vtype.vsew)
+      EW16: begin
+        fp_src_fmt = FP16;
+        fp_dst_fmt = FP16;
+        fp_int_fmt = INT16;
+      end
+      EW32: begin
+        fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP16 : FP32;
+        fp_dst_fmt = FP32;
+        fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT16 : INT32;
+      end
+      EW64: begin
+        fp_src_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE) ? FP32 : FP64;
+        fp_dst_fmt = FP64;
+        fp_int_fmt = (vinsn_issue_q.fp_cvt_resize == CVT_WIDE && fp_op == I2F) ? INT32 : INT64;
+      end
+      default:;
+    endcase
+
+    // Sign injection
+    unique case (vinsn_issue_q.vtype.vsew)
+      EW16:
+        for (int b = 0; b < 4; b++) begin
+          operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
+          operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
+          operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
+>>>>>>> [hardware] Add support for FP widening type-convert instructions
         end
         EW32: begin
           fp_src_fmt = FP32;
@@ -730,7 +865,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFCVTRTZXF]: begin
+      [VFADD:VFCVTFF]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
