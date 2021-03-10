@@ -545,8 +545,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       vfpu_processed_result = vfpu_result;
       // After a comparison, send the mask back to the mask unit
       // Encode the mask in the bit after each comparison result
-      if (vinsn_issue_q.op == VMFEQ) begin
-        unique case (vinsn_issue_q.vtype.vsew)
+      if (vinsn_processing.op == VMFEQ) begin
+        unique case (vinsn_processing.vtype.vsew)
           EW16: for (int b = 0; b < 4; b++) vfpu_processed_result[16*b+1] = vfpu_mask[2*b];
           EW32: for (int b = 0; b < 2; b++) vfpu_processed_result[32*b+1] = vfpu_mask[4*b];
           EW64: for (int b = 0; b < 1; b++) vfpu_processed_result[   b+1] = vfpu_mask[8*b];
