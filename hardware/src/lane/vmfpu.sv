@@ -581,11 +581,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   assign operands_valid = vinsn_issue_q.swap_vs2_vd_op
                         ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2) &&
                            (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) &&
-                           (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit) &&
+                           (mask_valid_i || vinsn_issue_q.vm) &&
                            (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
                         : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) &&
                            (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
-                           (mask_valid_i || vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_MaskUnit) &&
+                           (mask_valid_i || vinsn_issue_q.vm) &&
                            (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
 
   assign operands_ready = vinsn_issue_q.swap_vs2_vd_op
