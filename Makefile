@@ -62,7 +62,7 @@ ${ISA_SIM_INSTALL_DIR}: Makefile
 	[ -d dtc ] || git clone git://git.kernel.org/pub/scm/utils/dtc/dtc.git && cd dtc; \
 	make install SETUP_PREFIX=$(ISA_SIM_INSTALL_DIR) PREFIX=$(ISA_SIM_INSTALL_DIR) && \
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:$$PATH; cd ..; \
-	CC=gcc-4.8.3 CXX=g++-4.8.3 ../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
+	../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
 
 # Verilator
 .PHONY: verilator
