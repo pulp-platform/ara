@@ -170,23 +170,59 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
    *  Scalar operand  *
    ********************/
 
-  elen_t scalar_op;
+  elen_t scalar_op, normal_scalar_op, wide_fp_scalar_op;
 
   // Replicate the scalar operand on the 64-bit word, depending
   // on the element width.
   // Also check if the FP scalar is NaN boxed, otherwise return a qNaN
   always_comb begin
     // Default assignment
-    scalar_op = '0;
+    normal_scalar_op = '0;
 
     case (vinsn_issue_q.vtype.vsew)
-      EW64: scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
-      EW32: scalar_op = {2{vinsn_issue_q.scalar_op[31:0]}};
-      EW16: scalar_op = {4{vinsn_issue_q.scalar_op[15:0]}};
-      EW8 : scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
+      EW64: normal_scalar_op = {1{vinsn_issue_q.scalar_op[63:0]}};
+      EW32: normal_scalar_op = {2{vinsn_issue_q.scalar_op[31:0]}};
+      EW16: normal_scalar_op = {4{vinsn_issue_q.scalar_op[15:0]}};
+      EW8 : normal_scalar_op = {8{vinsn_issue_q.scalar_op[ 7:0]}};
       default:;
     endcase
   end
+
+  // Floating-Point re-encoding for widening operations
+  // For FP widenings,
+  always_comb begin
+    wide_fp_scalar_op = '0;
+
+    // Mask if we are not using widening FP instructions
+    if (vinsn_issue_q.wide_fp_imm)
+      unique case (vinsn_issue_q.vtype.vsew)
+        EW32: begin
+          for (int e = 0; e < 2; e++) begin
+           automatic fp16_t fp16 = vinsn_issue_q.scalar_op[15:0];
+           automatic fp32_t fp32;
+
+            fp32.s = fp16.s;
+            fp32.e = (fp16.e - 15) + 127;
+            fp32.m = {fp16.m, 13'b0};
+
+            wide_fp_scalar_op[32*e +: 32] = fp32;
+          end
+        end
+        EW64: begin
+          automatic fp32_t fp32 = vinsn_issue_q.scalar_op[31:0];
+          automatic fp64_t fp64;
+
+          fp64.s = fp32.s;
+          fp64.e = (fp32.e - 127) + 1023;
+          fp64.m = {fp32.m, 29'b0};
+
+          wide_fp_scalar_op = fp64;
+        end
+        default:;
+      endcase
+  end
+
+  assign scalar_op = vinsn_issue_q.wide_fp_imm ? wide_fp_scalar_op : normal_scalar_op;
 
   /****************
    *  Multiplier  *

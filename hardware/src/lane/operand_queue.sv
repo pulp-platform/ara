@@ -182,6 +182,35 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
           endcase
       end
 
+      // Floating-Point re-encoding
+      OpQueueConversionWideFP2: begin
+        unique case (cmd.eew)
+          EW16: begin
+            for (int e = 0; e < 2; e++) begin
+             automatic fp16_t fp16 = ibuf_operand[8*select + 32*e +: 16];
+             automatic fp32_t fp32;
+
+              fp32.s = fp16.s;
+              fp32.e = (fp16.e - 15) + 127;
+              fp32.m = {fp16.m, 13'b0};
+
+              conv_operand[32*e +: 32] = fp32;
+            end
+          end
+          EW32: begin
+            automatic fp32_t fp32 = ibuf_operand[8*select +: 32];
+            automatic fp64_t fp64;
+
+            fp64.s = fp32.s;
+            fp64.e = (fp32.e - 127) + 1023;
+            fp64.m = {fp32.m, 29'b0};
+
+            conv_operand = fp64;
+          end
+          default:;
+        endcase
+      end
+
       default:;
     endcase
   end: type_conversion
@@ -211,7 +240,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
       // Count the used elements
       unique case (cmd.conv)
         OpQueueConversionSExt2,
-        OpQueueConversionZExt2:
+        OpQueueConversionZExt2,
+        OpQueueConversionWideFP2:
           if (SupportIntExt2)
             vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
         OpQueueConversionSExt4,
@@ -228,7 +258,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
 
       // Update the pointer to the input operand
       unique case (cmd.conv)
-        OpQueueConversionSExt2, OpQueueConversionZExt2: if (SupportIntExt2) select_d = select_q + 4;
+        OpQueueConversionSExt2, OpQueueConversionZExt2, OpQueueConversionWideFP2: if (SupportIntExt2) select_d = select_q + 4;
         OpQueueConversionSExt4, OpQueueConversionZExt4: if (SupportIntExt4) select_d = select_q + 2;
         OpQueueConversionSExt8, OpQueueConversionZExt8: if (SupportIntExt8) select_d = select_q + 1;
         default:; // Do nothing.
