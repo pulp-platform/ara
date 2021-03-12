@@ -146,6 +146,7 @@ jobs:
 
     - name: Download the GCC toolchain
       uses: actions/download-artifact@v2
+      path: install/riscv-gcc
       with:
         name: tc-gcc
 
@@ -171,11 +172,13 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
+      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
 
     - name: Get GCC toolchain artifacts
       uses: actions/download-artifact@v2
+      path: install/riscv-gcc
       with:
         name: tc-gcc
 
@@ -201,15 +204,17 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
+      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
 
     - name: Get Verilator artifacts
       uses: actions/download-artifact@v2
+      path: install/verilator
       with:
         name: tc-verilator
 
-    - name: Set the Verilator root
+    - name: Set the Verilator root directory
       run: |
         echo VERILATOR_ROOT="$GITHUB_WORKSPACE/install/verilator" >> $GITHUB_ENV
         VERILATOR_ROOT="$GITHUB_WORKSPACE/install/verilator"
