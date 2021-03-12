@@ -41,11 +41,13 @@ jobs:
       run: |
         sudo apt-get install libmpc-dev
         CC=gcc CXX=g++ make toolchain
+    - name: Tar GCC
+      run: tar -cvf tc-gcc.tar install/riscv-gcc
     - name: Upload GCC
       uses: actions/upload-artifact@v2
       with:
         name: tc-gcc
-        path: install/riscv-gcc
+        path: tc-gcc.tar
 
   tc-isa-sim:
     runs-on: ubuntu-latest
@@ -74,11 +76,13 @@ jobs:
     - name: Compile Spike
       if: steps.tc-isa-sim-cache.outputs.cache-hit != 'true'
       run: make riscv-isa-sim
+    - name: Tar Spike
+      run: tar -cvf tc-isa-sim.tar install/riscv-isa-sim
     - name: Upload Spike
       uses: actions/upload-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
+        path: tc-isa-sim.tar
 
   tc-verilator:
     runs-on: ubuntu-latest
@@ -108,11 +112,13 @@ jobs:
       run: |
         sudo apt-get install flex libfl-dev
         make verilator
+    - name: Tar Verilator
+      run: tar -cvf tc-verilator.tar install/verilator
     - name: Upload Verilator
       uses: actions/upload-artifact@v2
       with:
         name: tc-verilator
-        path: install/verilator
+        path: tc-verilator.tar
 
 ###################
 #  Compile stage  #
@@ -131,7 +137,8 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-gcc
-        path: install/riscv-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
     - name: Compile applications
       run: make -C apps
     - name: Upload applications
@@ -153,12 +160,14 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
     - name: Get GCC toolchain artifacts
       uses: actions/download-artifact@v2
       with:
         name: tc-gcc
-        path: install/riscv-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
     - name: Compile applications
       run: make -C apps riscv_tests
     - name: Upload applications
@@ -180,12 +189,14 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
     - name: Get Verilator artifacts
       uses: actions/download-artifact@v2
       with:
         name: tc-verilator
-        path: install/verilator
+    - name: Untar Verilator
+      run: tar xvf tc-verilator.tar
     - name: Set the Verilator root directory
       run: |
         echo VERILATOR_ROOT="$GITHUB_WORKSPACE/install/verilator" >> $GITHUB_ENV
@@ -198,11 +209,13 @@ jobs:
       run: |
         make -C hardware apply-patches
         make -C hardware verilate
-    - name: Upload Ara
+    - name: Tar Verilated model of Ara
+      run: tar -cvf ara.tar hardware/build/verilator hardware/bender
+    - name: Upload Ara Verilated model
       uses: actions/upload-artifact@v2
       with:
         name: compile-ara
-        path: hardware/build/verilator
+        path: ara.tar
 
 ####################
 #  Simulate stage  #
@@ -217,12 +230,14 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
-    - name: Get Verilated Ara
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
         name: compile-ara
-        path: hardware/build/verilator
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
@@ -240,12 +255,14 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
-    - name: Get Verilated Ara
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
         name: compile-ara
-        path: hardware/build/verilator
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
@@ -263,12 +280,14 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
-    - name: Get Verilated Ara
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
         name: compile-ara
-        path: hardware/build/verilator
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
@@ -290,12 +309,14 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
-    - name: Get Verilated Ara
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
         name: compile-ara
-        path: hardware/build/verilator
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
     - name: Get RISC-V tests
       uses: actions/download-artifact@v2
       with:
@@ -313,12 +334,8 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: tc-isa-sim
-        path: install/riscv-isa-sim
-    - name: Get Verilated Ara
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-ara
-        path: hardware/build/verilator
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
     - name: Run tests
       run: |
         make -C apps/riscv-tests/isa clean
