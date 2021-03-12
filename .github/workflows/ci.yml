@@ -146,9 +146,9 @@ jobs:
 
     - name: Download the GCC toolchain
       uses: actions/download-artifact@v2
-      path: install/riscv-gcc
       with:
         name: tc-gcc
+        path: install/riscv-gcc
 
     - name: Compile applications
       run: make -C apps
@@ -172,15 +172,15 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
-      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
+        path: install/riscv-isa-sim
 
     - name: Get GCC toolchain artifacts
       uses: actions/download-artifact@v2
-      path: install/riscv-gcc
       with:
         name: tc-gcc
+        path: install/riscv-gcc
 
     - name: Compile applications
       run: make -C apps riscv_tests
@@ -204,15 +204,15 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
-      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
+        path: install/riscv-isa-sim
 
     - name: Get Verilator artifacts
-      uses: actions/download-artifact@v2
       path: install/verilator
       with:
         name: tc-verilator
+        uses: actions/download-artifact@v2
 
     - name: Set the Verilator root directory
       run: |
@@ -245,15 +245,15 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
-      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
+        path: install/riscv-isa-sim
 
     - name: Get Verilated Ara
       uses: actions/download-artifact@v2
-      path: hardware/build/verilator
       with:
         name: compile-ara
+        path: hardware/build/verilator
 
     - name: Run test
       run: make -C hardware app=hello_world simv
@@ -264,15 +264,15 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
-      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
+        path: install/riscv-isa-sim
 
     - name: Get Verilated Ara
       uses: actions/download-artifact@v2
-      path: hardware/build/verilator
       with:
         name: compile-ara
+        path: hardware/build/verilator
 
     - name: Run test
       run: make -C hardware app=imatmul simv
@@ -283,15 +283,15 @@ jobs:
 
     - name: Get Spike artifacts
       uses: actions/download-artifact@v2
-      path: install/riscv-isa-sim
       with:
         name: tc-isa-sim
+        path: install/riscv-isa-sim
 
     - name: Get Verilated Ara
       uses: actions/download-artifact@v2
-      path: hardware/build/verilator
       with:
         name: compile-ara
+        path: hardware/build/verilator
 
     - name: Run test
       run: make -C hardware app=fmatmul simv
