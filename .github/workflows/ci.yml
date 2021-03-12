@@ -347,3 +347,10 @@ jobs:
       run: |
         make -C apps/riscv-tests/isa clean
         make -C apps riscv_tests_spike
+    - name: Upload dumps
+      uses: actions/upload-artifact@v2
+      with:
+        name: riscv-tests-spike
+        path: |
+          apps/riscv-tests/isa/*.dump
+          apps/riscv-tests/isa/*.out32
