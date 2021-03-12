@@ -207,6 +207,7 @@ jobs:
       run: git submodule update --init --recursive hardware
     - name: Compile Verilated model of Ara
       run: |
+        sudo apt-get install libelf-dev
         make -C hardware apply-patches
         make -C hardware verilate
     - name: Tar Verilated model of Ara
