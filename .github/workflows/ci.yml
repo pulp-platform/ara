@@ -6,17 +6,42 @@
 
 # Run functional regression checks
 name: ci
-on: [push]
+on: [push, pull_request]
 
 jobs:
+
+#####################
+#  Toolchain stage  #
+#####################
+
   tc-gcc:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+
+    - name: Recover the submodule commit hash
+      id: recover_hash
+      run: echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
+
+    - name: Cache the GCC toolchain
+      uses: actions/cache@v2
+      id: tc-gcc-cache-hash
+      env:
+        cache-name: cache-gcc
+      with:
+        path: install/riscv-gcc
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tcc-gcc-hash }}
+        restore-keys:
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tcc-gcc-hash }}
+
     - name: Download the GCC toolchain
+      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+
     - name: Compile GCC
-      run: make toolchain
+      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
+      run: CC=gcc CXX=g++ make toolchain
+
     - name: Upload GCC
       uses: actions/upload-artifact@v2
       with:
@@ -27,12 +52,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+
+    - name: Recover the submodule commit hash
+      id: recover_hash
+      run: echo "tc-isa-sim-hash=`git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1`" >> $GITHUB_ENV
+
+    - name: Cache Spike
+      uses: actions/cache@v2
+      id: tc-isa-sim-cache
+      env:
+        cache-name: cache-spike
+      with:
+        path: install/riscv-isa-sim
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-isa-sim-hash }}
+        restore-keys:
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-isa-sim-hash }}
+
     - name: Download Spike
+      if: steps.tc-isa-sim-cache.outputs.cache-hit != 'true'
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
+
     - name: Compile Spike
+      if: steps.tc-isa-sim-cache.outputs.cache-hit != 'true'
       run: make riscv-isa-sim
+
     - name: Upload Spike
       uses: actions/upload-artifact@v2
       with:
@@ -43,13 +88,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+
+    - name: Recover the submodule commit hash
+      id: recover_hash
+      run: echo "tc-verilator-hash=`git submodule status toolchain/verilator | cut -d' ' -f1`" >> $GITHUB_ENV
+
+    - name: Cache Verilator
+      uses: actions/cache@v2
+      id: tc-verilator-cache
+      env:
+        cache-name: cache-verilator
+      with:
+        path: install/verilator
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
+        restore-keys:
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
+
     - name: Download Verilator
+      if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
       run: |
         git submodule update --init --recursive -- toolchain/verilator
+
     - name: Compile Verilator
+      if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get install flex libfl-dev
         make verilator
+
     - name: Upload Verilator
       uses: actions/upload-artifact@v2
       with:
