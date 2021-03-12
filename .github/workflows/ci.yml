@@ -337,6 +337,12 @@ jobs:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
+    - name: Download the GCC toolchain
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
     - name: Run tests
       run: |
         make -C apps/riscv-tests/isa clean
