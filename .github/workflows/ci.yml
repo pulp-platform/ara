@@ -21,18 +21,20 @@ jobs:
 
     - name: Recover the submodule commit hash
       id: recover_hash
-      run: echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
+      run: |
+        git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1
+        echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
 
     - name: Cache the GCC toolchain
       uses: actions/cache@v2
-      id: tc-gcc-cache-hash
+      id: tc-gcc-cache
       env:
         cache-name: cache-gcc
       with:
         path: install/riscv-gcc
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tcc-gcc-hash }}
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
         restore-keys:
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tcc-gcc-hash }}
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
 
     - name: Download the GCC toolchain
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
@@ -57,7 +59,9 @@ jobs:
 
     - name: Recover the submodule commit hash
       id: recover_hash
-      run: echo "tc-isa-sim-hash=`git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1`" >> $GITHUB_ENV
+      run: |
+        git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1
+        echo "tc-isa-sim-hash=`git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1`" >> $GITHUB_ENV
 
     - name: Cache Spike
       uses: actions/cache@v2
@@ -93,7 +97,9 @@ jobs:
 
     - name: Recover the submodule commit hash
       id: recover_hash
-      run: echo "tc-verilator-hash=`git submodule status toolchain/verilator | cut -d' ' -f1`" >> $GITHUB_ENV
+      run: |
+        git submodule status toolchain/verilator | cut -d' ' -f1
+        echo "tc-verilator-hash=`git submodule status toolchain/verilator | cut -d' ' -f1`" >> $GITHUB_ENV
 
     - name: Cache Verilator
       uses: actions/cache@v2
