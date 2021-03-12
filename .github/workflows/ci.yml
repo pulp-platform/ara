@@ -40,7 +40,9 @@ jobs:
 
     - name: Compile GCC
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
-      run: CC=gcc CXX=g++ make toolchain
+      run: |
+        sudo apt-get install libmpc-dev
+        CC=gcc CXX=g++ make toolchain
 
     - name: Upload GCC
       uses: actions/upload-artifact@v2
