@@ -164,7 +164,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFMAX]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX]};
 
   /********************
    *  Scalar operand  *
@@ -414,6 +414,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         fp_op = MINMAX;
         fp_rm = RTZ;
       end
+      VFSGNJ : begin
+        fp_op = SGNJ;
+        fp_rm = RNE;
+      end
+      VFSGNJN : begin
+        fp_op = SGNJ;
+        fp_rm = RTZ;
+      end
+      VFSGNJX : begin
+        fp_op = SGNJ;
+        fp_rm = RDN;
+      end
       default:;
     endcase
 
@@ -645,7 +657,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFMAX]: begin
+      [VFADD:VFSGNJX]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_result;
         unit_out_mask   = vfpu_mask;
@@ -760,7 +772,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         commit_cnt_d = vfu_operation_i.vl;
 
       // Check for NaN boxing of scalar operands
-      if (vfu_operation_i.op inside {[VFADD:VFMAX]} && vfu_operation_i.use_scalar_op)
+      if (vfu_operation_i.op inside {[VFADD:VFSGNJX]} && vfu_operation_i.use_scalar_op)
         case (vfu_operation_i.vtype.vsew)
           EW16: if (~(&vfu_operation_i.scalar_op[63:16])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h0000000000007e00;
           EW32: if (~(&vfu_operation_i.scalar_op[63:32])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h000000007fc00000;
