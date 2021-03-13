@@ -59,7 +59,7 @@ package ara_pkg;
    *  Operations  *
    ****************/
 
-  typedef enum logic [5:0] {
+  typedef enum logic [6:0] {
     // Arithmetic and logic instructions
     VADD, VSUB, VADC, VSBC, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
     // Shifts,
@@ -71,7 +71,7 @@ package ara_pkg;
     // Div
     VDIVU, VDIV, VREMU, VREM,
     // FPU
-    VFADD, VFSUB, VFRSUB, VFMUL, VFMACC, VFMADD, VFMIN, VFMAX,
+    VFADD, VFSUB, VFRSUB, VFMUL, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB, VFNMSUB, VFMIN, VFMAX,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Integer comparison instructions
