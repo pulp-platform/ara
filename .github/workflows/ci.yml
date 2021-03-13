@@ -1,0 +1,356 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+
+# Run functional regression checks
+name: ci
+on: [push, pull_request]
+
+jobs:
+
+#####################
+#  Toolchain stage  #
+#####################
+
+  tc-gcc:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Recover the submodule commit hash
+      id: recover_hash
+      run: |
+        git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1
+        echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
+    - name: Cache the GCC toolchain
+      uses: actions/cache@v2
+      id: tc-gcc-cache
+      env:
+        cache-name: cache-gcc
+      with:
+        path: install/riscv-gcc
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
+        restore-keys:
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
+    - name: Download the GCC toolchain
+      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
+      run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+    - name: Compile GCC
+      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get install libmpc-dev
+        CC=gcc CXX=g++ make toolchain
+    - name: Tar GCC
+      run: tar -cvf tc-gcc.tar install/riscv-gcc
+    - name: Upload GCC
+      uses: actions/upload-artifact@v2
+      with:
+        name: tc-gcc
+        path: tc-gcc.tar
+
+  tc-isa-sim:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Recover the submodule commit hash
+      id: recover_hash
+      run: |
+        git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1
+        echo "tc-isa-sim-hash=`git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1`" >> $GITHUB_ENV
+    - name: Cache Spike
+      uses: actions/cache@v2
+      id: tc-isa-sim-cache
+      env:
+        cache-name: cache-spike
+      with:
+        path: install/riscv-isa-sim
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-isa-sim-hash }}
+        restore-keys:
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-isa-sim-hash }}
+    - name: Download Spike
+      if: steps.tc-isa-sim-cache.outputs.cache-hit != 'true'
+      run: |
+        git submodule update --init --recursive -- toolchain/riscv-isa-sim
+        git submodule foreach --recursive git reset --hard
+    - name: Compile Spike
+      if: steps.tc-isa-sim-cache.outputs.cache-hit != 'true'
+      run: make riscv-isa-sim
+    - name: Tar Spike
+      run: tar -cvf tc-isa-sim.tar install/riscv-isa-sim
+    - name: Upload Spike
+      uses: actions/upload-artifact@v2
+      with:
+        name: tc-isa-sim
+        path: tc-isa-sim.tar
+
+  tc-verilator:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Recover the submodule commit hash
+      id: recover_hash
+      run: |
+        git submodule status toolchain/verilator | cut -d' ' -f1
+        echo "tc-verilator-hash=`git submodule status toolchain/verilator | cut -d' ' -f1`" >> $GITHUB_ENV
+    - name: Cache Verilator
+      uses: actions/cache@v2
+      id: tc-verilator-cache
+      env:
+        cache-name: cache-verilator
+      with:
+        path: install/verilator
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
+        restore-keys:
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
+    - name: Download Verilator
+      if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
+      run: |
+        git submodule update --init --recursive -- toolchain/verilator
+    - name: Compile Verilator
+      if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get install flex libfl-dev
+        make verilator
+    - name: Tar Verilator
+      run: tar -cvf tc-verilator.tar install/verilator
+    - name: Upload Verilator
+      uses: actions/upload-artifact@v2
+      with:
+        name: tc-verilator
+        path: tc-verilator.tar
+
+###################
+#  Compile stage  #
+###################
+
+  compile-apps:
+    runs-on: ubuntu-latest
+    needs: tc-gcc
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download Spike
+      run: |
+        git submodule update --init --recursive -- toolchain/riscv-isa-sim
+        git submodule foreach --recursive git reset --hard
+    - name: Download the GCC toolchain
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
+    - name: Compile applications
+      run: make -C apps
+    - name: Upload applications
+      uses: actions/upload-artifact@v2
+      with:
+        name: compile-apps
+        path: apps/bin
+
+  compile-riscv-tests:
+    runs-on: ubuntu-latest
+    needs: ["tc-gcc", "tc-isa-sim"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download Spike
+      run: |
+        git submodule update --init --recursive -- toolchain/riscv-isa-sim
+        git submodule foreach --recursive git reset --hard
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get GCC toolchain artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
+    - name: Compile applications
+      run: make -C apps riscv_tests
+    - name: Upload applications
+      uses: actions/upload-artifact@v2
+      with:
+        name: compile-riscv-tests
+        path: apps/bin
+
+  compile-ara:
+    runs-on: ubuntu-latest
+    needs: ["tc-verilator", "tc-isa-sim"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download Spike
+      run: |
+        git submodule update --init --recursive -- toolchain/riscv-isa-sim
+        git submodule foreach --recursive git reset --hard
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilator artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-verilator
+    - name: Untar Verilator
+      run: tar xvf tc-verilator.tar
+    - name: Set the Verilator root directory
+      run: |
+        echo VERILATOR_ROOT="$GITHUB_WORKSPACE/install/verilator" >> $GITHUB_ENV
+        VERILATOR_ROOT="$GITHUB_WORKSPACE/install/verilator"
+        ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
+        ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
+    - name: Download RTL submodules
+      run: git submodule update --init --recursive hardware
+    - name: Compile Verilated model of Ara
+      run: |
+        sudo apt-get install libelf-dev
+        make -C hardware apply-patches
+        make -C hardware verilate
+    - name: Tar Verilated model of Ara
+      run: tar -cvf ara.tar hardware/build/verilator hardware/bender
+    - name: Upload Ara Verilated model
+      uses: actions/upload-artifact@v2
+      with:
+        name: compile-ara
+        path: ara.tar
+
+####################
+#  Simulate stage  #
+####################
+
+  simulate-hello-world:
+    runs-on: ubuntu-latest
+    needs: ["compile-ara", "compile-apps"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Get applications
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-apps
+        path: apps/bin
+    - name: Run test
+      run: make -C hardware app=hello_world simv
+
+  simulate-imatmul:
+    runs-on: ubuntu-latest
+    needs: ["compile-ara", "compile-apps"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Get applications
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-apps
+        path: apps/bin
+    - name: Run test
+      run: make -C hardware app=imatmul simv
+
+  simulate-fmatmul:
+    runs-on: ubuntu-latest
+    needs: ["compile-ara", "compile-apps"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Get applications
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-apps
+        path: apps/bin
+    - name: Run test
+      run: make -C hardware app=fmatmul simv
+
+########################
+#  RISC-V Tests stage  #
+########################
+
+  riscv-tests-simv:
+    runs-on: ubuntu-latest
+    needs: ["compile-ara", "compile-riscv-tests"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Get RISC-V tests
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-riscv-tests
+        path: apps/bin
+    - name: Run tests
+      run: make -C hardware -j4 riscv_tests_simv
+
+  riscv-tests-spike:
+    runs-on: ubuntu-latest
+    needs: ["tc-isa-sim", "compile-riscv-tests"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Download the GCC toolchain
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
+    - name: Run tests
+      run: |
+        make -C apps/riscv-tests/isa clean
+        make -C apps riscv_tests_spike
+    - name: Upload dumps
+      uses: actions/upload-artifact@v2
+      with:
+        name: riscv-tests-spike
+        path: |
+          apps/riscv-tests/isa/*.dump
+          apps/riscv-tests/isa/*.out32

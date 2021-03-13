@@ -1,0 +1,22 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+#
+# Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+
+# Lint the design
+name: lint
+on: [push, pull_request]
+
+jobs:
+  check-license:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+    - name: Install requirements
+      run: pip install -r python-requirements.txt
+    - name: Check license
+      run: python scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
