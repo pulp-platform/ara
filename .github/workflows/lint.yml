@@ -6,7 +6,7 @@
 
 # Lint the design
 name: lint
-on: [push, pull_request]
+on: [push]
 
 jobs:
   check-license:
