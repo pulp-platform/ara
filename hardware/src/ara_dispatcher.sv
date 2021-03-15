@@ -1550,6 +1550,81 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op        = ara_pkg::VFNMSAC;
                   ara_req_d.use_vd_op = 1'b1;
                 end
+                6'b110000: begin // VFWADD
+                  ara_req_d.op             = ara_pkg::VFADD;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                end
+                6'b110010: begin // VFWSUB
+                  ara_req_d.op             = ara_pkg::VFSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                end
+                6'b110100: begin // VFWADD.W
+                  ara_req_d.op             = ara_pkg::VFADD;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                end
+                6'b110110: begin // VFWSUB.W
+                  ara_req_d.op             = ara_pkg::VFSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                end
+                6'b111000: begin // VFWMUL
+                  ara_req_d.op             = ara_pkg::VFMUL;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                end
+                6'b111100: begin // VFWMACC
+                  ara_req_d.op             = ara_pkg::VFMACC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
+                6'b111101: begin // VFWNMACC
+                  ara_req_d.op             = ara_pkg::VFNMACC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
+                6'b111110: begin // VFWMSAC
+                  ara_req_d.op             = ara_pkg::VFMSAC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
+                6'b111111: begin // VFWNMSAC
+                  ara_req_d.op             = ara_pkg::VFNMSAC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
                 default: begin
                   // Trigger an error
                   acc_resp_o.error = 1'b1;
@@ -1677,6 +1752,81 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b101111: begin
                   ara_req_d.op        = ara_pkg::VFNMSAC;
                   ara_req_d.use_vd_op = 1'b1;
+                end
+                6'b110000: begin // VFWADD
+                  ara_req_d.op             = ara_pkg::VFADD;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                end
+                6'b110010: begin // VFWSUB
+                  ara_req_d.op             = ara_pkg::VFSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                end
+                6'b110100: begin // VFWADD.W
+                  ara_req_d.op             = ara_pkg::VFADD;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                end
+                6'b110110: begin // VFWSUB.W
+                  ara_req_d.op             = ara_pkg::VFSUB;
+                  ara_req_d.swap_vs2_vd_op = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                end
+                6'b111000: begin // VFWMUL
+                  ara_req_d.op             = ara_pkg::VFMUL;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                end
+                6'b111100: begin // VFWMACC
+                  ara_req_d.op             = ara_pkg::VFMACC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
+                6'b111101: begin // VFWNMACC
+                  ara_req_d.op             = ara_pkg::VFNMACC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
+                6'b111110: begin // VFWMSAC
+                  ara_req_d.op             = ara_pkg::VFMSAC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                end
+                6'b111111: begin // VFWNMSAC
+                  ara_req_d.op             = ara_pkg::VFNMSAC;
+                  ara_req_d.use_vd_op      = 1'b1;
+                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  ara_req_d.wide_fp_imm    = 1'b1;
+                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
                 end
                 default: begin
                   // Trigger an error
