@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+ - Vector floating-point compare instructions (vmfeq, vmfne, vmflt, vmfle, vmfgt, vmfge)
+
 ### Changed
 
 - Alignment with lowRISC's coding guidelines
