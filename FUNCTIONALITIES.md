@@ -43,6 +43,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector floating-point sign-injection instructions: `vfsgnj`, `vfsgnjn`, `vfsgnjx`
 - Vector floating-point merge instruction: `vfmerge`
 - Vector floating-point move instruction: `vfmv`
+- Vector floating-point compare instructions: `vmfeq`, `vmfne`, `vmflt`, `vmfle`, `vmfgt`, `vmfge`
 
 ## Vector mask instructions
 
