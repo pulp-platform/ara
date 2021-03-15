@@ -13,7 +13,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     parameter int  unsigned NrBanks = 0,                         // Number of banks in the vector register file
     parameter type          vaddr_t = logic,                     // Type used to address vector register file elements
     // Dependant parameters. DO NOT CHANGE!
-    parameter type          strb_t  = logic[$bits(elen_t)/8-1:0]
+    localparam type          strb_t = logic[$bits(elen_t)/8-1:0]
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,

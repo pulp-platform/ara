@@ -9,9 +9,9 @@
 
 module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth = $bits(elen_t),
-    parameter int  unsigned StrbWidth = DataWidth/8,
-    parameter type          strb_t    = logic [DataWidth/8-1:0]
+    localparam int  unsigned DataWidth = $bits(elen_t),
+    localparam int  unsigned StrbWidth = DataWidth/8,
+    localparam type          strb_t    = logic [DataWidth/8-1:0]
   ) (
     input  logic    clk_i,
     input  logic    rst_ni,

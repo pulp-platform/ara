@@ -13,9 +13,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     parameter int   unsigned NumPipeRegs  = 0,
     parameter vew_e          ElementWidth = EW64,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int   unsigned DataWidth    = $bits(elen_t),
-    parameter int   unsigned StrbWidth    = DataWidth/8,
-    parameter type           strb_t       = logic [DataWidth/8-1:0]
+    localparam int   unsigned DataWidth   = $bits(elen_t),
+    localparam int   unsigned StrbWidth   = DataWidth/8,
+    localparam type           strb_t      = logic [DataWidth/8-1:0]
   ) (
     input  logic    clk_i,
     input  logic    rst_ni,

@@ -8,16 +8,16 @@
 // together with the execution units.
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes         = 1,                                   // Number of lanes
+    parameter int  unsigned NrLanes          = 1,                                   // Number of lanes
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
-    parameter int  unsigned MaxVLenPerLane  = VLEN / NrLanes,                      // In bits
-    parameter int  unsigned MaxVLenBPerLane = VLENB / NrLanes,                     // In bytes
-    parameter int  unsigned VRFSizePerLane  = MaxVLenPerLane * 32,                 // In bits
-    parameter int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32,                // In bytes
-    parameter type          vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0], // Address of an element in the lane's VRF
-    parameter int  unsigned DataWidth       = $bits(elen_t),                       // Width of the lane datapath
-    parameter type          strb_t          = logic [DataWidth/8-1:0]              // Byte-strobe type
+    localparam int  unsigned MaxVLenPerLane  = VLEN / NrLanes,                      // In bits
+    localparam int  unsigned MaxVLenBPerLane = VLENB / NrLanes,                     // In bytes
+    localparam int  unsigned VRFSizePerLane  = MaxVLenPerLane * 32,                 // In bits
+    localparam int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32,                // In bytes
+    localparam type          vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0], // Address of an element in the lane's VRF
+    localparam int  unsigned DataWidth       = $bits(elen_t),                       // Width of the lane datapath
+    localparam type          strb_t          = logic [DataWidth/8-1:0]              // Byte-strobe type
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,

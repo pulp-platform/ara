@@ -10,12 +10,12 @@
 // predicated instructions.
 
 module masku import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes   = 0,
-    parameter type          vaddr_t   = logic,                // Type used to address vector register file elements
+    parameter int  unsigned NrLanes    = 0,
+    parameter type          vaddr_t    = logic,                // Type used to address vector register file elements
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth = $bits(elen_t),        // Width of the lane datapath
-    parameter int  unsigned StrbWidth = DataWidth/8,
-    parameter type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
+    localparam int  unsigned DataWidth = $bits(elen_t),        // Width of the lane datapath
+    localparam int  unsigned StrbWidth = DataWidth/8,
+    localparam type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
   ) (
     input  logic                        clk_i,
     input  logic                        rst_ni,

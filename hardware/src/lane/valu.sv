@@ -8,13 +8,13 @@
 // in a SIMD fashion, always operating on 64 bits.
 
 module valu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes   = 0,
+    parameter int  unsigned NrLanes    = 0,
     // Type used to address vector register file elements
-    parameter type          vaddr_t   = logic,
+    parameter type          vaddr_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth = $bits(elen_t),
-    parameter int  unsigned StrbWidth = DataWidth/8,
-    parameter type          strb_t    = logic [StrbWidth-1:0]
+    localparam int  unsigned DataWidth = $bits(elen_t),
+    localparam int  unsigned StrbWidth = DataWidth/8,
+    localparam type          strb_t    = logic [StrbWidth-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,

@@ -22,8 +22,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     parameter type          axi_req_t    = logic,
     parameter type          axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth    = $bits(elen_t),
-    parameter type          strb_t       = logic [DataWidth/8-1:0]
+    localparam int  unsigned DataWidth   = $bits(elen_t),
+    localparam type          strb_t      = logic [DataWidth/8-1:0]
   ) (
     input  logic                    clk_i,
     input  logic                    rst_ni,

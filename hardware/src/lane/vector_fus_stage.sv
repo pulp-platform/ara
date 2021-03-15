@@ -8,12 +8,12 @@
 // of each lane, namely the ALU and the Multiplier/FPU.
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes   = 0,
+    parameter int  unsigned NrLanes    = 0,
     // Type used to address vector register file elements
-    parameter type          vaddr_t   = logic,
+    parameter type          vaddr_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth = $bits(elen_t),
-    parameter type          strb_t    = logic [DataWidth/8-1:0]
+    localparam int  unsigned DataWidth = $bits(elen_t),
+    localparam type          strb_t    = logic [DataWidth/8-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,

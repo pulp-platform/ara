@@ -16,8 +16,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     parameter logic          SupportIntExt4 = 1'b0,
     parameter logic          SupportIntExt8 = 1'b0,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int   unsigned DataWidth      = $bits(elen_t),
-    parameter int   unsigned StrbWidth      = DataWidth/8
+    localparam int   unsigned DataWidth     = $bits(elen_t),
+    localparam int   unsigned StrbWidth     = DataWidth/8
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,

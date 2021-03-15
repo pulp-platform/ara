@@ -8,9 +8,9 @@
 
 module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth = $bits(elen_t),
-    parameter int  unsigned StrbWidth = DataWidth/8,
-    parameter type          strb_t    = logic [StrbWidth-1:0]
+    localparam int  unsigned DataWidth = $bits(elen_t),
+    localparam int  unsigned StrbWidth = DataWidth/8,
+    localparam type          strb_t    = logic [StrbWidth-1:0]
   ) (
     input  elen_t   operand_a_i,
     input  elen_t   operand_b_i,

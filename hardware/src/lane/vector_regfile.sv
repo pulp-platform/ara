@@ -7,13 +7,13 @@
 // This is the vector register file of one lane.
 
 module vector_regfile import ara_pkg::*; #(
-    parameter int  unsigned NrBanks   = 0,                    // Number of banks in the vector register file
-    parameter int  unsigned VRFSize   = 0,                    // Size of the VRF, in bits
+    parameter int  unsigned NrBanks    = 0,                    // Number of banks in the vector register file
+    parameter int  unsigned VRFSize    = 0,                    // Size of the VRF, in bits
     // Dependant parameters. DO NOT CHANGE!
-    parameter int  unsigned DataWidth = $bits(elen_t),
-    parameter int  unsigned StrbWidth = DataWidth / 8,
-    parameter type          vaddr_t   = logic,
-    parameter type          strb_t    = logic [StrbWidth-1:0]
+    localparam int  unsigned DataWidth = $bits(elen_t),
+    localparam int  unsigned StrbWidth = DataWidth / 8,
+    parameter type          vaddr_t    = logic,
+    localparam type          strb_t    = logic [StrbWidth-1:0]
   ) (
     input  logic                           clk_i,
     input  logic                           rst_ni,
