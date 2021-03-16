@@ -37,6 +37,7 @@ sources:
     - hardware/src/lane/simd_mul.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/masku/masku.sv
+    - hardware/src/sldu/sldu.sv
     - hardware/src/vlsu/addrgen.sv
     - hardware/src/vlsu/vldu.sv
     - hardware/src/vlsu/vstu.sv
