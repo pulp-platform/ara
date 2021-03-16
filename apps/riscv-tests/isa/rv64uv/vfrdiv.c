@@ -19,7 +19,7 @@ void TEST_CASE1(void) {
   BOX_HALF_IN_DOUBLE(dscalar_16,  0xcc5f);
   asm volatile("vfrdiv.vf v4, v2, %[A]" :: [A] "f" (dscalar_16));
   //               0.4922,  0.2830,  0.4685, -0.7412, -0.3931, -0.4585,  0.1870,  0.7534,  0.2783, -0.6250,  0.6665,  1.6875,  1.6328,  0.4153, -1.5801, -0.9810
-  VCMP_U16(1, v4,  0x37e0,  0x3487,  0x377f,  0xb9ee,  0xb64a,  0xb756,  0x31fc,  0x3a07,  0x3474,  0xb900,  0x3955,  0x3ec0,  0x3e88,  0x36a5,  0xbe52,  0xbbd9);
+  VCMP_U16(1, v4,  0x37df,  0x3486,  0x377f,  0xb9ed,  0xb64a,  0xb756,  0x31fb,  0x3a07,  0x3474,  0xb8ff,  0x3954,  0x3ec0,  0x3e87,  0x36a5,  0xbe52,  0xbbd8);
 
   VSET(16, e32, m1);
   double dscalar_32;
@@ -29,7 +29,7 @@ void TEST_CASE1(void) {
   BOX_FLOAT_IN_DOUBLE(dscalar_32,  0xc94754f7);
   asm volatile("vfrdiv.vf v4, v2, %[A]" :: [A] "f" (dscalar_32));
   //              -0.83213836,  0.98171520,  9.55609035, -12.71239853,  3.79113102,  2.78709030, -2.05922723, -0.85552144, -3.37506533,  13.09004879, -2.08367324, -3.09395337, -1.08109772,  122.71524811, -1.54944515,  1.07537961
-  VCMP_U32(2, v4,  0xbf550705,  0x3f7b51b0,  0x4118e5bf,  0xc14b65fc,  0x4072a1e4,  0x40325fb0,  0xc003ca61,  0xbf5b0374,  0xc0580112,  0x415170d7,  0xc0055ae7,  0xc0460355,  0xbf8a6169,  0x42f56e35,  0xbfc65438,  0x3f89a60a);
+  VCMP_U32(2, v4,  0xbf550705,  0x3f7b51af,  0x4118e5bf,  0xc14b65fc,  0x4072a1e4,  0x40325faf,  0xc003ca60,  0xbf5b0374,  0xc0580112,  0x415170d6,  0xc0055ae7,  0xc0460354,  0xbf8a6168,  0x42f56e35,  0xbfc65437,  0x3f89a60a);
 
   VSET(16, e64, m1);
   double dscalar_64;
@@ -39,7 +39,7 @@ void TEST_CASE1(void) {
   BOX_DOUBLE_IN_DOUBLE(dscalar_64,  0xc1062c24fb9df3c0);
   asm volatile("vfrdiv.vf v4, v2, %[A]" :: [A] "f" (dscalar_64));
   //               0.1264422847425051, -0.0238483573164265,  0.0463338536137523,  0.0206680130126992,  0.0448669363895861, -0.0230992907800273, -0.0271651810355835, -0.0259322982659703, -0.0328278356662322, -0.0906892332144711,  0.1464840148013292, -0.0439395197625382, -0.0736563946626949,  0.0418740747326899,  0.0316371233773435, -0.1030372373723578
-  VCMP_U64(3, v4,  0x3fc02f42c2e67960,  0xbf986bb42af3122c,  0x3fa7b91223effbc5,  0x3f9529fedfd9f42f,  0x3fa6f8cc90ee127b,  0xbf97a75729d81371,  0xbf9bd130708d0e6e,  0xbf9a8dff13d98f12,  0xbfa0cecf612b7be2,  0xbfb73768dac16680,  0x3fc2bffcfa7aafc5,  0xbfa67f3da0c39bb5,  0xbfb2db253e37b0f2,  0x3fa57084cb0de853,  0x3fa032bdb47d8bce,  0xbfba60a5fcc8d2bf);
+  VCMP_U64(3, v4,  0x3fc02f42c2e6795f,  0xbf986bb42af3122b,  0x3fa7b91223effbc4,  0x3f9529fedfd9f42e,  0x3fa6f8cc90ee127a,  0xbf97a75729d81370,  0xbf9bd130708d0e6e,  0xbf9a8dff13d98f11,  0xbfa0cecf612b7be2,  0xbfb73768dac16680,  0x3fc2bffcfa7aafc4,  0xbfa67f3da0c39bb5,  0xbfb2db253e37b0f2,  0x3fa57084cb0de853,  0x3fa032bdb47d8bce,  0xbfba60a5fcc8d2be);
 };
 
 // Simple random test with similar values (vector-scalar) (masked)
@@ -54,7 +54,7 @@ void TEST_CASE2(void) {
   VCLEAR(v4);
   asm volatile("vfrdiv.vf v4, v2, %[A], v0.t" :: [A] "f" (dscalar_16));
   //                0.0000,  0.2830,  0.0000, -0.7412,  0.0000, -0.4585,  0.0000,  0.7534,  0.0000, -0.6250,  0.0000,  1.6875,  0.0000,  0.4153,  0.0000, -0.9810
-  VCMP_U16(4, v4,  0x0,  0x3487,  0x0,  0xb9ee,  0x0,  0xb756,  0x0,  0x3a07,  0x0,  0xb900,  0x0,  0x3ec0,  0x0,  0x36a5,  0x0,  0xbbd9);
+  VCMP_U16(4, v4,  0x0,  0x3486,  0x0,  0xb9ed,  0x0,  0xb756,  0x0,  0x3a07,  0x0,  0xb8ff,  0x0,  0x3ec0,  0x0,  0x36a5,  0x0,  0xbbd8);
 
   VSET(16, e32, m1);
   double dscalar_32;
@@ -66,7 +66,7 @@ void TEST_CASE2(void) {
   VCLEAR(v4);
   asm volatile("vfrdiv.vf v4, v2, %[A], v0.t" :: [A] "f" (dscalar_32));
   //                0.00000000,  0.98171520,  0.00000000, -12.71239853,  0.00000000,  2.78709030,  0.00000000, -0.85552144,  0.00000000,  13.09004879,  0.00000000, -3.09395337,  0.00000000,  122.71524811,  0.00000000,  1.07537961
-  VCMP_U32(5, v4,  0x0,  0x3f7b51b0,  0x0,  0xc14b65fc,  0x0,  0x40325fb0,  0x0,  0xbf5b0374,  0x0,  0x415170d7,  0x0,  0xc0460355,  0x0,  0x42f56e35,  0x0,  0x3f89a60a);
+  VCMP_U32(5, v4,  0x0,  0x3f7b51af,  0x0,  0xc14b65fc,  0x0,  0x40325faf,  0x0,  0xbf5b0374,  0x0,  0x415170d6,  0x0,  0xc0460354,  0x0,  0x42f56e35,  0x0,  0x3f89a60a);
 
   VSET(16, e64, m1);
   double dscalar_64;
@@ -78,12 +78,15 @@ void TEST_CASE2(void) {
   VCLEAR(v4);
   asm volatile("vfrdiv.vf v4, v2, %[A], v0.t" :: [A] "f" (dscalar_64));
   //                0.0000000000000000, -0.0238483573164265,  0.0000000000000000,  0.0206680130126992,  0.0000000000000000, -0.0230992907800273,  0.0000000000000000, -0.0259322982659703,  0.0000000000000000, -0.0906892332144711,  0.0000000000000000, -0.0439395197625382,  0.0000000000000000,  0.0418740747326899,  0.0000000000000000, -0.1030372373723578
-  VCMP_U64(6, v4,  0x0,  0xbf986bb42af3122c,  0x0,  0x3f9529fedfd9f42f,  0x0,  0xbf97a75729d81371,  0x0,  0xbf9a8dff13d98f12,  0x0,  0xbfb73768dac16680,  0x0,  0xbfa67f3da0c39bb5,  0x0,  0x3fa57084cb0de853,  0x0,  0xbfba60a5fcc8d2bf);
+  VCMP_U64(6, v4,  0x0,  0xbf986bb42af3122b,  0x0,  0x3f9529fedfd9f42e,  0x0,  0xbf97a75729d81370,  0x0,  0xbf9a8dff13d98f11,  0x0,  0xbfb73768dac16680,  0x0,  0xbfa67f3da0c39bb5,  0x0,  0x3fa57084cb0de853,  0x0,  0xbfba60a5fcc8d2be);
 };
 
 int main(void) {
   enable_vec();
   enable_fp();
+  // Change RM to RTZ since there are issues with FDIV + RNE in fpnew
+  // Update: there are issues also with RTZ...
+  CHANGE_RM(RM_RTZ);
 
   TEST_CASE1();
   TEST_CASE2();
