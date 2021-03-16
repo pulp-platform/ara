@@ -42,6 +42,10 @@ rv64uv_sc_tests = vadd \
                   vmulh \
                   vmulhu \
                   vmulhsu \
+                  vdivu \
+                  vdiv \
+                  vremu \
+                  vrem \
                   vwmul \
                   vwmulu \
                   vwmulsu \
@@ -53,10 +57,8 @@ rv64uv_sc_tests = vadd \
                   vwmacc \
                   vwmaccsu \
                   vwmaccus \
-                  vdivu \
-                  vdiv \
-                  vremu \
-                  vrem \
+                  vmerge \
+                  vmv \
                   vfadd \
                   vfsub \
                   vfrsub \
@@ -83,8 +85,6 @@ rv64uv_sc_tests = vadd \
                   vfsgnjx \
                   vfmerge \
                   vfmv \
-                  vmerge \
-                  vmv \
                   vmand \
                   vmnand \
                   vmandnot \
@@ -94,7 +94,7 @@ rv64uv_sc_tests = vadd \
                   vmxor \
                   vmxnor
 
-#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfadd vfclass vfcvt vfdiv vfirst vfmacc vfmadd vfmax vfmerge vfmin vfmsac vfmsub vfmul vfmv vfncvt vfnmacc vfnmadd vfnmsac vfnmsub vfrdiv vfrsub vfsgnj vfsgnjn vfsgnjx vfsqrt vfsub vfwadd vfwcvt vfwmacc vfwmsac vfwmul vfwnmacc vfwnmsac vfwsub vid viota vl1r vl vlff vl_nocheck vls vlx vmfeq vmfge vmfgt vmfle vmflt vmfne vmsbf vmsif vmsof vpopc_m vrgather vs1r vsadd vsaddu vs vsetvl vsetvli vslide1down vslide1up vslidedown vslideup vsmul vss vssra vssrl vssub vssubu vsux vsx
+#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfclass vfcvt vfdiv vfirst vfmerge vfmv vfncvt vfrdiv vfsqrt vfsub vfwadd vfwcvt vfwmacc vfwmsac vfwmul vfwnmacc vfwnmsac vfwsub vid viota vl1r vl vlff vl_nocheck vls vlx vmfeq vmfge vmfgt vmfle vmflt vmfne vmsbf vmsif vmsof vpopc_m vrgather vs1r vsadd vsaddu vs vsetvl vsetvli vslide1down vslide1up vslidedown vslideup vsmul vss vssra vssrl vssub vssubu vsux vsx
 
 rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
