@@ -1504,8 +1504,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VFSUB;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                 end
+                6'b010011: begin // VFUNARY1
+                  // These instructions do not use vs1
+                  ara_req_d.use_vs1       = 1'b0;
+
+                  case (insn.varith_type.rs1)
+                    5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
+                    default: begin
+                      // Trigger an error
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
+                end
                 6'b000100: ara_req_d.op = ara_pkg::VFMIN;
                 6'b000110: ara_req_d.op = ara_pkg::VFMAX;
+                6'b100000: ara_req_d.op = ara_pkg::VFDIV;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b101000: begin
                   ara_req_d.op             = ara_pkg::VFMADD;
@@ -1597,6 +1611,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 6'b000100: ara_req_d.op = ara_pkg::VFMIN;
                 6'b000110: ara_req_d.op = ara_pkg::VFMAX;
+                6'b100000: ara_req_d.op = ara_pkg::VFDIV;
+                6'b100001: ara_req_d.op = ara_pkg::VFRDIV;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b100111: begin
                   ara_req_d.op             = ara_pkg::VFRSUB;
