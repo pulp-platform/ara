@@ -39,7 +39,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     output logic     [NrLanes-1:0]      mask_valid_o,
     input  logic     [NrLanes-1:0]      lane_mask_ready_i,
     input  logic                        vldu_mask_ready_i,
-    input  logic                        vstu_mask_ready_i
+    input  logic                        vstu_mask_ready_i,
+    input  logic                        sldu_mask_ready_i
   );
 
   import cf_math_pkg::idx_width;
@@ -561,7 +562,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Received a grant from the VFUs.
       // The VLDU and the VSTU acknowledge all the operands at once.
       // Deactivate the request, but do not bump the pointers for now.
-      if (lane_mask_ready_i[lane] || vldu_mask_ready_i || vstu_mask_ready_i) begin
+      if (lane_mask_ready_i[lane] || vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
         mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
         mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
       end
