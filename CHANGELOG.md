@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector widening floating-point add/subtract instructions (vfwadd, vfwsub, vfwadd.w, vfwsub.w)
   - Vector widening floating-point multiply instructions (vfwmul)
   - Vector widening floating-point fused multiply-add instructions (vfwmacc, vfwnmacc, vfwmsac, vfwnmsac)
+  - Vector floating-point merge instruction (vfmerge)
+  - Vector floating-point move instruction (vfmv)
 
 ## 1.0.0 - 2020-03-10
 
