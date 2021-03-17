@@ -417,6 +417,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VNSRL;
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(vtype_q.vsew) > int'(EW32)) begin
@@ -453,6 +454,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VNSRA;
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(vtype_q.vsew) > int'(EW32)) begin
@@ -675,6 +677,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VNSRL;
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(vtype_q.vsew) > int'(EW32)) begin
@@ -711,6 +714,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VNSRA;
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(vtype_q.vsew) > int'(EW32)) begin
@@ -878,6 +882,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VNSRL;
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(vtype_q.vsew) > int'(EW32)) begin
@@ -914,6 +919,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VNSRA;
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
 
                   // Check whether the EEW is not too wide.
                   if (int'(vtype_q.vsew) > int'(EW32)) begin
