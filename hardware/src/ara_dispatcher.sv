@@ -137,6 +137,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  // We need to know if the source operands have a different LMUL constraint than the destination register
+  rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
+
   /*************
    *  Decoder  *
    *************/
@@ -148,6 +151,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     vtype_d  = vtype_q;
     state_d  = state_q;
     eew_d    = eew_q;
+    lmul_vs2 = vtype_q.vlmul;
+    lmul_vs1 = vtype_q.vlmul;
 
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
@@ -1168,6 +1173,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110100: begin // VWADDU.W
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1175,6 +1181,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110101: begin // VWADD.W
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionSExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1182,6 +1189,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110110: begin // VWSUBU.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1189,6 +1197,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110111: begin // VWSUB.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionSExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1249,19 +1258,56 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              // The constraints can be different for the two source operands and the destination register.
               unique case (ara_req_d.emul)
                 LMUL_2:
-                  if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 || (insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_4:
-                  if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 || (insn.varith_type.rs2 & 5'b00011) != 5'b00000 || (insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_8:
-                  if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 || (insn.varith_type.rs2 & 5'b00111) != 5'b00000 || (insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                default:;
+              endcase
+              unique case (lmul_vs2)
+                LMUL_2:
+                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                default:;
+              endcase
+              unique case (lmul_vs1)
+                LMUL_2:
+                  if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
@@ -1357,6 +1403,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110100: begin // VWADDU.W
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1364,6 +1411,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110101: begin // VWADD.W
                   ara_req_d.op             = ara_pkg::VADD;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionSExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1371,6 +1419,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110110: begin // VWSUBU.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1378,6 +1427,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b110111: begin // VWSUB.W
                   ara_req_d.op             = ara_pkg::VSUB;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionSExt2;
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
@@ -1447,19 +1497,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              // The constraints can be different for the two source operands and the destination register.
               unique case (ara_req_d.emul)
                 LMUL_2:
-                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_4:
-                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000 || (insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_8:
-                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000 || (insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                default:;
+              endcase
+              unique case (lmul_vs2)
+                LMUL_2:
+                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
@@ -1570,6 +1639,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VFADD;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
@@ -1578,6 +1648,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VFSUB;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
                   ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
@@ -1633,19 +1704,64 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              // The constraints can be different for the two source operands and the destination register.
               unique case (ara_req_d.emul)
                 LMUL_2:
-                  if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 || (insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_4:
-                  if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 || (insn.varith_type.rs2 & 5'b00011) != 5'b00000 || (insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_8:
-                  if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 || (insn.varith_type.rs2 & 5'b00111) != 5'b00000 || (insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+                default:;
+              endcase
+              unique case (lmul_vs2)
+                LMUL_2:
+                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+                default:;
+              endcase
+              unique case (lmul_vs1)
+                LMUL_2:
+                  if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
@@ -1773,6 +1889,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VFADD;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
                   ara_req_d.wide_fp_imm    = 1'b1;
@@ -1781,6 +1898,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.op             = ara_pkg::VFSUB;
                   ara_req_d.swap_vs2_vd_op = 1'b1;
                   ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
                   ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                   ara_req_d.eew_vs2        = vtype_q.vsew.next();
                   ara_req_d.wide_fp_imm    = 1'b1;
@@ -1836,19 +1954,42 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
+              // The constraints can be different for the two source operands and the destination register.
               unique case (ara_req_d.emul)
                 LMUL_2:
-                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 || (insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_4:
-                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000 || (insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
                 LMUL_8:
-                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000 || (insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                  if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_RSVD: begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+                default:;
+              endcase
+              unique case (lmul_vs2)
+                LMUL_2:
+                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_4:
+                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                LMUL_8:
+                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
