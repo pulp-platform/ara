@@ -14,9 +14,11 @@ for {set lane 0}  {$lane < [examine -radix dec ara_tb.NrLanes]} {incr lane} {
     do ../scripts/wave_lane.tcl $lane
 }
 
+add wave -noupdate -group Ara -group masku /ara_tb/dut/i_ara_soc/i_ara/i_masku/*
+
+add wave -noupdate -group Ara -group sldu /ara_tb/dut/i_ara_soc/i_ara/i_sldu/*
+
 add wave -noupdate -group Ara -group vlsu -group addrgen /ara_tb/dut/i_ara_soc/i_ara/i_vlsu/i_addrgen/*
 add wave -noupdate -group Ara -group vlsu -group vldu /ara_tb/dut/i_ara_soc/i_ara/i_vlsu/i_vldu/*
 add wave -noupdate -group Ara -group vlsu -group vstu /ara_tb/dut/i_ara_soc/i_ara/i_vlsu/i_vstu/*
 add wave -noupdate -group Ara -group vlsu /ara_tb/dut/i_ara_soc/i_ara/i_vlsu/*
-
-add wave -noupdate -group Ara -group masku /ara_tb/dut/i_ara_soc/i_ara/i_masku/*
