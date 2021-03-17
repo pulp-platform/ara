@@ -1960,6 +1960,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
               endcase
 
+              // Check if the FP scalar operand is NaN-boxed. If not, replace it with a NaN.
+              case (vtype_q.vsew)
+                EW16: if (~(&acc_req_i.rs1[63:16])) ara_req_d.scalar_op = 64'h0000000000007e00;
+                EW32: if (~(&acc_req_i.rs1[63:32])) ara_req_d.scalar_op = 64'h000000007fc00000;
+              endcase
+
               // Instructions with an integer LMUL have extra constraints on the registers they can access.
               // The constraints can be different for the two source operands and the destination register.
               unique case (ara_req_d.emul)

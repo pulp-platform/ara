@@ -802,15 +802,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = vfu_operation_i.vl;
 
-      // Check for NaN boxing of scalar operands
-      if (vfu_operation_i.op inside {[VFADD:VFMERGE]} && vfu_operation_i.use_scalar_op) begin
-        case (vfu_operation_i.vtype.vsew)
-          EW16: if (~(&vfu_operation_i.scalar_op[63:16])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h0000000000007e00;
-          EW32: if (~(&vfu_operation_i.scalar_op[63:32])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h000000007fc00000;
-        endcase
-      end
       // Floating-Point re-encoding for widening operations
-      // Take the NaN_box-already-checked scalar operand!
       if (vfu_operation_i.wide_fp_imm) begin
         unique case (vfu_operation_i.vtype.vsew)
           EW32: begin
