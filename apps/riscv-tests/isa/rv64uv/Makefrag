@@ -60,7 +60,10 @@ rv64uv_sc_tests = vadd \
                   vfadd \
                   vfsub \
                   vfrsub \
+                  vfwadd \
+                  vfwsub \
                   vfmul \
+                  vfwmul \
                   vfmacc \
                   vfnmacc \
                   vfmsac \
@@ -69,6 +72,10 @@ rv64uv_sc_tests = vadd \
                   vfnmadd \
                   vfmsub \
                   vfnmsub \
+                  vfwmacc \
+                  vfwnmacc \
+                  vfwmsac \
+                  vfwnmsac \
                   vfmin \
                   vfmax \
                   vfsgnj \

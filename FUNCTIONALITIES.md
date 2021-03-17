@@ -34,8 +34,11 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 ## Vector Floating-Point Instructions
 
 - Vector single-width floating-point add/subtract instructions: `vfadd`, `vfsub`, `vfrsub`
+- Vector widening floating-point add/subtract instructions: `vfwadd`, `vfwsub`, `vfwadd.w`, `vfwsub.w`
 - Vector single-width floating-point multiply/divide instructions: `vfmul`
+- Vector widening floating-point multiply/divide instructions: `vfwmul`
 - Vector single-width floating-point fused multiply-add instructions: `vfmacc`, `vfnmacc`, `vfmsac`, `vfnmsac`, `vfmadd`, `vfnmadd`, `vfmsub`, `vfnmsub`
+- Vector widening floating-point fused multiply-add instructions: `vfwmacc`, `vfwnmacc`, `vfwmsac`, `vfwnmsac`
 - Vector floating-point min/max instructions: `vfmin`, `vfmax`
 - Vector floating-point sign-injection instructions: `vfsgnj`, `vfsgnjn`, `vfsgnjx`
 

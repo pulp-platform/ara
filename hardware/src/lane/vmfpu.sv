@@ -174,7 +174,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   // Replicate the scalar operand on the 64-bit word, depending
   // on the element width.
-  // Also check if the FP scalar is NaN boxed, otherwise return a qNaN
   always_comb begin
     // Default assignment
     scalar_op = '0;
@@ -772,11 +771,37 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         commit_cnt_d = vfu_operation_i.vl;
 
       // Check for NaN boxing of scalar operands
-      if (vfu_operation_i.op inside {[VFADD:VFSGNJX]} && vfu_operation_i.use_scalar_op)
+      if (vfu_operation_i.op inside {[VFADD:VFSGNJX]} && vfu_operation_i.use_scalar_op) begin
         case (vfu_operation_i.vtype.vsew)
           EW16: if (~(&vfu_operation_i.scalar_op[63:16])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h0000000000007e00;
           EW32: if (~(&vfu_operation_i.scalar_op[63:32])) vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = 64'h000000007fc00000;
         endcase
+      end
+      // Floating-Point re-encoding for widening operations
+      // Take the NaN_box-already-checked scalar operand!
+      if (vfu_operation_i.wide_fp_imm) begin
+        unique case (vfu_operation_i.vtype.vsew)
+          EW32: begin
+            for (int e = 0; e < 2; e++) begin
+              automatic fp16_t fp16 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
+              automatic fp32_t fp32;
+              fp32.s = fp16.s;
+              fp32.e = (fp16.e - 15) + 127;
+              fp32.m = {fp16.m, 13'b0};
+              vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[32*e +: 32] = fp32;
+            end
+          end
+          EW64: begin
+            automatic fp32_t fp32 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[31:0];
+            automatic fp64_t fp64;
+            fp64.s = fp32.s;
+            fp64.e = (fp32.e - 127) + 1023;
+            fp64.m = {fp32.m, 29'b0};
+            vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = fp64;
+          end
+          default:;
+        endcase
+      end
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;

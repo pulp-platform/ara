@@ -105,7 +105,7 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  localparam int unsigned NumConversions = 7;
+  localparam int unsigned NumConversions = 8;
 
   typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
@@ -114,8 +114,28 @@ package ara_pkg;
     OpQueueConversionZExt4,
     OpQueueConversionSExt4,
     OpQueueConversionZExt8,
-    OpQueueConversionSExt8
+    OpQueueConversionSExt8,
+    OpQueueConversionWideFP2
   } opqueue_conversion_e;
+
+  // Floating-Point structs for re-encoding during widening FP operations
+  typedef struct packed {
+    logic       s;
+    logic [4:0] e;
+    logic [9:0] m;
+  } fp16_t;
+
+  typedef struct packed {
+    logic        s;
+    logic [7:0]  e;
+    logic [22:0] m;
+  } fp32_t;
+
+  typedef struct packed {
+    logic        s;
+    logic [10:0] e;
+    logic [51:0] m;
+  } fp64_t;
 
   /***************************
    *  Accelerator interface  *
@@ -173,6 +193,8 @@ package ara_pkg;
 
     // Rounding-Mode for FP operations
     fpnew_pkg::roundmode_e fp_rm;
+    // Widen FP immediate (re-encoding)
+    logic wide_fp_imm;
 
     // Vector machine metadata
     vlen_t vl;
@@ -257,6 +279,8 @@ package ara_pkg;
 
     // Rounding-Mode for FP operations
     fpnew_pkg::roundmode_e fp_rm;
+    // Widen FP immediate (re-encoding)
+    logic wide_fp_imm;
 
     // Vector machine metadata
     vlen_t vl;
@@ -495,6 +519,7 @@ package ara_pkg;
     logic swap_vs2_vd_op; // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
 
     fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
+    logic wide_fp_imm; // Widen FP immediate (re-encoding)
 
     // Vector machine metadata
     vlen_t vl;

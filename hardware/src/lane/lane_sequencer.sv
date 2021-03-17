@@ -160,6 +160,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           use_vd         : pe_req_i.use_vd,
           swap_vs2_vd_op : pe_req_i.swap_vs2_vd_op,
           fp_rm          : pe_req_i.fp_rm,
+          wide_fp_imm    : pe_req_i.wide_fp_imm,
           vtype          : pe_req_i.vtype,
           default        : '0
         };
@@ -260,6 +261,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               id     : pe_req_i.id,
               vs     : pe_req_i.swap_vs2_vd_op ? pe_req_i.vs2     : pe_req_i.vd,
               eew    : pe_req_i.swap_vs2_vd_op ? pe_req_i.eew_vs2 : pe_req_i.eew_vd_op,
+              conv   : pe_req_i.swap_vs2_vd_op ? pe_req_i.conversion_vs2 : OpQueueConversionNone,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               vtype  : pe_req_i.vtype,
