@@ -369,6 +369,6 @@ jobs:
         with:
           name: |
             tc-gcc
-            tc-isa-simv
+            tc-isa-sim
             tc-verilator
             compile-ara
