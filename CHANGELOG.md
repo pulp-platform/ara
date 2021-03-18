@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector widening floating-point multiply instructions (vfwmul)
   - Vector widening floating-point fused multiply-add instructions (vfwmacc, vfwnmacc, vfwmsac, vfwnmsac)
 
+### Changed
+
+- Contributing guidelines updated to include commit message and C++ code style guidelines
+
 ## 1.0.0 - 2020-03-10
 
 ### Added
