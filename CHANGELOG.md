@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector floating-point merge instruction (vfmerge)
   - Vector floating-point move instruction (vfmv)
 
+### Changed
+
+- Contributing guidelines updated to include commit message and C++ code style guidelines
+
 ## 1.0.0 - 2020-03-10
 
 ### Added

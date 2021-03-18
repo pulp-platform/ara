@@ -20,9 +20,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "kernel/matmul.h"
 #include "printf.h"
 #include "runtime.h"
-#include "kernel/matmul.h"
 
 // Define Matrix dimensions:
 // C = AB with A=[MxN], B=[NxP], C=[MxP]
@@ -46,9 +46,9 @@
 #define B_b 1
 #define B_c 16
 
-double a[M * N] __attribute__((aligned(32*NR_LANES), section(".l2")));
-double b[N * P] __attribute__((aligned(32*NR_LANES), section(".l2")));
-double c[M * P] __attribute__((aligned(32*NR_LANES), section(".l2")));
+double a[M * N] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+double b[N * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+double c[M * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 // Define half of the range for FP comparison on the results
 #define DELTA 0.001
@@ -64,12 +64,13 @@ void init_matrix(double *matrix, uint64_t num_rows, uint64_t num_columns,
 }
 
 // Verify the matrices
-int verify_matrix(double *matrix, int64_t m, int64_t n, int64_t p,
-                  double aa, double ab, double ac, double ba, double bb, double bc) {
+int verify_matrix(double *matrix, int64_t m, int64_t n, int64_t p, double aa,
+                  double ab, double ac, double ba, double bb, double bc) {
   for (int64_t i = 0; i < (int64_t)m; ++i) {
     for (int64_t j = 0; j < (int64_t)p; ++j) {
       double lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * n;
-      double qua = ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (n * (n - 1))) / 2;
+      double qua =
+          ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (n * (n - 1))) / 2;
       double cub = ((ab * ba) * (n * (n - 1) * (2 * n - 1))) / 6;
       double golden = lin + qua + cub;
       if (matrix[i * (int64_t)p + j] != golden) {
@@ -81,7 +82,8 @@ int verify_matrix(double *matrix, int64_t m, int64_t n, int64_t p,
   return 0;
 }
 
-void print_matrix(double const *matrix, uint64_t num_rows, uint64_t num_columns) {
+void print_matrix(double const *matrix, uint64_t num_rows,
+                  uint64_t num_columns) {
   printf("0x%8X\n", (uint64_t)matrix);
   for (uint64_t i = 0; i < num_rows; ++i) {
     for (uint64_t j = 0; j < num_columns; ++j) {
@@ -102,7 +104,8 @@ int main() {
   for (int s = 4; s <= M; s *= 2) {
     printf("\n");
     printf("------------------------------------------------------------\n");
-    printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", s, s, s, s);
+    printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", s,
+           s, s, s);
     printf("------------------------------------------------------------\n");
     printf("\n");
 
@@ -118,12 +121,13 @@ int main() {
     stop_timer();
 
     // Metrics
-    int64_t   runtime = get_timer();
-    float performance = 2.0*s*s*s/runtime;
+    int64_t runtime = get_timer();
+    float performance = 2.0 * s * s * s / runtime;
     float utilization = 100 * performance / (2.0 * NR_LANES);
 
     printf("The execution took %d cycles.\n", runtime);
-    printf("The performance is %f FLOP/cycle (%f%% utilization).\n", performance, utilization);
+    printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
+           performance, utilization);
 
     // Verify the result
     printf("Verifying result...\n");
