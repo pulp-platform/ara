@@ -1830,6 +1830,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
                 6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
                 6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                 6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                 6'b100111: begin
                   ara_req_d.op             = ara_pkg::VFRSUB;
@@ -1957,6 +1958,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
+              endcase
+
+              // Check if the FP scalar operand is NaN-boxed. If not, replace it with a NaN.
+              case (vtype_q.vsew)
+                EW16: if (~(&acc_req_i.rs1[63:16])) ara_req_d.scalar_op = 64'h0000000000007e00;
+                EW32: if (~(&acc_req_i.rs1[63:32])) ara_req_d.scalar_op = 64'h000000007fc00000;
               endcase
 
               // Instructions with an integer LMUL have extra constraints on the registers they can access.

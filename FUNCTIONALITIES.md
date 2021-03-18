@@ -41,6 +41,8 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector widening floating-point fused multiply-add instructions: `vfwmacc`, `vfwnmacc`, `vfwmsac`, `vfwnmsac`
 - Vector floating-point min/max instructions: `vfmin`, `vfmax`
 - Vector floating-point sign-injection instructions: `vfsgnj`, `vfsgnjn`, `vfsgnjx`
+- Vector floating-point merge instruction: `vfmerge`
+- Vector floating-point move instruction: `vfmv`
 
 ## Vector mask instructions
 
