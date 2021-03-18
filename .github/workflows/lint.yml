@@ -38,3 +38,20 @@ jobs:
           ./scripts/run-clang-format.py --clang-format-executable clang-format $file || EXIT_STATUS=$?
         done
         exit $EXIT_STATUS
+
+  check-trailing-whitespaces:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Determine base commit
+      run: |
+        if [[ -n $GITHUB_BASE_REF ]]; then
+          # Make sure we have the latest version of the target branch
+          git fetch origin $GITHUB_BASE_REF
+          echo "base=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
+        else
+          echo "base=HEAD~1" >> $GITHUB_ENV
+        fi
+
+    - name: Check for trailing whitespaces and tabs
+      run: git diff --check $base HEAD --
