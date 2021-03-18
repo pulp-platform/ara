@@ -15,11 +15,11 @@ module ara_soc import axi_pkg::*; #(
     parameter int  unsigned AxiUserWidth = 1,
     parameter int  unsigned AxiIdWidth   = 6,
     // Dependant parameters. DO NOT CHANGE!
-    parameter type          axi_data_t   = logic [AxiDataWidth-1:0],
-    parameter type          axi_strb_t   = logic [AxiDataWidth/8-1:0],
-    parameter type          axi_addr_t   = logic [AxiAddrWidth-1:0],
-    parameter type          axi_user_t   = logic [AxiUserWidth-1:0],
-    parameter type          axi_id_t     = logic [AxiIdWidth-1:0]
+    localparam type          axi_data_t   = logic [AxiDataWidth-1:0],
+    localparam type          axi_strb_t   = logic [AxiDataWidth/8-1:0],
+    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0],
+    localparam type          axi_user_t   = logic [AxiUserWidth-1:0],
+    localparam type          axi_id_t     = logic [AxiIdWidth-1:0]
   ) (
     input  logic             clk_i,
     input  logic             rst_ni,

@@ -15,9 +15,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     parameter int  unsigned AxiAddrWidth = 0,
     parameter type          axi_r_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int           DataWidth    = $bits(elen_t),
-    parameter type          strb_t       = logic[DataWidth/8-1:0],
-    parameter type          axi_addr_t   = logic [AxiAddrWidth-1:0]
+    localparam int           DataWidth    = $bits(elen_t),
+    localparam type          strb_t       = logic[DataWidth/8-1:0],
+    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
   ) (
     input  logic                           clk_i,
     input  logic                           rst_ni,

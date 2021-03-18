@@ -22,9 +22,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     parameter type          axi_w_t      = logic,
     parameter type          axi_b_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    parameter int           DataWidth    = $bits(elen_t),
-    parameter type          strb_t       = logic[DataWidth/8-1:0],
-    parameter type          axi_addr_t   = logic [AxiAddrWidth-1:0]
+    localparam int           DataWidth   = $bits(elen_t),
+    localparam type          strb_t      = logic[DataWidth/8-1:0],
+    localparam type          axi_addr_t  = logic [AxiAddrWidth-1:0]
   )(
     input  logic                           clk_i,
     input  logic                           rst_ni,

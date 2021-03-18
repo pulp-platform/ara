@@ -21,7 +21,7 @@ module ara import ara_pkg::*; #(
     parameter type          axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, the slide unit, and the mask unit.
-    parameter int  unsigned NrPEs        = NrLanes + 4
+    localparam int  unsigned NrPEs       = NrLanes + 4
   ) (
     // Clock and Reset
     input  logic              clk_i,
