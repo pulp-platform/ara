@@ -25,6 +25,9 @@ The riscv-tests repository is licensed under the BSD license.
 The unit tests can also run on Spike, the RISC-V ISA Simulator, which is also included as a submodule (`toolchain/riscv-isa-sim`).
 This version of Spike is patched to align the behavior of the `vcsr` CSR with the toolchain and with RVV v0.9.
 
+We provide a Python script to run `clang-format` and format the C and C++ files of this repository (`scripts/run-clang-format.py`).
+This file is licensed under the MIT license.
+
 ### Verilator simulations
 
 In order to run Verilator simulations, you will need a modern Verilator installation.
