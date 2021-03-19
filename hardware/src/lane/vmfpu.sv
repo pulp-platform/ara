@@ -336,12 +336,25 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
    *  FPU  *
    ********/
 
+  // FPU-related signals
+  elen_t      vfpu_result;
+  status_t    vfpu_ex_flag;
+  strb_t      vfpu_mask;
+  logic       vfpu_in_valid;
+  logic       vfpu_out_valid;
+  logic       vfpu_in_ready;
+  logic       vfpu_out_ready;
+  logic       fflags_ex_valid_d, fflags_ex_valid_q;
+  logic [4:0] fflags_ex_d, fflags_ex_q;
+
+  // Is the FPU enabled?
+  if (RVV_FP) begin : fpu_gen
   // Features (enabled formats, vectors etc.)
   localparam fpu_features_t FPUFeatures = '{
     Width        : 64,
     EnableVectors: 1'b1,
     EnableNanBox : 1'b1,
-    FpFmtMask    : {1'b1, 1'b1, 1'b1, 1'b0, 1'b0},
+    FpFmtMask    : {RVVF, RVVD, RVVH, 1'b0, 1'b0},
     IntFmtMask   : {1'b0, 1'b0, 1'b0, 1'b0}
   };
 
@@ -465,10 +478,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   assign vfpu_operands[1] = operand_b;
   assign vfpu_operands[2] = operand_c;
 
-  elen_t   vfpu_result;
-  status_t vfpu_ex_flag;
-  strb_t   vfpu_mask;
-
   // Do not raise exceptions on inactive elements
   localparam FPULanes = max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
   typedef logic [FPULanes-1:0] fpu_mask_t;
@@ -477,11 +486,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   for (genvar b = 0; b < FPULanes; b++) begin: gen_vfpu_simd_mask
     assign vfpu_simd_mask[b] = issue_be[2*b];
   end: gen_vfpu_simd_mask
-
-  logic vfpu_in_valid;
-  logic vfpu_out_valid;
-  logic vfpu_in_ready;
-  logic vfpu_out_ready;
 
   fpnew_top #(
     .Features      (FPUFeatures      ),
@@ -514,11 +518,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   );
 
   // Stabilize signals regardless of FPU latency (signals to CVA6)
-  logic       fflags_ex_valid_d, fflags_ex_valid_q;
-  logic [4:0] fflags_ex_d, fflags_ex_q;
-
   assign fflags_ex_d       = vfpu_ex_flag;
   assign fflags_ex_valid_d = vfpu_out_valid & vfpu_out_ready;
+
+  end else begin : no_fpu_gen // The FPU is disabled
+    assign vfpu_in_ready     = 1'b0;
+    assign vfpu_result       = '0;
+    assign vfpu_ex_flag      = '0;
+    assign vfpu_mask         = '0;
+    assign vfpu_out_valid    = 1'b0;
+    assign fflags_ex_d       = '0;
+    assign fflags_ex_valid_d = 1'b0;
+  end
 
   assign fflags_ex_o       = fflags_ex_q;
   assign fflags_ex_valid_o = fflags_ex_valid_q;
@@ -771,9 +782,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         commit_cnt_d = vfu_operation_i.vl;
 
       // Floating-Point re-encoding for widening operations
+      // Enabled only for the supported formats
+      if (RVV_FP) begin
       if (vfu_operation_i.wide_fp_imm) begin
-        unique case (vfu_operation_i.vtype.vsew)
-          EW32: begin
+        unique casez ({vfu_operation_i.vtype.vsew, RVVH, RVVF, RVVD})
+          {EW32, 1'b1, 1'b1, 1'b?}: begin
             for (int e = 0; e < 2; e++) begin
               automatic fp16_t fp16 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
               automatic fp32_t fp32;
@@ -783,7 +796,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
               vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[32*e +: 32] = fp32;
             end
           end
-          EW64: begin
+          {EW64, 1'b?, 1'b1, 1'b1}: begin
             automatic fp32_t fp32 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[31:0];
             automatic fp64_t fp64;
             fp64.s = fp32.s;
@@ -793,6 +806,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           end
           default:;
         endcase
+      end
       end
 
       // Bump pointers and counters of the vector instruction queue

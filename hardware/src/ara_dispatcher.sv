@@ -1555,6 +1555,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             OPFVV: begin: opfvv
+            if (RVV_FP) begin
               // These generate a request to Ara's backend
               ara_req_d.vs1     = insn.varith_type.rs1;
               ara_req_d.use_vs1 = 1'b1;
@@ -1778,29 +1779,65 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 default:;
               endcase
 
-              // Ara supports 16-bit float, 32-bit float, 64-bit float.
+              // Ara can support 16-bit float, 32-bit float, 64-bit float.
               // Ara cannot support instructions who operates on more than 64 bits.
-              // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
-              if (ariane_pkg::XF16) begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+              unique case ({RVVH, RVVF, RVVD})
+                3'b111: begin
+                  if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b110: begin
+                  if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b011: begin
+                  if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b100: begin
+                  if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b010: begin
+                  if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b001: begin
+                  if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                default: begin
+                  // Unsupported configuration
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
-              end else begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end
+              endcase
 
               // Instruction is invalid if the vtype is invalid
               if (vtype_q.vill) begin
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
+            end else begin // Vector FP instructions are disabled
+              acc_resp_o.error = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
             end
 
             OPFVF: begin: opfvf
+            if (RVV_FP) begin
               // These generate a request to Ara's backend
               ara_req_d.scalar_op     = acc_req_i.rs1;
               ara_req_d.use_scalar_op = 1'b1;
@@ -2013,26 +2050,61 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 default:;
               endcase
 
-              // Ara supports 16-bit float, 32-bit float, 64-bit float.
+              // Ara can support 16-bit float, 32-bit float, 64-bit float.
               // Ara cannot support instructions who operates on more than 64 bits.
-              // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
-              if (ariane_pkg::XF16) begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+              unique case ({RVVH, RVVF, RVVD})
+                3'b111: begin
+                  if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b110: begin
+                  if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b011: begin
+                  if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b100: begin
+                  if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b010: begin
+                  if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                3'b001: begin
+                  if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                end
+                default: begin
+                  // Unsupported configuration
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
-              end else begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end
+              endcase
 
               // Instruction is invalid if the vtype is invalid
               if (vtype_q.vill) begin
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
+            end else begin // Vector FP instructions are disabled
+              acc_resp_o.error = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
             end
           endcase
         end

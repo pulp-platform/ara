@@ -184,8 +184,9 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
 
       // Floating-Point re-encoding
       OpQueueConversionWideFP2: begin
-        unique case (cmd.eew)
-          EW16: begin
+        if (RVV_FP) begin
+        unique casez ({cmd.eew, RVVH, RVVF, RVVD})
+          {EW16, 1'b1, 1'b1, 1'b?}: begin
             for (int e = 0; e < 2; e++) begin
              automatic fp16_t fp16 = ibuf_operand[8*select + 32*e +: 16];
              automatic fp32_t fp32;
@@ -197,7 +198,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
               conv_operand[32*e +: 32] = fp32;
             end
           end
-          EW32: begin
+          {EW32, 1'b?, 1'b1, 1'b1}: begin
             automatic fp32_t fp32 = ibuf_operand[8*select +: 32];
             automatic fp64_t fp64;
 
@@ -209,6 +210,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
           end
           default:;
         endcase
+        end
       end
 
       default:;

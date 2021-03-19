@@ -30,6 +30,13 @@ package ara_pkg;
   // Maximum number of lanes that Ara can support.
   localparam int unsigned MaxNrLanes = 16;
 
+  // Ara Features.
+  localparam bit RVV_FP = 1'b1; // Support for floating-point vector instructions
+  // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
+  localparam bit RVVH = 1'b1 & ariane_pkg::XF16; // Is H extension enabled for vectors?
+  localparam bit RVVF = 1'b1; // Is F extension enabled for vectors?
+  localparam bit RVVD = 1'b1; // Is D extension enabled for vectors?
+
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;
