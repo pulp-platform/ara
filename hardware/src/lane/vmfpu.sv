@@ -349,177 +349,177 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   // Is the FPU enabled?
   if (RVV_FP) begin : fpu_gen
-  // Features (enabled formats, vectors etc.)
-  localparam fpu_features_t FPUFeatures = '{
-    Width        : 64,
-    EnableVectors: 1'b1,
-    EnableNanBox : 1'b1,
-    FpFmtMask    : {RVVF, RVVD, RVVH, 1'b0, 1'b0},
-    IntFmtMask   : {1'b0, 1'b0, 1'b0, 1'b0}
-  };
+    // Features (enabled formats, vectors etc.)
+    localparam fpu_features_t FPUFeatures = '{
+      Width        : 64,
+      EnableVectors: 1'b1,
+      EnableNanBox : 1'b1,
+      FpFmtMask    : {RVVF, RVVD, RVVH, 1'b0, 1'b0},
+      IntFmtMask   : {1'b0, 1'b0, 1'b0, 1'b0}
+    };
 
-  // Implementation (number of registers etc)
-  localparam fpu_implementation_t FPUImplementation = '{
-    PipeRegs: '{
-      '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
-      '{default: LatFDivSqrt},
-      '{default: LatFNonComp},
-      '{default: LatFConv}},
-    UnitTypes: '{
-      '{default: PARALLEL}, // ADDMUL
-      '{default: MERGED},   // DIVSQRT
-      '{default: PARALLEL}, // NONCOMP
-      '{default: MERGED}},  // CONV
-    PipeConfig: DISTRIBUTED
-  };
+    // Implementation (number of registers etc)
+    localparam fpu_implementation_t FPUImplementation = '{
+      PipeRegs: '{
+        '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
+        '{default: LatFDivSqrt},
+        '{default: LatFNonComp},
+        '{default: LatFConv}},
+      UnitTypes: '{
+        '{default: PARALLEL}, // ADDMUL
+        '{default: MERGED},   // DIVSQRT
+        '{default: PARALLEL}, // NONCOMP
+        '{default: MERGED}},  // CONV
+      PipeConfig: DISTRIBUTED
+    };
 
-  // FPU preprocessed signals
-  elen_t operand_a;
-  elen_t operand_b;
-  elen_t operand_c;
+    // FPU preprocessed signals
+    elen_t operand_a;
+    elen_t operand_b;
+    elen_t operand_c;
 
-  operation_e       fp_op;
-  logic             fp_opmod;
-  fp_format_e       fp_fmt;
-  roundmode_e       fp_rm;
-  logic       [2:0] fp_sign;
+    operation_e       fp_op;
+    logic             fp_opmod;
+    fp_format_e       fp_fmt;
+    roundmode_e       fp_rm;
+    logic       [2:0] fp_sign;
 
-  // FPU preprocessing stage
-  always_comb begin: fpu_operand_preprocessing_p
-    operand_a = mfpu_operand_i[1];                                           // vs2
-    operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
-    operand_c = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
-    // Default rounding-mode from fcsr.rm
-    fp_rm     = vinsn_issue_q.fp_rm;
-    fp_op     = ADD;
-    fp_opmod  = 1'b0;
-    fp_fmt    = FP64;
-    fp_sign   = 3'b0;
+    // FPU preprocessing stage
+    always_comb begin: fpu_operand_preprocessing_p
+      operand_a = mfpu_operand_i[1];                                           // vs2
+      operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
+      operand_c = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
+      // Default rounding-mode from fcsr.rm
+      fp_rm     = vinsn_issue_q.fp_rm;
+      fp_op     = ADD;
+      fp_opmod  = 1'b0;
+      fp_fmt    = FP64;
+      fp_sign   = 3'b0;
 
-    unique case (vinsn_issue_q.op)
-      // Addition is between operands B and C, A was moved to C in the lane_sequencer
-      VFADD:
-        fp_op = ADD;
-      VFSUB: begin
-        fp_op      = ADD;
-        fp_sign[1] = 1'b1;
-      end
-      VFRSUB: begin
-        fp_op    = ADD;
-        fp_opmod = 1'b1;
-      end
-      VFMUL :
-        fp_op = MUL;
-      VFMACC, VFMADD, VFMSAC, VFMSUB: begin
-        fp_op      = FMADD;
-        fp_sign[2] = (vinsn_issue_q.op == VFMSAC) | (vinsn_issue_q.op == VFMSUB);
-      end
-      VFNMACC, VFNMSAC, VFNMADD, VFNMSUB: begin
-        fp_op      = FNMSUB;
-        fp_sign[2] = (vinsn_issue_q.op == VFNMACC) | (vinsn_issue_q.op == VFNMADD);
-      end
-      VFMIN : begin
-        fp_op = MINMAX;
-        fp_rm = RNE;
-      end
-      VFMAX: begin
-        fp_op = MINMAX;
-        fp_rm = RTZ;
-      end
-      VFSGNJ : begin
-        fp_op = SGNJ;
-        fp_rm = RNE;
-      end
-      VFSGNJN : begin
-        fp_op = SGNJ;
-        fp_rm = RTZ;
-      end
-      VFSGNJX : begin
-        fp_op = SGNJ;
-        fp_rm = RDN;
-      end
-      default:;
-    endcase
-
-    unique case (vinsn_issue_q.vtype.vsew)
-      EW64: fp_fmt = FP64;
-      EW32: fp_fmt = FP32;
-      EW16: fp_fmt = FP16;
-      default:;
-    endcase
-
-    // Sign injection
-    unique case (vinsn_issue_q.vtype.vsew)
-      EW16:
-        for (int b = 0; b < 4; b++) begin
-          operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
-          operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
-          operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
+      unique case (vinsn_issue_q.op)
+        // Addition is between operands B and C, A was moved to C in the lane_sequencer
+        VFADD:
+          fp_op = ADD;
+        VFSUB: begin
+          fp_op      = ADD;
+          fp_sign[1] = 1'b1;
         end
-      EW32:
-        for (int b = 0; b < 2; b++) begin
-          operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
-          operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
-          operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
+        VFRSUB: begin
+          fp_op    = ADD;
+          fp_opmod = 1'b1;
         end
-      EW64:
-        for (int b = 0; b < 1; b++) begin
-          operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
-          operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
-          operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
+        VFMUL :
+          fp_op = MUL;
+        VFMACC, VFMADD, VFMSAC, VFMSUB: begin
+          fp_op      = FMADD;
+          fp_sign[2] = (vinsn_issue_q.op == VFMSAC) | (vinsn_issue_q.op == VFMSUB);
         end
-      default:;
-    endcase
-  end : fpu_operand_preprocessing_p
+        VFNMACC, VFNMSAC, VFNMADD, VFNMSUB: begin
+          fp_op      = FNMSUB;
+          fp_sign[2] = (vinsn_issue_q.op == VFNMACC) | (vinsn_issue_q.op == VFNMADD);
+        end
+        VFMIN : begin
+          fp_op = MINMAX;
+          fp_rm = RNE;
+        end
+        VFMAX: begin
+          fp_op = MINMAX;
+          fp_rm = RTZ;
+        end
+        VFSGNJ : begin
+          fp_op = SGNJ;
+          fp_rm = RNE;
+        end
+        VFSGNJN : begin
+          fp_op = SGNJ;
+          fp_rm = RTZ;
+        end
+        VFSGNJX : begin
+          fp_op = SGNJ;
+          fp_rm = RDN;
+        end
+        default:;
+      endcase
 
-  // FPU signals
-  elen_t [2:0] vfpu_operands;
-  assign vfpu_operands[0] = operand_a;
-  assign vfpu_operands[1] = operand_b;
-  assign vfpu_operands[2] = operand_c;
+      unique case (vinsn_issue_q.vtype.vsew)
+        EW64: fp_fmt = FP64;
+        EW32: fp_fmt = FP32;
+        EW16: fp_fmt = FP16;
+        default:;
+      endcase
 
-  // Do not raise exceptions on inactive elements
-  localparam FPULanes = max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
-  typedef logic [FPULanes-1:0] fpu_mask_t;
+      // Sign injection
+      unique case (vinsn_issue_q.vtype.vsew)
+        EW16:
+          for (int b = 0; b < 4; b++) begin
+            operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
+            operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
+            operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
+          end
+        EW32:
+          for (int b = 0; b < 2; b++) begin
+            operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
+            operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
+            operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
+          end
+        EW64:
+          for (int b = 0; b < 1; b++) begin
+            operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
+            operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
+            operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
+          end
+        default:;
+      endcase
+    end : fpu_operand_preprocessing_p
 
-  fpu_mask_t vfpu_simd_mask;
-  for (genvar b = 0; b < FPULanes; b++) begin: gen_vfpu_simd_mask
-    assign vfpu_simd_mask[b] = issue_be[2*b];
-  end: gen_vfpu_simd_mask
+    // FPU signals
+    elen_t [2:0] vfpu_operands;
+    assign vfpu_operands[0] = operand_a;
+    assign vfpu_operands[1] = operand_b;
+    assign vfpu_operands[2] = operand_c;
 
-  fpnew_top #(
-    .Features      (FPUFeatures      ),
-    .Implementation(FPUImplementation),
-    .TagType       (strb_t           ),
-    .NumLanes      (FPULanes         ),
-    .MaskType      (fpu_mask_t       )
-  ) i_fpnew_bulk (
-    .clk_i         (clk_i         ),
-    .rst_ni        (rst_ni        ),
-    .flush_i       (1'b0          ),
-    .rnd_mode_i    (fp_rm         ),
-    .op_i          (fp_op         ),
-    .op_mod_i      (fp_opmod      ),
-    .vectorial_op_i(1'b1          ),
-    .operands_i    (vfpu_operands ),
-    .tag_i         (mask_i        ),
-    .simd_mask_i   (vfpu_simd_mask),
-    .src_fmt_i     (fp_fmt        ),
-    .dst_fmt_i     (fp_fmt        ),
-    .int_fmt_i     (INT8          ),
-    .in_valid_i    (vfpu_in_valid ),
-    .in_ready_o    (vfpu_in_ready ),
-    .result_o      (vfpu_result   ),
-    .status_o      (vfpu_ex_flag  ),
-    .tag_o         (vfpu_mask     ),
-    .out_valid_o   (vfpu_out_valid),
-    .out_ready_i   (vfpu_out_ready),
-    .busy_o        (/* Unused */  )
-  );
+    // Do not raise exceptions on inactive elements
+    localparam FPULanes = max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
+    typedef logic [FPULanes-1:0] fpu_mask_t;
 
-  // Stabilize signals regardless of FPU latency (signals to CVA6)
-  assign fflags_ex_d       = vfpu_ex_flag;
-  assign fflags_ex_valid_d = vfpu_out_valid & vfpu_out_ready;
+    fpu_mask_t vfpu_simd_mask;
+    for (genvar b = 0; b < FPULanes; b++) begin: gen_vfpu_simd_mask
+      assign vfpu_simd_mask[b] = issue_be[2*b];
+    end: gen_vfpu_simd_mask
+
+    fpnew_top #(
+      .Features      (FPUFeatures      ),
+      .Implementation(FPUImplementation),
+      .TagType       (strb_t           ),
+      .NumLanes      (FPULanes         ),
+      .MaskType      (fpu_mask_t       )
+    ) i_fpnew_bulk (
+      .clk_i         (clk_i         ),
+      .rst_ni        (rst_ni        ),
+      .flush_i       (1'b0          ),
+      .rnd_mode_i    (fp_rm         ),
+      .op_i          (fp_op         ),
+      .op_mod_i      (fp_opmod      ),
+      .vectorial_op_i(1'b1          ),
+      .operands_i    (vfpu_operands ),
+      .tag_i         (mask_i        ),
+      .simd_mask_i   (vfpu_simd_mask),
+      .src_fmt_i     (fp_fmt        ),
+      .dst_fmt_i     (fp_fmt        ),
+      .int_fmt_i     (INT8          ),
+      .in_valid_i    (vfpu_in_valid ),
+      .in_ready_o    (vfpu_in_ready ),
+      .result_o      (vfpu_result   ),
+      .status_o      (vfpu_ex_flag  ),
+      .tag_o         (vfpu_mask     ),
+      .out_valid_o   (vfpu_out_valid),
+      .out_ready_i   (vfpu_out_ready),
+      .busy_o        (/* Unused */  )
+    );
+
+    // Stabilize signals regardless of FPU latency (signals to CVA6)
+    assign fflags_ex_d       = vfpu_ex_flag;
+    assign fflags_ex_valid_d = vfpu_out_valid & vfpu_out_ready;
 
   end else begin : no_fpu_gen // The FPU is disabled
     assign vfpu_in_ready     = 1'b0;
@@ -784,29 +784,29 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       // Floating-Point re-encoding for widening operations
       // Enabled only for the supported formats
       if (RVV_FP) begin
-      if (vfu_operation_i.wide_fp_imm) begin
-        unique casez ({vfu_operation_i.vtype.vsew, RVVH, RVVF, RVVD})
-          {EW32, 1'b1, 1'b1, 1'b?}: begin
-            for (int e = 0; e < 2; e++) begin
-              automatic fp16_t fp16 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
-              automatic fp32_t fp32;
-              fp32.s = fp16.s;
-              fp32.e = (fp16.e - 15) + 127;
-              fp32.m = {fp16.m, 13'b0};
-              vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[32*e +: 32] = fp32;
+        if (vfu_operation_i.wide_fp_imm) begin
+          unique casez ({vfu_operation_i.vtype.vsew, RVVH, RVVF, RVVD})
+            {EW32, 1'b1, 1'b1, 1'b?}: begin
+              for (int e = 0; e < 2; e++) begin
+                automatic fp16_t fp16 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
+                automatic fp32_t fp32;
+                fp32.s = fp16.s;
+                fp32.e = (fp16.e - 15) + 127;
+                fp32.m = {fp16.m, 13'b0};
+                vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[32*e +: 32] = fp32;
+              end
             end
-          end
-          {EW64, 1'b?, 1'b1, 1'b1}: begin
-            automatic fp32_t fp32 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[31:0];
-            automatic fp64_t fp64;
-            fp64.s = fp32.s;
-            fp64.e = (fp32.e - 127) + 1023;
-            fp64.m = {fp32.m, 29'b0};
-            vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = fp64;
-          end
-          default:;
-        endcase
-      end
+            {EW64, 1'b?, 1'b1, 1'b1}: begin
+              automatic fp32_t fp32 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[31:0];
+              automatic fp64_t fp64;
+              fp64.s = fp32.s;
+              fp64.e = (fp32.e - 127) + 1023;
+              fp64.m = {fp32.m, 29'b0};
+              vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = fp64;
+            end
+            default:;
+          endcase
+        end
       end
 
       // Bump pointers and counters of the vector instruction queue
