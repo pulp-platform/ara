@@ -1781,38 +1781,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Ara can support 16-bit float, 32-bit float, 64-bit float.
                 // Ara cannot support instructions who operates on more than 64 bits.
-                unique case ({RVVH, RVVF, RVVD})
-                  3'b111: begin
+                unique case (FPUSupport)
+                  FPU_16_32_64: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b110: begin
+                  FPU_16_32: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b011: begin
+                  FPU_32_64: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b100: begin
+                  FPU_16: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b010: begin
+                  FPU_32: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b001: begin
+                  FPU_64: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
@@ -2052,38 +2052,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Ara can support 16-bit float, 32-bit float, 64-bit float.
                 // Ara cannot support instructions who operates on more than 64 bits.
-                unique case ({RVVH, RVVF, RVVD})
-                  3'b111: begin
+                unique case (FPUSupport)
+                  FPU_16_32_64: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b110: begin
+                  FPU_16_32: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b011: begin
+                  FPU_32_64: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b100: begin
+                  FPU_16: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b010: begin
+                  FPU_32: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  3'b001: begin
+                  FPU_64: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;

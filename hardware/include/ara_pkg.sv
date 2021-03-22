@@ -36,6 +36,16 @@ package ara_pkg;
   localparam bit RVVH = 1'b1 & ariane_pkg::XF16; // Is H extension enabled for vectors?
   localparam bit RVVF = 1'b1; // Is F extension enabled for vectors?
   localparam bit RVVD = 1'b1; // Is D extension enabled for vectors?
+  // FPU support enum type
+  typedef enum bit [2:0] {
+    FPU_16       = 3'b100,
+    FPU_16_32    = 3'b110,
+    FPU_32       = 3'b010,
+    FPU_32_64    = 3'b011,
+    FPU_64       = 3'b001,
+    FPU_16_32_64 = 3'b111
+  } fpu_support_e;
+  fpu_support_e FPUSupport = fpu_support_e'({RVVH, RVVF, RVVD});
 
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
