@@ -34,8 +34,8 @@ package ara_pkg;
   localparam bit RVV_FP = 1'b1; // Support for floating-point vector instructions
   // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
   localparam bit RVVH = 1'b1 & ariane_pkg::XF16; // Is H extension enabled for vectors?
-  localparam bit RVVF = 1'b1; // Is F extension enabled for vectors?
-  localparam bit RVVD = 1'b1; // Is D extension enabled for vectors?
+  localparam bit RVVF = 1'b1 & ariane_pkg::RVF;  // Is F extension enabled for vectors?
+  localparam bit RVVD = 1'b1 & ariane_pkg::RVD;  // Is D extension enabled for vectors?
   // FPU support enum type
   typedef enum bit [2:0] {
     FPU_16       = 3'b100,
