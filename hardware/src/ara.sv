@@ -8,20 +8,21 @@
 
 module ara import ara_pkg::*; #(
     // RVV Parameters
-    parameter int  unsigned NrLanes      = 0,          // Number of parallel vector lanes.
+    parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
+    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // AXI Interface
-    parameter int  unsigned AxiDataWidth = 0,
-    parameter int  unsigned AxiAddrWidth = 0,
-    parameter type          axi_ar_t     = logic,
-    parameter type          axi_r_t      = logic,
-    parameter type          axi_aw_t     = logic,
-    parameter type          axi_w_t      = logic,
-    parameter type          axi_b_t      = logic,
-    parameter type          axi_req_t    = logic,
-    parameter type          axi_resp_t   = logic,
+    parameter  int           unsigned AxiDataWidth = 0,
+    parameter  int           unsigned AxiAddrWidth = 0,
+    parameter  type                   axi_ar_t     = logic,
+    parameter  type                   axi_r_t      = logic,
+    parameter  type                   axi_aw_t     = logic,
+    parameter  type                   axi_w_t      = logic,
+    parameter  type                   axi_b_t      = logic,
+    parameter  type                   axi_req_t    = logic,
+    parameter  type                   axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, the slide unit, and the mask unit.
-    localparam int  unsigned NrPEs       = NrLanes + 4
+    localparam int           unsigned NrPEs        = NrLanes + 4
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -184,7 +185,8 @@ module ara import ara_pkg::*; #(
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
-      .NrLanes(NrLanes)
+      .NrLanes   (NrLanes   ),
+      .FPUSupport(FPUSupport)
     ) i_lane (
       .clk_i                  (clk_i                       ),
       .rst_ni                 (rst_ni                      ),
@@ -361,5 +363,14 @@ module ara import ara_pkg::*; #(
 
   if (ara_pkg::VLEN != 2**$clog2(ara_pkg::VLEN))
     $error("[ara] The vector length must be a power of two.");
+
+  if (RVVD(FPUSupport) && !ariane_pkg::RVD)
+    $error("[ara] Cannot support double-precision floating-point on Ara if Ariane does not support it.");
+
+  if (RVVF(FPUSupport) && !ariane_pkg::RVF)
+    $error("[ara] Cannot support single-precision floating-point on Ara if Ariane does not support it.");
+
+  if (RVVH(FPUSupport) && !ariane_pkg::XF16)
+    $error("[ara] Cannot support half-precision floating-point on Ara if Ariane does not support it.");
 
 endmodule : ara

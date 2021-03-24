@@ -9,15 +9,16 @@
 // need it.
 
 module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int   unsigned BufferDepth    = 2,
-    parameter int   unsigned NrSlaves       = 1,
+    parameter  int           unsigned BufferDepth    = 2,
+    parameter  int           unsigned NrSlaves       = 1,
+    parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // Supported conversions
-    parameter logic          SupportIntExt2 = 1'b0,
-    parameter logic          SupportIntExt4 = 1'b0,
-    parameter logic          SupportIntExt8 = 1'b0,
+    parameter  logic                  SupportIntExt2 = 1'b0,
+    parameter  logic                  SupportIntExt4 = 1'b0,
+    parameter  logic                  SupportIntExt8 = 1'b0,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int   unsigned DataWidth     = $bits(elen_t),
-    localparam int   unsigned StrbWidth     = DataWidth/8
+    localparam int           unsigned DataWidth      = $bits(elen_t),
+    localparam int           unsigned StrbWidth      = DataWidth/8
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -184,8 +185,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
 
       // Floating-Point re-encoding
       OpQueueConversionWideFP2: begin
-        if (RVV_FP) begin
-          unique casez ({cmd.eew, RVVH, RVVF, RVVD})
+        if (FPUSupport != FPUSupportNone) begin
+          unique casez ({cmd.eew, RVVH(FPUSupport), RVVF(FPUSupport), RVVD(FPUSupport)})
             {EW16, 1'b1, 1'b1, 1'b?}: begin
               for (int e = 0; e < 2; e++) begin
                automatic fp16_t fp16 = ibuf_operand[8*select + 32*e +: 16];

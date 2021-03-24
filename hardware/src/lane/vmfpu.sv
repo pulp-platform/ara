@@ -8,13 +8,14 @@
 // Ara's integer multiplier and floating-point unit.
 
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
-    parameter int  unsigned NrLanes    = 0,
+    parameter  int           unsigned NrLanes    = 0,
+    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // Type used to address vector register file elements
-    parameter type          vaddr_t    = logic,
+    parameter  type                   vaddr_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t),
-    localparam int  unsigned StrbWidth = DataWidth/8,
-    localparam type          strb_t    = logic [DataWidth/8-1:0]
+    localparam int           unsigned DataWidth  = $bits(elen_t),
+    localparam int           unsigned StrbWidth  = DataWidth/8,
+    localparam type                   strb_t     = logic [DataWidth/8-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -337,24 +338,24 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
    ********/
 
   // FPU-related signals
-  elen_t      vfpu_result;
-  status_t    vfpu_ex_flag;
-  strb_t      vfpu_mask;
-  logic       vfpu_in_valid;
-  logic       vfpu_out_valid;
-  logic       vfpu_in_ready;
-  logic       vfpu_out_ready;
-  logic       fflags_ex_valid_d, fflags_ex_valid_q;
-  logic [4:0] fflags_ex_d, fflags_ex_q;
+  elen_t         vfpu_result;
+  status_t       vfpu_ex_flag;
+  strb_t         vfpu_mask;
+  logic          vfpu_in_valid;
+  logic          vfpu_out_valid;
+  logic          vfpu_in_ready;
+  logic          vfpu_out_ready;
+  logic          fflags_ex_valid_d, fflags_ex_valid_q;
+  logic    [4:0] fflags_ex_d, fflags_ex_q;
 
   // Is the FPU enabled?
-  if (RVV_FP) begin : fpu_gen
+  if (FPUSupport != FPUSupportNone) begin : fpu_gen
     // Features (enabled formats, vectors etc.)
     localparam fpu_features_t FPUFeatures = '{
       Width        : 64,
       EnableVectors: 1'b1,
       EnableNanBox : 1'b1,
-      FpFmtMask    : {RVVF, RVVD, RVVH, 1'b0, 1'b0},
+      FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), 1'b0, 1'b0},
       IntFmtMask   : {1'b0, 1'b0, 1'b0, 1'b0}
     };
 
@@ -369,7 +370,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         '{default: PARALLEL}, // ADDMUL
         '{default: MERGED},   // DIVSQRT
         '{default: PARALLEL}, // NONCOMP
-        '{default: MERGED}},  // CONV
+        '{default: MERGED}}, // CONV
       PipeConfig: DISTRIBUTED
     };
 
@@ -378,11 +379,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     elen_t operand_b;
     elen_t operand_c;
 
-    operation_e       fp_op;
-    logic             fp_opmod;
-    fp_format_e       fp_fmt;
-    roundmode_e       fp_rm;
-    logic       [2:0] fp_sign;
+    operation_e fp_op;
+    logic fp_opmod;
+    fp_format_e fp_fmt;
+    roundmode_e fp_rm;
+    logic [2:0] fp_sign;
 
     // FPU preprocessing stage
     always_comb begin: fpu_operand_preprocessing_p
@@ -783,9 +784,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
       // Floating-Point re-encoding for widening operations
       // Enabled only for the supported formats
-      if (RVV_FP) begin
+      if (FPUSupport != FPUSupportNone) begin
         if (vfu_operation_i.wide_fp_imm) begin
-          unique casez ({vfu_operation_i.vtype.vsew, RVVH, RVVF, RVVD})
+          unique casez ({vfu_operation_i.vtype.vsew, RVVH(FPUSupport), RVVF(FPUSupport), RVVD(FPUSupport)})
             {EW32, 1'b1, 1'b1, 1'b?}: begin
               for (int e = 0; e < 2; e++) begin
                 automatic fp16_t fp16 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
@@ -793,6 +794,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
                 fp32.s = fp16.s;
                 fp32.e = (fp16.e - 15) + 127;
                 fp32.m = {fp16.m, 13'b0};
+
                 vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[32*e +: 32] = fp32;
               end
             end
@@ -802,6 +804,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
               fp64.s = fp32.s;
               fp64.e = (fp32.e - 127) + 1023;
               fp64.m = {fp32.m, 29'b0};
+
               vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op = fp64;
             end
             default:;

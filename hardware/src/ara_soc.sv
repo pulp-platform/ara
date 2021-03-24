@@ -6,20 +6,21 @@
 // Description:
 // Ara's SoC, containing Ariane, Ara, and a L2 cache.
 
-module ara_soc import axi_pkg::*; #(
+module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // RVV Parameters
-    parameter int  unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
+    parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
+    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // AXI Interface
-    parameter int  unsigned AxiDataWidth = 32*NrLanes,
-    parameter int  unsigned AxiAddrWidth = 64,
-    parameter int  unsigned AxiUserWidth = 1,
-    parameter int  unsigned AxiIdWidth   = 6,
+    parameter  int           unsigned AxiDataWidth = 32*NrLanes,
+    parameter  int           unsigned AxiAddrWidth = 64,
+    parameter  int           unsigned AxiUserWidth = 1,
+    parameter  int           unsigned AxiIdWidth   = 6,
     // Dependant parameters. DO NOT CHANGE!
-    localparam type          axi_data_t   = logic [AxiDataWidth-1:0],
-    localparam type          axi_strb_t   = logic [AxiDataWidth/8-1:0],
-    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0],
-    localparam type          axi_user_t   = logic [AxiUserWidth-1:0],
-    localparam type          axi_id_t     = logic [AxiIdWidth-1:0]
+    localparam type                   axi_data_t   = logic [AxiDataWidth-1:0],
+    localparam type                   axi_strb_t   = logic [AxiDataWidth/8-1:0],
+    localparam type                   axi_addr_t   = logic [AxiAddrWidth-1:0],
+    localparam type                   axi_user_t   = logic [AxiUserWidth-1:0],
+    localparam type                   axi_id_t     = logic [AxiIdWidth-1:0]
   ) (
     input  logic             clk_i,
     input  logic             rst_ni,
@@ -654,6 +655,7 @@ module ara_soc import axi_pkg::*; #(
 
   ara #(
     .NrLanes     (NrLanes               ),
+    .FPUSupport  (FPUSupport            ),
     .AxiDataWidth(AxiWideDataWidth      ),
     .AxiAddrWidth(AxiAddrWidth          ),
     .axi_ar_t    (axi_core_ar_chan_t    ),

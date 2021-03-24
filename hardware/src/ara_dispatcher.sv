@@ -9,7 +9,8 @@
 // response or an error message.
 
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int unsigned NrLanes = 0
+    parameter int unsigned NrLanes     = 0,
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -1555,7 +1556,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             OPFVV: begin: opfvv
-              if (RVV_FP) begin
+              if (FPUSupport != FPUSupportNone) begin
                 // These generate a request to Ara's backend
                 ara_req_d.vs1     = insn.varith_type.rs1;
                 ara_req_d.use_vs1 = 1'b1;
@@ -1782,37 +1783,37 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // Ara can support 16-bit float, 32-bit float, 64-bit float.
                 // Ara cannot support instructions who operates on more than 64 bits.
                 unique case (FPUSupport)
-                  FPU_16_32_64: begin
+                  FPUSupportHalfSingleDouble: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_16_32: begin
+                  FPUSupportHalfSingle: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_32_64: begin
+                  FPUSupportSingleDouble: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_16: begin
+                  FPUSupportHalf: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_32: begin
+                  FPUSupportSingle: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_64: begin
+                  FPUSupportDouble: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
@@ -1837,7 +1838,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             OPFVF: begin: opfvf
-              if (RVV_FP) begin
+              if (FPUSupport != FPUSupportNone) begin
                 // These generate a request to Ara's backend
                 ara_req_d.scalar_op     = acc_req_i.rs1;
                 ara_req_d.use_scalar_op = 1'b1;
@@ -2053,37 +2054,37 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // Ara can support 16-bit float, 32-bit float, 64-bit float.
                 // Ara cannot support instructions who operates on more than 64 bits.
                 unique case (FPUSupport)
-                  FPU_16_32_64: begin
+                  FPUSupportHalfSingleDouble: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_16_32: begin
+                  FPUSupportHalfSingle: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_32_64: begin
+                  FPUSupportSingleDouble: begin
                     if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_16: begin
+                  FPUSupportHalf: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_32: begin
+                  FPUSupportSingle: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
                     end
                   end
-                  FPU_64: begin
+                  FPUSupportDouble: begin
                     if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
                       acc_resp_o.error = 1'b1;
                       ara_req_valid_d  = 1'b0;
