@@ -8,12 +8,13 @@
 // of each lane, namely the ALU and the Multiplier/FPU.
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes    = 0,
+    parameter  int           unsigned NrLanes    = 0,
+    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // Type used to address vector register file elements
-    parameter type          vaddr_t    = logic,
+    parameter  type                   vaddr_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t),
-    localparam type          strb_t    = logic [DataWidth/8-1:0]
+    localparam int           unsigned DataWidth  = $bits(elen_t),
+    localparam type                   strb_t     = logic [DataWidth/8-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -105,8 +106,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
    *****************/
 
   vmfpu #(
-    .NrLanes(NrLanes),
-    .vaddr_t(vaddr_t)
+    .NrLanes   (NrLanes   ),
+    .FPUSupport(FPUSupport),
+    .vaddr_t   (vaddr_t   )
   ) i_vmfpu (
     .clk_i                (clk_i                ),
     .rst_ni               (rst_ni               ),

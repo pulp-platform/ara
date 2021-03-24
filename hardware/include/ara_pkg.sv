@@ -31,21 +31,29 @@ package ara_pkg;
   localparam int unsigned MaxNrLanes = 16;
 
   // Ara Features.
-  localparam bit RVV_FP = 1'b1; // Support for floating-point vector instructions
-  // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
-  localparam bit RVVH = 1'b1 & ariane_pkg::XF16; // Is H extension enabled for vectors?
-  localparam bit RVVF = 1'b1 & ariane_pkg::RVF;  // Is F extension enabled for vectors?
-  localparam bit RVVD = 1'b1 & ariane_pkg::RVD;  // Is D extension enabled for vectors?
-  // FPU support enum type
-  typedef enum bit [2:0] {
-    FPU_16       = 3'b100,
-    FPU_16_32    = 3'b110,
-    FPU_32       = 3'b010,
-    FPU_32_64    = 3'b011,
-    FPU_64       = 3'b001,
-    FPU_16_32_64 = 3'b111
+
+  // The three bits correspond to {RVVD, RVVF, RVVH}
+  typedef enum logic [2:0] {
+    FPUSupportNone             = 3'b000,
+    FPUSupportHalf             = 3'b001,
+    FPUSupportSingle           = 3'b010,
+    FPUSupportHalfSingle       = 3'b011,
+    FPUSupportDouble           = 3'b100,
+    FPUSupportSingleDouble     = 3'b110,
+    FPUSupportHalfSingleDouble = 3'b111
   } fpu_support_e;
-  fpu_support_e FPUSupport = fpu_support_e'({RVVH, RVVF, RVVD});
+
+  function automatic logic RVVD(fpu_support_e e);
+    return e[2];
+  endfunction: RVVD
+
+  function automatic logic RVVF(fpu_support_e e);
+    return e[1];
+  endfunction: RVVF
+
+  function automatic logic RVVH(fpu_support_e e);
+    return e[0];
+  endfunction: RVVH
 
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
@@ -536,7 +544,7 @@ package ara_pkg;
     logic swap_vs2_vd_op; // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
 
     fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
-    logic wide_fp_imm; // Widen FP immediate (re-encoding)
+    logic wide_fp_imm;            // Widen FP immediate (re-encoding)
 
     // Vector machine metadata
     vlen_t vl;
