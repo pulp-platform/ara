@@ -480,7 +480,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     assign vfpu_operands[2] = operand_c;
 
     // Do not raise exceptions on inactive elements
-    localparam FPULanes = max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
+    localparam FPULanes = FPUSupport == FPUSupportNone ? 1 : max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
     typedef logic [FPULanes-1:0] fpu_mask_t;
 
     fpu_mask_t vfpu_simd_mask;
