@@ -8,16 +8,17 @@
 // together with the execution units.
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes          = 1,                                   // Number of lanes
+    parameter  int           unsigned NrLanes         = 1,                                   // Number of lanes
+    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,          // Support for floating-point data types
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
-    localparam int  unsigned MaxVLenPerLane  = VLEN / NrLanes,                      // In bits
-    localparam int  unsigned MaxVLenBPerLane = VLENB / NrLanes,                     // In bytes
-    localparam int  unsigned VRFSizePerLane  = MaxVLenPerLane * 32,                 // In bits
-    localparam int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32,                // In bytes
-    localparam type          vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0], // Address of an element in the lane's VRF
-    localparam int  unsigned DataWidth       = $bits(elen_t),                       // Width of the lane datapath
-    localparam type          strb_t          = logic [DataWidth/8-1:0]              // Byte-strobe type
+    localparam int           unsigned MaxVLenPerLane  = VLEN / NrLanes,                      // In bits
+    localparam int           unsigned MaxVLenBPerLane = VLENB / NrLanes,                     // In bytes
+    localparam int           unsigned VRFSizePerLane  = MaxVLenPerLane * 32,                 // In bits
+    localparam int           unsigned VRFBSizePerLane = MaxVLenBPerLane * 32,                // In bytes
+    localparam type                   vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0], // Address of an element in the lane's VRF
+    localparam int           unsigned DataWidth       = $bits(elen_t),                       // Width of the lane datapath
+    localparam type                   strb_t          = logic [DataWidth/8-1:0]              // Byte-strobe type
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,
@@ -250,7 +251,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic  [2:0] mfpu_operand_valid;
   logic  [2:0] mfpu_operand_ready;
 
-  operand_queues_stage i_operand_queues (
+  operand_queues_stage #(
+    .FPUSupport(FPUSupport)
+  ) i_operand_queues (
     .clk_i                    (clk_i                                             ),
     .rst_ni                   (rst_ni                                            ),
     // Interface with the Vector Register File
@@ -289,8 +292,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
    *****************************/
 
   vector_fus_stage #(
-    .NrLanes(NrLanes),
-    .vaddr_t(vaddr_t)
+    .NrLanes   (NrLanes   ),
+    .FPUSupport(FPUSupport),
+    .vaddr_t   (vaddr_t   )
   ) i_vfus (
     .clk_i                (clk_i                  ),
     .rst_ni               (rst_ni                 ),

@@ -9,15 +9,16 @@
 // need it.
 
 module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int   unsigned BufferDepth    = 2,
-    parameter int   unsigned NrSlaves       = 1,
+    parameter  int           unsigned BufferDepth    = 2,
+    parameter  int           unsigned NrSlaves       = 1,
+    parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // Supported conversions
-    parameter logic          SupportIntExt2 = 1'b0,
-    parameter logic          SupportIntExt4 = 1'b0,
-    parameter logic          SupportIntExt8 = 1'b0,
+    parameter  logic                  SupportIntExt2 = 1'b0,
+    parameter  logic                  SupportIntExt4 = 1'b0,
+    parameter  logic                  SupportIntExt8 = 1'b0,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int   unsigned DataWidth     = $bits(elen_t),
-    localparam int   unsigned StrbWidth     = DataWidth/8
+    localparam int           unsigned DataWidth      = $bits(elen_t),
+    localparam int           unsigned StrbWidth      = DataWidth/8
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -184,31 +185,33 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
 
       // Floating-Point re-encoding
       OpQueueConversionWideFP2: begin
-        unique case (cmd.eew)
-          EW16: begin
-            for (int e = 0; e < 2; e++) begin
-             automatic fp16_t fp16 = ibuf_operand[8*select + 32*e +: 16];
-             automatic fp32_t fp32;
+        if (FPUSupport != FPUSupportNone) begin
+          unique casez ({cmd.eew, RVVH(FPUSupport), RVVF(FPUSupport), RVVD(FPUSupport)})
+            {EW16, 1'b1, 1'b1, 1'b?}: begin
+              for (int e = 0; e < 2; e++) begin
+               automatic fp16_t fp16 = ibuf_operand[8*select + 32*e +: 16];
+               automatic fp32_t fp32;
 
-              fp32.s = fp16.s;
-              fp32.e = (fp16.e - 15) + 127;
-              fp32.m = {fp16.m, 13'b0};
+                fp32.s = fp16.s;
+                fp32.e = (fp16.e - 15) + 127;
+                fp32.m = {fp16.m, 13'b0};
 
-              conv_operand[32*e +: 32] = fp32;
+                conv_operand[32*e +: 32] = fp32;
+              end
             end
-          end
-          EW32: begin
-            automatic fp32_t fp32 = ibuf_operand[8*select +: 32];
-            automatic fp64_t fp64;
+            {EW32, 1'b?, 1'b1, 1'b1}: begin
+              automatic fp32_t fp32 = ibuf_operand[8*select +: 32];
+              automatic fp64_t fp64;
 
-            fp64.s = fp32.s;
-            fp64.e = (fp32.e - 127) + 1023;
-            fp64.m = {fp32.m, 29'b0};
+              fp64.s = fp32.s;
+              fp64.e = (fp32.e - 127) + 1023;
+              fp64.m = {fp32.m, 29'b0};
 
-            conv_operand = fp64;
-          end
-          default:;
-        endcase
+              conv_operand = fp64;
+            end
+            default:;
+          endcase
+        end
       end
 
       default:;

@@ -9,7 +9,8 @@
 // response or an error message.
 
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int unsigned NrLanes = 0
+    parameter int unsigned NrLanes     = 0,
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -1555,481 +1556,553 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             OPFVV: begin: opfvv
-              // These generate a request to Ara's backend
-              ara_req_d.vs1     = insn.varith_type.rs1;
-              ara_req_d.use_vs1 = 1'b1;
-              ara_req_d.vs2     = insn.varith_type.rs2;
-              ara_req_d.use_vs2 = 1'b1;
-              ara_req_d.vd      = insn.varith_type.rd;
-              ara_req_d.use_vd  = 1'b1;
-              ara_req_d.vm      = insn.varith_type.vm;
-              ara_req_d.fp_rm   = acc_req_i.frm;
-              ara_req_valid_d   = 1'b1;
+              if (FPUSupport != FPUSupportNone) begin
+                // These generate a request to Ara's backend
+                ara_req_d.vs1     = insn.varith_type.rs1;
+                ara_req_d.use_vs1 = 1'b1;
+                ara_req_d.vs2     = insn.varith_type.rs2;
+                ara_req_d.use_vs2 = 1'b1;
+                ara_req_d.vd      = insn.varith_type.rd;
+                ara_req_d.use_vd  = 1'b1;
+                ara_req_d.vm      = insn.varith_type.vm;
+                ara_req_d.fp_rm   = acc_req_i.frm;
+                ara_req_valid_d   = 1'b1;
 
-              // Decode based on the func6 field
-              unique case (insn.varith_type.func6)
-                // VFP Addition
-                6'b000000: begin
-                  ara_req_d.op             = ara_pkg::VFADD;
-                  // When performing a floating-point add/sub, fpnew adds the second and the third operand
-                  // So, send the first operand (vs2) to the third result queue
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b000010: begin
-                  ara_req_d.op             = ara_pkg::VFSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b000100: ara_req_d.op = ara_pkg::VFMIN;
-                6'b000110: ara_req_d.op = ara_pkg::VFMAX;
-                6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
-                6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
-                6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
-                6'b100100: ara_req_d.op = ara_pkg::VFMUL;
-                6'b101000: begin
-                  ara_req_d.op             = ara_pkg::VFMADD;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101001: begin
-                  ara_req_d.op             = ara_pkg::VFNMADD;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101010: begin
-                  ara_req_d.op             = ara_pkg::VFMSUB;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101011: begin
-                  ara_req_d.op             = ara_pkg::VFNMSUB;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101100: begin
-                  ara_req_d.op        = ara_pkg::VFMACC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b101101: begin
-                  ara_req_d.op        = ara_pkg::VFNMACC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b101110: begin
-                  ara_req_d.op        = ara_pkg::VFMSAC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b101111: begin
-                  ara_req_d.op        = ara_pkg::VFNMSAC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b110000: begin // VFWADD
-                  ara_req_d.op             = ara_pkg::VFADD;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                end
-                6'b110010: begin // VFWSUB
-                  ara_req_d.op             = ara_pkg::VFSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                end
-                6'b110100: begin // VFWADD.W
-                  ara_req_d.op             = ara_pkg::VFADD;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                end
-                6'b110110: begin // VFWSUB.W
-                  ara_req_d.op             = ara_pkg::VFSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                end
-                6'b111000: begin // VFWMUL
-                  ara_req_d.op             = ara_pkg::VFMUL;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                end
-                6'b111100: begin // VFWMACC
-                  ara_req_d.op             = ara_pkg::VFMACC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                6'b111101: begin // VFWNMACC
-                  ara_req_d.op             = ara_pkg::VFNMACC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                6'b111110: begin // VFWMSAC
-                  ara_req_d.op             = ara_pkg::VFMSAC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                6'b111111: begin // VFWNMSAC
-                  ara_req_d.op             = ara_pkg::VFNMSAC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                default: begin
-                  // Trigger an error
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              endcase
+                // Decode based on the func6 field
+                unique case (insn.varith_type.func6)
+                  // VFP Addition
+                  6'b000000: begin
+                    ara_req_d.op             = ara_pkg::VFADD;
+                    // When performing a floating-point add/sub, fpnew adds the second and the third operand
+                    // So, send the first operand (vs2) to the third result queue
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b000010: begin
+                    ara_req_d.op             = ara_pkg::VFSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b000100: ara_req_d.op = ara_pkg::VFMIN;
+                  6'b000110: ara_req_d.op = ara_pkg::VFMAX;
+                  6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
+                  6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
+                  6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                  6'b100100: ara_req_d.op = ara_pkg::VFMUL;
+                  6'b101000: begin
+                    ara_req_d.op             = ara_pkg::VFMADD;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101001: begin
+                    ara_req_d.op             = ara_pkg::VFNMADD;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101010: begin
+                    ara_req_d.op             = ara_pkg::VFMSUB;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101011: begin
+                    ara_req_d.op             = ara_pkg::VFNMSUB;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101100: begin
+                    ara_req_d.op        = ara_pkg::VFMACC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b101101: begin
+                    ara_req_d.op        = ara_pkg::VFNMACC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b101110: begin
+                    ara_req_d.op        = ara_pkg::VFMSAC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b101111: begin
+                    ara_req_d.op        = ara_pkg::VFNMSAC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b110000: begin // VFWADD
+                    ara_req_d.op             = ara_pkg::VFADD;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  end
+                  6'b110010: begin // VFWSUB
+                    ara_req_d.op             = ara_pkg::VFSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  end
+                  6'b110100: begin // VFWADD.W
+                    ara_req_d.op             = ara_pkg::VFADD;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    lmul_vs2                 = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  end
+                  6'b110110: begin // VFWSUB.W
+                    ara_req_d.op             = ara_pkg::VFSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    lmul_vs2                 = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                  end
+                  6'b111000: begin // VFWMUL
+                    ara_req_d.op             = ara_pkg::VFMUL;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                  end
+                  6'b111100: begin // VFWMACC
+                    ara_req_d.op             = ara_pkg::VFMACC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  6'b111101: begin // VFWNMACC
+                    ara_req_d.op             = ara_pkg::VFNMACC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  6'b111110: begin // VFWMSAC
+                    ara_req_d.op             = ara_pkg::VFMSAC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  6'b111111: begin // VFWNMSAC
+                    ara_req_d.op             = ara_pkg::VFNMSAC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  default: begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                endcase
 
-              // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              // The constraints can be different for the two source operands and the destination register.
-              unique case (ara_req_d.emul)
-                LMUL_2:
-                  if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                // Instructions with an integer LMUL have extra constraints on the registers they can access.
+                // The constraints can be different for the two source operands and the destination register.
+                unique case (ara_req_d.emul)
+                  LMUL_2:
+                    if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_4:
+                    if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_8:
+                    if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_RSVD: begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_4:
-                  if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                  default:;
+                endcase
+                unique case (lmul_vs2)
+                  LMUL_2:
+                    if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_4:
+                    if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_8:
+                    if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_RSVD: begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_8:
-                  if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                  default:;
+                endcase
+                unique case (lmul_vs1)
+                  LMUL_2:
+                    if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_4:
+                    if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_8:
+                    if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_RSVD: begin
                     acc_resp_o.error = 1'b1;
                     ara_req_valid_d  = 1'b0;
                   end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-                default:;
-              endcase
-              unique case (lmul_vs2)
-                LMUL_2:
-                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_4:
-                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_8:
-                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-                default:;
-              endcase
-              unique case (lmul_vs1)
-                LMUL_2:
-                  if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_4:
-                  if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_8:
-                  if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-                default:;
-              endcase
+                  default:;
+                endcase
 
-              // Ara supports 16-bit float, 32-bit float, 64-bit float.
-              // Ara cannot support instructions who operates on more than 64 bits.
-              // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
-              if (ariane_pkg::XF16) begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end else begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end
+                // Ara can support 16-bit float, 32-bit float, 64-bit float.
+                // Ara cannot support instructions who operates on more than 64 bits.
+                unique case (FPUSupport)
+                  FPUSupportHalfSingleDouble: begin
+                    if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportHalfSingle: begin
+                    if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportSingleDouble: begin
+                    if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportHalf: begin
+                    if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportSingle: begin
+                    if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportDouble: begin
+                    if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  default: begin
+                    // Unsupported configuration
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                endcase
 
-              // Instruction is invalid if the vtype is invalid
-              if (vtype_q.vill) begin
+                // Instruction is invalid if the vtype is invalid
+                if (vtype_q.vill) begin
+                  acc_resp_o.error = 1'b1;
+                  ara_req_valid_d  = 1'b0;
+                end
+              end else begin // Vector FP instructions are disabled
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end
             end
 
             OPFVF: begin: opfvf
-              // These generate a request to Ara's backend
-              ara_req_d.scalar_op     = acc_req_i.rs1;
-              ara_req_d.use_scalar_op = 1'b1;
-              ara_req_d.vs2           = insn.varith_type.rs2;
-              ara_req_d.use_vs2       = 1'b1;
-              ara_req_d.vd            = insn.varith_type.rd;
-              ara_req_d.use_vd        = 1'b1;
-              ara_req_d.vm            = insn.varith_type.vm;
-              ara_req_d.fp_rm         = acc_req_i.frm;
-              ara_req_valid_d         = 1'b1;
+              if (FPUSupport != FPUSupportNone) begin
+                // These generate a request to Ara's backend
+                ara_req_d.scalar_op     = acc_req_i.rs1;
+                ara_req_d.use_scalar_op = 1'b1;
+                ara_req_d.vs2           = insn.varith_type.rs2;
+                ara_req_d.use_vs2       = 1'b1;
+                ara_req_d.vd            = insn.varith_type.rd;
+                ara_req_d.use_vd        = 1'b1;
+                ara_req_d.vm            = insn.varith_type.vm;
+                ara_req_d.fp_rm         = acc_req_i.frm;
+                ara_req_valid_d         = 1'b1;
 
-              // Decode based on the func6 field
-              unique case (insn.varith_type.func6)
-                // VFP Addition
-                6'b000000: begin
-                  ara_req_d.op             = ara_pkg::VFADD;
-                  // When performing a floating-point add/sub, fpnew adds the second and the third operand
-                  // So, send the first operand (vs2) to the third result queue
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b000010: begin
-                  ara_req_d.op             = ara_pkg::VFSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b000100: ara_req_d.op = ara_pkg::VFMIN;
-                6'b000110: ara_req_d.op = ara_pkg::VFMAX;
-                6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
-                6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
-                6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
-                6'b010111: ara_req_d.op = ara_pkg::VMERGE;
-                6'b100100: ara_req_d.op = ara_pkg::VFMUL;
-                6'b100111: begin
-                  ara_req_d.op             = ara_pkg::VFRSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101000: begin
-                  ara_req_d.op             = ara_pkg::VFMADD;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101001: begin
-                  ara_req_d.op             = ara_pkg::VFNMADD;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101010: begin
-                  ara_req_d.op             = ara_pkg::VFMSUB;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101011: begin
-                  ara_req_d.op             = ara_pkg::VFNMSUB;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                end
-                6'b101100: begin
-                  ara_req_d.op        = ara_pkg::VFMACC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b101101: begin
-                  ara_req_d.op        = ara_pkg::VFNMACC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b101110: begin
-                  ara_req_d.op        = ara_pkg::VFMSAC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b101111: begin
-                  ara_req_d.op        = ara_pkg::VFNMSAC;
-                  ara_req_d.use_vd_op = 1'b1;
-                end
-                6'b110000: begin // VFWADD
-                  ara_req_d.op             = ara_pkg::VFADD;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                end
-                6'b110010: begin // VFWSUB
-                  ara_req_d.op             = ara_pkg::VFSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                end
-                6'b110100: begin // VFWADD.W
-                  ara_req_d.op             = ara_pkg::VFADD;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                end
-                6'b110110: begin // VFWSUB.W
-                  ara_req_d.op             = ara_pkg::VFSUB;
-                  ara_req_d.swap_vs2_vd_op = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  lmul_vs2                 = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.eew_vs2        = vtype_q.vsew.next();
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                end
-                6'b111000: begin // VFWMUL
-                  ara_req_d.op             = ara_pkg::VFMUL;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                end
-                6'b111100: begin // VFWMACC
-                  ara_req_d.op             = ara_pkg::VFMACC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                6'b111101: begin // VFWNMACC
-                  ara_req_d.op             = ara_pkg::VFNMACC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                6'b111110: begin // VFWMSAC
-                  ara_req_d.op             = ara_pkg::VFMSAC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                6'b111111: begin // VFWNMSAC
-                  ara_req_d.op             = ara_pkg::VFNMSAC;
-                  ara_req_d.use_vd_op      = 1'b1;
-                  ara_req_d.emul           = next_lmul(vtype_q.vlmul);
-                  ara_req_d.vtype.vsew     = vtype_q.vsew.next();
-                  ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
-                  ara_req_d.wide_fp_imm    = 1'b1;
-                  ara_req_d.eew_vd_op      = vtype_q.vsew.next();
-                end
-                default: begin
-                  // Trigger an error
+                // Decode based on the func6 field
+                unique case (insn.varith_type.func6)
+                  // VFP Addition
+                  6'b000000: begin
+                    ara_req_d.op             = ara_pkg::VFADD;
+                    // When performing a floating-point add/sub, fpnew adds the second and the third operand
+                    // So, send the first operand (vs2) to the third result queue
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b000010: begin
+                    ara_req_d.op             = ara_pkg::VFSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b000100: ara_req_d.op = ara_pkg::VFMIN;
+                  6'b000110: ara_req_d.op = ara_pkg::VFMAX;
+                  6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
+                  6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
+                  6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                  6'b010111: ara_req_d.op = ara_pkg::VMERGE;
+                  6'b100100: ara_req_d.op = ara_pkg::VFMUL;
+                  6'b100111: begin
+                    ara_req_d.op             = ara_pkg::VFRSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101000: begin
+                    ara_req_d.op             = ara_pkg::VFMADD;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101001: begin
+                    ara_req_d.op             = ara_pkg::VFNMADD;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101010: begin
+                    ara_req_d.op             = ara_pkg::VFMSUB;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101011: begin
+                    ara_req_d.op             = ara_pkg::VFNMSUB;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    // Swap "vs2" and "vd" since "vs2" is the addend and "vd" is the multiplicand
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                  end
+                  6'b101100: begin
+                    ara_req_d.op        = ara_pkg::VFMACC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b101101: begin
+                    ara_req_d.op        = ara_pkg::VFNMACC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b101110: begin
+                    ara_req_d.op        = ara_pkg::VFMSAC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b101111: begin
+                    ara_req_d.op        = ara_pkg::VFNMSAC;
+                    ara_req_d.use_vd_op = 1'b1;
+                  end
+                  6'b110000: begin // VFWADD
+                    ara_req_d.op             = ara_pkg::VFADD;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                  end
+                  6'b110010: begin // VFWSUB
+                    ara_req_d.op             = ara_pkg::VFSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                  end
+                  6'b110100: begin // VFWADD.W
+                    ara_req_d.op             = ara_pkg::VFADD;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    lmul_vs2                 = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                  end
+                  6'b110110: begin // VFWSUB.W
+                    ara_req_d.op             = ara_pkg::VFSUB;
+                    ara_req_d.swap_vs2_vd_op = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    lmul_vs2                 = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                  end
+                  6'b111000: begin // VFWMUL
+                    ara_req_d.op             = ara_pkg::VFMUL;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                  end
+                  6'b111100: begin // VFWMACC
+                    ara_req_d.op             = ara_pkg::VFMACC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  6'b111101: begin // VFWNMACC
+                    ara_req_d.op             = ara_pkg::VFNMACC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  6'b111110: begin // VFWMSAC
+                    ara_req_d.op             = ara_pkg::VFMSAC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  6'b111111: begin // VFWNMSAC
+                    ara_req_d.op             = ara_pkg::VFNMSAC;
+                    ara_req_d.use_vd_op      = 1'b1;
+                    ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                    ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    ara_req_d.wide_fp_imm    = 1'b1;
+                    ara_req_d.eew_vd_op      = vtype_q.vsew.next();
+                  end
+                  default: begin
+                    // Trigger an error
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                endcase
+
+                // Check if the FP scalar operand is NaN-boxed. If not, replace it with a NaN.
+                case (vtype_q.vsew)
+                  EW16: if (~(&acc_req_i.rs1[63:16])) ara_req_d.scalar_op = 64'h0000000000007e00;
+                  EW32: if (~(&acc_req_i.rs1[63:32])) ara_req_d.scalar_op = 64'h000000007fc00000;
+                endcase
+
+                // Instructions with an integer LMUL have extra constraints on the registers they can access.
+                // The constraints can be different for the two source operands and the destination register.
+                unique case (ara_req_d.emul)
+                  LMUL_2:
+                    if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_4:
+                    if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_8:
+                    if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_RSVD: begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                  default:;
+                endcase
+                unique case (lmul_vs2)
+                  LMUL_2:
+                    if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_4:
+                    if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_8:
+                    if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  LMUL_RSVD: begin
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                  default:;
+                endcase
+
+                // Ara can support 16-bit float, 32-bit float, 64-bit float.
+                // Ara cannot support instructions who operates on more than 64 bits.
+                unique case (FPUSupport)
+                  FPUSupportHalfSingleDouble: begin
+                    if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportHalfSingle: begin
+                    if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW32)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportSingleDouble: begin
+                    if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportHalf: begin
+                    if (int'(ara_req_d.vtype.vsew) != int'(EW16)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportSingle: begin
+                    if (int'(ara_req_d.vtype.vsew) != int'(EW32)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  FPUSupportDouble: begin
+                    if (int'(ara_req_d.vtype.vsew) != int'(EW64)) begin
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  end
+                  default: begin
+                    // Unsupported configuration
+                    acc_resp_o.error = 1'b1;
+                    ara_req_valid_d  = 1'b0;
+                  end
+                endcase
+
+                // Instruction is invalid if the vtype is invalid
+                if (vtype_q.vill) begin
                   acc_resp_o.error = 1'b1;
                   ara_req_valid_d  = 1'b0;
                 end
-              endcase
-
-              // Check if the FP scalar operand is NaN-boxed. If not, replace it with a NaN.
-              case (vtype_q.vsew)
-                EW16: if (~(&acc_req_i.rs1[63:16])) ara_req_d.scalar_op = 64'h0000000000007e00;
-                EW32: if (~(&acc_req_i.rs1[63:32])) ara_req_d.scalar_op = 64'h000000007fc00000;
-              endcase
-
-              // Instructions with an integer LMUL have extra constraints on the registers they can access.
-              // The constraints can be different for the two source operands and the destination register.
-              unique case (ara_req_d.emul)
-                LMUL_2:
-                  if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_4:
-                  if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_8:
-                  if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-                default:;
-              endcase
-              unique case (lmul_vs2)
-                LMUL_2:
-                  if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_4:
-                  if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_8:
-                  if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) begin
-                    acc_resp_o.error = 1'b1;
-                    ara_req_valid_d  = 1'b0;
-                  end
-                LMUL_RSVD: begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-                default:;
-              endcase
-
-              // Ara supports 16-bit float, 32-bit float, 64-bit float.
-              // Ara cannot support instructions who operates on more than 64 bits.
-              // Ara cannot support 16-bit float if the scalar core (CVA6) does not support them
-              if (ariane_pkg::XF16) begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW16) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end else begin
-                if (int'(ara_req_d.vtype.vsew) < int'(EW32) || int'(ara_req_d.vtype.vsew) > int'(EW64)) begin
-                  acc_resp_o.error = 1'b1;
-                  ara_req_valid_d  = 1'b0;
-                end
-              end
-
-              // Instruction is invalid if the vtype is invalid
-              if (vtype_q.vill) begin
+              end else begin // Vector FP instructions are disabled
                 acc_resp_o.error = 1'b1;
                 ara_req_valid_d  = 1'b0;
               end

@@ -6,7 +6,9 @@
 // Description:
 // This stage holds the operand queues, holding elements for the VRFs.
 
-module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
+module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
+  ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,
     // Interface with the Vector Register File
@@ -45,10 +47,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
    *********/
 
   operand_queue #(
-    .BufferDepth   (5   ),
-    .SupportIntExt2(1'b1),
-    .SupportIntExt4(1'b1),
-    .SupportIntExt8(1'b1)
+    .BufferDepth   (5         ),
+    .FPUSupport    (FPUSupport),
+    .SupportIntExt2(1'b1      ),
+    .SupportIntExt4(1'b1      ),
+    .SupportIntExt8(1'b1      )
   ) i_operand_queue_alu_a (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -64,10 +67,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth   (5   ),
-    .SupportIntExt2(1'b1),
-    .SupportIntExt4(1'b1),
-    .SupportIntExt8(1'b1)
+    .BufferDepth   (5         ),
+    .FPUSupport    (FPUSupport),
+    .SupportIntExt2(1'b1      ),
+    .SupportIntExt4(1'b1      ),
+    .SupportIntExt8(1'b1      )
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -87,8 +91,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
    ********************/
 
   operand_queue #(
-    .BufferDepth   (5    ),
-    .SupportIntExt2(1'b1 )
+    .BufferDepth   (5         ),
+    .FPUSupport    (FPUSupport),
+    .SupportIntExt2(1'b1      )
   ) i_operand_queue_mfpu_a (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -104,8 +109,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth   (5    ),
-    .SupportIntExt2(1'b1 )
+    .BufferDepth   (5         ),
+    .FPUSupport    (FPUSupport),
+    .SupportIntExt2(1'b1      )
   ) i_operand_queue_mfpu_b (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -121,8 +127,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth   (5    ),
-    .SupportIntExt2(1'b1 )
+    .BufferDepth   (5         ),
+    .FPUSupport    (FPUSupport),
+    .SupportIntExt2(1'b1      )
   ) i_operand_queue_mfpu_c (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -142,7 +149,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
    *********************/
 
   operand_queue #(
-    .BufferDepth(2)
+    .BufferDepth(2         ),
+    .FPUSupport (FPUSupport)
   ) i_operand_queue_st_mask_a (
     .clk_i                    (clk_i                         ),
     .rst_ni                   (rst_ni                        ),
@@ -158,7 +166,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
   );
 
   operand_queue #(
-    .BufferDepth(2)
+    .BufferDepth(2         ),
+    .FPUSupport (FPUSupport)
   ) i_operand_queue_addrgen_a (
     .clk_i                    (clk_i                               ),
     .rst_ni                   (rst_ni                              ),
@@ -178,7 +187,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; (
    ***************/
 
   operand_queue #(
-    .BufferDepth(1)
+    .BufferDepth(1         ),
+    .FPUSupport (FPUSupport)
   ) i_operand_queue_mask_b (
     .clk_i                    (clk_i                           ),
     .rst_ni                   (rst_ni                          ),
