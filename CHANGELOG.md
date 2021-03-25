@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 1.1.1 - 2020-03-25
+
 ### Added
 
 - Parametrization for FPU and FPU-specific formats support, through the `FPUSupport` ara_soc parameter
