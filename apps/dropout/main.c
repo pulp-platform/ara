@@ -59,7 +59,7 @@ void dropout_gold(const unsigned int n, const float *i, const float scale, const
       vi   = vle32_v_f32m8(i);
       vsel = vle32_v_i32m8(sel);
       // Produce the selection mask
-      vsel_m = vmseq_vx_i32m8_b4 (vsel, 1);
+      vsel_m = vmseq_vx_i32m8_b4(vsel, 1);
       // Initialize output vector with zeroes
       vo = vfmv_v_f_f32m8((float32_t) 0);
       // Calculate output vector
@@ -100,8 +100,10 @@ void dropout_gold(const unsigned int n, const float *i, const float scale, const
 
 int verify_array(float *arr, float *arr_gold, const unsigned int N) {
   for (unsigned int k = 0; k < N; ++k) {
-    if (arr[k] != arr_gold[k]) return k;
-//    printf("(%x, %x)\n", *((uint32_t*) &arr[k]), *((uint32_t*) &arr_gold[k]));
+    if (arr[k] != arr_gold[k]) {
+//      printf("(%x, %x)\n", *((uint32_t*) &arr[k]), *((uint32_t*) &arr_gold[k]));
+      return k;
+    }
   }
   return -1;
 }
