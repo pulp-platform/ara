@@ -497,7 +497,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
           // Increment the VRF pointer
           if (vinsn_issue.op inside {VMSEQ, VMSNE, VMSLT, VMSLTU, VMSLE, VMSLEU, VMSGT, VMSGTU, VMADC, VMSBC}) begin
-            vrf_pnt_d = vrf_pnt_q + NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew);
+            vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
 
             // Filled-up a word, or finished execution
             if (vrf_pnt_d == DataWidth*NrLanes || vrf_pnt_d >= issue_cnt_q) begin
