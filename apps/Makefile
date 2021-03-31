@@ -68,17 +68,25 @@ $(foreach extension, $(CVA6_EXTENSIONS), $(eval $(call rvtest_compile_template,$
 $(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template,$(extension),c)))
 
 # Run Spike tests
-.PHONY: riscv_tests_spike
+.PHONY: riscv_tests_spike benchmarks_spike
 riscv_tests_spike:
 	# Compile the tests
 	PATH=$(GCC_INSTALL_DIR)/bin:${PATH} make -j4 -C riscv-tests/isa
 	# Run the tests
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
 
+# Run spike v_benchmark iconv2d
+v_benchmarks_spike:
+	# Compile  and run tests
+	PATH=$(GCC_INSTALL_DIR)/bin:$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/v_benchmarks run
+
 # Clean Spike simulation
-.PHONY: riscv_tests_spike_clean
+.PHONY: riscv_tests_spike_clean benchmarks_spike_clean
 riscv_tests_spike_clean:
 	make -C riscv-tests/isa clean
+
+v_benchmarks_spike_clean:
+	make -C riscv-tests/v_benchmarks clean
 
 .PHONY: clean
 clean: riscv_tests_spike_clean
