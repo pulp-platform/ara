@@ -26,14 +26,15 @@ bmarks =  \
 
 RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
 RISCV_GCC ?= $(RISCV_PREFIX)gcc
-# From -O2 we get a very weird error in SPIKE when executing memcpy. SPIKE reads an instruction differently from what I see in the disassembly and get an illegal instruction exception. Give "r" to "spike -d" to reproduce the issue.
-GCC_OPT_LV ?= -O1
+# From -O2 we get a very weird error in SPIKE RVV 0.10 when executing memcpy. SPIKE reads an instruction differently from what I see in the disassembly and get an illegal instruction exception. Give "r" to "spike -d" to reproduce the issue.
+GCC_OPT_LV ?= -O2
 RISCV_GCC_OPTS ?= -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 $(GCC_OPT_LV) -ffast-math -fno-common -fno-builtin-printf -march=rv64gcv -mabi=lp64
 RISCV_LINK ?= $(RISCV_GCC) -T $(src_dir)/common/test.ld $(incs)
 RISCV_LINK_OPTS ?= -static -nostdlib -nostartfiles -lm -lgcc -T $(src_dir)/common/test.ld
 RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 RISCV_SIM ?= spike --isa=rv$(XLEN)gcv_Zfh --varch="vlen:4096,elen:64,slen:4096" $(SPIKE_FLAG)
 PYTHON ?= python3.7
+DEFINES += -DSPIKE
 
 incs  += -I$(src_dir)/../env -I$(src_dir)/common $(addprefix -I$(src_dir)/, $(bmarks))
 objs  :=
@@ -49,7 +50,7 @@ objs  :=
 D_TYPE ?= float
 
 dropout.riscv: dropout_gen_data $(wildcard $(src_dir)/dropout/*.c) $(wildcard $(src_dir)/dropout/*.h) $(wildcard $(src_dir)/dropout/*.S)
-	$(RISCV_GCC) $(incs) $(RISCV_GCC_OPTS) -DSPIKE -DNR_LANES=4 -o $@ $(wildcard $(src_dir)/dropout/*.c) $(wildcard $(src_dir)/dropout/*.S) $(wildcard $(src_dir)/common/*.c) $(wildcard $(src_dir)/common/*.S) $(RISCV_LINK_OPTS)
+	$(RISCV_GCC) $(incs) $(RISCV_GCC_OPTS) $(DEFINES) -o $@ $(wildcard $(src_dir)/dropout/*.c) $(wildcard $(src_dir)/dropout/*.S) $(wildcard $(src_dir)/common/*.c) $(wildcard $(src_dir)/common/*.S) $(RISCV_LINK_OPTS)
 
 .PHONY: dropout_gen_data
 dropout_gen_data: $(src_dir)/dropout/data.c

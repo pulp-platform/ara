@@ -78,7 +78,7 @@ riscv_tests_spike:
 # Run spike v_benchmark iconv2d
 v_benchmarks_spike:
 	# Compile  and run tests
-	PATH=$(GCC_INSTALL_DIR)/bin:$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/v_benchmarks run
+	PATH=$(GCC_INSTALL_DIR)/bin:$(ISA_SIM_INSTALL_DIR)/bin:${PATH} DEFINES=$(DEFINES) make -C riscv-tests/v_benchmarks run
 
 # Clean Spike simulation
 .PHONY: riscv_tests_spike_clean benchmarks_spike_clean
