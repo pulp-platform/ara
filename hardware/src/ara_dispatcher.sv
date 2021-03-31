@@ -141,6 +141,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // We need to know if the source operands have a different LMUL constraint than the destination register
   rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
 
+  // Helper signal to discriminate between config/csr instructions and the others
+  logic is_config;
+
   /*************
    *  Decoder  *
    *************/
@@ -183,6 +186,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     };
     ara_req_valid_d = 1'b0;
 
+    is_config = 1'b0;
+
     // Is Ara idle?
     if (state_q == WAIT_IDLE && ara_idle_i)
       state_d = NORMAL_OPERATION;
@@ -210,6 +215,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             OPCFG: begin: opcfg
               // These can be acknowledged regardless of the state of Ara
               acc_req_ready_o = 1'b1;
+              is_config       = 1'b1;
 
               // Update vtype
               if (insn.vsetvli_type.func1 == 1'b0) begin // vsetvli
@@ -2346,6 +2352,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         riscv::OpcodeSystem: begin
           // These always respond at the same cycle
           acc_resp_valid_o = 1'b1;
+          is_config        = 1'b1;
 
           unique case (acc_req_i.insn.itype.funct3)
             3'b001: begin // csrrw
@@ -2513,6 +2520,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Update the EEW
     if (ara_req_valid_d && ara_req_d.use_vd) begin
       eew_d[ara_req_d.vd] = ara_req_d.vtype.vsew;
+    end
+
+    // Any valid non-config instruction is a NOP if vl == 0
+    if (acc_req_valid_i && vl_q == '0 && !is_config && !acc_resp_o.error) begin
+      acc_resp_valid_o = 1'b1;
+      ara_req_valid_d  = 1'b0;
     end
   end: p_decoder
 
