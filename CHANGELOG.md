@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Arithmetic and memory vector instructions with `vl == 0` are considered as a `NOP`
+- Increment bit width of the vector length type (`vlen_t`), accounting for vectors whose length is `VLMAX`
+- Fix vector length calculation for the `MaskB` operand, which depends on `vsew`
+- Fix typo on the `vrf_pnt` updating logic at the Mask Unit
+
 ## 1.1.1 - 2020-03-25
 
 ### Added
