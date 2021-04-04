@@ -352,36 +352,75 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
+            operand_request_push[SlideAddrGenA] = pe_req_i.use_vs2;
 
             case (pe_req_i.op)
               VSLIDEUP: begin
                 // We need to trim full words from the end of the vector that are not used
                 // as operands by the slide unit.
-                automatic int vslideup_adj = pe_req_i.vl >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
+                automatic vlen_t vslideup_adj = pe_req_i.stride >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
 
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[SlideAddrGenA].vl = (pe_req_i.vl - vslideup_adj) / NrLanes;
+                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes - vslideup_adj;
 
-                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl - vslideup_adj)
+                if ((operand_request_i[SlideAddrGenA].vl + vslideup_adj) * NrLanes != pe_req_i.vl)
                   operand_request_i[SlideAddrGenA].vl += 1;
               end
               VSLIDEDOWN: begin
                 // We need to trim full words from the start of the vector that are not used
                 // as operands by the slide unit.
-                automatic int vslideup_adj              = pe_req_i.vl >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
-                operand_request_i[SlideAddrGenA].vstart = vslideup_adj / NrLanes;
+                automatic vlen_t vslidedown_adj         = pe_req_i.stride >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
+                operand_request_i[SlideAddrGenA].vstart = vslidedown_adj;
 
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[SlideAddrGenA].vl = (pe_req_i.vl - vslideup_adj) / NrLanes;
+                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes - vslidedown_adj;
 
-                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl - vslideup_adj)
+                if ((operand_request_i[SlideAddrGenA].vl + vslidedown_adj) * NrLanes != pe_req_i.vl)
                   operand_request_i[SlideAddrGenA].vl += 1;
               end
             endcase
 
-            operand_request_push[SlideAddrGenA] = pe_req_i.use_vs2;
+            // This vector instruction uses masks
+            operand_request_i[MaskM] = '{
+              id     : pe_req_i.id,
+              vs     : VMASK,
+              eew    : pe_req_i.vtype.vsew,
+              vtype  : pe_req_i.vtype,
+              vstart : vfu_operation_d.vstart,
+              hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
+              default: '0
+            };
+            operand_request_push[MaskM] = !pe_req_i.vm;
+
+            case (pe_req_i.op)
+              VSLIDEUP: begin
+                // We need to trim full words from the end of the vector that are not used
+                // as operands by the slide unit.
+                automatic vlen_t vslideup_adj = (pe_req_i.stride / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew));
+
+                // Since this request goes outside of the lane, we might need to request an
+                // extra operand regardless of whether it is valid in this lane or not.
+                operand_request_i[MaskM].vl = ((pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew))) - vslideup_adj;
+
+                if (((operand_request_i[MaskM].vl + vslideup_adj) << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+                  operand_request_i[MaskM].vl += 1;
+              end
+              VSLIDEDOWN: begin
+                // We need to trim full words from the start of the vector that are not used
+                // as operands by the slide unit.
+                automatic vlen_t vslidedown_adj = (pe_req_i.stride / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew));
+                operand_request_i[MaskM].vstart = vslidedown_adj;
+
+                // Since this request goes outside of the lane, we might need to request an
+                // extra operand regardless of whether it is valid in this lane or not.
+                operand_request_i[MaskM].vl = ((pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew))) - vslidedown_adj;
+
+                if (((operand_request_i[MaskM].vl + vslidedown_adj) << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+                  operand_request_i[MaskM].vl += 1;
+              end
+            endcase
           end
           VFU_MaskUnit: begin
             operand_request_i[AluA] = '{
