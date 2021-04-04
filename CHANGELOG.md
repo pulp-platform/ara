@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ### Fixed
-
+- Removed dependency to a specific gcc g++ version in Makefile
 - Arithmetic and memory vector instructions with `vl == 0` are considered as a `NOP`
 - Increment bit width of the vector length type (`vlen_t`), accounting for vectors whose length is `VLMAX`
 - Fix vector length calculation for the `MaskB` operand, which depends on `vsew`
