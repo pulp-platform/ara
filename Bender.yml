@@ -5,7 +5,7 @@ package:
     - "Matteo Perotti <mperotti@iis.ee.ethz.ch>"
     - "Basile Bougenot <basileb@student.ethz.ch>"
     - "Nils Wistoff <nwistoff@iis.ee.ethz.ch>"
-    - "Paul Scheffler <pscheffler@iis.ee.ethz.ch>"
+    - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
 
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                rev: axi_llc    }
@@ -62,7 +62,7 @@ sources:
         # Level 2
         - hardware/tb/ara_tb.sv
 
-    - target: ara_test and not(verilator)
-      files:
-        # Level 2
-        - hardware/tb/ara_tb_verilator.sv
+        - target: verilator
+          files:
+            # Level 2
+            - hardware/tb/ara_tb_verilator.sv
