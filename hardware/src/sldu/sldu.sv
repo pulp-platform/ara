@@ -23,6 +23,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                   pe_req_ready_o,
     output pe_resp_t               pe_resp_o,
     // Interface with the lanes
+    input  elen_t    [NrLanes-1:0] sldu_operand_i,
+    input  logic     [NrLanes-1:0] sldu_operand_valid_i,
+    output logic                   sldu_operand_ready_o,
     output logic     [NrLanes-1:0] sldu_result_req_o,
     output vid_t     [NrLanes-1:0] sldu_result_id_o,
     output vaddr_t   [NrLanes-1:0] sldu_result_addr_o,
@@ -174,8 +177,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
 
     // We are not ready, by default
-    pe_resp      = '0;
-    mask_ready_o = 1'b0;
+    pe_resp              = '0;
+    mask_ready_o         = 1'b0;
+    sldu_operand_ready_o = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
