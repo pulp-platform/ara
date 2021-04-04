@@ -28,10 +28,10 @@ VERIL_VERSION       ?= v4.106
 # CC and CXX are Makefile default variables that are always defined in a Makefile. Hence, overwrite
 # the variable if it is only defined by the Makefile (its origin in the Makefile's default).
 ifeq ($(origin CC),default)
-CC     = gcc-7.2.0
+CC     = gcc
 endif
 ifeq ($(origin CXX),default)
-CXX    = g++-7.2.0
+CXX    = g++
 endif
 
 # Default target
