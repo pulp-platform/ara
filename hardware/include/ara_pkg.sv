@@ -205,7 +205,7 @@ package ara_pkg;
     elen_t scalar_op;
     logic use_scalar_op;
 
-    // 2nd scalar operand: stride for constant-strided vector load/stores
+    // 2nd scalar operand: stride for constant-strided vector load/stores, slide offset for vector slides
     elen_t stride;
 
     // Destination vector register
