@@ -246,10 +246,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               automatic int tgt_lane        = out_byte[3 +: $clog2(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
-              //$display("copying byte %0d from lane %0d to byte %0d of lane %0d", src_lane_offset, src_lane, tgt_lane_offset, tgt_lane);
-
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] = sldu_operand_i[src_lane][8*src_lane_offset +: 8];
-              result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset]           = vinsn_issue.vm || mask_i[src_lane][src_lane_offset];
+              result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset]           = vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
             end
           end
 
@@ -386,9 +384,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Trim full destination VRF words which are not touched by the slide unit
       if (pe_req_i.op == VSLIDEUP) begin
-        automatic int vslide_adj = (pe_req_i.stride << int'(pe_req_i.vtype.vsew)) / NrLanes / 8;
-        issue_cnt_d -= vslide_adj * NrLanes * 8;
-        commit_cnt_d -= vslide_adj * NrLanes * 8;
+        issue_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
+        commit_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
       end
 
       // Bump pointers and counters of the vector instruction queue
