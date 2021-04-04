@@ -91,6 +91,11 @@ riscv_tests_spike:
 	# Run the tests
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
 
+# Format the sourcecode
+.PHONY: format
+format:
+	$(LLVM_INSTALL_DIR)/bin/clang-format -style=file -i $$(find . | grep -E "\.[h,c,cpp]$$" | grep -v riscv-tests)
+
 # Clean Spike simulation
 .PHONY: riscv_tests_spike_clean
 riscv_tests_spike_clean:
