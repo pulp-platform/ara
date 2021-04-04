@@ -488,7 +488,7 @@ package ara_pkg;
   // There are seven operand queues, serving operands to the different functional units of each lane
   localparam int unsigned NrOperandQueues = 9;
   typedef enum logic [$clog2(NrOperandQueues)-1:0] {
-    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, MaskB, MaskM, StA, AddrGenA
+    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, MaskB, MaskM, StA, SlideAddrGenA
   } opqueue_e;
 
   // Each lane has eight VRF banks

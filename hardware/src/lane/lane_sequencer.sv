@@ -138,6 +138,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           VFU_Alu      : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskM]);
           VFU_MFpu     : pe_req_ready_o = !(operand_request_valid_o[MulFPUA] || operand_request_valid_o[MulFPUB] || operand_request_valid_o[MulFPUC] || operand_request_valid_o[MaskM]);
           VFU_LoadUnit : pe_req_ready_o = !(operand_request_valid_o[MaskM]);
+          VFU_SlideUnit: pe_req_ready_o = !(operand_request_valid_o[SlideAddrGenA]);
           VFU_StoreUnit: pe_req_ready_o = !(operand_request_valid_o[StA] || operand_request_valid_o[MaskM]);
           VFU_MaskUnit : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskB] || operand_request_valid_o[MaskM]);
           default:;
@@ -259,8 +260,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
             operand_request_i[MulFPUC] = '{
               id     : pe_req_i.id,
-              vs     : pe_req_i.swap_vs2_vd_op ? pe_req_i.vs2     : pe_req_i.vd,
-              eew    : pe_req_i.swap_vs2_vd_op ? pe_req_i.eew_vs2 : pe_req_i.eew_vd_op,
+              vs     : pe_req_i.swap_vs2_vd_op ? pe_req_i.vs2            : pe_req_i.vd,
+              eew    : pe_req_i.swap_vs2_vd_op ? pe_req_i.eew_vs2        : pe_req_i.eew_vd_op,
               conv   : pe_req_i.swap_vs2_vd_op ? pe_req_i.conversion_vs2 : OpQueueConversionNone,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
@@ -339,6 +340,48 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
               operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
+          end
+          VFU_SlideUnit: begin
+            operand_request_i[SlideAddrGenA] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew_vs2,
+              conv   : pe_req_i.conversion_vs2,
+              vtype  : pe_req_i.vtype,
+              vstart : vfu_operation_d.vstart,
+              hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+              default: '0
+            };
+
+            case (pe_req_i.op)
+              VSLIDEUP: begin
+                // We need to trim full words from the end of the vector that are not used
+                // as operands by the slide unit.
+                automatic int vslideup_adj = pe_req_i.vl >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
+
+                // Since this request goes outside of the lane, we might need to request an
+                // extra operand regardless of whether it is valid in this lane or not.
+                operand_request_i[SlideAddrGenA].vl = (pe_req_i.vl - vslideup_adj) / NrLanes;
+
+                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl - vslideup_adj)
+                  operand_request_i[SlideAddrGenA].vl += 1;
+              end
+              VSLIDEDOWN: begin
+                // We need to trim full words from the start of the vector that are not used
+                // as operands by the slide unit.
+                automatic int vslideup_adj              = pe_req_i.vl >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
+                operand_request_i[SlideAddrGenA].vstart = vslideup_adj / NrLanes;
+
+                // Since this request goes outside of the lane, we might need to request an
+                // extra operand regardless of whether it is valid in this lane or not.
+                operand_request_i[SlideAddrGenA].vl = (pe_req_i.vl - vslideup_adj) / NrLanes;
+
+                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl - vslideup_adj)
+                  operand_request_i[SlideAddrGenA].vl += 1;
+              end
+            endcase
+
+            operand_request_push[SlideAddrGenA] = pe_req_i.use_vs2;
           end
           VFU_MaskUnit: begin
             operand_request_i[AluA] = '{
