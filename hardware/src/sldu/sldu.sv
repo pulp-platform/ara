@@ -155,9 +155,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   pe_resp_t pe_resp;
 
   // State of the slide FSM
-  typedef enum logic {
+  typedef enum logic [1:0] {
     SLIDE_IDLE,
-    SLIDE_RUN
+    SLIDE_RUN,
+    SLIDE_RUN_VSLIDE1UP_FIRST_WORD
   } slide_state_e;
   slide_state_e state_d, state_q;
 
@@ -211,6 +212,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               in_pnt_d  = '0;
               // vslideup starts writing the destination vector at the slide offset
               out_pnt_d = vinsn_issue.stride;
+
+              // Go to SLIDE_RUN_VSLIDE1UP_FIRST_WORD if this is a vslide1up instruction
+              if (vinsn_issue.use_scalar_op)
+                state_d = SLIDE_RUN_VSLIDE1UP_FIRST_WORD;
             end
             VSLIDEDOWN: begin
               // vslidedown starts reading the source operand from the slide offset
@@ -222,7 +227,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         end
       end
 
-      SLIDE_RUN: begin
+      SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
         if (&sldu_operand_valid_i && !result_queue_full && (vinsn_issue.vm || (|mask_valid_i))) begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
@@ -250,6 +255,29 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset]           = vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
             end
           end
+
+          // If this is a vslide1up instruction, copy the scalar operand to the first word
+          if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD)
+            unique case (vinsn_issue.vtype.vsew)
+              EW8: begin
+                result_queue_d[result_queue_write_pnt_q][0].wdata[7:0] = vinsn_issue.scalar_op[7:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[0:0]    = vinsn_issue.vm || mask_i[0][0];
+              end
+              EW16: begin
+                result_queue_d[result_queue_write_pnt_q][0].wdata[15:0] = vinsn_issue.scalar_op[15:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[1:0]     = {2{vinsn_issue.vm || mask_i[0][0]}};
+              end
+              EW32: begin
+                result_queue_d[result_queue_write_pnt_q][0].wdata[31:0] = vinsn_issue.scalar_op[31:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[3:0]     = {4{vinsn_issue.vm || mask_i[0][0]}};
+              end
+              EW64: begin
+                result_queue_d[result_queue_write_pnt_q][0].wdata[63:0] = vinsn_issue.scalar_op[63:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[7:0]     = {8{vinsn_issue.vm || mask_i[0][0]}};
+              end
+            endcase
+          // Jump to SLIDE_RUN
+          state_d = SLIDE_RUN;
 
           // Initialize id and addr fields of the result queue requests
           for (int lane = 0; lane < NrLanes; lane++) begin
@@ -383,7 +411,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
       // Trim full destination VRF words which are not touched by the slide unit
-      if (pe_req_i.op == VSLIDEUP) begin
+      if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op) begin
         issue_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
         commit_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
       end
