@@ -163,8 +163,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   slide_state_e state_d, state_q;
 
   // Pointers in the input operand and the output result
-  logic [idx_width(NrLanes*StrbWidth):0] in_pnt_d, in_pnt_q;
-  logic [idx_width(NrLanes*StrbWidth):0] out_pnt_d, out_pnt_q;
+  logic   [idx_width(NrLanes*StrbWidth):0] in_pnt_d, in_pnt_q;
+  logic   [idx_width(NrLanes*StrbWidth):0] out_pnt_d, out_pnt_q;
+  vaddr_t                                  vrf_pnt_d, vrf_pnt_q;
 
   // Remaining bytes of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
@@ -178,6 +179,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     commit_cnt_d  = commit_cnt_q;
     in_pnt_d      = in_pnt_q;
     out_pnt_d     = out_pnt_q;
+    vrf_pnt_d     = vrf_pnt_q;
     state_d       = state_q;
 
     result_queue_d           = result_queue_q;
@@ -204,7 +206,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     unique case (state_q)
       SLIDE_IDLE: begin
         if (vinsn_issue_valid) begin
-          state_d = SLIDE_RUN;
+          state_d   = SLIDE_RUN;
+          vrf_pnt_d = '0;
 
           unique case (vinsn_issue.op)
             VSLIDEUP: begin
@@ -259,7 +262,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Initialize id and addr fields of the result queue requests
           for (int lane = 0; lane < NrLanes; lane++) begin
             result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-            result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - (issue_cnt_q >> int'(vinsn_issue.vtype.vsew))) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+            result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + vrf_pnt_q;
           end
 
           // Bump pointers
@@ -267,11 +270,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           out_pnt_d   = out_pnt_q + byte_count;
           issue_cnt_d = issue_cnt_q - byte_count;
 
-          // If this is a vslide1up instruction,
-          if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD) begin
-            // Account for an extra word
-            issue_cnt_d = issue_cnt_q - byte_count - int'(vinsn_issue.vtype.vsew);
-            // Copy the scalar operand to the first word
+          // Jump to SLIDE_RUN
+          state_d = SLIDE_RUN;
+          // If this is a vslide1up instruction, copy the scalar operand to the first word
+          if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD)
             unique case (vinsn_issue.vtype.vsew)
               EW8: begin
                 result_queue_d[result_queue_write_pnt_q][0].wdata[7:0] = vinsn_issue.scalar_op[7:0];
@@ -290,9 +292,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                 result_queue_d[result_queue_write_pnt_q][0].be[7:0]     = {8{vinsn_issue.vm || mask_i[0][0]}};
               end
             endcase
-          end
-          // Jump to SLIDE_RUN
-          state_d = SLIDE_RUN;
 
           // Read a full word from the VRF or finished the instruction
           if (in_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
@@ -312,6 +311,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             if (vinsn_issue.op == VSLIDEDOWN)
               mask_ready_o = !vinsn_issue.vm;
 
+            // Increment VRF address
+            vrf_pnt_d = vrf_pnt_q + 1;
+
             // Send result to the VRF
             result_queue_cnt_d += 1;
             result_queue_valid_d[result_queue_write_pnt_q] = '1;
@@ -324,6 +326,34 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           if (issue_cnt_q <= byte_count) begin
             // Back to idle
             state_d = SLIDE_IDLE;
+
+            // If this is a vslide1down, fill up the last position with the scalar operand
+            if (vinsn_issue.op == VSLIDEDOWN && vinsn_issue.use_scalar_op) begin
+              // Copy the scalar operand to the last word
+              automatic int out_seq_byte    = issue_cnt_q;
+              automatic int out_byte        = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+              automatic int tgt_lane        = out_byte[3 +: $clog2(NrLanes)];
+              automatic int tgt_lane_offset = out_byte[2:0];
+
+              unique case (vinsn_issue.vtype.vsew)
+                EW8: begin
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] = vinsn_issue.scalar_op[7:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 1]      = vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
+                end
+                EW16: begin
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 16] = vinsn_issue.scalar_op[15:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 2]       = {2{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                end
+                EW32: begin
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 32] = vinsn_issue.scalar_op[31:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 4]       = {4{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                end
+                EW64: begin
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 64] = vinsn_issue.scalar_op[63:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 8]       = {8{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                end
+              endcase
+            end
 
             // Increment vector instruction queue pointers and counters
             vinsn_queue_d.issue_pnt += 1;
@@ -391,9 +421,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         case (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op)
           VSLIDEUP: begin
             // Trim full words which are not touched by the slide unit
-            automatic int vslide_adj = (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew)) / NrLanes / 8;
-            issue_cnt_d -= vslide_adj * NrLanes * 8;
-            commit_cnt_d -= vslide_adj * NrLanes * 8;
+            issue_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
+            commit_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
+          end
+          VSLIDEDOWN: begin
+            // Trim the last element of vslide1down, which does not come from the VRF
+            if (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].use_scalar_op)
+              issue_cnt_d -= 1 << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
           end
         endcase
       end
@@ -420,10 +454,14 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
       // Trim full destination VRF words which are not touched by the slide unit
-      if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op) begin
+      if (pe_req_i.op == VSLIDEUP) begin
         issue_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
         commit_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
       end
+
+      // Trim the last element of vslide1down, which does not come from the VRF
+      if (pe_req_i.op == VSLIDEDOWN && pe_req_i.use_scalar_op)
+        issue_cnt_d -= 1 << int'(pe_req_i.vtype.vsew);
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
@@ -439,6 +477,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       commit_cnt_q    <= '0;
       in_pnt_q        <= '0;
       out_pnt_q       <= '0;
+      vrf_pnt_q       <= '0;
       state_q         <= SLIDE_IDLE;
       pe_resp_o       <= '0;
     end else begin
@@ -447,6 +486,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       commit_cnt_q    <= commit_cnt_d;
       in_pnt_q        <= in_pnt_d;
       out_pnt_q       <= out_pnt_d;
+      vrf_pnt_q       <= vrf_pnt_d;
       state_q         <= state_d;
       pe_resp_o       <= pe_resp;
     end
