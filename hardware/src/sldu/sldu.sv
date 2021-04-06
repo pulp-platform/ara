@@ -163,8 +163,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   slide_state_e state_d, state_q;
 
   // Pointers in the input operand and the output result
-  vlen_t in_pnt_d, in_pnt_q;
-  vlen_t out_pnt_d, out_pnt_q;
+  logic [idx_width(NrLanes*StrbWidth):0] in_pnt_d, in_pnt_q;
+  logic [idx_width(NrLanes*StrbWidth):0] out_pnt_d, out_pnt_q;
 
   // Remaining bytes of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
@@ -244,7 +244,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             automatic int out_byte     = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
             // Is this a valid byte?
-            if (in_seq_byte < issue_cnt_q && in_seq_byte < NrLanes * 8 && out_seq_byte < NrLanes * 8) begin
+            if (b < issue_cnt_q && in_seq_byte < NrLanes * 8 && out_seq_byte < NrLanes * 8) begin
               // At which lane, and what is the offset in that lane, are the input and output bytes?
               automatic int src_lane        = in_byte[3 +: $clog2(NrLanes)];
               automatic int src_lane_offset = in_byte[2:0];
@@ -256,8 +256,22 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             end
           end
 
-          // If this is a vslide1up instruction, copy the scalar operand to the first word
-          if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD)
+          // Initialize id and addr fields of the result queue requests
+          for (int lane = 0; lane < NrLanes; lane++) begin
+            result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
+            result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - (issue_cnt_q >> int'(vinsn_issue.vtype.vsew))) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
+          end
+
+          // Bump pointers
+          in_pnt_d    = in_pnt_q + byte_count;
+          out_pnt_d   = out_pnt_q + byte_count;
+          issue_cnt_d = issue_cnt_q - byte_count;
+
+          // If this is a vslide1up instruction,
+          if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD) begin
+            // Account for an extra word
+            issue_cnt_d = issue_cnt_q - byte_count - int'(vinsn_issue.vtype.vsew);
+            // Copy the scalar operand to the first word
             unique case (vinsn_issue.vtype.vsew)
               EW8: begin
                 result_queue_d[result_queue_write_pnt_q][0].wdata[7:0] = vinsn_issue.scalar_op[7:0];
@@ -276,32 +290,27 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                 result_queue_d[result_queue_write_pnt_q][0].be[7:0]     = {8{vinsn_issue.vm || mask_i[0][0]}};
               end
             endcase
+          end
           // Jump to SLIDE_RUN
           state_d = SLIDE_RUN;
-
-          // Initialize id and addr fields of the result queue requests
-          for (int lane = 0; lane < NrLanes; lane++) begin
-            result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-            result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - (issue_cnt_q >> int'(vinsn_issue.vtype.vsew))) / NrLanes) >> (int'(EW64) - int'(vinsn_issue.vtype.vsew)));
-          end
-
-          // Bump pointers
-          in_pnt_d    = in_pnt_q + byte_count;
-          out_pnt_d   = out_pnt_q + byte_count;
-          issue_cnt_d = issue_cnt_q - byte_count;
 
           // Read a full word from the VRF or finished the instruction
           if (in_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
             // Reset the pointer and ask for a new operand
             in_pnt_d             = '0;
             sldu_operand_ready_o = 1'b1;
-            mask_ready_o         = !vinsn_issue.vm;
+            // We used all the bits of the mask
+            if (vinsn_issue.op == VSLIDEUP)
+              mask_ready_o = !vinsn_issue.vm;
           end
 
           // Filled up a word to the VRF or finished the instruction
           if (out_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
             // Reset the pointer
             out_pnt_d = '0;
+            // We used all the bits of the mask
+            if (vinsn_issue.op == VSLIDEDOWN)
+              mask_ready_o = !vinsn_issue.vm;
 
             // Send result to the VRF
             result_queue_cnt_d += 1;
