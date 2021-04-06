@@ -75,7 +75,7 @@ riscv_tests_spike:
 	# Run the tests
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
 
-# Run spike v_benchmark iconv2d
+# Run spike v_benchmarks
 v_benchmarks_spike:
 	# Compile  and run tests
 	PATH=$(GCC_INSTALL_DIR)/bin:$(ISA_SIM_INSTALL_DIR)/bin:${PATH} DEFINES=$(DEFINES) make -C riscv-tests/v_benchmarks run

@@ -19,6 +19,7 @@ instbasedir = $(UCB_VLSI_HOME)/install
 
 bmarks =  \
 	dropout \
+	conv2d
 
 #--------------------------------------------------------------------
 # Build rules
@@ -47,8 +48,6 @@ objs  :=
 #
 # $(foreach bmark,$(bmarks),$(eval $(call compile_template,$(bmark))))
 
-D_TYPE ?= float
-
 dropout.riscv: dropout_gen_data $(wildcard $(src_dir)/dropout/*.c) $(wildcard $(src_dir)/dropout/*.h) $(wildcard $(src_dir)/dropout/*.S)
 	$(RISCV_GCC) $(incs) $(RISCV_GCC_OPTS) $(DEFINES) -o $@ $(wildcard $(src_dir)/dropout/*.c) $(wildcard $(src_dir)/dropout/*.S) $(wildcard $(src_dir)/common/*.c) $(wildcard $(src_dir)/common/*.S) $(RISCV_LINK_OPTS)
 
@@ -56,6 +55,14 @@ dropout.riscv: dropout_gen_data $(wildcard $(src_dir)/dropout/*.c) $(wildcard $(
 dropout_gen_data: $(src_dir)/dropout/data.c
 $(src_dir)/dropout/data.c: $(src_dir)/dropout/script/gen_data.py $(src_dir)/dropout/data.c
 	$(PYTHON) $< > $@
+
+conv2d.riscv: conv2d_gen_data $(wildcard $(src_dir)/conv2d/*.c) $(wildcard $(src_dir)/conv2d/*.h) $(wildcard $(src_dir)/conv2d/*.S)
+	$(RISCV_GCC) $(incs) $(RISCV_GCC_OPTS) $(DEFINES) -o $@ $(wildcard $(src_dir)/conv2d/*.c) $(src_dir)/conv2d/data.S $(wildcard $(src_dir)/common/*.c) $(wildcard $(src_dir)/common/*.S) $(RISCV_LINK_OPTS)
+
+FILTER_SIZE ?= 3
+.PHONY: conv2d_gen_data
+conv2d_gen_data:
+	$(PYTHON) $(src_dir)/conv2d/script/gen_data.py $(FILTER_SIZE) > $(src_dir)/conv2d/data.S
 
 #------------------------------------------------------------
 # Build and run benchmarks on riscv simulator
