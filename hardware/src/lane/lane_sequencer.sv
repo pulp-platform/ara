@@ -375,11 +375,14 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes - vslidedown_adj;
-
-                if ((operand_request_i[SlideAddrGenA].vl + vslidedown_adj) * NrLanes != pe_req_i.vl)
+                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes;
+                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
                   operand_request_i[SlideAddrGenA].vl += 1;
-              end
+
+                // If the vslidedown stride is not a full VRF word, we will need to request an extra word
+                if (pe_req_i.stride - (vslidedown_adj << ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2))) != 0)
+                  operand_request_i[SlideAddrGenA].vl += 1;
+                end
             endcase
 
             // This vector instruction uses masks
@@ -408,16 +411,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                   operand_request_i[MaskM].vl += 1;
               end
               VSLIDEDOWN: begin
-                // We need to trim full words from the start of the vector that are not used
-                // as operands by the slide unit.
-                automatic vlen_t vslidedown_adj = (pe_req_i.stride / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew));
-                operand_request_i[MaskM].vstart = vslidedown_adj;
-
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[MaskM].vl = ((pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew))) - vslidedown_adj;
-
-                if (((operand_request_i[MaskM].vl + vslidedown_adj) << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+                operand_request_i[MaskM].vl = ((pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew)));
+                if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
                   operand_request_i[MaskM].vl += 1;
               end
             endcase
