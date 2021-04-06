@@ -133,7 +133,7 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  localparam int unsigned NumConversions = 8;
+  localparam int unsigned NumConversions = 9;
 
   typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
@@ -143,7 +143,8 @@ package ara_pkg;
     OpQueueConversionSExt4,
     OpQueueConversionZExt8,
     OpQueueConversionSExt8,
-    OpQueueConversionWideFP2
+    OpQueueConversionWideFP2,
+    OpQueueAdjustFPCvt
   } opqueue_conversion_e;
 
   // Floating-Point structs for re-encoding during widening FP operations
