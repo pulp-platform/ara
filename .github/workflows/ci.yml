@@ -297,6 +297,31 @@ jobs:
     - name: Run test
       run: make -C hardware app=fmatmul simv
 
+  simulate-conv2d:
+    runs-on: ubuntu-latest
+    needs: ["compile-ara", "compile-apps"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Get applications
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-apps
+        path: apps/bin
+    - name: Run test
+      run: make -C hardware app=conv2d simv
+
 ########################
 #  RISC-V Tests stage  #
 ########################
@@ -361,7 +386,7 @@ jobs:
 
   clean-up:
     runs-on: ubuntu-latest
-    needs: ["simulate-hello-world", "simulate-imatmul", "simulate-fmatmul", "riscv-tests-spike", "riscv-tests-simv"]
+    needs: ["simulate-hello-world", "simulate-imatmul", "simulate-fmatmul", "simulate-conv2d", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
       - uses: actions/checkout@v2
       - name: Delete artifacts
