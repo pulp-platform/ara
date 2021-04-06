@@ -47,3 +47,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 ## Vector mask instructions
 
 - Vector mask-register logical instructions: `vmand`, `vmnand`, `vmandnot`, `vmxor`, `vmor`, `vmnor`, `vmornot`, `vmxnor`
+
+## Vector permutation instructions
+
+- Vector slide instructions: `vslideup`, `vslidedown`, `vslide1up`, `vfslide1up`, `vslide1down`, `vfslide1down`
