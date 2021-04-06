@@ -1891,7 +1891,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
-                  // VFP Addition
                   6'b000000: begin
                     ara_req_d.op             = ara_pkg::VFADD;
                     // When performing a floating-point add/sub, fpnew adds the second and the third operand
@@ -1907,6 +1906,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
                   6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
                   6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                  6'b001110: begin // vfslide1up
+                    ara_req_d.op     = ara_pkg::VSLIDEUP;
+                    ara_req_d.stride = 1;
+                  end
+                  6'b001111: begin // vfslide1down
+                    ara_req_d.op     = ara_pkg::VSLIDEDOWN;
+                    ara_req_d.stride = 1;
+                  end
                   6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b100111: begin
