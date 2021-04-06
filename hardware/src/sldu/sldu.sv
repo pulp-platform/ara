@@ -209,12 +209,18 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           state_d   = SLIDE_RUN;
           vrf_pnt_d = '0;
 
+          // Initialize counters
+          issue_cnt_d = vinsn_issue.vl << int'(vinsn_issue.vtype.vsew);
+
           unique case (vinsn_issue.op)
             VSLIDEUP: begin
               // vslideup starts reading the source operand from its beginning
               in_pnt_d  = '0;
               // vslideup starts writing the destination vector at the slide offset
               out_pnt_d = vinsn_issue.stride;
+
+              // Trim full destination VRF words which are not touched by the slide unit
+              issue_cnt_d -= vinsn_issue.stride << int'(vinsn_issue.vtype.vsew);
 
               // Go to SLIDE_RUN_VSLIDE1UP_FIRST_WORD if this is a vslide1up instruction
               if (vinsn_issue.use_scalar_op)
@@ -225,6 +231,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               in_pnt_d  = vinsn_issue.stride;
               // vslidedown starts writing the destination vector at its beginning
               out_pnt_d = '0;
+
+              // Trim the last element of vslide1down, which does not come from the VRF
+              if (vinsn_issue.use_scalar_op)
+                issue_cnt_d -= 1 << int'(vinsn_issue.vtype.vsew);
             end
           endcase
         end
@@ -419,16 +429,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
 
         case (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op)
-          VSLIDEUP: begin
+          VSLIDEUP:
             // Trim full words which are not touched by the slide unit
-            issue_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
             commit_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
-          end
-          VSLIDEDOWN: begin
-            // Trim the last element of vslide1down, which does not come from the VRF
-            if (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].use_scalar_op)
-              issue_cnt_d -= 1 << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
-          end
         endcase
       end
     end
@@ -447,21 +450,12 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride[idx_width(8*NrLanes)-1:0];
       end
 
-      // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
       // Trim full destination VRF words which are not touched by the slide unit
-      if (pe_req_i.op == VSLIDEUP) begin
-        issue_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
+      if (pe_req_i.op == VSLIDEUP)
         commit_cnt_d -= pe_req_i.stride << int'(pe_req_i.vtype.vsew);
-      end
-
-      // Trim the last element of vslide1down, which does not come from the VRF
-      if (pe_req_i.op == VSLIDEDOWN && pe_req_i.use_scalar_op)
-        issue_cnt_d -= 1 << int'(pe_req_i.vtype.vsew);
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
