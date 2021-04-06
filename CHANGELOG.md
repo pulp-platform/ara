@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Vector single-width floating-point/integer type-convert instructions (vfcvt.xu.f, vfcvt.x.f, vfcvt.rtz.xu.f, vfcvt.rtz.x.f, vfcvt.f.xu, vfcvt.f.x)
+- Vector widening floating-point/integer type-convert instructions (vfwcvt.xu.f, vfwcvt.x.f, vfwcvt.rtz.xu.f, vfwcvt.rtz.x.f, vfwcvt.f.xu, vfwcvt.f.x, vfwcvt.f.f)
+- Vector narrowing floating-point/integer type-convert instructions (vfncvt.xu.f, vfncvt.x.f, vfncvt.rtz.xu.f, vfncvt.rtz.x.f, vfncvt.f.xu, vfncvt.f.x, vfncvt.f.f)
+
 ### Changed
 
 - Alignment with lowRISC's coding guidelines
@@ -72,8 +77,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector single-width floating-point multiply instructions (vfmul)
   - Vector single-width floating-point fused multiply-add instructions (vfmacc, vfmadd)
   - Vector single-width floating-point min/max instructions (vfmin, vfmax)
-  - Vector single-width floating-point/integer type-convert instructions (vfcvt.xu.f, vfcvt.x.f, vfcvt.rtz.xu.f, vfcvt.rtz.x.f, vfcvt.f.xu, vfcvt.f.x)
-  - Vector widening floating-point/integer type-convert instructions (vfwcvt.xu.f, vfwcvt.x.f, vfwcvt.rtz.xu.f, vfwcvt.rtz.x.f, vfwcvt.f.xu, vfwcvt.f.x, vfwcvt.f.f)
 - Software implementation of a floating-point matrix multiplication kernel
 
 ## 0.6.0 - 2021-02-24
