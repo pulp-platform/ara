@@ -380,9 +380,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                   operand_request_i[SlideAddrGenA].vl += 1;
 
                 // If the vslidedown stride is not a full VRF word, we will need to request an extra word
-                if (pe_req_i.stride - (vslidedown_adj << ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2))) != 0)
-                  operand_request_i[SlideAddrGenA].vl += 1;
-                end
+                if (!pe_req_i.use_scalar_op)
+                  if (pe_req_i.stride - (vslidedown_adj << ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2))) != 0)
+                    operand_request_i[SlideAddrGenA].vl += 1;
+              end
             endcase
 
             // This vector instruction uses masks
