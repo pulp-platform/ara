@@ -170,7 +170,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX], [VMFEQ:VMFGE]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFCVTRTZXF], [VMFEQ:VMFGE]};
 
   //////////////////////
   //  Scalar operand  //
@@ -371,7 +371,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       EnableVectors: 1'b1,
       EnableNanBox : 1'b1,
       FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), 1'b0, 1'b0},
-      IntFmtMask   : {1'b0, 1'b0, 1'b0, 1'b0}
+      IntFmtMask   : {1'b0, 1'b1, 1'b1, 1'b1}
     };
 
     // Implementation (number of registers etc)
@@ -396,7 +396,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
     operation_e fp_op;
     logic fp_opmod;
-    fp_format_e fp_fmt;
+    fp_format_e fp_src_fmt, fp_dst_fmt;
+    int_format_e fp_int_fmt;
     roundmode_e fp_rm;
     logic [2:0] fp_sign;
 
@@ -409,8 +410,30 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       fp_rm     = vinsn_issue_q.fp_rm;
       fp_op     = ADD;
       fp_opmod  = 1'b0;
-      fp_fmt    = FP64;
+      fp_src_fmt = FP64;
+      fp_dst_fmt = FP64;
+      fp_int_fmt = INT64;
       fp_sign   = 3'b0;
+
+      // vtype.vsew encodes the source format for widening instructins, and the destination format for the narrowing ones
+      unique case (vinsn_issue_q.vtype.vsew)
+        EW16: begin
+          fp_src_fmt = FP16;
+          fp_dst_fmt = FP16;
+          fp_int_fmt = INT16;
+        end
+        EW32: begin
+          fp_src_fmt = FP32;
+          fp_dst_fmt = FP32;
+          fp_int_fmt = INT32;
+        end
+        EW64: begin
+          fp_src_fmt = FP64;
+          fp_dst_fmt = FP64;
+          fp_int_fmt = INT64;
+        end
+        default:;
+      endcase
 
       unique case (vinsn_issue_q.op)
         // Addition is between operands B and C, A was moved to C in the lane_sequencer
@@ -481,6 +504,31 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_sign[1] = 1'b1;
           fp_op = CMP;
           fp_rm = RNE;
+        VFCVTXUF: begin
+          fp_op    = F2I;
+          fp_opmod = 1'b1;
+        end
+        VFCVTXF: begin
+          fp_op    = F2I;
+          fp_opmod = 1'b0;
+        end
+        VFCVTFXU: begin
+          fp_op    = I2F;
+          fp_opmod = 1'b1;
+        end
+        VFCVTFX: begin
+          fp_op    = I2F;
+          fp_opmod = 1'b0;
+        end
+        VFCVTRTZXUF: begin
+          fp_op    = F2I;
+          fp_opmod = 1'b1;
+          fp_rm    = RTZ;
+        end
+        VFCVTRTZXF: begin
+          fp_op    = F2I;
+          fp_opmod = 1'b0;
+          fp_rm    = RTZ;
         end
         default:;
       endcase
@@ -547,9 +595,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       .operands_i    (vfpu_operands ),
       .tag_i         (mask_i        ),
       .simd_mask_i   (vfpu_simd_mask),
-      .src_fmt_i     (fp_fmt        ),
-      .dst_fmt_i     (fp_fmt        ),
-      .int_fmt_i     (INT8          ),
+      .src_fmt_i     (fp_src_fmt    ),
+      .dst_fmt_i     (fp_dst_fmt    ),
+      .int_fmt_i     (fp_int_fmt    ),
       .in_valid_i    (vfpu_in_valid ),
       .in_ready_o    (vfpu_in_ready ),
       .result_o      (vfpu_result   ),
@@ -750,7 +798,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFSGNJX], [VMFEQ:VMFGE]: begin
+      [VFADD:VFCVTRTZXF], [VMFEQ:VMFGE]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_processed_result;
         unit_out_mask   = vfpu_mask;

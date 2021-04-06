@@ -1333,6 +1333,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b011001: ara_req_d.op = ara_pkg::VMFLE;
                   6'b011011: ara_req_d.op = ara_pkg::VMFLT;
                   6'b011100: ara_req_d.op = ara_pkg::VMFNE;
+                  6'b010010: begin // VFUNARY0
+                    // These instructions do not use vs1
+                    ara_req_d.use_vs1 = 1'b0;
+
+                    case (insn.varith_type.rs1)
+                      5'b00000: ara_req_d.op = VFCVTXUF;
+                      5'b00001: ara_req_d.op = VFCVTXF;
+                      5'b00010: ara_req_d.op = VFCVTFXU;
+                      5'b00011: ara_req_d.op = VFCVTFX;
+                      5'b00110: ara_req_d.op = VFCVTRTZXUF;
+                      5'b00111: ara_req_d.op = VFCVTRTZXF;
+                      default: begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    endcase
+                  end
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b101000: begin
                     ara_req_d.op             = ara_pkg::VFMADD;
