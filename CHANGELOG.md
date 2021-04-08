@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fix vector length calculation for the `MaskB` operand, which depends on `vsew`
 - Fix typo on the `vrf_pnt` updating logic at the Mask Unit
 
+### Changed
+- The `encoding.h` in the common Ara runtime is now a copy from the `encoding.h` in the Spike submodule
+
 ## 1.1.1 - 2020-03-25
 
 ### Added
