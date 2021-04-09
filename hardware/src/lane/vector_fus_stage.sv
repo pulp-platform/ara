@@ -9,7 +9,8 @@
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes    = 0,
-    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
+    // Support for floating-point data types
+    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
     // Type used to address vector register file elements
     parameter  type                   vaddr_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
@@ -58,17 +59,17 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output logic                         mask_ready_o
   );
 
-  /*************
-   *  Signals  *
-   *************/
+  ///////////////
+  //  Signals  //
+  ///////////////
 
   logic alu_mask_ready;
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
 
-  /****************
-   *  Vector ALU  *
-   ****************/
+  //////////////////
+  //  Vector ALU  //
+  //////////////////
 
   valu #(
     .NrLanes(NrLanes),
@@ -101,9 +102,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .mask_ready_o         (alu_mask_ready       )
   );
 
-  /*****************
-   *  Vector MFPU  *
-   *****************/
+  ///////////////////
+  //  Vector MFPU  //
+  ///////////////////
 
   vmfpu #(
     .NrLanes   (NrLanes   ),

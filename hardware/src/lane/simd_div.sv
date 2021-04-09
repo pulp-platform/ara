@@ -29,14 +29,14 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     output logic    valid_o
   );
 
-  /*****************
-   *  Definitions  *
-   *****************/
+  ///////////////////
+  //  Definitions  //
+  ///////////////////
 
   // The issue CU accepts new requests and issue the operands to the serial divider (serdiv)
   // It handles the input ready_o signal and the serdiv_in_valid
   // When the main handshake is complete, it loads the issue counter and commit counter to track
-  //how many elements should be issued and committed.
+  // how many elements should be issued and committed.
   // Then, it validates the valid input operands and skips the invalid ones
   // When all the operands have been issued, it waits until the whole result is formed before
   // accepting another external request, as vew_q is used by the serdiv output MUX and
@@ -86,9 +86,9 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   elen_t    opa_w8, opb_w8, opa_w16, opb_w16, opa_w32, opb_w32, opa_w64, opb_w64;
   operand_t serdiv_result_masked, shifted_result;
 
-  /**********************
-   *  In/Out registers  *
-   **********************/
+  ////////////////////////
+  //  In/Out registers  //
+  ////////////////////////
 
   // Input registers
   assign opa_d  = (valid_i && ready_o) ? operand_a_i : opa_q;
@@ -98,9 +98,9 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   assign be_d   = (valid_i && ready_o) ? be_i        : be_q;
   assign mask_d = (valid_i && ready_o) ? mask_i      : mask_q;
 
-  /************
-   *  Control  *
-   ************/
+  ///////////////
+  //  Control  //
+  ///////////////
 
   // Issue CU
   always_comb begin : issue_cu_p
@@ -211,7 +211,8 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   // Counters
-  // issue_cnt  counts how many elements should still be issued, and controls the first wall of MUXes
+  // issue_cnt  counts how many elements should still be issued, and controls the first wall of
+  // MUXes
   // commit_cnt counts how many elements should still be committed
   always_comb begin
     issue_cnt_d  = issue_cnt_q;
@@ -248,19 +249,35 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   end
 
-  /**************
-   *  Datapath  *
-   **************/
+  ////////////////
+  //  Datapath  //
+  ////////////////
 
   // serdiv input MUXes
   always_comb begin
-    // First wall of MUXes: select one byte/halfword/word/dword from the inputs and fill it with zeroes/sign extend it
-    opa_w8  = op_q inside {VDIV, VREM} ? {{56{opa_q.w8 [issue_cnt_q[2:0]][ 7]}}, opa_q.w8 [issue_cnt_q[2:0]]} : {56'b0, opa_q.w8 [issue_cnt_q[2:0]]};
-    opb_w8  = op_q inside {VDIV, VREM} ? {{56{opb_q.w8 [issue_cnt_q[2:0]][ 7]}}, opb_q.w8 [issue_cnt_q[2:0]]} : {56'b0, opb_q.w8 [issue_cnt_q[2:0]]};
-    opa_w16 = op_q inside {VDIV, VREM} ? {{48{opa_q.w16[issue_cnt_q[1:0]][15]}}, opa_q.w16[issue_cnt_q[1:0]]} : {48'b0, opa_q.w16[issue_cnt_q[1:0]]};
-    opb_w16 = op_q inside {VDIV, VREM} ? {{48{opb_q.w16[issue_cnt_q[1:0]][15]}}, opb_q.w16[issue_cnt_q[1:0]]} : {48'b0, opb_q.w16[issue_cnt_q[1:0]]};
-    opa_w32 = op_q inside {VDIV, VREM} ? {{32{opa_q.w32[issue_cnt_q[0:0]][31]}}, opa_q.w32[issue_cnt_q[0:0]]} : {32'b0, opa_q.w32[issue_cnt_q[0:0]]};
-    opb_w32 = op_q inside {VDIV, VREM} ? {{32{opb_q.w32[issue_cnt_q[0:0]][31]}}, opb_q.w32[issue_cnt_q[0:0]]} : {32'b0, opb_q.w32[issue_cnt_q[0:0]]};
+    // First wall of MUXes: select one byte/halfword/word/dword from the inputs and fill it with
+    // zeroes/sign extend it
+    opa_w8 = op_q inside {VDIV, VREM} ?
+      {{56{opa_q.w8 [issue_cnt_q[2:0]][ 7]}}, opa_q.w8 [issue_cnt_q[2:0]]} :
+      {56'b0, opa_q.w8 [issue_cnt_q[2:0]]};
+    opb_w8 = op_q inside {VDIV, VREM} ?
+      {{56{opb_q.w8 [issue_cnt_q[2:0]][ 7]}}, opb_q.w8 [issue_cnt_q[2:0]]} :
+      {56'b0, opb_q.w8 [issue_cnt_q[2:0]]};
+
+    opa_w16 = op_q inside {VDIV, VREM} ?
+      {{48{opa_q.w16[issue_cnt_q[1:0]][15]}}, opa_q.w16[issue_cnt_q[1:0]]} :
+      {48'b0, opa_q.w16[issue_cnt_q[1:0]]};
+    opb_w16 = op_q inside {VDIV, VREM} ?
+      {{48{opb_q.w16[issue_cnt_q[1:0]][15]}}, opb_q.w16[issue_cnt_q[1:0]]} :
+      {48'b0, opb_q.w16[issue_cnt_q[1:0]]};
+
+    opa_w32 = op_q inside {VDIV, VREM} ?
+      {{32{opa_q.w32[issue_cnt_q[0:0]][31]}}, opa_q.w32[issue_cnt_q[0:0]]} :
+      {32'b0, opa_q.w32[issue_cnt_q[0:0]]};
+    opb_w32 = op_q inside {VDIV, VREM} ?
+      {{32{opb_q.w32[issue_cnt_q[0:0]][31]}}, opb_q.w32[issue_cnt_q[0:0]]} :
+      {32'b0, opb_q.w32[issue_cnt_q[0:0]]};
+
     opa_w64 = opa_q.w64;
     opb_w64 = opb_q.w64;
 
@@ -336,9 +353,9 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
   end
   assign result_d = (commit_cnt_en) ? (shifted_result | serdiv_result_masked) : result_q;
 
-  /****************************
-   *  Sequential assignments  *
-   ****************************/
+  //////////////////////////////
+  //  Sequential assignments  //
+  //////////////////////////////
 
   // In/Out CUs sequential process
   always_ff @(posedge clk_i or negedge rst_ni) begin

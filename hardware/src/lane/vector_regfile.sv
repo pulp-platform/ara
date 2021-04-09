@@ -7,12 +7,12 @@
 // This is the vector register file of one lane.
 
 module vector_regfile import ara_pkg::*; #(
-    parameter int  unsigned NrBanks    = 0,                    // Number of banks in the vector register file
-    parameter int  unsigned VRFSize    = 0,                    // Size of the VRF, in bits
+    parameter  int  unsigned NrBanks   = 0,     // Number of banks in the vector register file
+    parameter  int  unsigned VRFSize   = 0,     // Size of the VRF, in bits
+    parameter  type          vaddr_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t),
     localparam int  unsigned StrbWidth = DataWidth / 8,
-    parameter type          vaddr_t    = logic,
     localparam type          strb_t    = logic [StrbWidth-1:0]
   ) (
     input  logic                           clk_i,
@@ -29,15 +29,15 @@ module vector_regfile import ara_pkg::*; #(
     output logic     [NrOperandQueues-1:0] operand_valid_o
   );
 
-  /****************
-   *  Parameters  *
-   ****************/
+  //////////////////
+  //  Parameters  //
+  //////////////////
 
   localparam int unsigned NumWords = VRFSize / NrBanks / DataWidth;
 
-  /*************
-   *  Signals  *
-   *************/
+  ///////////////
+  //  Signals  //
+  ///////////////
 
   elen_t    [NrBanks-1:0] rdata;
   logic     [NrBanks-1:0] rdata_valid_q;
@@ -54,9 +54,9 @@ module vector_regfile import ara_pkg::*; #(
     end
   end
 
-  /***********
-   *  Banks  *
-   ***********/
+  /////////////
+  //  Banks  //
+  /////////////
 
   for (genvar bank = 0; bank < NrBanks; bank++) begin: gen_banks
     tc_sram #(
@@ -75,9 +75,9 @@ module vector_regfile import ara_pkg::*; #(
     );
   end : gen_banks
 
-  /*****************
-   *  Multiplexer  *
-   *****************/
+  ///////////////////
+  //  Multiplexer  //
+  ///////////////////
 
   stream_xbar #(
     .NumInp   (NrBanks        ),
