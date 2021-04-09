@@ -159,7 +159,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
    *******************/
 
   assign mask_operand_o       = result_queue_q[result_queue_read_pnt_q].wdata;
-  assign mask_operand_valid_o = result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
+  assign mask_operand_valid_o = result_queue_q[result_queue_read_pnt_q].mask & result_queue_valid_q[result_queue_read_pnt_q];
 
   /********************
    *  Scalar operand  *
@@ -395,7 +395,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
      *  Write results into the VRF  *
      ********************************/
 
-    alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask && !result_queue_q[result_queue_read_pnt_q].reduction;
+    alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] & ~result_queue_q[result_queue_read_pnt_q].mask & ~result_queue_q[result_queue_read_pnt_q].reduction;
     alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
     alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
