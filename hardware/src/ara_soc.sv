@@ -8,8 +8,9 @@
 
 module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // RVV Parameters
-    parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
-    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble, // Support for floating-point data types
+    parameter  int           unsigned NrLanes      = 0, // Number of parallel vector lanes.
+    // Support for floating-point data types
+    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
@@ -86,9 +87,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     output logic             axi_r_ready_o
   );
 
-  /********************
-   *  Memory Regions  *
-   ********************/
+  //////////////////////
+  //  Memory Regions  //
+  //////////////////////
 
   localparam NrAXIMasters = 2; // Actually masters, but slaves on the crossbar
 
@@ -96,23 +97,24 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     L2MEM = 0,
     UART  = 1,
     CTRL  = 2
-  } axi_slaves_t;
+  } axi_slaves_e;
   localparam NrAXISlaves = CTRL + 1;
 
   // Memory Map
-  localparam logic[63:0] DRAMLength = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
-  localparam logic[63:0] UARTLength = 64'h1000;
-  localparam logic[63:0] CTRLLength = 64'h1000;
+  // 1GByte of DDR (split between two chips on Genesys2)
+  localparam logic [63:0] DRAMLength = 64'h40000000;
+  localparam logic [63:0] UARTLength = 64'h1000;
+  localparam logic [63:0] CTRLLength = 64'h1000;
 
   typedef enum logic [63:0] {
     DRAMBase = 64'h8000_0000,
     UARTBase = 64'hC000_0000,
     CTRLBase = 64'hD000_0000
-  } soc_bus_start_t;
+  } soc_bus_start_e;
 
-  /*********
-   *  AXI  *
-   *********/
+  ///////////
+  //  AXI  //
+  ///////////
 
   `include "axi/assign.svh"
   `include "axi/typedef.svh"
@@ -154,7 +156,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   `AXI_TYPEDEF_B_CHAN_T(axi_soc_b_chan_t, axi_soc_id_t, axi_user_t)
   `AXI_TYPEDEF_REQ_T(axi_soc_wide_req_t, axi_soc_aw_chan_t, axi_wide_w_chan_t, axi_soc_ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_soc_wide_resp_t, axi_soc_b_chan_t, axi_soc_wide_r_chan_t)
-  `AXI_TYPEDEF_REQ_T(axi_soc_narrow_req_t, axi_soc_aw_chan_t, axi_narrow_w_chan_t, axi_soc_ar_chan_t)
+  `AXI_TYPEDEF_REQ_T(axi_soc_narrow_req_t, axi_soc_aw_chan_t, axi_narrow_w_chan_t,
+    axi_soc_ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_soc_narrow_resp_t, axi_soc_b_chan_t, axi_soc_narrow_r_chan_t)
 
   `AXI_TYPEDEF_AR_CHAN_T(axi_core_ar_chan_t, axi_addr_t, axi_core_id_t, axi_user_t)
@@ -164,7 +167,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   `AXI_TYPEDEF_B_CHAN_T(axi_core_b_chan_t, axi_core_id_t, axi_user_t)
   `AXI_TYPEDEF_REQ_T(axi_core_wide_req_t, axi_core_aw_chan_t, axi_wide_w_chan_t, axi_core_ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_core_wide_resp_t, axi_core_b_chan_t, axi_core_wide_r_chan_t)
-  `AXI_TYPEDEF_REQ_T(axi_core_narrow_req_t, axi_core_aw_chan_t, axi_narrow_w_chan_t, axi_core_ar_chan_t)
+  `AXI_TYPEDEF_REQ_T(axi_core_narrow_req_t, axi_core_aw_chan_t, axi_narrow_w_chan_t,
+    axi_core_ar_chan_t)
   `AXI_TYPEDEF_RESP_T(axi_core_narrow_resp_t, axi_core_b_chan_t, axi_core_narrow_r_chan_t)
 
   `AXI_LITE_TYPEDEF_AW_CHAN_T(axi_lite_soc_narrow_aw_t, axi_addr_t)
@@ -172,8 +176,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   `AXI_LITE_TYPEDEF_B_CHAN_T(axi_lite_soc_narrow_b_t)
   `AXI_LITE_TYPEDEF_AR_CHAN_T(axi_lite_soc_narrow_ar_t, axi_addr_t)
   `AXI_LITE_TYPEDEF_R_CHAN_T(axi_lite_soc_narrow_r_t, axi_narrow_data_t)
-  `AXI_LITE_TYPEDEF_REQ_T(axi_lite_soc_narrow_req_t, axi_lite_soc_narrow_aw_t, axi_lite_soc_narrow_w_t, axi_lite_soc_narrow_ar_t)
-  `AXI_LITE_TYPEDEF_RESP_T(axi_lite_soc_narrow_resp_t, axi_lite_soc_narrow_b_t, axi_lite_soc_narrow_r_t)
+  `AXI_LITE_TYPEDEF_REQ_T(axi_lite_soc_narrow_req_t, axi_lite_soc_narrow_aw_t,
+    axi_lite_soc_narrow_w_t, axi_lite_soc_narrow_ar_t)
+  `AXI_LITE_TYPEDEF_RESP_T(axi_lite_soc_narrow_resp_t, axi_lite_soc_narrow_b_t,
+    axi_lite_soc_narrow_r_t)
 
   // Buses
   axi_core_narrow_req_t  ariane_narrow_axi_req;
@@ -190,9 +196,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   axi_soc_narrow_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
   axi_soc_narrow_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
 
-  /**************
-   *  Crossbar  *
-   **************/
+  ////////////////
+  //  Crossbar  //
+  ////////////////
 
   localparam axi_pkg::xbar_cfg_t XBarCfg = '{
     NoSlvPorts        : NrAXIMasters,
@@ -213,7 +219,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   assign routing_rules = '{
     '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
-    '{idx: L2MEM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}};
+    '{idx: L2MEM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}
+  };
 
   axi_xbar #(
     .Cfg          (XBarCfg                ),
@@ -244,9 +251,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .default_mst_port_i   ('0                                   )
   );
 
-  /********
-   *  L2  *
-   ********/
+  //////////
+  //  L2  //
+  //////////
 
   // The L2 memory does not support atomics
 
@@ -370,9 +377,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   assign dram_wide_axi_resp_cut.r.user   = axi_r_user_i;
   assign axi_r_ready_o                   = dram_wide_axi_req_cut.r_ready;
 
-  /**********
-   *  UART  *
-   **********/
+  ////////////
+  //  UART  //
+  ////////////
 
   axi2apb_64_32 #(
     .AXI4_ADDRESS_WIDTH(AxiAddrWidth      ),
@@ -466,9 +473,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .mst_resp_i(periph_narrow_axi_resp[UART])
   );
 
-  /***********************
-   *  Control registers  *
-   ***********************/
+  /////////////////////////
+  //  Control registers  //
+  /////////////////////////
 
   axi_lite_soc_narrow_req_t  axi_lite_ctrl_registers_req;
   axi_lite_soc_narrow_resp_t axi_lite_ctrl_registers_resp;
@@ -538,9 +545,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .mst_resp_i(periph_narrow_axi_resp[CTRL])
   );
 
-  /********************
-   *  Ara and Ariane  *
-   ********************/
+  //////////////////////
+  //  Ara and Ariane  //
+  //////////////////////
 
   import ariane_pkg::accelerator_req_t;
   import ariane_pkg::accelerator_resp_t;
@@ -555,8 +562,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     NonIdempotentLength  : {64'b0, 64'b0},
     NrExecuteRegionRules : 3,
     //                      DRAM,       Boot ROM,   Debug Module
-    ExecuteRegionAddrBase: {DRAMBase,   64'h1_0000, 64'h0},
-    ExecuteRegionLength  : {DRAMLength, 64'h10000,  64'h1000},
+    ExecuteRegionAddrBase: {DRAMBase, 64'h1_0000, 64'h0},
+    ExecuteRegionLength  : {DRAMLength, 64'h10000, 64'h1000},
     // cached region
     NrCachedRegionRules  : 1,
     CachedRegionAddrBase : {DRAMBase},
@@ -584,27 +591,27 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   ariane #(
     .ArianeCfg(ArianeAraConfig)
   ) i_ariane (
-    .clk_i           (clk_i                 ),
-    .rst_ni          (rst_ni                ),
-    .boot_addr_i     (DRAMBase              ), // start fetching from DRAM
-    .hart_id_i       ('0                    ),
-    .irq_i           ('0                    ),
-    .ipi_i           ('0                    ),
-    .time_irq_i      ('0                    ),
-    .debug_req_i     ('0                    ),
-    .axi_req_o       (ariane_narrow_axi_req ),
-    .axi_resp_i      (ariane_narrow_axi_resp),
+    .clk_i            (clk_i                 ),
+    .rst_ni           (rst_ni                ),
+    .boot_addr_i      (DRAMBase              ), // start fetching from DRAM
+    .hart_id_i        ('0                    ),
+    .irq_i            ('0                    ),
+    .ipi_i            ('0                    ),
+    .time_irq_i       ('0                    ),
+    .debug_req_i      ('0                    ),
+    .axi_req_o        (ariane_narrow_axi_req ),
+    .axi_resp_i       (ariane_narrow_axi_resp),
     // Accelerator ports
-    .acc_req_o             (acc_req            ),
-    .acc_req_valid_o       (acc_req_valid      ),
-    .acc_req_ready_i       (acc_req_ready      ),
-    .acc_resp_i            (acc_resp           ),
-    .acc_resp_valid_i      (acc_resp_valid     ),
-    .acc_resp_ready_o      (acc_resp_ready     ),
-    .acc_cons_en_o         (acc_cons_en        ),
-    .inval_addr_i          (inval_addr         ),
-    .inval_valid_i         (inval_valid        ),
-    .inval_ready_o         (inval_ready        )
+    .acc_req_o        (acc_req               ),
+    .acc_req_valid_o  (acc_req_valid         ),
+    .acc_req_ready_i  (acc_req_ready         ),
+    .acc_resp_i       (acc_resp              ),
+    .acc_resp_valid_i (acc_resp_valid        ),
+    .acc_resp_ready_o (acc_resp_ready        ),
+    .acc_cons_en_o    (acc_cons_en           ),
+    .inval_addr_i     (inval_addr            ),
+    .inval_valid_i    (inval_valid           ),
+    .inval_ready_o    (inval_ready           )
   );
 
   axi_dw_converter #(
@@ -681,9 +688,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .axi_resp_i      (ara_axi_resp  )
   );
 
-  /****************
-   *  Assertions  *
-   ****************/
+  //////////////////
+  //  Assertions  //
+  //////////////////
 
   if (NrLanes == 0)
     $error("[ara_soc] Ara needs to have at least one lane.");

@@ -8,8 +8,9 @@
 
 module ara import ara_pkg::*; #(
     // RVV Parameters
-    parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
-    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble, // Support for floating-point data types
+    parameter  int           unsigned NrLanes      = 0, // Number of parallel vector lanes.
+    // Support for floating-point data types
+    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
@@ -21,7 +22,8 @@ module ara import ara_pkg::*; #(
     parameter  type                   axi_req_t    = logic,
     parameter  type                   axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
-    // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the vector store unit, the slide unit, and the mask unit.
+    // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
+    // vector store unit, the slide unit, and the mask unit.
     localparam int           unsigned NrPEs        = NrLanes + 4
   ) (
     // Clock and Reset
@@ -45,23 +47,24 @@ module ara import ara_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
-  /*****************
-   *  Definitions  *
-   ****************/
+  ///////////////////
+  //  Definitions  //
+  ///////////////////
 
   localparam int unsigned MaxVLenPerLane  = VLEN / NrLanes;       // In bits
   localparam int unsigned MaxVLenBPerLane = VLENB / NrLanes;      // In bytes
   localparam int unsigned VRFSizePerLane  = MaxVLenPerLane * 32;  // In bits
   localparam int unsigned VRFBSizePerLane = MaxVLenBPerLane * 32; // In bytes
-  typedef logic [idx_width(VRFBSizePerLane)-1:0] vaddr_t; // Address of an element in each lane's VRF
+  // Address of an element in each lane's VRF
+  typedef logic [idx_width(VRFBSizePerLane)-1:0] vaddr_t;
 
   localparam int unsigned DataWidth = $bits(elen_t);
   localparam int unsigned StrbWidth = DataWidth / 8;
   typedef logic [StrbWidth-1:0] strb_t;
 
-  /****************
-   *  Dispatcher  *
-   ****************/
+  //////////////////
+  //  Dispatcher  //
+  //////////////////
 
   // Interface with the sequencer
   ara_req_t                     ara_req;
@@ -108,9 +111,9 @@ module ara import ara_pkg::*; #(
     .store_pending_i  (store_pending   )
   );
 
-  /***************
-   *  Sequencer  *
-   ***************/
+  /////////////////
+  //  Sequencer  //
+  /////////////////
 
   // Interface with the PEs
   pe_req_t              pe_req;
@@ -121,10 +124,7 @@ module ara import ara_pkg::*; #(
   logic                 addrgen_ack;
   logic                 addrgen_error;
 
-  ara_sequencer #(
-    .NrLanes(NrLanes),
-    .NrPEs  (NrPEs  )
-  ) i_sequencer (
+  ara_sequencer #(.NrLanes(NrLanes)) i_sequencer (
     .clk_i                 (clk_i          ),
     .rst_ni                (rst_ni         ),
     // Interface with the dispatcher
@@ -147,9 +147,9 @@ module ara import ara_pkg::*; #(
     .addrgen_error_i       (addrgen_error  )
   );
 
-  /***********
-   *  Lanes  *
-   ***********/
+  /////////////
+  //  Lanes  //
+  /////////////
 
   // Interface with the vector load/store unit
   // Store unit
@@ -250,9 +250,9 @@ module ara import ara_pkg::*; #(
   end: gen_lanes
 
 
-  /****************************
-   *  Vector Load/Store Unit  *
-   ****************************/
+  //////////////////////////////
+  //  Vector Load/Store Unit  //
+  //////////////////////////////
 
   // Interface with the Mask unit
   logic vldu_mask_ready;
@@ -311,9 +311,9 @@ module ara import ara_pkg::*; #(
     .ldu_result_gnt_i       (ldu_result_gnt                                        )
   );
 
-  /****************
-   *  Slide unit  *
-   ****************/
+  //////////////////
+  //  Slide unit  //
+  //////////////////
 
   // Interface with the Mask Unit
   logic sldu_mask_ready;
@@ -345,9 +345,9 @@ module ara import ara_pkg::*; #(
     .mask_ready_o        (sldu_mask_ready                  )
   );
 
-  /***************
-   *  Mask unit  *
-   ***************/
+  /////////////////
+  //  Mask unit  //
+  /////////////////
 
   masku #(
     .NrLanes(NrLanes),
@@ -379,9 +379,9 @@ module ara import ara_pkg::*; #(
     .sldu_mask_ready_i    (sldu_mask_ready                 )
   );
 
-  /****************
-   *  Assertions  *
-   ****************/
+  //////////////////
+  //  Assertions  //
+  //////////////////
 
   if (NrLanes == 0)
     $error("[ara] Ara needs to have at least one lane.");
@@ -396,18 +396,23 @@ module ara import ara_pkg::*; #(
     $error("[ara] The vector length must be greater than zero.");
 
   if (ara_pkg::VLEN < ELEN)
-    $error("[ara] The vector length must be greater or equal than the maximum size of a single vector element");
+    $error(
+      "[ara] The vector length must be greater or equal than the maximum size of a single vector element"
+    );
 
   if (ara_pkg::VLEN != 2**$clog2(ara_pkg::VLEN))
     $error("[ara] The vector length must be a power of two.");
 
   if (RVVD(FPUSupport) && !ariane_pkg::RVD)
-    $error("[ara] Cannot support double-precision floating-point on Ara if Ariane does not support it.");
+    $error(
+      "[ara] Cannot support double-precision floating-point on Ara if Ariane does not support it.");
 
   if (RVVF(FPUSupport) && !ariane_pkg::RVF)
-    $error("[ara] Cannot support single-precision floating-point on Ara if Ariane does not support it.");
+    $error(
+      "[ara] Cannot support single-precision floating-point on Ara if Ariane does not support it.");
 
   if (RVVH(FPUSupport) && !ariane_pkg::XF16)
-    $error("[ara] Cannot support half-precision floating-point on Ara if Ariane does not support it.");
+    $error(
+      "[ara] Cannot support half-precision floating-point on Ara if Ariane does not support it.");
 
 endmodule : ara

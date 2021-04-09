@@ -111,7 +111,6 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
             is_rd_o    = is_vector_csr(riscv::csr_reg_t'(instr.i_type.imm));
           end
         endcase
-
       end
     endcase
   end
