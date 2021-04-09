@@ -38,6 +38,15 @@ To build this toolchain, run the following command in the project's root directo
 make toolchain
 ```
 
+Ara also requires an updated Spike ISA simulator, with support for the vector extension.
+
+To build Spike, run the following command in the project's root directory.
+
+```bash
+# Build Spike
+make riscv-isa-sim
+```
+
 ## Verilator
 
 Ara requires an updated version of Verilator, for RTL simulations.

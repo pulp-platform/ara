@@ -94,6 +94,8 @@ $(buildpath)/compile.tcl: Makefile ../Bender.yml $(shell find src -type f) $(she
 	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test $(bender_defs) > $(buildpath)/compile.tcl
 	echo "exit" >> $(buildpath)/compile.tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile.tcl
+	# Remove the file if compilation did not succeed
+	if [ `cat $(buildpath)/transcript | grep "\*\* Error" | wc -l` -ne 0 ]; then rm $(buildpath)/compile.tcl; fi
 
 # Simulation
 .PHONY: sim
