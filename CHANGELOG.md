@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Increment bit width of the vector length type (`vlen_t`), accounting for vectors whose length is `VLMAX`
 - Fix vector length calculation for the `MaskB` operand, which depends on `vsew`
 - Fix typo on the `vrf_pnt` updating logic at the Mask Unit
+- Update README to highlight dependency with Spike
+- Update Bender's link dependency to the public CVA6 repository
+- Retrigger the `compile` module if the ModelSim compilation did not succeed
 
 ### Changed
 - The `encoding.h` in the common Ara runtime is now a copy from the `encoding.h` in the Spike submodule
