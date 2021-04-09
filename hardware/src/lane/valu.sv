@@ -34,6 +34,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                        alu_result_wdata_o,
     output strb_t                        alu_result_be_o,
     input  logic                         alu_result_gnt_i,
+    // Interface with the Sliding Unit
+    output elen_t                        alu_red_result_o,
+    output elen_t                        alu_red_valid_o,
+    input  elen_t                        alu_red_ready_i,
     // Interface with the Mask unit
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
@@ -115,6 +119,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     elen_t wdata;
     strb_t be;
     logic mask;
+    logic reduction;
   } payload_t;
 
   // Result queue
@@ -193,6 +198,32 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // output EEW word we are producing.
   logic narrowing_select_d, narrowing_select_q;
 
+  /****************
+   *  Reductions  *
+   ****************/
+
+  // This function returns 1'b1 if `op` is a reduction instruction, i.e.,
+  // it must accumulate the result (intra-lane reduction) before sending it to the
+  // sliding unit (inter-lane and SIMD reduction).
+  function automatic logic is_reduction(ara_op_e op);
+    is_reduction = 1'b0;
+    if (op inside {VREDSUM})
+      is_reduction = 1'b1;
+  endfunction: is_reduction
+
+  // Signal the first operation of an instruction. The first operation of a reduction instruction
+  // the operation is performed between the first vector element and the scalar.
+  logic first_op_d, first_op_q;
+
+  assign alu_red_result_o = result_queue_q[result_queue_read_pnt_q].wdata;
+  assign alu_red_valid_o  = result_queue_q[result_queue_read_pnt_q].reduction & result_queue_valid_q[result_queue_read_pnt_q];
+
+  // Input multiplexer. During the first cycle, the reduction adds a scalar value kept into a
+  // vector register to the first group of vector elements. Then, one of the operand is always
+  // the accumulator.
+  vlen_t alu_operand_b;
+  assign alu_operand_b = (is_reduction(vinsn_issue_q.op) && !first_op_q) ? result_queue_d[result_queue_write_pnt_q].wdata : alu_operand_i[1];
+
   /*********************
    *  SIMD Vector ALU  *
    *********************/
@@ -202,7 +233,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
   simd_alu i_simd_alu (
     .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]      ),
-    .operand_b_i       (alu_operand_i[1]                                                ),
+    .operand_b_i       (alu_operand_b                                                   ),
     .valid_i           (valu_valid                                                      ),
     .vm_i              (vinsn_issue_q.vm                                                ),
     .mask_i            ((mask_valid_i && !vinsn_issue_q.vm) ? mask_i : {StrbWidth{1'b1}}),
@@ -235,6 +266,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     narrowing_select_d = narrowing_select_q;
 
+    first_op_d      = 1'b0;
+
     // Do not issue any operations
     valu_valid = 1'b0;
 
@@ -254,7 +287,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_issue_valid && !result_queue_full) begin
       // Do we have all the operands necessary for this instruction?
       if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
-          (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
+          (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1 || (is_reduction(vinsn_issue_q.op) && !first_op_q)) &&
           (mask_valid_i || vinsn_issue_q.vm)) begin
         // How many elements are we committing with this word?
         automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
@@ -265,56 +298,67 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         valu_valid = 1'b1;
 
         // Acknowledge the operands of this instruction
-        alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
+        alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1 & ~(is_reduction(vinsn_issue_q.op) & ~first_op_q)};
         // Narrowing instructions might need an extra cycle before acknowledging the mask operands
         // If the results are being sent to the Mask Unit, it is up to it to acknowledge the operands.
         if (!narrowing(vinsn_issue_q.op) && vinsn_issue_q != VFU_MaskUnit)
           mask_ready_o = !vinsn_issue_q.vm;
 
-        // Store the result in the result queue
-        result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
-        result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
-        result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
-        result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
-        if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
-          result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
+        // If this is not a reduction:
+        if (!reduction(vinsn_issue_q.op)) begin
+          // Store the result in the result queue
+          result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
+          result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
+          result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
+          result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
+          if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
+            result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
 
-        // Is this a narrowing instruction?
-        if (narrowing(vinsn_issue_q.op)) begin
-          // How many elements did we calculate in this iteration?
-          automatic logic [3:0] element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
-          if (element_cnt_narrow > issue_cnt_q)
-            element_cnt_narrow = issue_cnt_q;
+          // Is this a narrowing instruction?
+          if (narrowing(vinsn_issue_q.op)) begin
+            // How many elements did we calculate in this iteration?
+            automatic logic [3:0] element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
+            if (element_cnt_narrow > issue_cnt_q)
+              element_cnt_narrow = issue_cnt_q;
 
-          // Account for the issued operands
-          issue_cnt_d = issue_cnt_q - element_cnt_narrow;
+            // Account for the issued operands
+            issue_cnt_d = issue_cnt_q - element_cnt_narrow;
 
-          // Write the next half of the results in the next cycle.
-          narrowing_select_d = !narrowing_select_q;
+            // Write the next half of the results in the next cycle.
+            narrowing_select_d = !narrowing_select_q;
 
-          // Did we fill up a word?
-          if (issue_cnt_d == '0 || !narrowing_select_d) begin
-            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+            // Did we fill up a word?
+            if (issue_cnt_d == '0 || !narrowing_select_d) begin
+              result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
-            // Acknowledge the mask operand, if needed
-            if (vinsn_issue_q != VFU_MaskUnit)
-              mask_ready_o = !vinsn_issue_q.vm;
+              // Acknowledge the mask operand, if needed
+              if (vinsn_issue_q != VFU_MaskUnit)
+                mask_ready_o = !vinsn_issue_q.vm;
 
+              // Bump pointers and counters of the result queue
+              result_queue_cnt_d += 1;
+              if (result_queue_write_pnt_q == ResultQueueDepth-1)
+                result_queue_write_pnt_d = 0;
+              else
+                result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+            end
+          end else begin // Normal behavior
             // Bump pointers and counters of the result queue
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
             result_queue_cnt_d += 1;
             if (result_queue_write_pnt_q == ResultQueueDepth-1)
               result_queue_write_pnt_d = 0;
             else
               result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+            issue_cnt_d = issue_cnt_q - element_cnt;
           end
-        end else begin // Normal behavior
-          // Bump pointers and counters of the result queue
-          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-          result_queue_cnt_d += 1;
-          if (result_queue_write_pnt_q == ResultQueueDepth-1)
-            result_queue_write_pnt_d = 0;
-          else
-            result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+        end else begin
+          // Reduction instruction, accumulate the result
+          result_queue_d[result_queue_write_pnt_q].wdata     = valu_result;
+          result_queue_d[result_queue_write_pnt_q].reduction = 1'b1;
+          // The first operation of this instruction has already been done
+          first_op_d = 1'b0;
+
           issue_cnt_d = issue_cnt_q - element_cnt;
         end
 
@@ -322,6 +366,17 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         if (vinsn_issue_valid && issue_cnt_d == '0) begin
           // Reset the narrowing pointer
           narrowing_select_d = 1'b0;
+
+          // Update the result queue pointer of a reduction instruciton only at this stage
+          if (reduction(vinsn_issue_q.op)) begin
+            // Bump pointers and counters of the result queue
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+            result_queue_cnt_d += 1;
+            if (result_queue_write_pnt_q == ResultQueueDepth-1)
+              result_queue_write_pnt_d = 0;
+            else
+              result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+          end
 
           // Bump issue counter and pointers
           vinsn_queue_d.issue_cnt -= 1;
@@ -340,7 +395,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
      *  Write results into the VRF  *
      ********************************/
 
-    alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask;
+    alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask && !result_queue_q[result_queue_read_pnt_q].reduction;
     alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
     alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
@@ -348,7 +403,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     // Received a grant from the VRF.
     // Deactivate the request.
-    if (alu_result_gnt_i || mask_operand_ready_i) begin
+    if (alu_result_gnt_i || mask_operand_ready_i || alu_red_ready_i) begin
       result_queue_valid_d[result_queue_read_pnt_q] = 1'b0;
       result_queue_d[result_queue_read_pnt_q]       = '0;
 
@@ -390,6 +445,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     if (!vinsn_queue_full && vfu_operation_valid_i && vfu_operation_i.vfu inside {VFU_Alu, VFU_MaskUnit}) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
+
+      // The next will be the first operation of this instruction
+      // This information is useful for reduction operation
+      first_op_d = 1'b1;
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
