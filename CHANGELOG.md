@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## 1.2.0 - 2020-04-12
+
 ### Added
 - Hardware support for:
   - Vector slide instructions (vslideup, vslide1up, vfslide1up, vslidedown, vslide1down, vfslide1down)
