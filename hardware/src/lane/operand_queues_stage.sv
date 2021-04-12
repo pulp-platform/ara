@@ -32,10 +32,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                                    stu_operand_o,
     output logic                                     stu_operand_valid_o,
     input  logic                                     stu_operand_ready_i,
-    // Address Generation unit
-    output elen_t                                    addrgen_operand_o,
-    output logic                                     addrgen_operand_valid_o,
+    // Slide Unit/Address Generation unit
+    output elen_t                                    sldu_addrgen_operand_o,
+    output logic                                     sldu_addrgen_operand_valid_o,
     input  logic                                     addrgen_operand_ready_i,
+    input  logic                                     sldu_operand_ready_i,
     // Mask unit
     output elen_t              [1:0]                 mask_operand_o,
     output logic               [1:0]                 mask_operand_valid_o,
@@ -165,21 +166,25 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_ready_i          (stu_operand_ready_i           )
   );
 
+  /****************
+   *  Slide Unit  *
+   ****************/
+
   operand_queue #(
     .BufferDepth(2         ),
     .FPUSupport (FPUSupport)
-  ) i_operand_queue_addrgen_a (
-    .clk_i                    (clk_i                               ),
-    .rst_ni                   (rst_ni                              ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[AddrGenA]       ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AddrGenA] ),
-    .operand_i                (operand_i[AddrGenA]                 ),
-    .operand_valid_i          (operand_valid_i[AddrGenA]           ),
-    .operand_issued_i         (operand_issued_i[AddrGenA]          ),
-    .operand_queue_ready_o    (operand_queue_ready_o[AddrGenA]     ),
-    .operand_o                (addrgen_operand_o                   ),
-    .operand_valid_o          (addrgen_operand_valid_o             ),
-    .operand_ready_i          (addrgen_operand_ready_i             )
+  ) i_operand_queue_slide_addrgen_a (
+    .clk_i                    (clk_i                                         ),
+    .rst_ni                   (rst_ni                                        ),
+    .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]            ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]      ),
+    .operand_i                (operand_i[SlideAddrGenA]                      ),
+    .operand_valid_i          (operand_valid_i[SlideAddrGenA]                ),
+    .operand_issued_i         (operand_issued_i[SlideAddrGenA]               ),
+    .operand_queue_ready_o    (operand_queue_ready_o[SlideAddrGenA]          ),
+    .operand_o                (sldu_addrgen_operand_o                        ),
+    .operand_valid_o          (sldu_addrgen_operand_valid_o                  ),
+    .operand_ready_i          (addrgen_operand_ready_i | sldu_operand_ready_i)
   );
 
   /***************

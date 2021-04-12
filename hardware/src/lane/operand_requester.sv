@@ -9,11 +9,11 @@
 // queues. This stage also includes the VRF arbiter.
 
 module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes = 0,
-    parameter int  unsigned NrBanks = 0,                         // Number of banks in the vector register file
-    parameter type          vaddr_t = logic,                     // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes = 0,
+    parameter  int  unsigned NrBanks = 0,                         // Number of banks in the vector register file
+    parameter  type          vaddr_t = logic,                     // Type used to address vector register file elements
     // Dependant parameters. DO NOT CHANGE!
-    localparam type          strb_t = logic[$bits(elen_t)/8-1:0]
+    localparam type          strb_t  = logic[$bits(elen_t)/8-1:0]
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,
@@ -466,21 +466,21 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     logic payload_lp_req;
     logic payload_lp_gnt;
     rr_arb_tree #(
-      .NumIn    (int'(AddrGenA) - int'(MaskB) + 1 + int'(VFU_LoadUnit) - int'(VFU_SlideUnit) + 1),
-      .DataWidth($bits(payload_t)                                                               ),
-      .AxiVldRdy(1'b0                                                                           )
+      .NumIn    (int'(SlideAddrGenA) - int'(MaskB) + 1 + int'(VFU_LoadUnit) - int'(VFU_SlideUnit) + 1),
+      .DataWidth($bits(payload_t)                                                                    ),
+      .AxiVldRdy(1'b0                                                                                )
     ) i_lp_vrf_arbiter (
-      .clk_i  (clk_i                                                                                                                 ),
-      .rst_ni (rst_ni                                                                                                                ),
-      .flush_i(1'b0                                                                                                                  ),
-      .rr_i   ('0                                                                                                                    ),
-      .data_i ({operand_payload[AddrGenA:MaskB], operand_payload[NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}    ),
-      .req_i  ({operand_req[bank][AddrGenA:MaskB], operand_req[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
-      .gnt_o  ({operand_gnt[bank][AddrGenA:MaskB], operand_gnt[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
-      .data_o (payload_lp                                                                                                            ),
-      .idx_o  (/* Unused */                                                                                                          ),
-      .req_o  (payload_lp_req                                                                                                        ),
-      .gnt_i  (payload_lp_gnt                                                                                                        )
+      .clk_i  (clk_i                                                                                                                      ),
+      .rst_ni (rst_ni                                                                                                                     ),
+      .flush_i(1'b0                                                                                                                       ),
+      .rr_i   ('0                                                                                                                         ),
+      .data_i ({operand_payload[SlideAddrGenA:MaskB], operand_payload[NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}    ),
+      .req_i  ({operand_req[bank][SlideAddrGenA:MaskB], operand_req[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
+      .gnt_o  ({operand_gnt[bank][SlideAddrGenA:MaskB], operand_gnt[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
+      .data_o (payload_lp                                                                                                                 ),
+      .idx_o  (/* Unused */                                                                                                               ),
+      .req_o  (payload_lp_req                                                                                                             ),
+      .gnt_i  (payload_lp_gnt                                                                                                             )
     );
 
     // High-priority requests always mask low-priority requests

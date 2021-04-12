@@ -103,6 +103,8 @@ package ara_pkg;
     VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSGT,
     // Integer add-with-carry and subtract-with-borrow carry-out instructions
     VMADC, VMSBC,
+    // Slide instructions
+    VSLIDEUP, VSLIDEDOWN,
     // Load instructions
     VLE, VLSE, VLXE,
     // Store instructions
@@ -203,7 +205,7 @@ package ara_pkg;
     elen_t scalar_op;
     logic use_scalar_op;
 
-    // 2nd scalar operand: stride for constant-strided vector load/stores
+    // 2nd scalar operand: stride for constant-strided vector load/stores, slide offset for vector slides
     elen_t stride;
 
     // Destination vector register
@@ -486,7 +488,7 @@ package ara_pkg;
   // There are seven operand queues, serving operands to the different functional units of each lane
   localparam int unsigned NrOperandQueues = 9;
   typedef enum logic [$clog2(NrOperandQueues)-1:0] {
-    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, MaskB, MaskM, StA, AddrGenA
+    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, MaskB, MaskM, StA, SlideAddrGenA
   } opqueue_e;
 
   // Each lane has eight VRF banks

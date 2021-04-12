@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Hardware support for:
+  - Vector slide instructions (vslideup, vslide1up, vfslide1up, vslidedown, vslide1down, vfslide1down)
+- Software implementation of a integer 2D convolution kernel
+- CI job to check the conv2d execution on Ara
+
 ### Fixed
 - Removed dependency to a specific gcc g++ version in Makefile
 - Arithmetic and memory vector instructions with `vl == 0` are considered as a `NOP`

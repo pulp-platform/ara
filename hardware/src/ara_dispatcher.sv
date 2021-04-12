@@ -9,8 +9,8 @@
 // response or an error message.
 
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int unsigned NrLanes     = 0,
-    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
+    parameter int           unsigned NrLanes    = 0,
+    parameter fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -551,6 +551,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b001110: begin
+                  ara_req_d.op            = ara_pkg::VSLIDEUP;
+                  ara_req_d.stride        = acc_req_i.rs1;
+                  // Encode vslideup/vslide1up on the use_scalar_op field
+                  ara_req_d.use_scalar_op = 1'b0;
+                end
+                6'b001111: begin
+                  ara_req_d.op            = ara_pkg::VSLIDEDOWN;
+                  ara_req_d.stride        = acc_req_i.rs1;
+                  // Encode vslidedown/vslide1down on the use_scalar_op field
+                  ara_req_d.use_scalar_op = 1'b0;
+                end
                 6'b010000: begin
                   ara_req_d.op = ara_pkg::VADC;
 
@@ -809,6 +821,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b001001: ara_req_d.op = ara_pkg::VAND;
                 6'b001010: ara_req_d.op = ara_pkg::VOR;
                 6'b001011: ara_req_d.op = ara_pkg::VXOR;
+                6'b001110: begin
+                  ara_req_d.op            = ara_pkg::VSLIDEUP;
+                  ara_req_d.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+                  // Encode vslideup/vslide1up on the use_scalar_op field
+                  ara_req_d.use_scalar_op = 1'b0;
+                end
+                6'b001111: begin
+                  ara_req_d.op            = ara_pkg::VSLIDEDOWN;
+                  ara_req_d.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+                  // Encode vslidedown/vslide1down on the use_scalar_op field
+                  ara_req_d.use_scalar_op = 1'b0;
+                end
                 6'b010000: begin
                   ara_req_d.op = ara_pkg::VADC;
 
@@ -1353,6 +1377,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
               // Decode based on the func6 field
               unique case (insn.varith_type.func6)
+                // Slides
+                6'b001110: begin // vslide1up
+                  ara_req_d.op     = ara_pkg::VSLIDEUP;
+                  ara_req_d.stride = 1;
+                end
+                6'b001111: begin // vslide1down
+                  ara_req_d.op     = ara_pkg::VSLIDEDOWN;
+                  ara_req_d.stride = 1;
+                end
                 // Divide instructions
                 6'b100000: ara_req_d.op = ara_pkg::VDIVU;
                 6'b100001: ara_req_d.op = ara_pkg::VDIV;
@@ -1858,7 +1891,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
-                  // VFP Addition
                   6'b000000: begin
                     ara_req_d.op             = ara_pkg::VFADD;
                     // When performing a floating-point add/sub, fpnew adds the second and the third operand
@@ -1874,6 +1906,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
                   6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
                   6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                  6'b001110: begin // vfslide1up
+                    ara_req_d.op     = ara_pkg::VSLIDEUP;
+                    ara_req_d.stride = 1;
+                  end
+                  6'b001111: begin // vfslide1down
+                    ara_req_d.op     = ara_pkg::VSLIDEDOWN;
+                    ara_req_d.stride = 1;
+                  end
                   6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b100111: begin
