@@ -9,6 +9,7 @@
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes         = 1,                                   // Number of lanes
+    parameter  int           unsigned LaneIdx         = 0,                                   // Lane index. From 0 to NrLanes-1
     parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,          // Support for floating-point data types
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
@@ -44,6 +45,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                                          sldu_addrgen_operand_o,
     output logic                                           sldu_addrgen_operand_valid_o,
     input  logic                                           sldu_operand_ready_i,
+    input  logic     [2:0]                                 sldu_mux_sel_i,
     input  logic                                           addrgen_operand_ready_i,
     // Interface with the Slide unit
     input  logic                                           sldu_result_req_i,
@@ -201,7 +203,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_result_addr_i       (sldu_result_addr_i     ),
     .sldu_result_wdata_i      (sldu_result_wdata_i    ),
     .sldu_result_be_i         (sldu_result_be_i       ),
-    .sldu_result_gnt_o        (sldu_result_gnt_o      ),
+    .sldu_result_gnt_o        (sldu_result_gnt_opqueues),
     // Load Unit
     .ldu_result_req_i         (ldu_result_req_i       ),
     .ldu_result_id_i          (ldu_result_id_i        ),
@@ -279,9 +281,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_valid_o          (stu_operand_valid_o                               ),
     .stu_operand_ready_i          (stu_operand_ready_i                               ),
     // Address Generation Unit
-    .sldu_addrgen_operand_o       (sldu_addrgen_operand_o                            ),
-    .sldu_addrgen_operand_valid_o (sldu_addrgen_operand_valid_o                      ),
-    .sldu_operand_ready_i         (sldu_operand_ready_i                              ),
+    .sldu_addrgen_operand_o       (sldu_addrgen_operand_opqueues_o                   ),
+    .sldu_addrgen_operand_valid_o (sldu_addrgen_operand_opqueues_valid_o             ),
+    .sldu_operand_ready_i         (sldu_operand_opqueues_ready_i                     ),
     .addrgen_operand_ready_i      (addrgen_operand_ready_i                           ),
     // Mask Unit
     .mask_operand_o               ({mask_operand_o[2], mask_operand_o[0]}            ),
@@ -310,7 +312,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .alu_vinsn_done_o     (alu_vinsn_done         ),
     .mfpu_ready_o         (mfpu_ready             ),
     .mfpu_vinsn_done_o    (mfpu_vinsn_done        ),
-    // Interface with the operand requester
+    // Interface with the operand requester (and partially with the Slide Unit)
     // ALU
     .alu_result_req_o     (alu_result_req         ),
     .alu_result_id_o      (alu_result_id          ),
@@ -334,6 +336,14 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mfpu_operand_i       (mfpu_operand           ),
     .mfpu_operand_valid_i (mfpu_operand_valid     ),
     .mfpu_operand_ready_o (mfpu_operand_ready     ),
+    // Interface with the Slide Unit
+    .sldu_alu_req_valid_o (sldu_alu_req_valid_o   ),
+    .sldu_mfpu_req_valid_o(sldu_mfpu_req_valid_o  ),
+    .sldu_operand_i       (sldu_result_wdata_i    ),
+    .sldu_alu_valid_i     (sldu_alu_valid         ),
+    .sldu_alu_ready_o     (sldu_alu_ready         ),
+    .sldu_mfpu_valid_i    (sldu_mfpu_valid        ),
+    .sldu_mfpu_ready_o    (sldu_mfpu_ready        ),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o[1]      ),
     .mask_operand_valid_o (mask_operand_valid_o[1]),
@@ -342,6 +352,22 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_valid_i         (mask_valid_i           ),
     .mask_ready_o         (mask_ready_o           )
   );
+
+  /********************
+   *  Slide Unit MUX  *
+   ********************/
+
+  // During a reduction, the slide unit is directly connected to the functional units.
+  // The selectors are controlled by the slide unit itself, which must know what it will receive next.
+  assign sldu_addrgen_operand_o        = (sldu_mux_sel_i == NO_RED) ? sldu_addrgen_operand_opqueues_o       : (sldu_mux_sel_i == ALU_RED ? alu_result_wdata     : mfpu_result_wdata);
+  assign sldu_addrgen_operand_valid_o  = (sldu_mux_sel_i == NO_RED) ? sldu_addrgen_operand_opqueues_valid_o : (sldu_mux_sel_i == ALU_RED ? sldu_alu_req_valid_o : sldu_mfpu_req_valid_o);
+  assign sldu_operand_opqueues_ready_i = sldu_operand_ready_i & (sldu_mux_sel_i == NO_RED);
+  assign alu_result_gnt                = sldu_operand_ready_i & (sldu_mux_sel_i == ALU_RED);
+  assign mfpu_result_gnt               = sldu_operand_ready_i & (sldu_mux_sel_i == MFPU_RED);
+
+  assign sldu_alu_valid    = sldu_result_req_i & (sldu_mux_sel_i == ALU_RED);
+  assign sldu_mfpu_valid   = sldu_result_req_i & (sldu_mux_sel_i == MFPU_RED);
+  assign sldu_result_gnt_o = (sldu_mux_sel_i == NO_RED) ? sldu_result_gnt_opqueues : (sldu_mux_sel_i == ALU_RED ? sldu_alu_ready : sldu_mfpu_ready);
 
   /****************
    *  Assertions  *

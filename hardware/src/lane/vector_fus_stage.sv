@@ -49,6 +49,14 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                        mfpu_result_wdata_o,
     output strb_t                        mfpu_result_be_o,
     input  logic                         mfpu_result_gnt_i,
+    // Interface with the Slide Unit
+    output logic                         sldu_alu_req_valid_o,
+    output logic                         sldu_mfpu_req_valid_o,
+    input  elen_t                        sldu_operand_i,
+    input  logic                         sldu_alu_valid_i,
+    output logic                         sldu_alu_ready_o,
+    input  logic                         sldu_mfpu_valid_i,
+    output logic                         sldu_mfpu_ready_o,
     // Interface with the Mask unit
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
@@ -92,6 +100,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .alu_result_wdata_o   (alu_result_wdata_o   ),
     .alu_result_be_o      (alu_result_be_o      ),
     .alu_result_gnt_i     (alu_result_gnt_i     ),
+    // Interface with the Slide Unit
+    .sldu_alu_req_valid_o (sldu_alu_req_valid_o ),
+    .sldu_operand_i       (sldu_operand_i       ),
+    .sldu_alu_valid_i     (sldu_alu_valid_i     ),
+    .sldu_alu_ready_o     (sldu_alu_ready_o     ),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o       ),
     .mask_operand_valid_o (mask_operand_valid_o ),
@@ -131,6 +144,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .mfpu_result_wdata_o  (mfpu_result_wdata_o  ),
     .mfpu_result_be_o     (mfpu_result_be_o     ),
     .mfpu_result_gnt_i    (mfpu_result_gnt_i    ),
+    // Interface with the Slide Unit
+    .sldu_mfpu_req_valid_o(sldu_mfpu_req_valid_o ),
+    .sldu_operand_i       (sldu_operand_i       ),
+    .sldu_mfpu_valid_i    (sldu_mfpu_valid_i     ),
+    .sldu_mfpu_ready_o    (sldu_mfpu_ready_o     ),
     // Interface with the Mask unit
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
