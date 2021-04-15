@@ -179,16 +179,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     for (int lane = 0; lane < NrLanes; lane++) acc_resp_o.fflags |= fflags_ex_i[lane];
 
     ara_req_d = '{
-      vl       : vl_q,
-      vstart   : vstart_q,
-      vtype    : vtype_q,
-      emul     : vtype_q.vlmul,
-      eew_vs1  : vtype_q.vsew,
-      eew_vs2  : vtype_q.vsew,
-      eew_vd_op: vtype_q.vsew,
-      eew_vmask: eew_q[VMASK],
+      vl           : vl_q,
+      vstart       : vstart_q,
+      vtype        : vtype_q,
+      emul         : vtype_q.vlmul,
+      eew_vs1      : vtype_q.vsew,
+      eew_vs2      : vtype_q.vsew,
+      eew_vd_op    : vtype_q.vsew,
+      eew_vmask    : eew_q[VMASK],
       fp_cvt_resize: CVT_SAME,
-      default  : '0
+      default      : '0
     };
     ara_req_valid_d = 1'b0;
 

@@ -576,7 +576,7 @@ package ara_pkg;
 
     fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
     logic wide_fp_imm;            // Widen FP immediate (re-encoding)
-    fp_resize_e fp_cvt_resize; // Resizing of FP conversions
+    fp_resize_e fp_cvt_resize;    // Resizing of FP conversions
 
     // Vector machine metadata
     vlen_t vl;
