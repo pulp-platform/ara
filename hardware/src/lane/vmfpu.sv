@@ -430,13 +430,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
       operand_c = mfpu_operand_i[2]; // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
       // Default rounding-mode from fcsr.rm
-      fp_rm     = vinsn_issue_q.fp_rm;
-      fp_op     = ADD;
-      fp_opmod  = 1'b0;
+      fp_rm      = vinsn_issue_q.fp_rm;
+      fp_op      = ADD;
+      fp_opmod   = 1'b0;
       fp_src_fmt = FP64;
       fp_dst_fmt = FP64;
       fp_int_fmt = INT64;
-      fp_sign   = 3'b0;
+      fp_sign    = 3'b0;
 
       unique case (vinsn_issue_q.op)
         // Addition is between operands B and C, A was moved to C in the lane_sequencer
@@ -1064,21 +1064,21 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      issue_cnt_q       <= '0;
-      to_process_cnt_q  <= '0;
-      commit_cnt_q      <= '0;
+      issue_cnt_q            <= '0;
+      to_process_cnt_q       <= '0;
+      commit_cnt_q           <= '0;
       narrowing_select_in_q  <= 1'b0;
       narrowing_select_out_q <= 1'b0;
-      fflags_ex_valid_q <= 1'b0;
-      fflags_ex_q       <= '0;
+      fflags_ex_valid_q      <= 1'b0;
+      fflags_ex_q            <= '0;
     end else begin
-      issue_cnt_q       <= issue_cnt_d;
-      to_process_cnt_q  <= to_process_cnt_d;
-      commit_cnt_q      <= commit_cnt_d;
+      issue_cnt_q            <= issue_cnt_d;
+      to_process_cnt_q       <= to_process_cnt_d;
+      commit_cnt_q           <= commit_cnt_d;
       narrowing_select_in_q  <= narrowing_select_in_d;
       narrowing_select_out_q <= narrowing_select_out_d;
-      fflags_ex_valid_q <= fflags_ex_valid_d;
-      fflags_ex_q       <= fflags_ex_d;
+      fflags_ex_valid_q      <= fflags_ex_valid_d;
+      fflags_ex_q            <= fflags_ex_d;
     end
   end
 
