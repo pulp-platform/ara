@@ -223,7 +223,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // - There is an R beat available.
     // - The Address Generator sent us the data about the corresponding AR beat
     // - There is place in the result queue to write the data read from the R channel
-    if (axi_r_valid_i && axi_addrgen_req_valid_i && !result_queue_full) begin
+    if (axi_r_valid_i && axi_addrgen_req_valid_i && axi_addrgen_req_i.is_load && !result_queue_full) begin
       // Bytes valid in the current R beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
       automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);

@@ -178,7 +178,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // - We received all the operands from the lanes
     // - The address generator generated an AXI AW request for this write beat
     // - The AXI subsystem is ready to accept this W beat
-    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue_q.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && axi_w_ready_i) begin
+    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue_q.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load && axi_w_ready_i) begin
       // Bytes valid in the current W beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
       automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
