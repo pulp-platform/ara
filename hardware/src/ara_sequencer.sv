@@ -169,11 +169,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               pe_req_d.hazard_vm[write_list_d[VMASK].vid] |= write_list_d[VMASK].valid;
 
             // WAR
-            if (ara_req_i.use_vd) begin
-              pe_req_d.hazard_vs1[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-              pe_req_d.hazard_vs2[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-              pe_req_d.hazard_vm[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-            end
+            if (ara_req_i.use_vd)
+              pe_req_d.hazard_vd[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
 
             // WAW
             if (ara_req_i.use_vd)
