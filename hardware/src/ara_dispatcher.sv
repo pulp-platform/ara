@@ -2564,6 +2564,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Any valid non-config instruction is a NOP if vl == 0
     if (acc_req_valid_i && vl_q == '0 && !is_config && !acc_resp_o.error) begin
+      acc_req_ready_o  = 1'b1;
       acc_resp_valid_o = 1'b1;
       ara_req_valid_d  = 1'b0;
     end
