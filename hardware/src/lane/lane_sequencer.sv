@@ -207,7 +207,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               eew    : pe_req_i.eew_vs2,
               conv   : pe_req_i.conversion_vs2,
               vtype  : pe_req_i.vtype,
-              vl     : vfu_operation_d.vl,
+              vl     : pe_req_i.op == VREDSUM ? 1 : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0

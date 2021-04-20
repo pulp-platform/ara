@@ -45,7 +45,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                                          sldu_addrgen_operand_o,
     output logic                                           sldu_addrgen_operand_valid_o,
     input  logic                                           sldu_operand_ready_i,
-    input  logic     [2:0]                                 sldu_mux_sel_i,
+    input  sldu_mux_e                                      sldu_mux_sel_i,
     input  logic                                           addrgen_operand_ready_i,
     // Interface with the Slide unit
     input  logic                                           sldu_result_req_i,
@@ -54,6 +54,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                          sldu_result_wdata_i,
     input  strb_t                                          sldu_result_be_i,
     output logic                                           sldu_result_gnt_o,
+    input  logic                                           sldu_red_valid_i,
     // Interface with the Load unit
     input  logic                                           ldu_result_req_i,
     input  vid_t                                           ldu_result_id_i,
@@ -254,8 +255,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic  [2:0] mfpu_operand_valid;
   logic  [2:0] mfpu_operand_ready;
 
+  elen_t sldu_addrgen_operand_opqueues_o;
+
   operand_queues_stage #(
-    .FPUSupport(FPUSupport)
+    .FPUSupport(FPUSupport),
+    .LaneIdx(LaneIdx)
   ) i_operand_queues (
     .clk_i                        (clk_i                                             ),
     .rst_ni                       (rst_ni                                            ),
@@ -295,8 +299,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
    *  Vector Functional Units  *
    *****************************/
 
+  logic sldu_alu_gnt, sldu_mfpu_gnt;
+
   vector_fus_stage #(
     .NrLanes   (NrLanes   ),
+    .LaneIdx   (LaneIdx   ),
     .FPUSupport(FPUSupport),
     .vaddr_t   (vaddr_t   )
   ) i_vfus (
@@ -344,6 +351,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_alu_ready_o     (sldu_alu_ready         ),
     .sldu_mfpu_valid_i    (sldu_mfpu_valid        ),
     .sldu_mfpu_ready_o    (sldu_mfpu_ready        ),
+    .sldu_alu_gnt_i       (sldu_alu_gnt           ),
+    .sldu_mfpu_gnt_i      (sldu_mfpu_gnt          ),
+    .reduction_done_i     (1'b0),
+    .reduction_done_o     (),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o[1]      ),
     .mask_operand_valid_o (mask_operand_valid_o[1]),
@@ -362,11 +373,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   assign sldu_addrgen_operand_o        = (sldu_mux_sel_i == NO_RED) ? sldu_addrgen_operand_opqueues_o       : (sldu_mux_sel_i == ALU_RED ? alu_result_wdata     : mfpu_result_wdata);
   assign sldu_addrgen_operand_valid_o  = (sldu_mux_sel_i == NO_RED) ? sldu_addrgen_operand_opqueues_valid_o : (sldu_mux_sel_i == ALU_RED ? sldu_alu_req_valid_o : sldu_mfpu_req_valid_o);
   assign sldu_operand_opqueues_ready_i = sldu_operand_ready_i & (sldu_mux_sel_i == NO_RED);
-  assign alu_result_gnt                = sldu_operand_ready_i & (sldu_mux_sel_i == ALU_RED);
-  assign mfpu_result_gnt               = sldu_operand_ready_i & (sldu_mux_sel_i == MFPU_RED);
+  assign sldu_alu_gnt                  = sldu_operand_ready_i & (sldu_mux_sel_i == ALU_RED);
+  assign sldu_mfpu_gnt                 = sldu_operand_ready_i & (sldu_mux_sel_i == MFPU_RED);
 
-  assign sldu_alu_valid    = sldu_result_req_i & (sldu_mux_sel_i == ALU_RED);
-  assign sldu_mfpu_valid   = sldu_result_req_i & (sldu_mux_sel_i == MFPU_RED);
+  assign sldu_alu_valid    = sldu_red_valid_i & (sldu_mux_sel_i == ALU_RED);
+  assign sldu_mfpu_valid   = sldu_red_valid_i & (sldu_mux_sel_i == MFPU_RED);
   assign sldu_result_gnt_o = (sldu_mux_sel_i == NO_RED) ? sldu_result_gnt_opqueues : (sldu_mux_sel_i == ALU_RED ? sldu_alu_ready : sldu_mfpu_ready);
 
   /****************

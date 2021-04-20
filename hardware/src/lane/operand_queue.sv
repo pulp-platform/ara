@@ -16,6 +16,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
     parameter  logic                  SupportIntExt2 = 1'b0,
     parameter  logic                  SupportIntExt4 = 1'b0,
     parameter  logic                  SupportIntExt8 = 1'b0,
+    // Lane index
+    parameter  int           unsigned LaneIdx        = 0,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth      = $bits(elen_t),
     localparam int           unsigned StrbWidth      = DataWidth/8
@@ -183,6 +185,17 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
           endcase
       end
 
+      OpQueueReductionZExt: begin
+        if (LaneIdx == 0) begin
+          unique case (cmd.eew)
+            EW8 : conv_operand = {56'b0, ibuf_operand[7:0]};
+            EW16: conv_operand = {48'b0, ibuf_operand[15:0]};
+            EW32: conv_operand = {32'b0, ibuf_operand[31:0]};
+            default:;
+          endcase
+        end else conv_operand = '0;
+      end
+
       // Floating-Point re-encoding
       OpQueueConversionWideFP2: begin
         if (FPUSupport != FPUSupportNone) begin
@@ -255,6 +268,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; #(
         OpQueueConversionZExt8:
           if (SupportIntExt8)
             vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
+        OpQueueReductionZExt:
+          vl_d = vl_q + 1;
         default:
           vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
       endcase

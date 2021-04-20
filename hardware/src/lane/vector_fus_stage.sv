@@ -9,6 +9,7 @@
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes    = 0,
+    parameter  int           unsigned LaneIdx    = 0,
     parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // Type used to address vector register file elements
     parameter  type                   vaddr_t    = logic,
@@ -57,6 +58,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output logic                         sldu_alu_ready_o,
     input  logic                         sldu_mfpu_valid_i,
     output logic                         sldu_mfpu_ready_o,
+    input  logic                         reduction_done_i,
+    output logic                         reduction_done_o,
+    input  logic                         sldu_alu_gnt_i,
+    input  logic                         sldu_mfpu_gnt_i,
     // Interface with the Mask unit
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
@@ -74,12 +79,16 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
 
+  logic alu_reduction_done, vmfpu_reduction_done;
+  assign reduction_done_o = vmfpu_reduction_done | alu_reduction_done;
+
   /****************
    *  Vector ALU  *
    ****************/
 
   valu #(
     .NrLanes(NrLanes),
+    .LaneIdx(LaneIdx),
     .vaddr_t(vaddr_t)
   ) i_valu (
     .clk_i                (clk_i                ),
@@ -101,10 +110,15 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .alu_result_be_o      (alu_result_be_o      ),
     .alu_result_gnt_i     (alu_result_gnt_i     ),
     // Interface with the Slide Unit
-    .sldu_alu_req_valid_o (sldu_alu_req_valid_o ),
+    .alu_red_valid_o      (sldu_alu_req_valid_o ),
     .sldu_operand_i       (sldu_operand_i       ),
     .sldu_alu_valid_i     (sldu_alu_valid_i     ),
     .sldu_alu_ready_o     (sldu_alu_ready_o     ),
+    // Interface with the Slide Unit
+    .alu_red_ready_i      (sldu_alu_gnt_i),
+    // Synchronization signals for reductions
+    .reduction_done_i     (reduction_done_i  ),
+    .reduction_done_o     (alu_reduction_done),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o       ),
     .mask_operand_valid_o (mask_operand_valid_o ),
@@ -120,6 +134,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
 
   vmfpu #(
     .NrLanes   (NrLanes   ),
+    .LaneIdx   (LaneIdx   ),
     .FPUSupport(FPUSupport),
     .vaddr_t   (vaddr_t   )
   ) i_vmfpu (
@@ -149,6 +164,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_operand_i       (sldu_operand_i       ),
     .sldu_mfpu_valid_i    (sldu_mfpu_valid_i     ),
     .sldu_mfpu_ready_o    (sldu_mfpu_ready_o     ),
+    // Interface with the Slide Unit
+    .vmfpu_red_ready_i    (sldu_mfpu_gnt_i     ),
+    // Synchronization signals for reductions
+    .reduction_done_i     (reduction_done_i    ),
+    .reduction_done_o     (vmfpu_reduction_done),
     // Interface with the Mask unit
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),

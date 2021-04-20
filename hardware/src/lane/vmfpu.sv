@@ -9,6 +9,7 @@
 
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     parameter  int           unsigned NrLanes    = 0,
+    parameter  int           unsigned LaneIdx    = 0,
     parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
     // Type used to address vector register file elements
     parameter  type                   vaddr_t    = logic,
@@ -38,6 +39,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     output elen_t                        mfpu_result_wdata_o,
     output strb_t                        mfpu_result_be_o,
     input  logic                         mfpu_result_gnt_i,
+    // Interface with the Slide Unit
+    output logic                         sldu_mfpu_req_valid_o,
+    input  elen_t                        sldu_operand_i,
+    input  logic                         sldu_mfpu_valid_i,
+    output logic                         sldu_mfpu_ready_o,
+    input  logic                         vmfpu_red_ready_i,
+    // Synchronization signals for reductions
+    input  logic                         reduction_done_i,
+    output logic                         reduction_done_o,
     // Interface with the Mask unit
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,

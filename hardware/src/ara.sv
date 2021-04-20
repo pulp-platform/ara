@@ -159,8 +159,10 @@ module ara import ara_pkg::*; #(
   // Slide unit/address generation operands
   elen_t  [NrLanes-1:0]      sldu_addrgen_operand;
   logic   [NrLanes-1:0]      sldu_addrgen_operand_valid;
-  logic                      sldu_operand_ready;
+  logic   [NrLanes-1:0]      sldu_operand_ready;
+  sldu_mux_e                 sldu_mux_sel;
   logic                      addrgen_operand_ready;
+  logic   [NrLanes-1:0]      sldu_red_valid;
   // Mask unit operands
   elen_t  [NrLanes-1:0][2:0] masku_operand;
   logic   [NrLanes-1:0][2:0] masku_operand_valid;
@@ -194,6 +196,7 @@ module ara import ara_pkg::*; #(
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
       .NrLanes   (NrLanes   ),
+      .LaneIdx   (lane      ),
       .FPUSupport(FPUSupport)
     ) i_lane (
       .clk_i                       (clk_i                            ),
@@ -232,7 +235,9 @@ module ara import ara_pkg::*; #(
       .sldu_addrgen_operand_o      (sldu_addrgen_operand[lane]       ),
       .sldu_addrgen_operand_valid_o(sldu_addrgen_operand_valid[lane] ),
       .addrgen_operand_ready_i     (addrgen_operand_ready            ),
-      .sldu_operand_ready_i        (sldu_operand_ready               ),
+      .sldu_mux_sel_i              (sldu_mux_sel                     ),
+      .sldu_operand_ready_i        (sldu_operand_ready[lane]         ),
+      .sldu_red_valid_i            (sldu_red_valid[lane]),
       // Interface with the mask unit
       .mask_operand_o              (masku_operand[lane]              ),
       .mask_operand_valid_o        (masku_operand_valid[lane]        ),
@@ -339,6 +344,8 @@ module ara import ara_pkg::*; #(
     .sldu_result_be_o    (sldu_result_be                   ),
     .sldu_result_wdata_o (sldu_result_wdata                ),
     .sldu_result_gnt_i   (sldu_result_gnt                  ),
+    .sldu_mux_sel_o      (sldu_mux_sel                     ),
+    .sldu_red_valid_o    (sldu_red_valid                   ),
     // Interface with the Mask unit
     .mask_i              (mask                             ),
     .mask_valid_i        (mask_valid                       ),

@@ -7,7 +7,8 @@
 // This stage holds the operand queues, holding elements for the VRFs.
 
 module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
-    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
+    parameter int  unsigned LaneIdx    = 0 // Support for floating-point data types
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,
@@ -72,7 +73,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .FPUSupport    (FPUSupport),
     .SupportIntExt2(1'b1      ),
     .SupportIntExt4(1'b1      ),
-    .SupportIntExt8(1'b1      )
+    .SupportIntExt8(1'b1      ),
+    .LaneIdx       (LaneIdx   )
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -112,7 +114,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   operand_queue #(
     .BufferDepth   (5         ),
     .FPUSupport    (FPUSupport),
-    .SupportIntExt2(1'b1      )
+    .SupportIntExt2(1'b1      ),
+    .LaneIdx       (LaneIdx   )
   ) i_operand_queue_mfpu_b (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),

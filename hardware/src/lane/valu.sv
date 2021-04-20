@@ -36,12 +36,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     output strb_t                        alu_result_be_o,
     input  logic                         alu_result_gnt_i,
     // Interface with the Slide Unit
-    output elen_t                        alu_red_result_o,
-    output elen_t                        alu_red_valid_o,
-    input  elen_t                        alu_red_ready_i,
+    output logic                         alu_red_valid_o,
+    input  logic                         alu_red_ready_i,
     input  elen_t                        sldu_operand_i,
     input  logic                         sldu_alu_valid_i,
     output logic                         sldu_alu_ready_o,
+    // Synchronization signals for reductions
+    input  logic                         reduction_done_i,
+    output logic                         reduction_done_o,
     // Interface with the Mask unit
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
@@ -219,35 +221,40 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // so on. In the end, the result is collected in Lane 0 and the last SIMD reduction is performed.
   // The following function determines how many partial results this lane must process during the
   // inter-lane reduction.
-  typedef logic [$clog2($clog2(NrLanes))-1:0] reduction_rx_cnt_t;
+  typedef logic [idx_width(NrLanes/2):0] reduction_rx_cnt_t;
+  reduction_rx_cnt_t reduction_rx_cnt_d, reduction_rx_cnt_q;
+  reduction_rx_cnt_t simd_red_cnt_max;
+
   function automatic reduction_rx_cnt_t reduction_rx_cnt_init(int unsigned NrLanes, int unsigned LaneIdx);
     // The even lanes do not receive intermediate results. Only Lane 0 will receive the final result, but this is not checked here.
-    if (!(LaneIdx % 2)) reduction_rx_cnt_init = '0;
-    else begin
-      automatic int unsigned rx_cnt = 1;
-      for (int i = 1; i < NrLanes; i += 2) begin
-        if (LaneIdx == i) reduction_rx_cnt_init = reduction_rx_cnt_t'(rx_cnt);
-        rx_cnt = (rx_cnt == $clog2(NrLanes)) ? 1 : rx_cnt++;
-      end
-    end
+    reduction_rx_cnt_init = '0;
+    for (int i = 1; i <= NrLanes; i *= 2) if (LaneIdx % i) reduction_rx_cnt_init++;
   endfunction: reduction_rx_cnt_init
+
+  // Counter to drive SIMD reductions
+  logic [1:0] simd_red_cnt_d, simd_red_cnt_q;
+
+  // Lane[0] counter to track the inter-lane reductions
+  logic [idx_width(NrLanes-1):0] inter_lane_red_cnt_d, inter_lane_red_cnt_q;
 
   // Signal the first operation of an instruction. The first operation of a reduction instruction
   // the operation is performed between the first vector element and the scalar.
   logic first_op_d, first_op_q;
 
-  assign alu_red_result_o = result_queue_q[result_queue_read_pnt_q].wdata;
-
   // Signal to indicate the state of the ALU
-  typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION, WAIT_END_REDUCTION, SIMD_REDUCTION} alu_state_e;
-  alu_state_e alu_state_n, alu_state_q;
+  typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION, WAIT_STATE, SIMD_REDUCTION} alu_state_e;
+  alu_state_e alu_state_d, alu_state_q;
 
   // Input multiplexers.
-  vlen_t reduction_op_a;
-  vlen_t alu_operand_a;
-  vlen_t alu_operand_b;
+  elen_t reduction_op_a, simd_red_operand, alu_operand_0_masked;
+  logic [7:0] safe_red_byte;
+  strb_t red_mask;
+  elen_t alu_operand_a;
+  elen_t alu_operand_b;
   assign reduction_op_a = alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i;
-  assign alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION) ? reduction_op_a : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]);
+  assign safe_red_byte = vinsn_issue_q.op == VREDSUM ? 8'h00 : 8'hff;
+  always_comb for (int b = 0; b < 8; b++) alu_operand_0_masked[b*8 +: 8] = red_mask[b] ? alu_operand_i[0][b*8 +: 8] : alu_operand_i[0][b*8 +: 8] & safe_red_byte;
+  assign alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION) ? reduction_op_a : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_0_masked);
   // During the first cycle, the reduction adds a scalar value kept into a
   // vector register to the first group of vector elements. Then, one of the operand is always
   // the accumulator.
@@ -296,11 +303,19 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     narrowing_select_d = narrowing_select_q;
 
-    first_op_d           = 1'b0;
-    sldu_alu_req_valid_o = 1'b0;
+    first_op_d           = first_op_q;
+    simd_red_cnt_d       = simd_red_cnt_q;
+    reduction_rx_cnt_d   = reduction_rx_cnt_q;
+    alu_red_valid_o      = 1'b0;
+    sldu_alu_ready_o     = 1'b0;
+    reduction_done_o     = 1'b0;
+    simd_red_cnt_max     = '0;
+    simd_red_operand     = '0;
+    red_mask             = '0;
 
     // Do not issue any operations
-    valu_valid = 1'b0;
+    valu_valid  = 1'b0;
+    alu_state_d = alu_state_q;
 
     // Inform our status to the lane controller
     alu_ready_o      = !vinsn_queue_full;
@@ -314,7 +329,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
      *  Write data into the result queue  *
      **************************************/
 
-    if (vinsn_issue_valid) begin
+    if (vinsn_issue_valid || alu_state_q != NO_REDUCTION) begin
       case (alu_state_q)
         NO_REDUCTION: begin
           if (!result_queue_full) begin
@@ -415,6 +430,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
               if (element_cnt > issue_cnt_q)
                 element_cnt = issue_cnt_q;
 
+              // Mask the inactive elements
+              red_mask = be(element_cnt, vinsn_issue_q.vtype.vsew) & ({StrbWidth{vinsn_issue_q.vm}} | mask_i);
+
               // Issue the operation
               valu_valid = 1'b1;
 
@@ -427,7 +445,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
               result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes);
               result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
-              result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
               result_queue_d[result_queue_write_pnt_q].be    = be(1, vinsn_issue_q.vtype.vsew);
 
               // The first operation of this instruction has just been done
@@ -438,7 +455,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
               // Finished issuing the micro-operations of this vector instruction
               if (vinsn_issue_valid && issue_cnt_d == '0) begin
                 // We can start the inter-lanes reduction
-                alu_state_n = INTER_LANES_REDUCTION;
+                alu_state_d = INTER_LANES_REDUCTION;
 
                 // Bump issue counter and pointers
                 vinsn_queue_d.issue_cnt -= 1;
@@ -458,7 +475,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
             // This unit has finished processing data for this reduction instruction, send the partial result to the sliding unit
             alu_red_valid_o = 1'b1;
             if (alu_red_ready_i) begin
-              alu_state_n = LaneIdx == 0 ? SIMD_REDUCTION : WAIT_STATE;
+              alu_state_d = LaneIdx == 0 ? SIMD_REDUCTION : WAIT_STATE;
             end
 
             // Bump pointers and counters of the result queue
@@ -475,48 +492,50 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
             if (sldu_alu_valid_i) begin
               // Issue the operation
               valu_valid = 1'b1;
-              reduction_rx_cnt_n = reduction_rx_cnt_q - 1;
+              reduction_rx_cnt_d = reduction_rx_cnt_q - 1;
               result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
             end
           end
         end
         WAIT_STATE: begin
-          // If lane 0, wait for the last inter-lane + SIMD reduction
+          // Acknowledge the sliding unit even if it is not forwarding anything useful
+          sldu_alu_ready_o = 1'b1;
+          // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
           if (LaneIdx == 0) begin
-            sldu_alu_ready_o = 1'b1;
-            if (sldu_alu_valid_i) begin
-              // Issue the operation
-              valu_valid = 1'b1;
-              result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
-              unique case (vinsn_issue_q.vsew)
+            if (sldu_alu_valid_i && inter_lane_red_cnt_q == '0) begin
+              result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_i;
+              unique case (vinsn_issue_q.vtype.vsew)
                 EW8:  simd_red_cnt_max = 2'd3;
                 EW16: simd_red_cnt_max = 2'd2;
                 EW32: simd_red_cnt_max = 2'd1;
                 EW64: simd_red_cnt_max = 2'd0;
               endcase
               simd_red_cnt_d = '0;
-              alu_state_n = SIMD_REDUCTION;
+              alu_state_d = SIMD_REDUCTION;
             end
           end
           // If not lane 0, wait for the completion of the reduction
           if (reduction_done_i)
-            alu_state_n = reduction(vinsn_issue_q.op && vinsn_issue_q.valid) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+            alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+            inter_lane_red_cnt_d = $clog2(NrLanes);
         end
         SIMD_REDUCTION: begin
           if (LaneIdx == 0) begin
             valu_valid = (simd_red_cnt_q != simd_red_cnt_max);
 
             unique case (simd_red_cnt_q)
-              2'd0: reduction_op_a = {32'b0, result_queue_q[result_queue_read_pnt_q].wdata[63:32]};
-              2'd1: reduction_op_a = {48'b0, result_queue_q[result_queue_read_pnt_q].wdata[31:16]};
-              2'd2: reduction_op_a = {56'b0, result_queue_q[result_queue_read_pnt_q].wdata[15:8]};
+              2'd0: simd_red_operand = {32'b0, result_queue_q[result_queue_read_pnt_q].wdata[63:32]};
+              2'd1: simd_red_operand = {48'b0, result_queue_q[result_queue_read_pnt_q].wdata[31:16]};
+              2'd2: simd_red_operand = {56'b0, result_queue_q[result_queue_read_pnt_q].wdata[15:8]};
               default:;
             endcase
 
             if (simd_red_cnt_q != simd_red_cnt_max)
               simd_red_cnt_d = simd_red_cnt_q + 1;
-            if (reduction_done_i)
-              alu_state_n = reduction(vinsn_issue_q.op && vinsn_issue_q.valid) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+            if (reduction_done_i) begin
+              alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+              inter_lane_red_cnt_d = $clog2(NrLanes);
+            end
           end
         end
         default:;
@@ -527,11 +546,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
      *  Write results into the VRF  *
      ********************************/
 
-    if (alu_state_q == NO_REDUCTION || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max))
+    alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
+    if (alu_state_q == NO_REDUCTION || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max)) begin
       alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] & ((alu_state_q == SIMD_REDUCTION) || !result_queue_q[result_queue_read_pnt_q].mask);
       alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
       alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
-      alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
       alu_result_be_o    = result_queue_q[result_queue_read_pnt_q].be;
     end
 
@@ -587,7 +606,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters and alu state if this is the instruction queue was empty
       if (vinsn_queue_d.issue_cnt == '0) begin
-        alu_state_d = reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+        alu_state_d = is_reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+        inter_lane_red_cnt_d = $clog2(NrLanes);
         issue_cnt_d = vfu_operation_i.vl;
       end
       if (vinsn_queue_d.commit_cnt == '0)
@@ -605,10 +625,20 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       issue_cnt_q        <= '0;
       commit_cnt_q       <= '0;
       narrowing_select_q <= 1'b0;
+      inter_lane_red_cnt_q <= '0;
+      simd_red_cnt_q       <= '0;
+      alu_state_q        <= NO_REDUCTION;
+      reduction_rx_cnt_q <= '0;
+      first_op_q         <= 1'b0;
     end else begin
       issue_cnt_q        <= issue_cnt_d;
       commit_cnt_q       <= commit_cnt_d;
       narrowing_select_q <= narrowing_select_d;
+      inter_lane_red_cnt_q <= inter_lane_red_cnt_d;
+      simd_red_cnt_q       <= simd_red_cnt_q;
+      alu_state_q        <= alu_state_d;
+      reduction_rx_cnt_q <= reduction_rx_cnt_d;
+      first_op_q         <= first_op_d;
     end
   end
 
