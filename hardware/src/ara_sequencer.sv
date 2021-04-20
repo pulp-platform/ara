@@ -250,20 +250,31 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
                 state_d         = WAIT;
               end
 
-              // Issue the instruction
-              pe_req_valid_d = 1'b1;
+              // Masters that write the VRF without an explicit requester do not currently have
+              // a way to prevent dependency violations on WAR and WAW hazards. Stop them here
+              // until the hazard is solved.
+              // TODO: fix me at a finer level
+              // TODO: currently we are stopping ONLY the sliding unit. Maybe also the lstu and the mask unit need this check
+              if (vfu(ara_req_i.op) == VFU_SlideUnit && ara_req_i.use_vd && read_list_d[ara_req_i.vd].valid) begin
+                ara_req_ready_o = 1'b0;
+                pe_req_valid_d = 1'b0;
+                state_d = WAIT;
+              end else begin
+                // Issue the instruction
+                pe_req_valid_d = 1'b1;
 
-              // Mark that this vector instruction is writing to vector vd
-              if (ara_req_i.use_vd)
-                write_list_d[ara_req_i.vd] = '{vid: vinsn_next_id, valid: 1'b1};
+                // Mark that this vector instruction is writing to vector vd
+                if (ara_req_i.use_vd)
+                  write_list_d[ara_req_i.vd] = '{vid: vinsn_next_id, valid: 1'b1};
 
-              // Mark that this loop is reading vs
-              if (ara_req_i.use_vs1)
-                read_list_d[ara_req_i.vs1] = '{vid: vinsn_next_id, valid: 1'b1};
-              if (ara_req_i.use_vs2)
-                read_list_d[ara_req_i.vs2] = '{vid: vinsn_next_id, valid: 1'b1};
-              if (!ara_req_i.vm)
-                read_list_d[VMASK] = '{vid: vinsn_next_id, valid: 1'b1};
+                // Mark that this loop is reading vs
+                if (ara_req_i.use_vs1)
+                  read_list_d[ara_req_i.vs1] = '{vid: vinsn_next_id, valid: 1'b1};
+                if (ara_req_i.use_vs2)
+                  read_list_d[ara_req_i.vs2] = '{vid: vinsn_next_id, valid: 1'b1};
+                if (!ara_req_i.vm)
+                  read_list_d[VMASK] = '{vid: vinsn_next_id, valid: 1'b1};
+              end
             end
           end else begin
             // Wait until the PEs are ready
@@ -305,6 +316,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             ara_resp_o.resp  = pe_scalar_resp_i;
             ara_resp_valid_o = 1'b1;
           end
+
+        if (vfu(ara_req_i.op) == VFU_SlideUnit && ara_req_i.use_vd) begin
+          if (!read_list_d[ara_req_i.vd].valid) begin
+            // Return in IDLE and go on with the instruction
+            state_d          = IDLE;
+          end
+        end
       end
     endcase
   end : p_sequencer
