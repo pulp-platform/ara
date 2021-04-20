@@ -269,12 +269,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               // vslideup starts writing the destination vector at the slide offset
               out_pnt_d = red_stride_cnt_q;
 
-              // Initialize counters. Pretend to move NrLanes elements for (clog2(NrLanes) + 1) times.
+              // Initialize counters. Pretend to move NrLanes 64-bit elements for (clog2(NrLanes) + 1) times.
               issue_cnt_d  = NrLanes * ($clog2(NrLanes) + 1);
               commit_cnt_d = NrLanes * ($clog2(NrLanes) + 1);
-
-              // Start writing at the middle of the destination vector
-              vrf_pnt_d = red_stride_cnt_q >> $clog2(8*NrLanes);
             end
             default:;
           endcase
@@ -349,8 +346,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // Reset the pointer and ask for a new operand
             in_pnt_d             = '0;
             sldu_operand_ready_o = 4'b1111;
-            // Right-rotate the logarighmic counter
-            red_stride_cnt_d     = {red_stride_cnt_d[0], red_stride_cnt_d[idx_width(NrLanes/2)-1:0]};
+            // Left-rotate the logarighmic counter
+            red_stride_cnt_d     = {red_stride_cnt_d[idx_width(NrLanes/2)-1:0], red_stride_cnt_d[idx_width(NrLanes/2)]};
             // We used all the bits of the mask
             if (vinsn_issue.op == VSLIDEUP)
               mask_ready_o = !vinsn_issue.vm;
@@ -491,6 +488,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       // Calculate the slide offset inside the vector register
       if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride = pe_req_i.stride << int'(pe_req_i.vtype.vsew);
+      // Always move 64-bit packs of data from one lane to the other
+      if (pe_req_i.op == VREDSUM)
+        vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vtype.vsew = EW64;
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
@@ -521,7 +521,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       vrf_pnt_q       <= '0;
       state_q         <= SLIDE_IDLE;
       pe_resp_o       <= '0;
-      red_stride_cnt_q<= {1'b1, '0};
+      red_stride_cnt_q<= 1;
     end else begin
       vinsn_running_q <= vinsn_running_d;
       issue_cnt_q     <= issue_cnt_d;

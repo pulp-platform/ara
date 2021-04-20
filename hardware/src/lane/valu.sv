@@ -502,22 +502,24 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
           sldu_alu_ready_o = 1'b1;
           // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
           if (LaneIdx == 0) begin
-            if (sldu_alu_valid_i && inter_lane_red_cnt_q == '0) begin
-              result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_i;
-              unique case (vinsn_issue_q.vtype.vsew)
-                EW8:  simd_red_cnt_max = 2'd3;
-                EW16: simd_red_cnt_max = 2'd2;
-                EW32: simd_red_cnt_max = 2'd1;
-                EW64: simd_red_cnt_max = 2'd0;
-              endcase
-              simd_red_cnt_d = '0;
-              alu_state_d = SIMD_REDUCTION;
+            if (sldu_alu_valid_i) begin
+              inter_lane_red_cnt_d = inter_lane_red_cnt_q - 1;
+              if (inter_lane_red_cnt_q == '0) begin
+                result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_i;
+                unique case (vinsn_issue_q.vtype.vsew)
+                  EW8:  simd_red_cnt_max = 2'd3;
+                  EW16: simd_red_cnt_max = 2'd2;
+                  EW32: simd_red_cnt_max = 2'd1;
+                  EW64: simd_red_cnt_max = 2'd0;
+                endcase
+                simd_red_cnt_d = '0;
+                alu_state_d = SIMD_REDUCTION;
+              end
             end
-          end
-          // If not lane 0, wait for the completion of the reduction
-          if (reduction_done_i)
+          end else if (reduction_done_i) begin
+            // If not lane 0, wait for the completion of the reduction
             alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
-            inter_lane_red_cnt_d = $clog2(NrLanes);
+          end
         end
         SIMD_REDUCTION: begin
           if (LaneIdx == 0) begin

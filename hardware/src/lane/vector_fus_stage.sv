@@ -53,6 +53,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the Slide Unit
     output logic                         sldu_alu_req_valid_o,
     output logic                         sldu_mfpu_req_valid_o,
+    output elen_t                        alu_red_result_o,
+    output elen_t                        alu_red_valid_o,
+    input  elen_t                        alu_red_ready_i,
     input  elen_t                        sldu_operand_i,
     input  logic                         sldu_alu_valid_i,
     output logic                         sldu_alu_ready_o,

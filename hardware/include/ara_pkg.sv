@@ -91,6 +91,8 @@ package ara_pkg;
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
     VMERGE,
+    // Reductions
+    VREDSUM,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Div
@@ -121,6 +123,12 @@ package ara_pkg;
     is_store = op inside {[VSE:VSXE]};
   endfunction: is_store
 
+  typedef enum logic [1:0] {
+    NO_RED,
+    ALU_RED,
+    MFPU_RED
+  } sldu_mux_e;
+
   /**********************
    *  Width conversion  *
    **********************/
@@ -132,7 +140,7 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  localparam int unsigned NumConversions = 8;
+  localparam int unsigned NumConversions = 9;
 
   typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
@@ -142,7 +150,8 @@ package ara_pkg;
     OpQueueConversionSExt4,
     OpQueueConversionZExt8,
     OpQueueConversionSExt8,
-    OpQueueConversionWideFP2
+    OpQueueConversionWideFP2,
+    OpQueueReductionZExt
   } opqueue_conversion_e;
 
   // Floating-Point structs for re-encoding during widening FP operations
