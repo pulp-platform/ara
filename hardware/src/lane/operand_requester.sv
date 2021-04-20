@@ -235,6 +235,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     } requester_d, requester_q;
 
     // Is there a hazard during this cycle?
+    // Slide Unit cannot chain as the other units. A finer control would allow for better performance.
     logic stall;
     assign stall = |(requester_q.hazard & ~vinsn_result_written_q);
 
