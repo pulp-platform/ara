@@ -215,7 +215,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     sldu_operand_ready_o = '0;
 
     red_stride_cnt_d = red_stride_cnt_q;
-    sldu_operand_ready_o = '0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -313,9 +312,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Bump pointers
-          in_pnt_d    = vinsn_issue.op == VREDSUM ? '0                           : in_pnt_q  + byte_count;
-          out_pnt_d   = vinsn_issue.op == VREDSUM ? {'0, red_stride_cnt_q, 3'b0} : out_pnt_q + byte_count;
-          issue_cnt_d = issue_cnt_q - byte_count;
+          in_pnt_d    = vinsn_issue.op == VREDSUM ? NrLanes * 8                  : in_pnt_q  + byte_count;
+          out_pnt_d   = vinsn_issue.op == VREDSUM ? NrLanes * 8                  : out_pnt_q + byte_count;
+          issue_cnt_d = vinsn_issue.op == VREDSUM ? issue_cnt_q - (NrLanes * 8)  : issue_cnt_q - byte_count;
 
           // Jump to SLIDE_RUN
           state_d = SLIDE_RUN;
@@ -355,7 +354,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Filled up a word to the VRF or finished the instruction
           if (out_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
             // Reset the pointer
-            out_pnt_d = '0;
+            out_pnt_d = vinsn_issue.op == VREDSUM ? {'0, red_stride_cnt_d, 3'b0} : '0;
             // We used all the bits of the mask
             if (vinsn_issue.op == VSLIDEDOWN)
               mask_ready_o = !vinsn_issue.vm;
@@ -372,9 +371,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Finished the operation
-          if (issue_cnt_q <= byte_count) begin
+          if (issue_cnt_q <= byte_count || (vinsn_issue.op == VREDSUM && issue_cnt_q <= 8 * NrLanes)) begin
             // Back to idle
             state_d = SLIDE_IDLE;
+            // Reset the logarighmic counter
+            red_stride_cnt_d = 1;
 
             // If this is a vslide1down, fill up the last position with the scalar operand
             if (vinsn_issue.op == VSLIDEDOWN && vinsn_issue.use_scalar_op) begin

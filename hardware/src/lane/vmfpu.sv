@@ -45,9 +45,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     input  logic                         sldu_mfpu_valid_i,
     output logic                         sldu_mfpu_ready_o,
     input  logic                         vmfpu_red_ready_i,
-    // Synchronization signals for reductions
-    input  logic                         reduction_done_i,
-    output logic                         reduction_done_o,
     // Interface with the Mask unit
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,

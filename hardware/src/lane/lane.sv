@@ -353,8 +353,6 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_mfpu_ready_o    (sldu_mfpu_ready        ),
     .sldu_alu_gnt_i       (sldu_alu_gnt           ),
     .sldu_mfpu_gnt_i      (sldu_mfpu_gnt          ),
-    .reduction_done_i     (1'b0),
-    .reduction_done_o     (),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o[1]      ),
     .mask_operand_valid_o (mask_operand_valid_o[1]),

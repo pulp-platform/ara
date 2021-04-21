@@ -53,16 +53,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the Slide Unit
     output logic                         sldu_alu_req_valid_o,
     output logic                         sldu_mfpu_req_valid_o,
-    output elen_t                        alu_red_result_o,
-    output elen_t                        alu_red_valid_o,
-    input  elen_t                        alu_red_ready_i,
     input  elen_t                        sldu_operand_i,
     input  logic                         sldu_alu_valid_i,
     output logic                         sldu_alu_ready_o,
     input  logic                         sldu_mfpu_valid_i,
     output logic                         sldu_mfpu_ready_o,
-    input  logic                         reduction_done_i,
-    output logic                         reduction_done_o,
     input  logic                         sldu_alu_gnt_i,
     input  logic                         sldu_mfpu_gnt_i,
     // Interface with the Mask unit
@@ -81,9 +76,6 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   logic alu_mask_ready;
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
-
-  logic alu_reduction_done, vmfpu_reduction_done;
-  assign reduction_done_o = vmfpu_reduction_done | alu_reduction_done;
 
   /****************
    *  Vector ALU  *
@@ -119,9 +111,6 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_alu_ready_o     (sldu_alu_ready_o     ),
     // Interface with the Slide Unit
     .alu_red_ready_i      (sldu_alu_gnt_i),
-    // Synchronization signals for reductions
-    .reduction_done_i     (reduction_done_i  ),
-    .reduction_done_o     (alu_reduction_done),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o       ),
     .mask_operand_valid_o (mask_operand_valid_o ),
@@ -169,9 +158,6 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_mfpu_ready_o    (sldu_mfpu_ready_o     ),
     // Interface with the Slide Unit
     .vmfpu_red_ready_i    (sldu_mfpu_gnt_i     ),
-    // Synchronization signals for reductions
-    .reduction_done_i     (reduction_done_i    ),
-    .reduction_done_o     (vmfpu_reduction_done),
     // Interface with the Mask unit
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
