@@ -227,8 +227,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
   function automatic reduction_rx_cnt_t reduction_rx_cnt_init(int unsigned NrLanes, int unsigned LaneIdx);
     // The even lanes do not receive intermediate results. Only Lane 0 will receive the final result, but this is not checked here.
+    int adjusted_idx = LaneIdx + 1;
     reduction_rx_cnt_init = '0;
-    for (int i = 1; i <= NrLanes; i *= 2) if (LaneIdx % i) reduction_rx_cnt_init++;
+    for (int i = 2; i <= NrLanes; i *= 2) if (!(adjusted_idx % i)) reduction_rx_cnt_init++;
   endfunction: reduction_rx_cnt_init
 
   // Counter to drive SIMD reductions
@@ -471,11 +472,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
           end
         end
         INTER_LANES_REDUCTION: begin
+          alu_red_valid_o  = 1'b1;
           if (reduction_rx_cnt_q == '0) begin
             // This unit has finished processing data for this reduction instruction, send the partial result to the sliding unit
-            alu_red_valid_o = 1'b1;
             if (alu_red_ready_i) begin
-              alu_state_d = LaneIdx == 0 ? SIMD_REDUCTION : WAIT_STATE;
+              alu_state_d = WAIT_STATE;
             end
 
             // Bump pointers and counters of the result queue
@@ -500,6 +501,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         WAIT_STATE: begin
           // Acknowledge the sliding unit even if it is not forwarding anything useful
           sldu_alu_ready_o = 1'b1;
+          alu_red_valid_o  = 1'b1;
           // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
           if (LaneIdx == 0) begin
             if (sldu_alu_valid_i) begin
@@ -604,7 +606,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       // The next will be the first operation of this instruction
       // This information is useful for reduction operation
       first_op_d         = 1'b1;
-      reduction_rx_cnt_d = reduction_rx_cnt_init(LaneIdx, NrLanes);
+      reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, LaneIdx);
 
       // Initialize counters and alu state if this is the instruction queue was empty
       if (vinsn_queue_d.issue_cnt == '0) begin

@@ -156,11 +156,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   logic [idx_width(NrLanes/2):0] red_stride_cnt_d, red_stride_cnt_q;
 
   always_comb begin
-    if (vinsn_issue_valid) begin
-      case (vinsn_issue.op)
-        VREDSUM: sldu_mux_sel_o = ALU_RED;
-        default: sldu_mux_sel_o = NO_RED;
-      endcase
+    sldu_mux_sel_o = NO_RED;
+    if ((vinsn_issue_valid && vinsn_issue.op == VREDSUM) || (vinsn_commit_valid && vinsn_commit.op == VREDSUM)) begin
+      sldu_mux_sel_o = ALU_RED;
     end
   end
 
@@ -264,14 +262,14 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                 issue_cnt_d -= 1 << int'(vinsn_issue.vtype.vsew);
             end
             VREDSUM: begin
-              // vslideup starts reading the source operand from its beginning
+              // Read from the beginning
               in_pnt_d  = '0;
-              // vslideup starts writing the destination vector at the slide offset
-              out_pnt_d = red_stride_cnt_q;
+              // Writes
+              out_pnt_d = {'0, red_stride_cnt_q, 3'b0};
 
               // Initialize counters. Pretend to move NrLanes 64-bit elements for (clog2(NrLanes) + 1) times.
-              issue_cnt_d  = NrLanes * ($clog2(NrLanes) + 1);
-              commit_cnt_d = NrLanes * ($clog2(NrLanes) + 1);
+              issue_cnt_d  = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
+              commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
             end
             default:;
           endcase
@@ -295,7 +293,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             automatic int out_byte     = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
             // Is this a valid byte?
-            if (b < issue_cnt_q && in_seq_byte < NrLanes * 8 && out_seq_byte < NrLanes * 8) begin
+            // Allow wrap-up on reductions
+            if (b < issue_cnt_q && in_seq_byte < NrLanes * 8 && (vinsn_issue.op == VREDSUM || out_seq_byte < NrLanes * 8)) begin
               // At which lane, and what is the offset in that lane, are the input and output bytes?
               automatic int src_lane        = in_byte[3 +: $clog2(NrLanes)];
               automatic int src_lane_offset = in_byte[2:0];
@@ -314,8 +313,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Bump pointers
-          in_pnt_d    = in_pnt_q + byte_count;
-          out_pnt_d   = out_pnt_q + byte_count;
+          in_pnt_d    = vinsn_issue.op == VREDSUM ? '0                           : in_pnt_q  + byte_count;
+          out_pnt_d   = vinsn_issue.op == VREDSUM ? {'0, red_stride_cnt_q, 3'b0} : out_pnt_q + byte_count;
           issue_cnt_d = issue_cnt_q - byte_count;
 
           // Jump to SLIDE_RUN
@@ -419,8 +418,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
      ********************************/
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
-      sldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane] & (vinsn_issue.op != VREDSUM);
-      sldu_red_valid_o[lane]    = result_queue_valid_q[result_queue_read_pnt_q][lane] & (vinsn_issue.op == VREDSUM);
+      sldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane] & (vinsn_commit.op != VREDSUM);
+      sldu_red_valid_o[lane]    = result_queue_valid_q[result_queue_read_pnt_q][lane] & (vinsn_commit.op == VREDSUM);
       sldu_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr;
       sldu_result_id_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].id;
       sldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
@@ -494,9 +493,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d  = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN} ? pe_req_i.vl << int'(pe_req_i.vtype.vsew) : NrLanes * ($clog2(NrLanes) + 1);
+        issue_cnt_d  = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN} ? pe_req_i.vl << int'(pe_req_i.vtype.vsew) : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
       if (vinsn_queue_d.commit_cnt == '0)
-        commit_cnt_d = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN} ? pe_req_i.vl << int'(pe_req_i.vtype.vsew) : NrLanes * ($clog2(NrLanes) + 1);
+        commit_cnt_d = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN} ? pe_req_i.vl << int'(pe_req_i.vtype.vsew) : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
 
       // Trim vector elements which are not written by the slide unit
       if (pe_req_i.op == VSLIDEUP) begin
