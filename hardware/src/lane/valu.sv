@@ -459,18 +459,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
               // Finished issuing the micro-operations of this vector instruction
               if (vinsn_issue_valid && issue_cnt_d == '0) begin
-                // We can start the inter-lanes reduction
+				// We can start the inter-lanes reduction
                 alu_state_d = INTER_LANES_REDUCTION;
-
-                // Bump issue counter and pointers
-                vinsn_queue_d.issue_cnt -= 1;
-                if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
-                  vinsn_queue_d.issue_pnt = '0;
-                else
-                  vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
-
-                if (vinsn_queue_d.issue_cnt != 0)
-                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
               end
             end
           end
@@ -481,6 +471,17 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
             alu_red_valid_o = 1'b1;
             if (alu_red_ready_i) begin
               alu_state_d = WAIT_STATE;
+			  if (LaneIdx != 0) begin 
+                // Bump issue counter and pointers
+                vinsn_queue_d.issue_cnt -= 1;
+                if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                  vinsn_queue_d.issue_pnt = '0;
+                else
+                  vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+			    
+                if (vinsn_queue_d.issue_cnt != 0)
+                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+			  end
             end
           end else begin
             // This unit should still process data for the inter-lane reduction.
@@ -546,7 +547,17 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
               simd_red_cnt_d = simd_red_cnt_q + 1;
               result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
             end else begin
-              alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+              // Bump issue counter and pointers
+              vinsn_queue_d.issue_cnt -= 1;
+              if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                vinsn_queue_d.issue_pnt = '0;
+              else
+                vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+			  
+              if (vinsn_queue_d.issue_cnt != 0)
+                issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+
+              alu_state_d = is_reduction(vinsn_issue_d.op) && (vinsn_queue_d.issue_cnt != 0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
               commit_cnt_d = '0;
 
               // Bump pointers and counters of the result queue
