@@ -241,7 +241,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
-            if (vrf_seq_byte < issue_cnt_q) begin
+            if (vrf_seq_byte < issue_cnt_q && vrf_seq_byte < NrLanes * 8) begin
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int vrf_lane   = vrf_byte >> 3;
               automatic int vrf_offset = vrf_byte[2:0];
