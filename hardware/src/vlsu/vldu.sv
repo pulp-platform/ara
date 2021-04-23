@@ -236,7 +236,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
           // Is this byte a valid byte in the R beat?
           if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
             // Map axy_byte to the corresponding byte in the VRF word (sequential)
-            automatic int vrf_seq_byte = axi_byte - lower_byte + r_pnt_q + vrf_pnt_q;
+            automatic int vrf_seq_byte = axi_byte - lower_byte - r_pnt_q + vrf_pnt_q;
             // And then shuffle it
             automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
