@@ -4,12 +4,13 @@
 
 rv64si_sc_tests = \
 	csr \
-	dirty \
 	icache-alias \
 	ma_fetch \
 	scall \
 	wfi \
-	sbreak \
+	sbreak
+# Cannot compile with LLVM
+#  dirty \
 
 rv64si_p_tests = $(addprefix rv64si-p-, $(rv64si_sc_tests))
 
