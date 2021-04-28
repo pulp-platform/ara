@@ -25,6 +25,7 @@ include $(ARA_DIR)/config/config.mk
 
 INSTALL_DIR         ?= $(ARA_DIR)/install
 GCC_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-gcc
+LLVM_INSTALL_DIR    ?= $(INSTALL_DIR)/riscv-llvm
 ISA_SIM_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim
 
 RISCV_XLEN    ?= 64
@@ -33,25 +34,33 @@ RISCV_ABI     ?= lp64
 RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf
 
 # Use GCC
-RISCV_PREFIX  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-
-RISCV_CC      ?= $(RISCV_PREFIX)gcc
-RISCV_CXX     ?= $(RISCV_PREFIX)g++
-RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump
-RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
-RISCV_AS      ?= $(RISCV_PREFIX)as
-RISCV_AR      ?= $(RISCV_PREFIX)ar
-RISCV_LD      ?= $(RISCV_PREFIX)ld
-RISCV_STRIP   ?= $(RISCV_PREFIX)strip
+RISCV_PREFIX_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-
+RISCV_PREFIX_LLVM ?= $(LLVM_INSTALL_DIR)/bin/
+RISCV_CC          ?= $(RISCV_PREFIX_LLVM)clang
+RISCV_CXX         ?= $(RISCV_PREFIX_LLVM)clang++
+RISCV_GCC_CC      ?= $(RISCV_PREFIX_GCC)gcc
+RISCV_GCC_CXX     ?= $(RISCV_PREFIX_GCC)g++
+RISCV_OBJDUMP     ?= $(RISCV_PREFIX_GCC)objdump
+RISCV_OBJCOPY     ?= $(RISCV_PREFIX_GCC)objcopy
+RISCV_AS          ?= $(RISCV_PREFIX_GCC)as
+RISCV_AR          ?= $(RISCV_PREFIX_GCC)ar
+RISCV_LD          ?= $(RISCV_PREFIX_GCC)gcc
+RISCV_STRIP       ?= $(RISCV_PREFIX_GCC)strip
 
 # Defines
 DEFINES := -DNR_LANES=$(nr_lanes)
 
-RISCV_WARNINGS += -Wunused-variable -Wall -Wextra # -Werror
-RISCV_FLAGS    ?= -mcmodel=medany -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
+GCC_FLAGS  ?= -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI)
+LLVM_FLAGS ?= -march=rv64gv0p10 -mabi=$(RISCV_ABI) -menable-experimental-extensions --sysroot=/scratch/mperotti/processor/ara/install/riscv-gcc/riscv64-unknown-elf/
 
-RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
-RISCV_CXXFLAGS ?= $(RISCV_FLAGS)
-RISCV_LDFLAGS  ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS)
+RISCV_WARNINGS += -Wunused-variable -Wall -Wextra # -Werror
+RISCV_FLAGS    ?= -mcmodel=medany -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
+
+RISCV_CCFLAGS      ?= $(RISCV_FLAGS) $(LLVM_FLAGS)
+RISCV_CXXFLAGS     ?= $(RISCV_FLAGS) $(LLVM_FLAGS)
+RISCV_GCC_CCFLAGS  ?= $(RISCV_FLAGS) $(GCC_FLAGS)
+RISCV_GCC_CXXFLAGS ?= $(RISCV_FLAGS) $(GCC_FLAGS)
+RISCV_LDFLAGS      ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS)
 ifeq ($(COMPILER),gcc)
 	RISCV_OBJDUMP_FLAGS ?=
 else
