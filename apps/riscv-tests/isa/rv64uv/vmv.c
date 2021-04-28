@@ -53,7 +53,7 @@ void TEST_CASE2() {
   VSET(16, e64, m1);
   VLOAD_64(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
   asm volatile ("vmv.v.x v3, %[A]" :: [A] "r" (scalar));
-  VCMP_U64(8, v3, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef, 0xffffffffdeadbeef);
+  VCMP_U64(8, v3, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef, 0x00000000deadbeef);
 }
 
 void TEST_CASE3() {

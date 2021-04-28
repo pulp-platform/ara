@@ -67,7 +67,7 @@ typedef union double_hex {
     uint64_t      ff;                                                                                  \
     asm volatile ("frflags %0" : "=r" (ff));                                                           \
     if (ff != gold_ff) {                                                                               \
-      printf("fflags check FAILED. Current fflags is 0x%02x, while expecting 0x%02x.\n", ff, gold_ff); \
+      printf("fflags check FAILED. Current fflags is 0x%02lx, while expecting 0x%02lx.\n", ff, gold_ff); \
       num_failed++;                                                                                    \
       return;                                                                                          \
     }                                                                                                  \

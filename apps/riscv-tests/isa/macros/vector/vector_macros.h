@@ -73,7 +73,7 @@ int test_case;
     num_failed++;                                                       \
     return;                                                             \
   }                                                                     \
-  printf("PASSED.\n", casenum);                                         \
+  printf("PASSED.\n");                                         \
 
 // Check the result against a floating-point scalar golden value
 #define FCMP(casenum,act,exp)                                           \
@@ -82,7 +82,7 @@ int test_case;
     num_failed++;                                                       \
     return;                                                             \
   }                                                                     \
-  printf("PASSED.\n", casenum);
+  printf("PASSED.\n");
 
 // Check the results against a vector of golden values
 #define VCMP(T,str,casenum,vexp,act...)                                               \
@@ -96,18 +96,18 @@ int test_case;
       return;                                                                         \
     }                                                                                 \
   }                                                                                   \
-  printf("PASSED.\n", casenum);
+  printf("PASSED.\n");
 
 // Macros to set vector length, type and multiplier
 #define VSET(VLEN,VTYPE,LMUL)                                                      \
   do {                                                                             \
-  asm volatile ("vsetvli t0, %[A]," #VTYPE "," #LMUL " \n" :: [A] "r" (VLEN)); \
+  asm volatile ("vsetvli t0, %[A]," #VTYPE "," #LMUL ", ta, ma \n" :: [A] "r" (VLEN)); \
   } while(0)
 
 #define VSETMAX(VTYPE,LMUL)                                                        \
   do {                                                                             \
   int64_t scalar = -1;                                                             \
-  asm volatile ("vsetvli t1, %[A]," #VTYPE "," #LMUL" \n":: [A] "r" (scalar)); \
+  asm volatile ("vsetvli t1, %[A]," #VTYPE "," #LMUL", ta, ma \n":: [A] "r" (scalar)); \
   } while(0)
 
 // Macro to load a vector register with data from the stack
