@@ -43,7 +43,7 @@ static void init_pt()
 #else
   uintptr_t vm_choice = SATP_MODE_SV32;
 #endif
-  write_csr(sptbr, ((uintptr_t)l1pt >> RISCV_PGSHIFT) |
+  write_csr(satp, ((uintptr_t)l1pt >> RISCV_PGSHIFT) |
                    (vm_choice * (SATP_MODE & ~(SATP_MODE<<1))));
   write_csr(pmpaddr2, -1);
   write_csr(pmpcfg0, (PMP_NAPOT | PMP_R) << 16);
@@ -188,7 +188,7 @@ static void detect_granule()
   uintptr_t ret = read_csr(pmpaddr0);
   int g = 2;
   for(uintptr_t i = 1; i; i<<=1) {
-    if((ret & i) != 0) 
+    if((ret & i) != 0)
       break;
     g++;
   }
