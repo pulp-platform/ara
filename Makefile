@@ -55,7 +55,7 @@ riscv-isa-sim: ${ISA_SIM_INSTALL_DIR}
 
 ${ISA_SIM_INSTALL_DIR}: Makefile
 	# Apply patch on riscv-isa-sim
-	cd $(CURDIR)/toolchain/riscv-isa-sim && git reset --hard && git apply $(CURDIR)/patches/0002-riscv-isa-sim-patch
+	cd $(CURDIR)/toolchain/riscv-isa-sim && git reset --hard
 	# There are linking issues with the standard libraries when using newer CC/CXX versions to compile Spike.
 	# Therefore, here we resort to older versions of the compilers.
 	cd toolchain/riscv-isa-sim && mkdir -p build && cd build; \
