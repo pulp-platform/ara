@@ -40,27 +40,27 @@ RISCV_CC          ?= $(RISCV_PREFIX_LLVM)clang
 RISCV_CXX         ?= $(RISCV_PREFIX_LLVM)clang++
 RISCV_GCC_CC      ?= $(RISCV_PREFIX_GCC)gcc
 RISCV_GCC_CXX     ?= $(RISCV_PREFIX_GCC)g++
-RISCV_OBJDUMP     ?= $(RISCV_PREFIX_GCC)objdump
-RISCV_OBJCOPY     ?= $(RISCV_PREFIX_GCC)objcopy
-RISCV_AS          ?= $(RISCV_PREFIX_GCC)as
-RISCV_AR          ?= $(RISCV_PREFIX_GCC)ar
-RISCV_LD          ?= $(RISCV_PREFIX_GCC)gcc
-RISCV_STRIP       ?= $(RISCV_PREFIX_GCC)strip
+RISCV_OBJDUMP     ?= $(RISCV_PREFIX_LLVM)llvm-objdump
+RISCV_OBJCOPY     ?= $(RISCV_PREFIX_LLVM)llvm-objcopy
+RISCV_AS          ?= $(RISCV_PREFIX_LLVM)llvm-as
+RISCV_AR          ?= $(RISCV_PREFIX_LLVM)llvm-ar
+RISCV_LD          ?= $(RISCV_PREFIX_LLVM)ld.lld
+RISCV_STRIP       ?= $(RISCV_PREFIX_LLVM)llvm-strip
 
 # Defines
 DEFINES := -DNR_LANES=$(nr_lanes)
 
 GCC_FLAGS  ?= -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI)
-LLVM_FLAGS ?= -march=rv64gv0p10 -mabi=$(RISCV_ABI) -menable-experimental-extensions --sysroot=/scratch/mperotti/processor/ara/install/riscv-gcc/riscv64-unknown-elf/
+LLVM_FLAGS ?= -march=rv64gcv0p10 -mabi=$(RISCV_ABI) -menable-experimental-extensions --sysroot=/scratch/mperotti/processor/ara/install/riscv-gcc/riscv64-unknown-elf/
 
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra # -Werror
-RISCV_FLAGS    ?= -mcmodel=medany -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
+RISCV_FLAGS    ?= -mcmodel=medany  -mno-relax -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 
 RISCV_CCFLAGS      ?= $(RISCV_FLAGS) $(LLVM_FLAGS)
 RISCV_CXXFLAGS     ?= $(RISCV_FLAGS) $(LLVM_FLAGS)
 RISCV_GCC_CCFLAGS  ?= $(RISCV_FLAGS) $(GCC_FLAGS)
 RISCV_GCC_CXXFLAGS ?= $(RISCV_FLAGS) $(GCC_FLAGS)
-RISCV_LDFLAGS      ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS)
+RISCV_LDFLAGS      ?= -L$(RISCV_PREFIX_LLVM)../lib/linux
 ifeq ($(COMPILER),gcc)
 	RISCV_OBJDUMP_FLAGS ?=
 else

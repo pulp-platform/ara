@@ -14,8 +14,8 @@ include $(src_dir)/rv64ua/Makefrag
 include $(src_dir)/rv64uf/Makefrag
 include $(src_dir)/rv64ud/Makefrag
 include $(src_dir)/rv64uv/Makefrag
-#include $(src_dir)/rv64si/Makefrag
-#include $(src_dir)/rv64mi/Makefrag
+include $(src_dir)/rv64si/Makefrag
+include $(src_dir)/rv64mi/Makefrag
 endif
 include $(src_dir)/rv32ui/Makefrag
 include $(src_dir)/rv32uc/Makefrag
@@ -23,8 +23,8 @@ include $(src_dir)/rv32um/Makefrag
 include $(src_dir)/rv32ua/Makefrag
 include $(src_dir)/rv32uf/Makefrag
 include $(src_dir)/rv32ud/Makefrag
-#include $(src_dir)/rv32si/Makefrag
-#include $(src_dir)/rv32mi/Makefrag
+include $(src_dir)/rv32si/Makefrag
+include $(src_dir)/rv32mi/Makefrag
 
 default: all
 
@@ -34,11 +34,12 @@ default: all
 
 RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
 RISCV_GCC ?= $(RISCV_PREFIX)gcc
+RISCV_LD ?= ld.lld
 RISCV_LLVM ?= clang --sysroot=/scratch/mperotti/processor/ara/install/riscv-gcc/riscv64-unknown-elf/
-RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden
-RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions
+RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax
+RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax
 LLVM_V_VERSION ?= v0p10
-RISCV_LD_OPTS ?= -nostdlib -nostartfiles -static
+RISCV_LD_OPTS ?=
 RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 RISCV_SIM ?= spike
 
@@ -77,13 +78,13 @@ define compile_template
 $(1)$(2)$(3)-p-%.o: $(1)$(2)$(3)/%.S
 	$$(RISCV_LLVM) -c $(4) $$(RISCV_CC_OPTS) -I$(src_dir)/../env/p -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector $$< -o $$@
 $$($(1)$(2)$(3)_p_tests): $(1)$(2)$(3)-p-%: $(1)$(2)$(3)-p-%.o
-	$$(RISCV_GCC) $(4) $$(RISCV_LD_OPTS) -T$(src_dir)/../env/p/link.ld $$^ -o $$@
+	$$(RISCV_LD) $$(RISCV_LD_OPTS) -T$(src_dir)/../env/p/link.ld $$^ -o $$@
 $(1)$(2)$(3)_tests += $$($(1)$(2)$(3)_p_tests)
 
 $(1)$(2)$(3)-v-%.o: $(1)$(2)$(3)/%.S
 	$$(RISCV_LLVM) -c $(4) $$(RISCV_CC_OPTS) -DENTROPY=0x$$(shell echo \$$@ | md5sum | cut -c 1-7) -std=gnu99 -O2 -I$(src_dir)/../env/v -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector $$< -o $$@
 $$($(1)$(2)$(3)_v_tests): $(1)$(2)$(3)-v-%: $(1)$(2)$(3)-v-%.o $(src_dir)/../env/v/entry-$(2).o $(addsuffix -$(2).o, $(basename $(wildcard $(src_dir)/../env/v/*.c)))
-	$$(RISCV_GCC) $(4) $$(RISCV_LD_OPTS) -T$(src_dir)/../env/v/link.ld $$^ -o $$@
+	$$(RISCV_LD) $$(RISCV_LD_OPTS) -T$(src_dir)/../env/v/link.ld $$^ -o $$@
 $(1)$(2)$(3)_tests += $$($(1)$(2)$(3)_v_tests)
 
 $(1)$(2)$(3)_tests_dump = $$(addsuffix .dump, $$($(1)$(2)$(3)_tests))
@@ -110,14 +111,14 @@ define compile_template_c
 
 $(1)$(2)$(3)-p-%.o: $(1)$(2)$(3)/%.c
 	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) -c $(4)$$(LLVM_V_VERSION) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 -o $$@ $$<
-$$($(1)$(2)$(3)_p_tests): $(1)$(2)$(3)-p-%: $(1)$(2)$(3)-p-%.o ../benchmarks/common/syscalls.o ../benchmarks/common/crt.o
-	$$(RISCV_GCC) $(4) -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -nostdlib -nostartfiles -lm -lgcc -T../benchmarks/common/test.ld -o $$@ $$^
+$$($(1)$(2)$(3)_p_tests): $(1)$(2)$(3)-p-%: $(1)$(2)$(3)-p-%.o ../benchmarks/common/syscalls-64.o ../benchmarks/common/crt-64.o
+	$$(RISCV_LD) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
 $(1)$(2)$(3)_tests += $$($(1)$(2)$(3)_p_tests)
 
 $(1)$(2)$(3)-v-%.o: $(1)$(2)$(3)/%.c
-	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) -c $(4)$$(LLVM_V_VERSION) -I../benchmarks/../env -I../benchmarks/common -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -static -nostdlib -nostartfiles -lm -lgcc -T ../benchmarks/common/test.ld -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -o $$@ $$<
-$$($(1)$(2)$(3)_v_tests): $(1)$(2)$(3)-v-%: $(1)$(2)$(3)-v-%.o ../benchmarks/common/syscalls.o ../benchmarks/common/crt.o
-	$$(RISCV_GCC) $(4) -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf ../benchmarks/common/syscalls.c -static -nostdlib ../benchmarks/common/crt.S  -nostartfiles -lm -lgcc -T../benchmarks/common/test.ld -o $$@ $$^
+	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) -c $(4)$$(LLVM_V_VERSION) -I../benchmarks/../env -I../benchmarks/common -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 -mcmodel=medany-std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -o $$@ $$<
+$$($(1)$(2)$(3)_v_tests): $(1)$(2)$(3)-v-%: $(1)$(2)$(3)-v-%.o ../benchmarks/common/syscalls-64.o ../benchmarks/common/crt-64.o
+	$$(RISCV_LD) -static -O2 ../benchmarks/common/syscalls-64.o -nostdlib ../benchmarks/common/crt-64.o -T../benchmarks/common/test.ld -o $$@ $$^
 $(1)$(2)$(3)_tests += $$($(1)$(2)$(3)_v_tests)
 
 $(1)$(2)$(3)_tests_dump = $$(addsuffix .dump, $$($(1)$(2)$(3)_tests))
@@ -136,8 +137,8 @@ $(eval $(call compile_template,rv,32,um,-march=rv32g -mabi=ilp32))
 $(eval $(call compile_template,rv,32,ua,-march=rv32g -mabi=ilp32))
 $(eval $(call compile_template,rv,32,uf,-march=rv32g -mabi=ilp32))
 $(eval $(call compile_template,rv,32,ud,-march=rv32g -mabi=ilp32))
-#$(eval $(call compile_template,rv,32,si,-march=rv32g -mabi=ilp32))
-#$(eval $(call compile_template,rv,32,mi,-march=rv32g -mabi=ilp32))
+$(eval $(call compile_template,rv,32,si,-march=rv32g -mabi=ilp32))
+$(eval $(call compile_template,rv,32,mi,-march=rv32g -mabi=ilp32))
 ifeq ($(XLEN),64)
 $(eval $(call compile_template,rv,64,ui,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv,64,uc,-march=rv64gc -mabi=lp64))
@@ -146,8 +147,8 @@ $(eval $(call compile_template,rv,64,ua,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv,64,uf,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv,64,ud,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template_c,rv,64,uv,-mabi=lp64 -march=rv64g))
-#$(eval $(call compile_template,rv,64,si,-march=rv64g -mabi=lp64))
-#$(eval $(call compile_template,rv,64,mi,-march=rv64g -mabi=lp64))
+$(eval $(call compile_template,rv,64,si,-march=rv64g -mabi=lp64))
+$(eval $(call compile_template,rv,64,mi,-march=rv64g -mabi=lp64))
 endif
 
 tests_dump = $(addsuffix .dump, $(tests))
