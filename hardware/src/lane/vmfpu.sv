@@ -72,8 +72,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     // We need pointers to index which instruction is at each execution phase
     // between the VInsnQueueDepth instructions in memory.
     logic [idx_width(VInsnQueueDepth)-1:0] accept_pnt;
-    logic [idx_width(VInsnQueueDepth)-1:0] processing_pnt;
     logic [idx_width(VInsnQueueDepth)-1:0] issue_pnt;
+    logic [idx_width(VInsnQueueDepth)-1:0] processing_pnt;
     logic [idx_width(VInsnQueueDepth)-1:0] commit_pnt;
 
     // We also need to count how many instructions are queueing to be
