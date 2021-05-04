@@ -32,15 +32,11 @@ default: all
 # Build rules
 #--------------------------------------------------------------------
 
-RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
-LLVM_ROOT ?= $(LLVM_INSTALL_DIR)/bin/
-RISCV_LD ?= ld.lld
 RISCV_LLVM ?= clang -fuse-ld=lld
-RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax
-RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax
+RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax -nostdlib -nostartfiles
+RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax -nostdlib -nostartfiles
 LLVM_V_VERSION ?= v0p10
-RISCV_LD_OPTS ?= -nostdlib -nostartfiles
-RISCV_OBJDUMP ?= $(LLVM_ROOT)llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
+RISCV_OBJDUMP ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 RISCV_SIM ?= spike
 
 vpath %.S $(src_dir)
@@ -125,7 +121,6 @@ endif
 
 tests_dump = $(addsuffix .dump, $(tests))
 tests_hex = $(addsuffix .hex, $(tests))
-tests_o = $(addsuffix .o, $(tests))
 tests_out = $(addsuffix .out, $(spike_tests))
 tests32_out = $(addsuffix .out32, $(spike32_tests))
 tests_cout = $(addsuffix .cout, $(spike_ctests))
@@ -133,7 +128,7 @@ tests32_cout = $(addsuffix .cout32, $(spike32_ctests))
 
 run: $(tests_out) $(tests32_out) $(tests_cout) $(tests32_cout)
 
-junk += $(tests) $(tests_dump) $(tests_hex) $(tests_out) $(tests32_out) $(tests_cout) $(tests32_cout) $(tests_o)
+junk += $(tests) $(tests_dump) $(tests_hex) $(tests_out) $(tests32_out) $(tests_cout) $(tests32_cout)
 
 #------------------------------------------------------------
 # Default

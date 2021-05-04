@@ -30,7 +30,7 @@ SECTIONS {
   .bss : {
     __bss_start = .;
     *(.bss)
-    *(.sbss .sbss* .sbss2 .sbss2.* .gnu.linkonce.sb2.*);
+    *(.sbss .sbss.* .sbss2 .sbss2.* .gnu.linkonce.sb2.*);
     __bss_end = .;
   } > L2
 

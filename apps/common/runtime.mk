@@ -24,7 +24,6 @@ ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$ARA_DIR)
 include $(ARA_DIR)/config/config.mk
 
 INSTALL_DIR         ?= $(ARA_DIR)/install
-GCC_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-gcc
 LLVM_INSTALL_DIR    ?= $(INSTALL_DIR)/riscv-llvm
 ISA_SIM_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim
 
@@ -34,15 +33,15 @@ RISCV_ABI     ?= lp64
 RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf
 
 # Use LLVM
-RISCV_PREFIX_LLVM ?= $(LLVM_INSTALL_DIR)/bin/
-RISCV_CC          ?= $(RISCV_PREFIX_LLVM)clang
-RISCV_CXX         ?= $(RISCV_PREFIX_LLVM)clang++
-RISCV_OBJDUMP     ?= $(RISCV_PREFIX_LLVM)llvm-objdump
-RISCV_OBJCOPY     ?= $(RISCV_PREFIX_LLVM)llvm-objcopy
-RISCV_AS          ?= $(RISCV_PREFIX_LLVM)llvm-as
-RISCV_AR          ?= $(RISCV_PREFIX_LLVM)llvm-ar
-RISCV_LD          ?= $(RISCV_PREFIX_LLVM)ld.lld
-RISCV_STRIP       ?= $(RISCV_PREFIX_LLVM)llvm-strip
+RISCV_PREFIX  ?= $(LLVM_INSTALL_DIR)/bin/
+RISCV_CC      ?= $(RISCV_PREFIX)clang
+RISCV_CXX     ?= $(RISCV_PREFIX)clang++
+RISCV_OBJDUMP ?= $(RISCV_PREFIX)llvm-objdump
+RISCV_OBJCOPY ?= $(RISCV_PREFIX)llvm-objcopy
+RISCV_AS      ?= $(RISCV_PREFIX)llvm-as
+RISCV_AR      ?= $(RISCV_PREFIX)llvm-ar
+RISCV_LD      ?= $(RISCV_PREFIX)ld.lld
+RISCV_STRIP   ?= $(RISCV_PREFIX)llvm-strip
 
 # Defines
 DEFINES := -DNR_LANES=$(nr_lanes)
@@ -50,10 +49,10 @@ DEFINES := -DNR_LANES=$(nr_lanes)
 LLVM_FLAGS ?= -march=rv64gcv0p10 -mabi=$(RISCV_ABI) -menable-experimental-extensions -mno-relax -fuse-ld=lld
 
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra # -Werror
-RISCV_FLAGS    ?= -mcmodel=medany -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
+RISCV_FLAGS    ?= $(LLVM_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 
-RISCV_CCFLAGS  ?= $(RISCV_FLAGS) $(LLVM_FLAGS)
-RISCV_CXXFLAGS ?= $(RISCV_FLAGS) $(LLVM_FLAGS)
+RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
+RISCV_CXXFLAGS ?= $(RISCV_FLAGS)
 RISCV_LDFLAGS  ?= -static -nostartfiles -lm
 ifeq ($(COMPILER),gcc)
 	RISCV_OBJDUMP_FLAGS ?=

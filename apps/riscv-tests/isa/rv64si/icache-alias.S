@@ -102,7 +102,6 @@ RVTEST_CODE_BEGIN
 1:
   addi a0, a0, -123
   bnez a0, fail
-
   RVTEST_PASS
 
   TEST_PASSFAIL
