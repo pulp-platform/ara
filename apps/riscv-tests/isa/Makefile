@@ -33,14 +33,13 @@ default: all
 #--------------------------------------------------------------------
 
 RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
-LLVM_ROOT ?= /scratch/mperotti/processor/ara_buffer/install/riscv-llvm/bin/
-RISCV_GCC ?= $(RISCV_PREFIX)gcc
+LLVM_ROOT ?= $(LLVM_INSTALL_DIR)/bin/
 RISCV_LD ?= ld.lld
-RISCV_LLVM ?= clang --sysroot=/scratch/mperotti/processor/ara/install/riscv-gcc/riscv64-unknown-elf/
+RISCV_LLVM ?= clang -fuse-ld=lld
 RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax
 RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax
 LLVM_V_VERSION ?= v0p10
-RISCV_LD_OPTS ?= -L/scratch/mperotti/processor/ara_buffer/install/riscv-llvm/lib/linux
+RISCV_LD_OPTS ?= -nostdlib -nostartfiles
 RISCV_OBJDUMP ?= $(LLVM_ROOT)llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 RISCV_SIM ?= spike
 

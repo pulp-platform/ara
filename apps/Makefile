@@ -44,7 +44,7 @@ $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 define app_compile_template
 bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME)
 	mkdir -p bin/
-	$$(RISCV_LD) $$(RISCV_LDFLAGS) -o $$@ $$^ -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$^ -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -56,13 +56,9 @@ riscv_tests: $(CVA6_BINARIES) $(ARA_BINARIES)
 define rvtest_compile_template
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
-bin/$(1)-ara-%.o: $(TESTS_DIR)/$(1)/%.$(2)
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME)
 	mkdir -p bin/
-	$$(RISCV_CC) -c -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) -o $$@ $$^
-
-bin/$(1)-ara-%: bin/$(1)-ara-%.o $(RUNTIME)
-	mkdir -p bin/
-	$$(RISCV_LD) $$(RISCV_LDFLAGS) -o $$@ $$^ -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld -o $$@ $$^
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -75,9 +71,9 @@ $(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template,$(
 .PHONY: riscv_tests_spike
 riscv_tests_spike:
 	# Compile the tests
-	PATH=$(LLVM_INSTALL_DIR)/bin:$(GCC_INSTALL_DIR)/bin:${PATH} make -j4 -C riscv-tests/isa
+	PATH=$(LLVM_INSTALL_DIR)/bin:$(GCC_INSTALL_DIR)/bin:${PATH} LLVM_INSTALL_DIR=$(LLVM_INSTALL_DIR) make -j4 -C riscv-tests/isa
 	# Run the tests
-	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
+	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} LLVM_INSTALL_DIR=$(LLVM_INSTALL_DIR) make -C riscv-tests/isa run
 
 # Clean Spike simulation
 .PHONY: riscv_tests_spike_clean
