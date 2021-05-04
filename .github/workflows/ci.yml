@@ -35,7 +35,7 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
     - name: Download the LLVM toolchain
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+      run: git submodule update --init --recursive -- toolchain/riscv-llvm
     - name: Compile LLVM
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: |
