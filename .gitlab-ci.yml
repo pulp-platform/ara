@@ -56,15 +56,16 @@ check-license:
 #  Toolchain stage  #
 #####################
 
-tc-gcc:
+tc-llvm:
   stage: toolchain
   script:
     - |
-      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-gcc; then
-        git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+      if ! $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh lookup tc-llvm; then
+        git submodule update --init --recursive -- toolchain/riscv-llvm
+        git submodule update --init --recursive -- toolchain/newlib
         mkdir -p /usr/scratch2/dolent1/gitlabci/buildcache/ara
         make toolchain
-        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-gcc
+        $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh insert tc-llvm
       fi
 
 tc-isa-sim:
@@ -99,24 +100,24 @@ compile_apps:
   stage: compile
   script:
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
-    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-llvm
     - make -C apps
   artifacts:
     paths:
       - apps/bin
-  needs: ["tc-gcc"]
+  needs: ["tc-llvm"]
 
 compile_riscv_tests:
   stage: compile
   script:
     - git submodule update --init --recursive -- toolchain/riscv-isa-sim
-    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-llvm
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C apps riscv_tests
   artifacts:
     paths:
       - apps/bin
-  needs: ["tc-gcc", "tc-isa-sim"]
+  needs: ["tc-llvm", "tc-isa-sim"]
 
 compile_ara:
   stage: compile
@@ -152,9 +153,9 @@ hello_world:
     paths:
       - hardware/build/trace_hart_*.log
       - hardware/build/transcript
-  needs: ["tc-gcc", "tc-verilator", "tc-isa-sim", "compile_apps"]
+  needs: ["tc-llvm", "tc-verilator", "tc-isa-sim", "compile_apps"]
   dependencies:
-    - tc-gcc
+    - tc-llvm
     - tc-verilator
     - tc-isa-sim
     - compile_apps
@@ -164,9 +165,9 @@ imatmul:
   script:
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware app=${CI_JOB_NAME} simv
-  needs: ["tc-gcc", "tc-isa-sim", "compile_apps", "compile_ara"]
+  needs: ["tc-llvm", "tc-isa-sim", "compile_apps", "compile_ara"]
   dependencies:
-    - tc-gcc
+    - tc-llvm
     - tc-isa-sim
     - compile_apps
     - compile_ara
@@ -176,9 +177,9 @@ fmatmul:
   script:
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware app=${CI_JOB_NAME} simv
-  needs: ["tc-gcc", "tc-isa-sim", "compile_apps", "compile_ara"]
+  needs: ["tc-llvm", "tc-isa-sim", "compile_apps", "compile_ara"]
   dependencies:
-    - tc-gcc
+    - tc-llvm
     - tc-isa-sim
     - compile_apps
     - compile_ara
@@ -188,9 +189,9 @@ riscv_tests_simv:
   script:
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C hardware -j4 riscv_tests_simv
-  needs: ["tc-gcc", "tc-isa-sim", "compile_riscv_tests", "compile_ara"]
+  needs: ["tc-llvm", "tc-isa-sim", "compile_riscv_tests", "compile_ara"]
   dependencies:
-    - tc-gcc
+    - tc-llvm
     - tc-isa-sim
     - compile_riscv_tests
     - compile_ara
@@ -201,7 +202,7 @@ riscv_tests_simv:
 riscv_tests_spike:
   stage: simulate
   script:
-    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-gcc
+    - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-llvm
     - $CI_PROJECT_DIR/.gitlab-ci.d/memora_retry.sh get tc-isa-sim
     - make -C apps/riscv-tests/isa clean
     - make -C apps riscv_tests_spike
@@ -209,8 +210,8 @@ riscv_tests_spike:
     paths:
       - apps/riscv-tests/isa/*.dump
       - apps/riscv-tests/isa/*.out32
-  needs: ["tc-isa-sim", "tc-gcc", "compile_riscv_tests"]
+  needs: ["tc-isa-sim", "tc-llvm", "compile_riscv_tests"]
   dependencies:
     - tc-isa-sim
-    - tc-gcc
+    - tc-llvm
     - compile_riscv_tests

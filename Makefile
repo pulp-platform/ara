@@ -37,11 +37,13 @@ CXX    = g++
 endif
 
 # Default target
-all: toolchain toolchain-newlib toolchain-rt riscv-isa-sim verilator
+all: toolchain riscv-isa-sim verilator
 
 # Toolchain
-.PHONY: toolchain toolchain-newlib toolchain-rt
-toolchain: Makefile
+.PHONY: toolchain toolchain-main toolchain-newlib toolchain-rt
+toolchain: toolchain-main toolchain-newlib toolchain-rt
+
+toolchain-main: Makefile
 	mkdir -p $(LLVM_INSTALL_DIR)
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && rm -rf build && mkdir -p build && cd build && \
 	$(CMAKE) -G Ninja  \

@@ -1,12 +1,12 @@
 cache_root_dir: /usr/scratch2/dolent1/gitlabci/buildcache/ara
 
 artifacts:
-  tc-gcc:
+  tc-llvm:
     inputs:
       - Makefile
-      - toolchain/riscv-gnu-toolchain
+      - toolchain/riscv-llvm
     outputs:
-      - install/riscv-gcc
+      - install/riscv-llvm
 
   tc-verilator:
     inputs:

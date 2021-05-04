@@ -14,40 +14,40 @@ jobs:
 #  Toolchain stage  #
 #####################
 
-  tc-gcc:
+  tc-llvm:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
-        git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1
-        echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
-    - name: Cache the GCC toolchain
+        git submodule status toolchain/riscv-llvm | cut -d' ' -f1
+        echo "tc-llvm-hash=`git submodule status toolchain/riscv-llvm | cut -d' ' -f1`" >> $GITHUB_ENV
+    - name: Cache the LLVM toolchain
       uses: actions/cache@v2
-      id: tc-gcc-cache
+      id: tc-llvm-cache
       env:
-        cache-name: cache-gcc
+        cache-name: cache-llvm
       with:
-        path: install/riscv-gcc
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
+        path: install/riscv-llvm
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
         restore-keys:
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
-    - name: Download the GCC toolchain
-      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
+    - name: Download the LLVM toolchain
+      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
-    - name: Compile GCC
-      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
+    - name: Compile LLVM
+      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get install libmpc-dev
         CC=gcc CXX=g++ make toolchain
-    - name: Tar GCC
-      run: tar -cvf tc-gcc.tar install/riscv-gcc
-    - name: Upload GCC
+    - name: Tar LLVM
+      run: tar -cvf tc-llvm.tar install/riscv-llvm
+    - name: Upload LLVM
       uses: actions/upload-artifact@v2
       with:
-        name: tc-gcc
-        path: tc-gcc.tar
+        name: tc-llvm
+        path: tc-llvm.tar
 
   tc-isa-sim:
     runs-on: ubuntu-latest
@@ -126,19 +126,19 @@ jobs:
 
   compile-apps:
     runs-on: ubuntu-latest
-    needs: tc-gcc
+    needs: tc-llvm
     steps:
     - uses: actions/checkout@v2
     - name: Download Spike
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
-    - name: Download the GCC toolchain
+    - name: Download the LLVM toolchain
       uses: actions/download-artifact@v2
       with:
-        name: tc-gcc
-    - name: Untar GCC
-      run: tar xvf tc-gcc.tar
+        name: tc-llvm
+    - name: Untar LLVM
+      run: tar xvf tc-llvm.tar
     - name: Compile applications
       run: make -C apps
     - name: Upload applications
@@ -149,7 +149,7 @@ jobs:
 
   compile-riscv-tests:
     runs-on: ubuntu-latest
-    needs: ["tc-gcc", "tc-isa-sim"]
+    needs: ["tc-llvm", "tc-isa-sim"]
     steps:
     - uses: actions/checkout@v2
     - name: Download Spike
@@ -162,12 +162,12 @@ jobs:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
-    - name: Get GCC toolchain artifacts
+    - name: Get LLVM toolchain artifacts
       uses: actions/download-artifact@v2
       with:
-        name: tc-gcc
-    - name: Untar GCC
-      run: tar xvf tc-gcc.tar
+        name: tc-llvm
+    - name: Untar LLVM
+      run: tar xvf tc-llvm.tar
     - name: Compile applications
       run: make -C apps riscv_tests
     - name: Upload applications
@@ -362,12 +362,12 @@ jobs:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
-    - name: Download the GCC toolchain
+    - name: Download the LLVM toolchain
       uses: actions/download-artifact@v2
       with:
-        name: tc-gcc
-    - name: Untar GCC
-      run: tar xvf tc-gcc.tar
+        name: tc-llvm
+    - name: Untar LLVM
+      run: tar xvf tc-llvm.tar
     - name: Run tests
       run: |
         make -C apps/riscv-tests/isa clean
@@ -393,7 +393,7 @@ jobs:
         uses: geekyeggo/delete-artifact@v1
         with:
           name: |
-            tc-gcc
+            tc-llvm
             tc-isa-sim
             tc-verilator
             compile-ara
