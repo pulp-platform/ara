@@ -1,7 +1,3 @@
-[submodule "toolchain/riscv-gnu-toolchain"]
-	path = toolchain/riscv-gnu-toolchain
-	url = https://github.com/riscv/riscv-gnu-toolchain.git
-	ignore = dirty
 [submodule "toolchain/riscv-isa-sim"]
 	path = toolchain/riscv-isa-sim
 	url = https://github.com/riscv/riscv-isa-sim.git
@@ -24,3 +20,11 @@
 [submodule "hardware/deps/cva6"]
 	path = hardware/deps/cva6
 	url = https://github.com/pulp-platform/cva6.git
+[submodule "toolchain/newlib"]
+	path = toolchain/newlib
+	url = git://sourceware.org/git/newlib-cygwin.git
+	ignore = dirty
+[submodule "toolchain/riscv-llvm"]
+	path = toolchain/riscv-llvm
+	url = https://github.com/llvm/llvm-project.git
+	ignore = dirty
