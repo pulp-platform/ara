@@ -37,14 +37,20 @@ ARA_BINARIES := $(addprefix bin/, $(ara_tests))
 
 all: $(BINARIES)
 
+# Pre-process the linker-script to correclty align the sections
+.PHONY: linker_script
+linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/config.mk
+	chmod +x $(COMMON_DIR)/script/align_sections.sh
+	$(COMMON_DIR)/script/align_sections.sh $(nr_lanes) $(COMMON_DIR)/link.ld
+
 # Make all applications
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 .PHONY: $(BINARIES)
 
 define app_compile_template
-bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME)
+bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$^ -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -56,9 +62,9 @@ riscv_tests: $(CVA6_BINARIES) $(ARA_BINARIES)
 define rvtest_compile_template
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
-bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME)
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$^ -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
