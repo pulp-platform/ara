@@ -58,7 +58,7 @@ toolchain-main: Makefile
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && \
 	$(CMAKE) --build build --target install
 
-toolchain-newlib: Makefile toolchain
+toolchain-newlib: Makefile toolchain-main
 	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	./configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
@@ -69,7 +69,7 @@ toolchain-newlib: Makefile toolchain
 	make && \
 	make install
 
-toolchain-rt: Makefile toolchain toolchain-newlib
+toolchain-rt: Makefile toolchain-main toolchain-newlib
 	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && rm -rf build && mkdir -p build && cd build && \
 	$(CMAKE) $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt -G Ninja \
 	-DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
