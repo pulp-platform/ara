@@ -64,6 +64,7 @@ toolchain-newlib: Makefile toolchain-main
 	--target=riscv64-unknown-elf \
 	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax" \
 	AS_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-as \
+	AR_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ar \
 	LD_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ld \
 	RANLIB_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ranlib && \
 	make && \
