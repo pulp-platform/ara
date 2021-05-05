@@ -118,7 +118,7 @@ package rvv_pkg;
 
   typedef struct packed {
     logic func1;
-    logic [30:20] zimm10;
+    logic [30:20] zimm11;
     logic [19:15] rs1;
     opcodev_func3_e func3;
     logic [11:7] rd;

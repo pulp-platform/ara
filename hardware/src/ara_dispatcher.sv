@@ -223,7 +223,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
               // Update vtype
               if (insn.vsetvli_type.func1 == 1'b0) begin // vsetvli
-                vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetvli_type.zimm10));
+                vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetvli_type.zimm11));
               end else if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
                 vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetivli_type.zimm10));
               end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
