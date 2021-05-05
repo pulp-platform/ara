@@ -68,8 +68,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       vill  : xlen[riscv::XLEN-1],
       vma   : xlen[7],
       vta   : xlen[6],
-      vsew  : vew_e'(xlen[4:2]),
-      vlmul : vlmul_e'({xlen[5], xlen[1:0]})
+      vsew  : vew_e'(xlen[5:3]),
+      vlmul : vlmul_e'(xlen[2:0])
     };
   endfunction : vtype_xlen
 
