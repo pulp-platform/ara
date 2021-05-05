@@ -40,7 +40,7 @@ jobs:
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: |
         sudo apt-get install libmpc-dev
-		sudo apt-get install -y ninja-build
+        sudo apt-get install -y ninja-build
         CC=gcc CXX=g++ make toolchain
     - name: Tar LLVM
       run: tar -cvf tc-llvm.tar install/riscv-llvm
