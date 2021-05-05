@@ -1715,7 +1715,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 5'b01011: begin // Unit-strided, mask load, EEW=1
                   // We operate ceil(vl/8) bytes
-                  ara_req_d.vl         = $ceil(vl_q >> 3);
+                  ara_req_d.vl         = (vl_q >> 3) + |vl_q[2:0];
                   ara_req_d.vtype.vsew = EW8;
                 end
                 5'b10000: begin // Unit-strided, fault-only first
@@ -1828,7 +1828,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 5'b01000:;     // Unit-strided, whole registers
                 5'b01011: begin // Unit-strided, mask store, EEW=1
                   // We operate ceil(vl/8) bytes
-                  ara_req_d.vl         = $ceil(vl_q >> 3);
+                  ara_req_d.vl         = (vl_q >> 3) + |vl_q[2:0];
                   ara_req_d.vtype.vsew = EW8;
                 end
                 default: begin // Reserved
