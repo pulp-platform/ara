@@ -132,7 +132,7 @@ package rvv_pkg;
     opcodev_func3_e func3;
     logic [11:7] rd;
     logic [6:0] opcode;
-  } vsetivl_type_t;
+  } vsetivli_type_t;
 
   typedef struct packed {
     logic [31:25] func7;
