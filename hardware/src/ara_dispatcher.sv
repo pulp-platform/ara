@@ -1707,16 +1707,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
               endcase
             end
-            2'b01: begin // Invalid
-              illegal_insn     = 1'b1;
-              acc_req_ready_o  = 1'b1;
-              acc_resp_valid_o = 1'b1;
-            end
             2'b10: begin
               ara_req_d.op     = VLSE;
               ara_req_d.stride = acc_req_i.rs2;
             end
-            2'b11: begin
+            2'b01, // Indexed-unordered
+            2'b11: begin // Indexed-ordered
               ara_req_d.op      = VLXE;
               // These also read vs2
               ara_req_d.vs2     = insn.vmem_type.rs2;
