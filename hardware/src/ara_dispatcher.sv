@@ -1687,6 +1687,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_d.scalar_op = acc_req_i.rs1;
           ara_req_valid_d     = 1'b1;
 
+          // Decode the element width
+          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
+            default: begin // Invalid. Element is too wide, or encoding is non-existant.
+              acc_req_ready_o  = 1'b1;
+              acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
+          endcase
+
           // Decode the addressing mode
           unique case (insn.vmem_type.mop)
             2'b00: begin
@@ -1696,6 +1710,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               case (insn.vmem_type.rs2)
                 5'b00000:;      // Unit-strided
                 5'b01000:;      // Unit-strided, whole registers
+                5'b01011: begin // Unit-strided, mask load, EEW=1
+                  // We operate ceil(vl/8) bytes
+                  ara_req_d.vl         = $ceil(vl_q >> 3);
+                  ara_req_d.vtype.vsew = EW8;
+                end
                 5'b10000: begin // Unit-strided, fault-only first
                   // TODO: Not implemented
                   illegal_insn     = 1'b1;
@@ -1721,19 +1740,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               ara_req_d.use_vs2 = 1'b1;
             end
             default:;
-          endcase
-
-          // Decode the element width
-          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.vtype.vsew = EW8;
-            4'b0101: ara_req_d.vtype.vsew = EW16;
-            4'b0110: ara_req_d.vtype.vsew = EW32;
-            4'b0111: ara_req_d.vtype.vsew = EW64;
-            default: begin // Invalid. Element is too wide, or encoding is non-existant.
-              illegal_insn     = 1'b1;
-              acc_req_ready_o  = 1'b1;
-              acc_resp_valid_o = 1'b1;
-            end
           endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can
@@ -1794,6 +1800,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_d.scalar_op = acc_req_i.rs1;
           ara_req_valid_d     = 1'b1;
 
+          // Decode the element width
+          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
+            default: begin // Invalid. Element is too wide, or encoding is non-existant.
+              acc_req_ready_o  = 1'b1;
+              acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
+          endcase
+
           // Decode the addressing mode
           unique case (insn.vmem_type.mop)
             2'b00: begin
@@ -1803,6 +1823,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               unique case (insn.vmem_type.rs2)
                 5'b00000:;     // Unit-strided
                 5'b01000:;     // Unit-strided, whole registers
+                5'b01011: begin // Unit-strided, mask store, EEW=1
+                  // We operate ceil(vl/8) bytes
+                  ara_req_d.vl         = $ceil(vl_q >> 3);
+                  ara_req_d.vtype.vsew = EW8;
+                end
                 default: begin // Reserved
                   illegal_insn     = 1'b1;
                   acc_req_ready_o  = 1'b1;
@@ -1822,19 +1847,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               ara_req_d.use_vs2 = 1'b1;
             end
             default:;
-          endcase
-
-          // Decode the element width
-          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.vtype.vsew = EW8;
-            4'b0101: ara_req_d.vtype.vsew = EW16;
-            4'b0110: ara_req_d.vtype.vsew = EW32;
-            4'b0111: ara_req_d.vtype.vsew = EW64;
-            default: begin // Invalid. Element is too wide, or encoding is non-existant.
-              illegal_insn     = 1'b1;
-              acc_req_ready_o  = 1'b1;
-              acc_resp_valid_o = 1'b1;
-            end
           endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can
