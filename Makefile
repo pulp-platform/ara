@@ -59,7 +59,7 @@ toolchain-main: Makefile
 	$(CMAKE) --build build --target install
 
 toolchain-newlib: Makefile toolchain
-	cd ${ROOT_DIR}/toolchain/newlib && make clean ; make distclean ; \
+	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	./configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
 	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax" \
