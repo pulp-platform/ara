@@ -1709,7 +1709,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Decode the lumop field
               case (insn.vmem_type.rs2)
                 5'b00000:;      // Unit-strided
-                5'b01000:;      // Unit-strided, whole registers
+                5'b01000: begin // Unit-strided, whole registers
+                  // {mew, width} can be used as a hint for internal VRF organization
+                  ara_req_d.vtype.vsew = EW8;
+                end
                 5'b01011: begin // Unit-strided, mask load, EEW=1
                   // We operate ceil(vl/8) bytes
                   ara_req_d.vl         = $ceil(vl_q >> 3);
