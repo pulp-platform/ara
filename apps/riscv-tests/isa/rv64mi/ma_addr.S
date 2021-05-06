@@ -98,7 +98,7 @@ mtvec_handler:
   csrr t0, mcause
   bne t0, s1, fail
 
-  csrr t0, mtval
+  csrr t0, mbadaddr
   bne t0, t1, fail
 
   lb t0, (t0)

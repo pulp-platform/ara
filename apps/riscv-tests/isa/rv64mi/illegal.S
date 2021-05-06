@@ -132,7 +132,7 @@ synchronous_exception:
   csrr t0, mepc
 
   # Make sure mtval contains either 0 or the instruction word.
-  csrr t2, mtval
+  csrr t2, mbadaddr
   beqz t2, 1f
   lhu t1, 0(t0)
   xor t2, t2, t1
