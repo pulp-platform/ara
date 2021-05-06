@@ -64,7 +64,7 @@ do_scall:
 # Either way, we'll get the coverage we desire: such a handler must check
 # both mcause and TESTNUM, just like the following handler.
   .align 2
-#  .global stvec_handler
+  .global stvec_handler
 stvec_handler:
   csrr t0, scause
   bne t0, t1, fail
