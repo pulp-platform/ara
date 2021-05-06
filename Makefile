@@ -20,6 +20,7 @@ ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$MEMPOOL_D
 
 INSTALL_PREFIX      ?= install
 INSTALL_DIR         ?= ${ROOT_DIR}/${INSTALL_PREFIX}
+GCC_INSTALL_DIR     ?= ${INSTALL_DIR}/riscv-gcc
 LLVM_INSTALL_DIR    ?= ${INSTALL_DIR}/riscv-llvm
 ISA_SIM_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim
 VERIL_INSTALL_DIR   ?= ${INSTALL_DIR}/verilator
@@ -37,13 +38,23 @@ CXX    = g++
 endif
 
 # Default target
-all: toolchain riscv-isa-sim verilator
+all: toolchains riscv-isa-sim verilator
 
-# Toolchain
-.PHONY: toolchain toolchain-main toolchain-newlib toolchain-rt
-toolchain: toolchain-main toolchain-newlib toolchain-rt
+# GCC and LLVM Toolchains
+.PHONY: toolchains toolchain-gcc toolchain-llvm toolchain-llvm-main toolchain-llvm-newlib toolchain-llvm-rt
+toolchains: toolchain-gcc toolchain-llvm
 
-toolchain-main: Makefile
+toolchain-llvm: toolchain-llvm-main toolchain-llvm-newlib toolchain-llvm-rt
+
+toolchain-gcc: Makefile
+	mkdir -p $(GCC_INSTALL_DIR)
+	# Apply patch on riscv-binutils
+	cd $(CURDIR)/toolchain/riscv-gnu-toolchain/riscv-binutils
+	cd $(CURDIR)/toolchain/riscv-gnu-toolchain && rm -rf build && mkdir -p build && cd build && \
+	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv64gcv --with-cmodel=medlow --enable-multilib && \
+	$(MAKE) MAKEINFO=true -j4
+
+toolchain-llvm-main: Makefile
 	mkdir -p $(LLVM_INSTALL_DIR)
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && rm -rf build && mkdir -p build && cd build && \
 	$(CMAKE) -G Ninja  \
@@ -58,7 +69,7 @@ toolchain-main: Makefile
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && \
 	$(CMAKE) --build build --target install
 
-toolchain-newlib: Makefile toolchain-main
+toolchain-llvm-newlib: Makefile toolchain-llvm-main
 	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	../configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
@@ -70,7 +81,7 @@ toolchain-newlib: Makefile toolchain-main
 	make && \
 	make install
 
-toolchain-rt: Makefile toolchain-main toolchain-newlib
+toolchain-llvm-rt: Makefile toolchain-llvm-main toolchain-llvm-newlib
 	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && rm -rf build && mkdir -p build && cd build && \
 	$(CMAKE) $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt -G Ninja \
 	-DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
