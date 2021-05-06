@@ -48,9 +48,9 @@ $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 .PHONY: $(BINARIES)
 
 define app_compile_template
-bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME) linker_script
+bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -62,16 +62,26 @@ riscv_tests: $(CVA6_BINARIES) $(ARA_BINARIES)
 define rvtest_compile_template
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
-bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME) linker_script
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_GCC) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC_GCC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS_GCC) $$(RISCV_LDFLAGS_GCC) -o $$@ $$< $(RUNTIME_GCC) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+	$$(RISCV_STRIP) $$@ -S --strip-unneeded
+endef
+
+define rvtest_compile_template_c
+TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
+
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_LLVM) linker_script
+	mkdir -p bin/
+	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME_LLVM) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
 # CVA6 tests are written in assembly
 $(foreach extension, $(CVA6_EXTENSIONS), $(eval $(call rvtest_compile_template,$(extension),S)))
 # Ara tests are written in C
-$(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template,$(extension),c)))
+$(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template_c,$(extension),c)))
 
 # Run Spike tests
 .PHONY: riscv_tests_spike
@@ -95,6 +105,7 @@ clean: riscv_tests_spike_clean
 	rm -vf $(addsuffix .dump,$(CVA6_BINARIES))
 	rm -vf $(addsuffix .dump,$(ARA_BINARIES))
 	rm -vf $(addsuffix /main.c.o,$(APPS))
-	rm -vf $(RUNTIME)
+	rm -vf $(RUNTIME_GCC)
+	rm -vf $(RUNTIME_LLVM)
 
 .INTERMEDIATE: $(addsuffix /main.c.o,$(APPS))
