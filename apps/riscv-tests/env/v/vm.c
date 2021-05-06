@@ -172,10 +172,7 @@ void handle_fault(uintptr_t addr, uintptr_t cause)
   user_llpt[addr/PGSIZE] = new_pte;
   flush_page(addr);
 
-//  LLVM without rt-compiler does not support this instruction
-//  BTW, why is this here?
-//  __builtin___clear_cache(0,0);
-  asm volatile("fence.i");
+  __builtin___clear_cache(0,0);
 }
 
 void handle_trap(trapframe_t* tf)
