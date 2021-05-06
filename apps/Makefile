@@ -77,7 +77,7 @@ $(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template,$(
 .PHONY: riscv_tests_spike
 riscv_tests_spike:
 	# Compile the tests
-	PATH=$(LLVM_INSTALL_DIR)/bin:${PATH} make -j4 -C riscv-tests/isa
+	PATH=$(GCC_INSTALL_DIR)/bin:$(LLVM_INSTALL_DIR)/bin:${PATH} make -j4 -C riscv-tests/isa
 	# Run the tests
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
 
