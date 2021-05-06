@@ -8,6 +8,13 @@ artifacts:
     outputs:
       - install/riscv-llvm
 
+  tc-gcc:
+    inputs:
+      - Makefile
+      - toolchain/riscv-gnu-toolchain
+    outputs:
+      - install/riscv-gcc
+
   tc-verilator:
     inputs:
       - Makefile
