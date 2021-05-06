@@ -223,7 +223,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // - There is an R beat available.
     // - The Address Generator sent us the data about the corresponding AR beat
     // - There is place in the result queue to write the data read from the R channel
-    if (axi_r_valid_i && axi_addrgen_req_valid_i && !result_queue_full) begin
+    if (axi_r_valid_i && axi_addrgen_req_valid_i && axi_addrgen_req_i.is_load && !result_queue_full) begin
       // Bytes valid in the current R beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
       automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
@@ -236,12 +236,12 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
           // Is this byte a valid byte in the R beat?
           if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
             // Map axy_byte to the corresponding byte in the VRF word (sequential)
-            automatic int vrf_seq_byte = axi_byte - lower_byte + r_pnt_q + vrf_pnt_q;
+            automatic int vrf_seq_byte = axi_byte - lower_byte - r_pnt_q + vrf_pnt_q;
             // And then shuffle it
             automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
-            if (vrf_seq_byte < issue_cnt_q) begin
+            if (vrf_seq_byte < issue_cnt_q && vrf_seq_byte < NrLanes * 8) begin
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int vrf_lane   = vrf_byte >> 3;
               automatic int vrf_offset = vrf_byte[2:0];

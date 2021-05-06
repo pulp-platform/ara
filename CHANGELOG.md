@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- Fix `vrf_seq_byte` definition in the Load Unit
+- Fix check to discriminate a valid byte in the VRF word, in the Load Unit
+- Fix `axi_addrgen_d.len` calculation in the Address Generation Unit
+- Correctly check whether the generated address corresponds to the vector load or the store unit
+
 ## 1.2.0 - 2020-04-12
 
 ### Added
