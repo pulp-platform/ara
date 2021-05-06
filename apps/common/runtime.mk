@@ -84,20 +84,20 @@ RUNTIME_LLVM ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c
 %-gcc.c.o: %.c
 	$(RISCV_CC_GCC) $(RISCV_CCFLAGS_GCC) -c $< -o $@
 
-%-gcc.cpp.o: %.cpp
-	$(RISCV_CXX) $(RISCV_CXXFLAGS) -c $< -o $@
-
-%-gcc.ld: %.ld.c
-	$(RISCV_CC_GCC) -P -E $(DEFINES) $< -o $@
-
 %-llvm.S.o: %.S
 	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
 
 %-llvm.c.o: %.c
 	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
 
-%-llvm.cpp.o: %.cpp
+%.S.o: %.S
+	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
+
+%.c.o: %.c
+	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
+
+%.cpp.o: %.cpp
 	$(RISCV_CXX) $(RISCV_CXXFLAGS) -c $< -o $@
 
-%-llvm.ld: %.ld.c
+%.ld: %.ld.c
 	$(RISCV_CC) -P -E $(DEFINES) $< -o $@
