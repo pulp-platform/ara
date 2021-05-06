@@ -31,3 +31,4 @@
 [submodule "toolchain/riscv-gnu-toolchain"]
 	path = toolchain/riscv-gnu-toolchain
 	url = https://github.com/riscv/riscv-gnu-toolchain.git
+	ignore = dirty
