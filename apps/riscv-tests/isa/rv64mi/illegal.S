@@ -68,19 +68,19 @@ bad4:
   wfi
   j fail
 
-  # Make sure SFENCE.VMA and satp don't trap when TVM=0.
+  # Make sure SFENCE.VMA and sptbr don't trap when TVM=0.
   sfence.vma
-  csrr t0, satp
+  csrr t0, sptbr
 bad5:
   .word 0
   j fail
 
 bad6:
-  # Make sure SFENCE.VMA and satp do trap when TVM=1.
+  # Make sure SFENCE.VMA and sptbr do trap when TVM=1.
   sfence.vma
   j fail
 bad7:
-  csrr t0, satp
+  csrr t0, sptbr
   j fail
 
   # Make sure SRET doesn't trap when TSR=0.

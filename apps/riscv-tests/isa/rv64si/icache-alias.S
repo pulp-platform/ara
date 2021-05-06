@@ -48,7 +48,7 @@ RVTEST_CODE_BEGIN
   la a1, page_table_1
   srl a1, a1, RISCV_PGSHIFT
   or a1, a1, a0
-  csrw satp, a1
+  csrw sptbr, a1
   sfence.vma
 
   # Enter supervisor mode and make sure correct page is accessed
@@ -102,6 +102,7 @@ RVTEST_CODE_BEGIN
 1:
   addi a0, a0, -123
   bnez a0, fail
+
   RVTEST_PASS
 
   TEST_PASSFAIL
