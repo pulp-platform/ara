@@ -69,11 +69,11 @@ toolchain-llvm-main: Makefile
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && \
 	$(CMAKE) --build build --target install
 
-toolchain-llvm-newlib: Makefile toolchain-llvm-main
+toolchain-llvm-newlib: Makefile 
 	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	../configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
-	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax" \
+	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany" \
 	AS_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-as \
 	AR_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ar \
 	LD_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ld \
@@ -99,8 +99,8 @@ toolchain-llvm-rt: Makefile toolchain-llvm-main toolchain-llvm-newlib
 	-DCMAKE_CXX_COMPILER_WORKS=1 \
 	-DCMAKE_SIZEOF_VOID_P=4 \
 	-DCMAKE_C_COMPILER="$(LLVM_INSTALL_DIR)/bin/clang" \
-	-DCMAKE_C_FLAGS="-march=rv64gc -mabi=lp64d -mno-relax" \
-	-DCMAKE_ASM_FLAGS="-march=rv64gc -mabi=lp64d -mno-relax" \
+	-DCMAKE_C_FLAGS="-march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany" \
+	-DCMAKE_ASM_FLAGS="-march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany" \
 	-DCMAKE_AR=$(LLVM_INSTALL_DIR)/bin/llvm-ar \
 	-DCMAKE_NM=$(LLVM_INSTALL_DIR)/bin/llvm-nm \
 	-DCMAKE_RANLIB=$(LLVM_INSTALL_DIR)/bin/llvm-ranlib \
