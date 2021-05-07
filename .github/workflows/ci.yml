@@ -43,7 +43,7 @@ jobs:
       run: |
         sudo apt-get install libmpc-dev
         sudo apt-get install -y ninja-build
-        CC=gcc CXX=g++ make toolchain
+        CC=gcc CXX=g++ make toolchain-llvm
     - name: Tar LLVM
       run: tar -cvf tc-llvm.tar install/riscv-llvm
     - name: Upload LLVM
