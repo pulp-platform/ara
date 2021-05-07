@@ -12,10 +12,12 @@ SECTIONS {
   .text : {
     *(.text.init)
     *(.text)
+    *(.text.*)
   } > L2
 
   .data : ALIGN(16) {
     *(.data)
+    *(.data.*)
   } > L2
 
   .rodata  : ALIGN(16) { *(.rodata .rodata.* .gnu.linkonce.r.*) } > L2
