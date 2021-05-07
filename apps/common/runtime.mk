@@ -30,7 +30,7 @@ ISA_SIM_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim
 
 RISCV_XLEN    ?= 64
 RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv
-RISCV_ABI     ?= lp64
+RISCV_ABI     ?= lp64d
 RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf
 
 # Use LLVM
