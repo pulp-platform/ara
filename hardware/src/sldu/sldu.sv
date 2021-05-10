@@ -8,10 +8,10 @@
 // instructions, which need access to the whole Vector Register File.
 
 module sldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes   = 0,
-    parameter  type          vaddr_t   = logic,                // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes = 0,
+    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t),        // Width of the lane datapath
+    localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
     localparam type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
   ) (
@@ -40,9 +40,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
-  /******************************
-   *  Vector instruction queue  *
-   ******************************/
+  ////////////////////////////////
+  //  Vector instruction queue  //
+  ////////////////////////////////
 
   // We store a certain number of in-flight vector instructions
   localparam VInsnQueueDepth = 2;
@@ -94,9 +94,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /*******************
-   *  Result queues  *
-   *******************/
+  /////////////////////
+  //  Result queues  //
+  /////////////////////
 
   localparam int unsigned ResultQueueDepth = 2;
 
@@ -144,9 +144,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /****************
-   *  Slide unit  *
-   ****************/
+  //////////////////
+  //  Slide unit  //
+  //////////////////
 
   // Vector instructions currently running
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
@@ -199,9 +199,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
-    /***************
-     *  Slide FSM  *
-     ***************/
+    /////////////////
+    //  Slide FSM  //
+    /////////////////
 
     unique case (state_q)
       SLIDE_IDLE: begin
@@ -245,19 +245,21 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
-        if (&sldu_operand_valid_i && !result_queue_full && (vinsn_issue.vm || (|mask_valid_i))) begin
+        if (&sldu_operand_valid_i && !result_queue_full && (vinsn_issue.vm || (|mask_valid_i)))
+        begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
-          automatic int in_byte_count  = NrLanes * 8 - in_pnt_q;
+          automatic int in_byte_count = NrLanes * 8 - in_pnt_q;
           automatic int out_byte_count = NrLanes * 8 - out_pnt_q;
-          automatic int byte_count     = in_byte_count < out_byte_count ? in_byte_count : out_byte_count;
+          automatic int byte_count = in_byte_count < out_byte_count ? in_byte_count : out_byte_count
+          ;
 
           for (int b = 0; b < NrLanes*8; b++) begin
             // Input byte
-            automatic int in_seq_byte  = in_pnt_q + b;
-            automatic int in_byte      = shuffle_index(in_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+            automatic int in_seq_byte = in_pnt_q + b;
+            automatic int in_byte  = shuffle_index(in_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
             // Output byte
             automatic int out_seq_byte = out_pnt_q + b;
-            automatic int out_byte     = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+            automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
 
             // Is this a valid byte?
             if (b < issue_cnt_q && in_seq_byte < NrLanes * 8 && out_seq_byte < NrLanes * 8) begin
@@ -267,15 +269,18 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               automatic int tgt_lane        = out_byte[3 +: $clog2(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
-              result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] = sldu_operand_i[src_lane][8*src_lane_offset +: 8];
-              result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset]           = vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
+              result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] =
+                sldu_operand_i[src_lane][8*src_lane_offset +: 8];
+              result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset] =
+                vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
             end
           end
 
           // Initialize id and addr fields of the result queue requests
           for (int lane = 0; lane < NrLanes; lane++) begin
             result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
-            result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue.vd, NrLanes) + vrf_pnt_q;
+            result_queue_d[result_queue_write_pnt_q][lane].addr =
+              vaddr(vinsn_issue.vd, NrLanes) + vrf_pnt_q;
           end
 
           // Bump pointers
@@ -289,20 +294,28 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD)
             unique case (vinsn_issue.vtype.vsew)
               EW8: begin
-                result_queue_d[result_queue_write_pnt_q][0].wdata[7:0] = vinsn_issue.scalar_op[7:0];
-                result_queue_d[result_queue_write_pnt_q][0].be[0:0]    = vinsn_issue.vm || mask_i[0][0];
+                result_queue_d[result_queue_write_pnt_q][0].wdata[7:0] =
+                  vinsn_issue.scalar_op[7:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[0:0] =
+                  vinsn_issue.vm || mask_i[0][0];
               end
               EW16: begin
-                result_queue_d[result_queue_write_pnt_q][0].wdata[15:0] = vinsn_issue.scalar_op[15:0];
-                result_queue_d[result_queue_write_pnt_q][0].be[1:0]     = {2{vinsn_issue.vm || mask_i[0][0]}};
+                result_queue_d[result_queue_write_pnt_q][0].wdata[15:0] =
+                  vinsn_issue.scalar_op[15:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[1:0] =
+                  {2{vinsn_issue.vm || mask_i[0][0]}};
               end
               EW32: begin
-                result_queue_d[result_queue_write_pnt_q][0].wdata[31:0] = vinsn_issue.scalar_op[31:0];
-                result_queue_d[result_queue_write_pnt_q][0].be[3:0]     = {4{vinsn_issue.vm || mask_i[0][0]}};
+                result_queue_d[result_queue_write_pnt_q][0].wdata[31:0] =
+                  vinsn_issue.scalar_op[31:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[3:0] =
+                  {4{vinsn_issue.vm || mask_i[0][0]}};
               end
               EW64: begin
-                result_queue_d[result_queue_write_pnt_q][0].wdata[63:0] = vinsn_issue.scalar_op[63:0];
-                result_queue_d[result_queue_write_pnt_q][0].be[7:0]     = {8{vinsn_issue.vm || mask_i[0][0]}};
+                result_queue_d[result_queue_write_pnt_q][0].wdata[63:0] =
+                  vinsn_issue.scalar_op[63:0];
+                result_queue_d[result_queue_write_pnt_q][0].be[7:0] =
+                  {8{vinsn_issue.vm || mask_i[0][0]}};
               end
             endcase
 
@@ -343,27 +356,35 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // If this is a vslide1down, fill up the last position with the scalar operand
             if (vinsn_issue.op == VSLIDEDOWN && vinsn_issue.use_scalar_op) begin
               // Copy the scalar operand to the last word
-              automatic int out_seq_byte    = issue_cnt_q;
-              automatic int out_byte        = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
-              automatic int tgt_lane        = out_byte[3 +: $clog2(NrLanes)];
+              automatic int out_seq_byte = issue_cnt_q;
+              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+              automatic int tgt_lane = out_byte[3 +: $clog2(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
               unique case (vinsn_issue.vtype.vsew)
                 EW8: begin
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] = vinsn_issue.scalar_op[7:0];
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 1]      = vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8]
+                    = vinsn_issue.scalar_op[7:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 1] =
+                    vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
                 end
                 EW16: begin
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 16] = vinsn_issue.scalar_op[15:0];
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 2]       = {2{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 16]
+                    = vinsn_issue.scalar_op[15:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 2] =
+                    {2{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
                 end
                 EW32: begin
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 32] = vinsn_issue.scalar_op[31:0];
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 4]       = {4{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 32]
+                    = vinsn_issue.scalar_op[31:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 4] =
+                    {4{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
                 end
                 EW64: begin
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 64] = vinsn_issue.scalar_op[63:0];
-                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 8]       = {8{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 64]
+                    = vinsn_issue.scalar_op[63:0];
+                  result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 8] =
+                    {8{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
                 end
               endcase
             end
@@ -377,9 +398,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       default:;
     endcase
 
-    /********************************
-     *  Write results into the VRF  *
-     ********************************/
+    //////////////////////////////////
+    //  Write results into the VRF  //
+    //////////////////////////////////
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
       sldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
@@ -429,7 +450,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0) begin
-        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
+        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl <<
+          int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
 
         // Trim vector elements which are not written by the slide unit
         if (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op == VSLIDEUP)
@@ -437,17 +459,19 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
 
-    /****************************
-     *  Accept new instruction  *
-     ****************************/
+    //////////////////////////////
+    //  Accept new instruction  //
+    //////////////////////////////
 
-    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] && pe_req_i.vfu == VFU_SlideUnit) begin
+    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
+      pe_req_i.vfu == VFU_SlideUnit) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
       // Calculate the slide offset inside the vector register
       if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
-        vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride = pe_req_i.stride << int'(pe_req_i.vtype.vsew);
+        vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride = pe_req_i.stride <<
+          int'(pe_req_i.vtype.vsew);
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
@@ -489,6 +513,5 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       pe_resp_o       <= pe_resp;
     end
   end
-
 
 endmodule: sldu
