@@ -9,21 +9,21 @@
 // and coherence with Ariane's own load/store unit.
 
 module vlsu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes      = 0,
-    parameter type          vaddr_t      = logic,                  // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes = 0,
+    parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
     // AXI Interface parameters
-    parameter int  unsigned AxiDataWidth = 0,
-    parameter int  unsigned AxiAddrWidth = 0,
-    parameter type          axi_ar_t     = logic,
-    parameter type          axi_r_t      = logic,
-    parameter type          axi_aw_t     = logic,
-    parameter type          axi_w_t      = logic,
-    parameter type          axi_b_t      = logic,
-    parameter type          axi_req_t    = logic,
-    parameter type          axi_resp_t   = logic,
+    parameter  int  unsigned AxiDataWidth = 0,
+    parameter  int  unsigned AxiAddrWidth = 0,
+    parameter  type          axi_ar_t     = logic,
+    parameter  type          axi_r_t      = logic,
+    parameter  type          axi_aw_t     = logic,
+    parameter  type          axi_w_t      = logic,
+    parameter  type          axi_b_t      = logic,
+    parameter  type          axi_req_t    = logic,
+    parameter  type          axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth   = $bits(elen_t),
-    localparam type          strb_t      = logic [DataWidth/8-1:0]
+    localparam int  unsigned DataWidth    = $bits(elen_t),
+    localparam type          strb_t       = logic [DataWidth/8-1:0]
   ) (
     input  logic                    clk_i,
     input  logic                    rst_ni,
@@ -65,15 +65,15 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      [NrLanes-1:0] ldu_result_gnt_i
   );
 
-  /*****************
-   *  Definitions  *
-   *****************/
+  ///////////////////
+  //  Definitions  //
+  ///////////////////
 
   typedef logic [AxiAddrWidth-1:0] axi_addr_t;
 
-  /*************
-   *  AXI Cut  *
-   *************/
+  ///////////////
+  //  AXI Cut  //
+  ///////////////
 
   // Internal AXI request signals
   axi_req_t  axi_req;
@@ -96,9 +96,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .slv_resp_o(axi_resp  )
   );
 
-  /************************
-   *  Address Generation  *
-   ************************/
+  //////////////////////////
+  //  Address Generation  //
+  //////////////////////////
 
   // Interface with the load/store units
   addrgen_axi_req_t axi_addrgen_req;
@@ -140,9 +140,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready)
   );
 
-  /**********************
-   *  Vector Load Unit  *
-   **********************/
+  ////////////////////////
+  //  Vector Load Unit  //
+  ////////////////////////
 
   vldu #(
     .AxiAddrWidth(AxiAddrWidth),
@@ -181,9 +181,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_gnt_i       (ldu_result_gnt_i          )
   );
 
-  /***********************
-   *  Vector Store Unit  *
-   ***********************/
+  /////////////////////////
+  //  Vector Store Unit  //
+  /////////////////////////
 
   vstu #(
     .AxiAddrWidth(AxiAddrWidth),
@@ -224,9 +224,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_ready_o    (stu_operand_ready_o        )
   );
 
-  /****************
-   *  Assertions  *
-   ****************/
+  //////////////////
+  //  Assertions  //
+  //////////////////
 
   if (AxiDataWidth == 0)
     $error("[vlsu] The data width of the AXI bus cannot be zero.");
