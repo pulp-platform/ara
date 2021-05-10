@@ -6,13 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Alignment with lowRISC's coding guidelines
+
 ### Fixed
 - Fix `vrf_seq_byte` definition in the Load Unit
 - Fix check to discriminate a valid byte in the VRF word, in the Load Unit
 - Fix `axi_addrgen_d.len` calculation in the Address Generation Unit
 - Correctly check whether the generated address corresponds to the vector load or the store unit
+- Typos on the ChangeLog's dates
 
-## 1.2.0 - 2020-04-12
+## 1.2.0 - 2021-04-12
 
 ### Added
 - Hardware support for:
@@ -33,13 +38,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - The `encoding.h` in the common Ara runtime is now a copy from the `encoding.h` in the Spike submodule
 
-## 1.1.1 - 2020-03-25
+## 1.1.1 - 2021-03-25
 
 ### Added
 
 - Parametrization for FPU and FPU-specific formats support, through the `FPUSupport` ara_soc parameter
 
-## 1.1.0 - 2020-03-18
+## 1.1.0 - 2021-03-18
 
 ### Added
 
@@ -57,7 +62,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Contributing guidelines updated to include commit message and C++ code style guidelines
 
-## 1.0.0 - 2020-03-10
+## 1.0.0 - 2021-03-10
 
 ### Added
 
@@ -68,7 +73,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - Vector single-width floating-point min/max instructions (vfmin, vfmax)
 - Software implementation of a floating-point matrix multiplication kernel
 
-## 0.6.0 - 2020-02-24
+## 0.6.0 - 2021-02-24
 
 ### Added
 
@@ -83,7 +88,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The matrix multiplication kernel achieves better performance
   - It reports the performance and the utilization for several matrix sizes
 
-## 0.5.0 - 2020-02-14
+## 0.5.0 - 2021-02-14
 
 ### Added
 
@@ -105,7 +110,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Vector mask instructions (vmand, vmnand, vmandnot, vmxor, vmor, vmnor, vmornot, vmxnor) no longer require the non-compliant constraint that the vector length is divisible by eight.
 
-## 0.4.0 - 2020-02-04
+## 0.4.0 - 2021-02-04
 
 ### Added
 
@@ -118,7 +123,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The operand queues now take as a parameter the type conversions they support (currently, `SupportIntExt2`, `SupportIntExt4`, and `SupportIntExt8`)
 - The Vector Multiplier unit now has independant pipelines for each element width.
 
-## 0.3.0 - 2020-01-28
+## 0.3.0 - 2021-01-28
 
 ### Added
 
@@ -139,7 +144,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Send the correct bits of the address to the Vector Register File's banks
 - Correctly calculate the initial address of each vector register in the VRF
 
-## 0.2.0 - 2020-01-22
+## 0.2.0 - 2021-01-22
 
 ### Added
 
@@ -158,7 +163,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - CVA6's forwarding mechanism of operand B for accelerator instructions
 
-## 0.1.0 - 2020-01-06
+## 0.1.0 - 2021-01-06
 
 ### Added
 
