@@ -14,17 +14,17 @@
 // upon receiving vector memory operations.
 
 module vstu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int  unsigned NrLanes      = 0,
-    parameter type          vaddr_t      = logic,                   // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes = 0,
+    parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
     // AXI Interface parameters
-    parameter int  unsigned AxiDataWidth = 0,
-    parameter int  unsigned AxiAddrWidth = 0,
-    parameter type          axi_w_t      = logic,
-    parameter type          axi_b_t      = logic,
+    parameter  int  unsigned AxiDataWidth = 0,
+    parameter  int  unsigned AxiAddrWidth = 0,
+    parameter  type          axi_w_t      = logic,
+    parameter  type          axi_b_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           DataWidth   = $bits(elen_t),
-    localparam type          strb_t      = logic[DataWidth/8-1:0],
-    localparam type          axi_addr_t  = logic [AxiAddrWidth-1:0]
+    localparam int           DataWidth    = $bits(elen_t),
+    localparam type          strb_t       = logic[DataWidth/8-1:0],
+    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
   )(
     input  logic                           clk_i,
     input  logic                           rst_ni,
@@ -62,9 +62,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::beat_upper_byte;
   import axi_pkg::BURST_INCR;
 
-  /******************************
-   *  Vector instruction queue  *
-   ******************************/
+  ////////////////////////////////
+  //  Vector instruction queue  //
+  ////////////////////////////////
 
   // We store a certain number of in-flight vector instructions
   localparam VInsnQueueDepth = 4;
@@ -77,7 +77,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     //   vector functional unit).
     // - Being issued (i.e., its micro-operations are currently being issued
     //   to the corresponding functional units).
-    // - Being committed (i.e., waiting for acknowledgement from the
+    // - Being committed (i.e., waiting for acknowledgment from the
     //   memory system).
     // We need pointers to index which instruction is at each execution phase
     // between the VInsnQueueDepth instructions in memory.
@@ -123,9 +123,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /****************
-   *  Store Unit  *
-   ****************/
+  //////////////////
+  //  Store Unit  //
+  //////////////////
 
   // Vector instructions currently running
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
@@ -169,19 +169,37 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
-    /***********************************
-     *  Write data into the W channel  *
-     ***********************************/
+    /////////////////////////////////////
+    //  Write data into the W channel  //
+    /////////////////////////////////////
 
     // We are ready to send a W beat if
     // - There is an instruction ready to be issued
     // - We received all the operands from the lanes
     // - The address generator generated an AXI AW request for this write beat
     // - The AXI subsystem is ready to accept this W beat
-    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue_q.vm || (|mask_valid_i)) && axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load && axi_w_ready_i) begin
+    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue_q.vm || (|mask_valid_i)) &&
+        axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load && axi_w_ready_i) begin
       // Bytes valid in the current W beat
-      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
-      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr, axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
+      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
+        axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
+      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr,
+        axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
+
+      // Account for the issued bytes
+      // How many bytes are valid in this VRF word
+      automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
+      // How many bytes are valid in this instruction
+      automatic vlen_t vinsn_valid_bytes = issue_cnt_q - vrf_pnt_q;
+      // How many bytes are valid in this AXI word
+      automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte + 1;
+
+      // How many bytes are we committing?
+      automatic vlen_t valid_bytes;
+      valid_bytes = vinsn_valid_bytes < vrf_valid_bytes ? vinsn_valid_bytes : vrf_valid_bytes;
+      valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes             : axi_valid_bytes;
+
+      vrf_pnt_d = vrf_pnt_q + valid_bytes;
 
       // Copy data from the operands into the W channel
       for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
@@ -203,23 +221,6 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
             axi_w_o.strb[axi_byte]        = vinsn_issue_q.vm || mask_i[vrf_lane][vrf_offset];
           end
         end
-      end
-
-      // Account for the issued bytes
-      begin
-        // How many bytes are valid in this VRF word
-        automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
-        // How many bytes are valid in this instruction
-        automatic vlen_t vinsn_valid_bytes = issue_cnt_q - vrf_pnt_q;
-        // How many bytes are valid in this AXI word
-        automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte + 1;
-
-        // How many bytes are we committing?
-        automatic vlen_t valid_bytes;
-        valid_bytes = vinsn_valid_bytes < vrf_valid_bytes ? vinsn_valid_bytes : vrf_valid_bytes;
-        valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes             : axi_valid_bytes;
-
-        vrf_pnt_d = vrf_pnt_q + valid_bytes;
       end
 
       // Send the W beat
@@ -260,12 +261,13 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.issue_pnt += 1;
 
       if (vinsn_queue_d.issue_cnt != 0)
-        issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].eew_vs1);
+        issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
+          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].eew_vs1);
     end
 
-    /**************************
-     *  Handle the B channel  *
-     **************************/
+    ////////////////////////////
+    //  Handle the B channel  //
+    ////////////////////////////
 
     // TODO: We cannot handle errors on the B channel.
     // We just acknowledge any AXI requests that come on the B channel.
@@ -289,11 +291,12 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
 
-    /****************************
-     *  Accept new instruction  *
-     ****************************/
+    //////////////////////////////
+    //  Accept new instruction  //
+    //////////////////////////////
 
-    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] && pe_req_i.vfu == VFU_StoreUnit) begin
+    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
+      pe_req_i.vfu == VFU_StoreUnit) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 

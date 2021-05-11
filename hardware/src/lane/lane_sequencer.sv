@@ -34,9 +34,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     input  logic                 [NrVInsn-1:0]            mfpu_vinsn_done_i
   );
 
-  /************************************
-   *  Operand Request Command Queues  *
-   ************************************/
+  //////////////////////////////////////
+  //  Operand Request Command Queues  //
+  //////////////////////////////////////
 
   // We cannot use a simple FIFO because the operand request commands include
   // bits that indicate whether there is a hazard between different vector
@@ -81,9 +81,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     end
   end
 
-  /***************************
-   *  VFU Operation control  *
-   ***************************/
+  /////////////////////////////
+  //  VFU Operation control  //
+  /////////////////////////////
 
   // Running instructions
   logic [NrVInsn-1:0] vinsn_done_d, vinsn_done_q;
@@ -104,7 +104,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       VFU_MFpu    : vfu_ready = mfpu_ready_i;
       default:;
     endcase
-  endfunction
+  endfunction : vfu_ready
 
   always_comb begin: sequencer
     // Running loops
@@ -133,16 +133,34 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       pe_req_ready_o        = 1'b0;
     end else begin
       // If the operand requesters are busy, abort the request and wait for another cycle.
-      if (pe_req_valid_i)
+      if (pe_req_valid_i) begin
         unique case (pe_req_i.vfu)
-          VFU_Alu      : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskM]);
-          VFU_MFpu     : pe_req_ready_o = !(operand_request_valid_o[MulFPUA] || operand_request_valid_o[MulFPUB] || operand_request_valid_o[MulFPUC] || operand_request_valid_o[MaskM]);
+          VFU_Alu : begin
+            pe_req_ready_o = !(operand_request_valid_o[AluA] ||
+              operand_request_valid_o[AluB ] ||
+              operand_request_valid_o[MaskM]);
+          end
+          VFU_MFpu : begin
+            pe_req_ready_o = !(operand_request_valid_o[MulFPUA] ||
+              operand_request_valid_o[MulFPUB] ||
+              operand_request_valid_o[MulFPUC] ||
+              operand_request_valid_o[MaskM]);
+          end
           VFU_LoadUnit : pe_req_ready_o = !(operand_request_valid_o[MaskM]);
           VFU_SlideUnit: pe_req_ready_o = !(operand_request_valid_o[SlideAddrGenA]);
-          VFU_StoreUnit: pe_req_ready_o = !(operand_request_valid_o[StA] || operand_request_valid_o[MaskM]);
-          VFU_MaskUnit : pe_req_ready_o = !(operand_request_valid_o[AluA] || operand_request_valid_o[AluB] || operand_request_valid_o[MaskB] || operand_request_valid_o[MaskM]);
+          VFU_StoreUnit: begin
+            pe_req_ready_o = !(operand_request_valid_o[StA] ||
+              operand_request_valid_o[ MaskM]);
+          end
+          VFU_MaskUnit : begin
+            pe_req_ready_o = !(operand_request_valid_o[AluA] ||
+              operand_request_valid_o [AluB] ||
+              operand_request_valid_o[MaskB] ||
+              operand_request_valid_o[MaskM]);
+          end
           default:;
         endcase
+      end
 
       // We received a new vector instruction
       if (pe_req_valid_i && pe_req_ready_o && !vinsn_running_d[pe_req_i.id]) begin
@@ -170,21 +188,19 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         // Vector length calculation
         vfu_operation_d.vl = pe_req_i.vl / NrLanes;
         // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
-        if (lane_id_i < pe_req_i.vl[idx_width(NrLanes)-1:0])
-          vfu_operation_d.vl += 1;
+        if (lane_id_i < pe_req_i.vl[idx_width(NrLanes)-1:0]) vfu_operation_d.vl += 1;
 
         // Vector start calculation
         vfu_operation_d.vstart = pe_req_i.vstart / NrLanes;
         // If lane_id_i < vstart % NrLanes, this lane needs to execute one micro-operation less.
-        if (lane_id_i < pe_req_i.vstart[idx_width(NrLanes)-1:0])
-          vfu_operation_d.vstart -= 1;
+        if (lane_id_i < pe_req_i.vstart[idx_width(NrLanes)-1:0]) vfu_operation_d.vstart -= 1;
 
         // Mark the vector instruction as running
         vinsn_running_d[pe_req_i.id] = 1'b1;
 
-        /**********************
-         *  Operand requests  *
-         **********************/
+        ////////////////////////
+        //  Operand requests  //
+        ////////////////////////
 
         unique case (pe_req_i.vfu)
           VFU_Alu: begin
@@ -227,8 +243,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
-              operand_request_i[MaskM].vl += 1;
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) *
+                NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_MFpu: begin
@@ -253,10 +269,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               vtype  : pe_req_i.vtype,
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
-              hazard : pe_req_i.swap_vs2_vd_op ? pe_req_i.hazard_vd : (pe_req_i.hazard_vs2 | pe_req_i.hazard_vd),
+              hazard : (pe_req_i.swap_vs2_vd_op ?
+                pe_req_i.hazard_vd : (pe_req_i.hazard_vs2 | pe_req_i.hazard_vd)),
               default: '0
             };
-            operand_request_push[MulFPUB] = pe_req_i.swap_vs2_vd_op ? pe_req_i.use_vd_op : pe_req_i.use_vs2;
+            operand_request_push[MulFPUB] = pe_req_i.swap_vs2_vd_op ?
+            pe_req_i.use_vd_op : pe_req_i.use_vs2;
 
             operand_request_i[MulFPUC] = '{
               id     : pe_req_i.id,
@@ -266,10 +284,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               vl     : vfu_operation_d.vl,
               vstart : vfu_operation_d.vstart,
               vtype  : pe_req_i.vtype,
-              hazard : pe_req_i.swap_vs2_vd_op ? (pe_req_i.hazard_vs2 | pe_req_i.hazard_vd) : pe_req_i.hazard_vd,
+              hazard : pe_req_i.swap_vs2_vd_op ?
+              (pe_req_i.hazard_vs2 | pe_req_i.hazard_vd) : pe_req_i.hazard_vd,
               default: '0
             };
-            operand_request_push[MulFPUC] = pe_req_i.swap_vs2_vd_op ? pe_req_i.use_vs2 : pe_req_i.use_vd_op;
+            operand_request_push[MulFPUC] = pe_req_i.swap_vs2_vd_op ?
+            pe_req_i.use_vs2 : pe_req_i.use_vd_op;
 
             // This vector instruction uses masks
             operand_request_i[MaskM] = '{
@@ -284,8 +304,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
-              operand_request_i[MaskM].vl += 1;
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) *
+                NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_LoadUnit : begin
@@ -302,8 +322,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
-              operand_request_i[MaskM].vl += 1;
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) *
+                NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_StoreUnit : begin
@@ -320,8 +340,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vs1 | pe_req_i.hazard_vd,
               default: '0
             };
-            if (operand_request_i[StA].vl * NrLanes != pe_req_i.vl)
-              operand_request_i[StA].vl += 1;
+            if (operand_request_i[StA].vl * NrLanes != pe_req_i.vl) operand_request_i[StA].vl += 1;
             operand_request_push[StA] = pe_req_i.use_vs1;
 
             // This vector instruction uses masks
@@ -337,8 +356,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vm | pe_req_i.hazard_vd,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
-              operand_request_i[MaskM].vl += 1;
+            if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) *
+                NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           VFU_SlideUnit: begin
@@ -431,17 +450,20 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               default: '0
             };
 
-            // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
+            // This is an operation that runs normally on the ALU, and then gets *condensed* and
+            // reshuffled at the Mask Unit.
             if (pe_req_i.op inside {[VMSEQ:VMSBC]}) begin
               operand_request_i[AluA].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
             end
-            // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
+            // This is an operation that runs normally on the ALU, and then gets reshuffled at the
+            // Mask Unit.
             else begin
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              operand_request_i[AluA].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs1));
-              if ((operand_request_i[AluA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes != pe_req_i.vl)
-                operand_request_i[AluA].vl += 1;
+              operand_request_i[AluA].vl = (pe_req_i.vl / NrLanes) >>
+              (int'(EW64) - int'(pe_req_i.eew_vs1));
+              if ((operand_request_i[AluA].vl << (int'(EW64) - int'(pe_req_i.eew_vs1))) * NrLanes !=
+                  pe_req_i.vl) operand_request_i[AluA].vl += 1;
             end
             operand_request_push[AluA] = pe_req_i.use_vs1;
 
@@ -454,17 +476,20 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
               default: '0
             };
-            // This is an operation that runs normally on the ALU, and then gets *condensed* and reshuffled at the Mask Unit.
+            // This is an operation that runs normally on the ALU, and then gets *condensed* and
+            // reshuffled at the Mask Unit.
             if (pe_req_i.op inside {[VMSEQ:VMSBC]}) begin
               operand_request_i[AluB].vl = (pe_req_i.vl + NrLanes - 1) / NrLanes;
             end
-            // This is an operation that runs normally on the ALU, and then gets reshuffled at the Mask Unit.
+            // This is an operation that runs normally on the ALU, and then gets reshuffled at the
+            // Mask Unit.
             else begin
               // Since this request goes outside of the lane, we might need to request an
               // extra operand regardless of whether it is valid in this lane or not.
-              operand_request_i[AluB].vl = (pe_req_i.vl / NrLanes) >> (int'(EW64) - int'(pe_req_i.eew_vs2));
-              if ((operand_request_i[AluB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes != pe_req_i.vl)
-                operand_request_i[AluB].vl += 1;
+              operand_request_i[AluB].vl = (pe_req_i.vl / NrLanes) >>
+              (int'(EW64) - int'(pe_req_i.eew_vs2));
+              if ((operand_request_i[AluB].vl << (int'(EW64) - int'(pe_req_i.eew_vs2))) * NrLanes !=
+                  pe_req_i.vl) operand_request_i[AluB].vl += 1;
             end
             operand_request_push[AluB] = pe_req_i.use_vs2;
 
@@ -480,8 +505,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vd,
               default: '0
             };
-            if ((pe_req_i.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req_i.vtype.vsew)) != pe_req_i.vl)
-              operand_request_i[MaskB].vl += 1;
+            if ((pe_req_i.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req_i.vtype.vsew)) !=
+                pe_req_i.vl) operand_request_i[MaskB].vl += 1;
             operand_request_push[MaskB] = pe_req_i.use_vd_op;
 
             operand_request_i[MaskM] = '{
@@ -496,8 +521,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               hazard : pe_req_i.hazard_vm,
               default: '0
             };
-            if ((operand_request_i[MaskM].vl * NrLanes * ELEN) != pe_req_i.vl)
+            if ((operand_request_i[MaskM].vl * NrLanes * ELEN) != pe_req_i.vl) begin
               operand_request_i[MaskM].vl += 1;
+            end
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
           default:;

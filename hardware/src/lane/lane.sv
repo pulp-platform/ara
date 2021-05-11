@@ -8,17 +8,19 @@
 // together with the execution units.
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int           unsigned NrLanes         = 1,                                   // Number of lanes
-    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,          // Support for floating-point data types
+    parameter  int           unsigned NrLanes         = 1, // Number of lanes
+    // Support for floating-point data types
+    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
-    localparam int           unsigned MaxVLenPerLane  = VLEN / NrLanes,                      // In bits
-    localparam int           unsigned MaxVLenBPerLane = VLENB / NrLanes,                     // In bytes
-    localparam int           unsigned VRFSizePerLane  = MaxVLenPerLane * 32,                 // In bits
-    localparam int           unsigned VRFBSizePerLane = MaxVLenBPerLane * 32,                // In bytes
-    localparam type                   vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0], // Address of an element in the lane's VRF
-    localparam int           unsigned DataWidth       = $bits(elen_t),                       // Width of the lane datapath
-    localparam type                   strb_t          = logic [DataWidth/8-1:0]              // Byte-strobe type
+    localparam int           unsigned MaxVLenPerLane  = VLEN / NrLanes,       // In bits
+    localparam int           unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int           unsigned VRFSizePerLane  = MaxVLenPerLane * 32,  // In bits
+    localparam int           unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    // Address of an element in the lane's VRF
+    localparam type                   vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0],
+    localparam int           unsigned DataWidth       = $bits(elen_t), // Width of the lane datapath
+    localparam type                   strb_t          = logic [DataWidth/8-1:0] // Byte-strobe type
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,
@@ -75,9 +77,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                           mask_ready_o
   );
 
-  /***************
-   *  Sequencer  *
-   ***************/
+  /////////////////
+  //  Sequencer  //
+  /////////////////
 
   // Interface with the operand requesters
   operand_request_cmd_t [NrOperandQueues-1:0] operand_request;
@@ -92,9 +94,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       mfpu_ready;
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
 
-  lane_sequencer #(
-    .NrLanes(NrLanes)
-  ) i_lane_sequencer (
+  lane_sequencer #(.NrLanes(NrLanes)) i_lane_sequencer (
     .clk_i                  (clk_i                ),
     .rst_ni                 (rst_ni               ),
     .lane_id_i              (lane_id_i            ),
@@ -117,9 +117,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mfpu_vinsn_done_i      (mfpu_vinsn_done      )
   );
 
-  /***********************
-   *  Operand Requester  *
-   ***********************/
+  /////////////////////////
+  //  Operand Requester  //
+  /////////////////////////
 
   // Interface with the VRF
   logic               [NrVRFBanksPerLane-1:0] vrf_req;
@@ -211,9 +211,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_gnt_o         (ldu_result_gnt_o       )
   );
 
-  /**************************
-   *  Vector Register File  *
-   **************************/
+  ////////////////////////////
+  //  Vector Register File  //
+  ////////////////////////////
 
   // Interface with the operand queues
   elen_t [NrOperandQueues-1:0] vrf_operand;
@@ -238,9 +238,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_valid_o(vrf_operand_valid)
   );
 
-  /********************
-   *  Operand queues  *
-   ********************/
+  //////////////////////
+  //  Operand queues  //
+  //////////////////////
 
   // Interface with the VFUs
   // ALU
@@ -289,9 +289,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_ready_i         ({mask_operand_ready_i[2], mask_operand_ready_i[0]})
   );
 
-  /*****************************
-   *  Vector Functional Units  *
-   *****************************/
+  ///////////////////////////////
+  //  Vector Functional Units  //
+  ///////////////////////////////
 
   vector_fus_stage #(
     .NrLanes   (NrLanes   ),
@@ -343,9 +343,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_ready_o         (mask_ready_o           )
   );
 
-  /****************
-   *  Assertions  *
-   ****************/
+  //////////////////
+  //  Assertions  //
+  //////////////////
 
   if (NrLanes == 0)
     $error("[lane] Ara needs to have at least one lane.");

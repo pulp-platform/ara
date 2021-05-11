@@ -11,9 +11,9 @@ package rvv_pkg;
   // This package depends on CVA6's riscv package
   import riscv::*;
 
-  /****************************
-   *  Common RVV definitions  *
-   ****************************/
+  //////////////////////////////
+  //  Common RVV definitions  //
+  //////////////////////////////
 
   // Element width
   typedef enum logic [2:0] {
@@ -60,9 +60,9 @@ package rvv_pkg;
     OPCFG = 3'b111
   } opcodev_func3_e;
 
-  /*****************
-   *  Vector CSRs  *
-   *****************/
+  ///////////////////
+  //  Vector CSRs  //
+  ///////////////////
 
   function automatic logic is_vector_csr (riscv::csr_reg_t csr);
     case (csr)
@@ -77,12 +77,11 @@ package rvv_pkg;
       end
       default: return 1'b0;
     endcase
-  endfunction
+  endfunction : is_vector_csr
 
-
-  /******************************
-   *  Vector instruction types  *
-   ******************************/
+  ////////////////////////////////
+  //  Vector instruction types  //
+  ////////////////////////////////
 
   typedef struct packed {
     logic [31:29] nf;
@@ -145,10 +144,9 @@ package rvv_pkg;
     vsetvl_type_t vsetvl_type;
   } rvv_instruction_t;
 
-
-  /**************************
-   *  Vector mask register  *
-   **************************/
+  ////////////////////////////
+  //  Vector mask register  //
+  ////////////////////////////
 
   // The mask register is always vreg[0]
   localparam VMASK = 5'b00000;

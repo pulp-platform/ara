@@ -10,10 +10,10 @@
 // predicated instructions.
 
 module masku import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes   = 0,
-    parameter  type          vaddr_t   = logic,                // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes = 0,
+    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t),        // Width of the lane datapath
+    localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
     localparam type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
   ) (
@@ -45,9 +45,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
-  /**************
-   *  Operands  *
-   **************/
+  ////////////////
+  //  Operands  //
+  ////////////////
 
   // ALU result
   elen_t [NrLanes-1:0] masku_operand_a_i;
@@ -78,9 +78,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     assign masku_operand_ready_o[lane][0] = masku_operand_m_ready_o[lane];
   end: gen_unpack_masku_operands
 
-  /******************************
-   *  Vector instruction queue  *
-   ******************************/
+  ////////////////////////////////
+  //  Vector instruction queue  //
+  ////////////////////////////////
 
   // We store a certain number of in-flight vector instructions.
   // To avoid any hazards between masked vector instructions, the mask
@@ -123,9 +123,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /*****************
-   *  Mask queues  *
-   *****************/
+  ///////////////////
+  //  Mask queues  //
+  ///////////////////
 
   localparam int unsigned MaskQueueDepth = 2;
 
@@ -167,9 +167,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /*******************
-   *  Result queues  *
-   *******************/
+  /////////////////////
+  //  Result queues  //
+  /////////////////////
 
   localparam int unsigned ResultQueueDepth = 2;
 
@@ -217,9 +217,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  /**************
-   *  Mask ALU  *
-   **************/
+  ////////////////
+  //  Mask ALU  //
+  ////////////////
 
   elen_t [NrLanes-1:0]      alu_result;
   logic  [NrLanes*ELEN-1:0] bit_enable;
@@ -262,7 +262,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           automatic int mask_byte          = shuffle_index(b, NrLanes, vinsn_issue.eew_vmask);
           automatic int mask_byte_lane     = mask_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
           automatic int mask_byte_offset   = mask_byte[idx_width(StrbWidth)-1:0];
-          bit_enable_mask[8*vrf_byte +: 8] = bit_enable_shuffle[8*vrf_byte +: 8] & masku_operand_m_i[mask_byte_lane][8*mask_byte_offset +: 8];
+          bit_enable_mask[8*vrf_byte +: 8] = bit_enable_shuffle[8*vrf_byte +: 8] &
+            masku_operand_m_i[mask_byte_lane][8*mask_byte_offset +: 8];
         end else begin
           bit_enable_mask[8*vrf_byte +: 8] = bit_enable_shuffle[8*vrf_byte +: 8];
         end
@@ -270,15 +271,17 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Evaluate the instruction
       unique case (vinsn_issue.op) inside
-        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) | (masku_operand_b_i & ~bit_enable_mask);
-        [VMSEQ:VMSBC]    : begin
+        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) |
+          (masku_operand_b_i & ~bit_enable_mask);
+        [VMSEQ:VMSBC] : begin
           automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
           unique case (vinsn_issue.vtype.vsew)
             EW8: for (int b = 0; b < 8*NrLanes; b++) begin
-                // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
-                automatic int src_byte        = shuffle_index(1*b, NrLanes, EW8);
-                automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
+                // Shuffle the source byte, then find the lane and the offset of this byte in the
+                // full operand word.
+                automatic int src_byte      = shuffle_index(1*b, NrLanes, EW8);
+                automatic int src_byte_lane = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
@@ -286,12 +289,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW8);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
+                  (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
+                  masku_operand_b_i[src_byte_lane][8*src_byte_offset] :
+                  masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             EW16: for (int b = 0; b < 4*NrLanes; b++) begin
-                // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
-                automatic int src_byte        = shuffle_index(2*b, NrLanes, EW16);
-                automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
+                // Shuffle the source byte, then find the lane and the offset of this byte in the
+                // full operand word.
+                automatic int src_byte      = shuffle_index(2*b, NrLanes, EW16);
+                automatic int src_byte_lane = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
@@ -299,12 +306,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW16);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
+                  (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
+                  masku_operand_b_i[src_byte_lane][8*src_byte_offset] :
+                  masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             EW32: for (int b = 0; b < 2*NrLanes; b++) begin
-                // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
-                automatic int src_byte        = shuffle_index(4*b, NrLanes, EW32);
-                automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
+                // Shuffle the source byte, then find the lane and the offset of this byte in the
+                // full operand word.
+                automatic int src_byte      = shuffle_index(4*b, NrLanes, EW32);
+                automatic int src_byte_lane = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
@@ -312,12 +323,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW32);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
+                  (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
+                  masku_operand_b_i[src_byte_lane][8*src_byte_offset] :
+                  masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             EW64: for (int b = 0; b < 1*NrLanes; b++) begin
-                // Shuffle the source byte, then find the lane and the offset of this byte in the full operand word.
-                automatic int src_byte        = shuffle_index(8*b, NrLanes, EW64);
-                automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
+                // Shuffle the source byte, then find the lane and the offset of this byte in the
+                // full operand word.
+                automatic int src_byte      = shuffle_index(8*b, NrLanes, EW64);
+                automatic int src_byte_lane = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
@@ -325,22 +340,26 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
                 automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW64);
 
-                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] = (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ? masku_operand_b_i[src_byte_lane][8*src_byte_offset] : masku_operand_a_i[src_byte_lane][8*src_byte_offset];
+                alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
+                  (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
+                  masku_operand_b_i[src_byte_lane][8*src_byte_offset] :
+                  masku_operand_a_i[src_byte_lane][8*src_byte_offset];
               end
             default:;
           endcase
 
           // Final assignment
-          alu_result = (alu_result_flat & bit_enable_shuffle) | (masku_operand_b_i & ~bit_enable_shuffle);
+          alu_result = (alu_result_flat & bit_enable_shuffle) |
+            (masku_operand_b_i & ~bit_enable_shuffle);
         end
         default: alu_result = '0;
       endcase
     end
   end: p_mask_alu
 
-  /***************
-   *  Mask unit  *
-   ***************/
+  /////////////////
+  //  Mask unit  //
+  /////////////////
 
   // Vector instructions currently running
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
@@ -389,9 +408,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
-    /*******************
-     *  Mask Operands  *
-     *******************/
+    /////////////////////
+    //  Mask Operands  //
+    /////////////////////
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid) begin
@@ -414,19 +433,22 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           automatic int vrf_pnt_bit_offset  = mask_pnt_q[idx_width(StrbWidth)-1:0];
 
           // A single bit from the mask operands can be used several times, depending on the eew.
-          automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
+          automatic int mask_seq_bit = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
           automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
           // Shuffle this source byte
-          automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
+          automatic int mask_byte    = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
           // Account for the bit offset
-          automatic int mask_bit      = (mask_byte << $clog2(StrbWidth)) + mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
+          automatic int mask_bit = (mask_byte << $clog2(StrbWidth)) +
+            mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
 
-          // At which lane, and what is the bit offset in that lane, of the mask operand from mask_seq_bit?
+          // At which lane, and what is the bit offset in that lane, of the mask operand from
+          // mask_seq_bit?
           automatic int mask_lane   = mask_bit >> idx_width(DataWidth);
           automatic int mask_offset = mask_bit[idx_width(DataWidth)-1:0];
 
           // Copy the mask operand
-          mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] = masku_operand_m_i[mask_lane][mask_offset];
+          mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] =
+            masku_operand_m_i[mask_lane][mask_offset];
         end
 
         // Account for the used operands
@@ -457,9 +479,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
 
-    /********************************
-     *  Write results to the lanes  *
-     ********************************/
+    //////////////////////////////////
+    //  Write results to the lanes  //
+    //////////////////////////////////
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid) begin
@@ -467,13 +489,17 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_issue.vfu == VFU_MaskUnit) begin
         // Is there place in the result queue to write the results?
         // Did we receive the operands?
-        if (!result_queue_full && &masku_operand_a_valid_i && (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i)) begin
+        if (!result_queue_full && &masku_operand_a_valid_i &&
+            (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i)) begin
           // How many elements are we committing in total?
-          // Since we are committing bits instead of bytes, we carry out the following calculation with ceil(vl/8) instead.
-          automatic int element_cnt_all_lanes           = (ELENB * NrLanes) >> int'(vinsn_issue.vtype.vsew);
-          // How many elements are remaining to be committed? Carry out the calculation with ceil(issue_cnt/8).
+          // Since we are committing bits instead of bytes, we carry out the following calculation
+          // with ceil(vl/8) instead.
+          automatic int element_cnt_all_lanes = (ELENB * NrLanes) >> int'(vinsn_issue.vtype.vsew);
+          // How many elements are remaining to be committed? Carry out the calculation with
+          // ceil(issue_cnt/8).
           automatic int remaining_element_cnt_all_lanes = (issue_cnt_q + 7) / 8;
-          remaining_element_cnt_all_lanes               = (remaining_element_cnt_all_lanes + (1 << int'(vinsn_issue.vtype.vsew)) - 1) >> int'(vinsn_issue.vtype.vsew);
+          remaining_element_cnt_all_lanes = (remaining_element_cnt_all_lanes +
+            (1 << int'(vinsn_issue.vtype.vsew)) - 1) >> int'(vinsn_issue.vtype.vsew);
           if (element_cnt_all_lanes > remaining_element_cnt_all_lanes)
             element_cnt_all_lanes = remaining_element_cnt_all_lanes;
 
@@ -491,13 +517,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             result_queue_d[result_queue_write_pnt_q][lane] = '{
               wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result[lane],
               be   : be(element_cnt, vinsn_issue.vtype.vsew),
-              addr : vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes / DataWidth)),
-              id   : vinsn_issue.id
+              addr : vaddr(vinsn_issue.vd, NrLanes) +
+                (((vinsn_issue.vl - issue_cnt_q) / NrLanes / DataWidth)),
+              id : vinsn_issue.id
             };
           end
 
           // Increment the VRF pointer
-          if (vinsn_issue.op inside {VMSEQ, VMSNE, VMSLT, VMSLTU, VMSLE, VMSLEU, VMSGT, VMSGTU, VMADC, VMSBC}) begin
+          if (vinsn_issue.op inside {[VMSEQ:VMSBC]}) begin
             vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
 
             // Filled-up a word, or finished execution
@@ -552,9 +579,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.issue_cnt -= 1;
     end
 
-    /*******************************
-     *  Send operands to the VFUs  *
-     *******************************/
+    /////////////////////////////////
+    //  Send operands to the VFUs  //
+    /////////////////////////////////
 
     for (int lane = 0; lane < NrLanes; lane++) begin: send_operand
       mask_valid_o[lane] = mask_queue_valid_q[mask_queue_read_pnt_q][lane];
@@ -562,7 +589,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Received a grant from the VFUs.
       // The VLDU and the VSTU acknowledge all the operands at once.
       // Deactivate the request, but do not bump the pointers for now.
-      if (lane_mask_ready_i[lane] || vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
+      if (lane_mask_ready_i[lane] || vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i)
+      begin
         mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
         mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
       end
@@ -590,9 +618,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           commit_cnt_d = '0;
       end
 
-    /********************************
-     *  Write results into the VRF  *
-     ********************************/
+    //////////////////////////////////
+    //  Write results into the VRF  //
+    //////////////////////////////////
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
       masku_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
@@ -640,11 +668,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.commit_cnt -= 1;
     end
 
-    /****************************
-     *  Accept new instruction  *
-     ****************************/
+    //////////////////////////////
+    //  Accept new instruction  //
+    //////////////////////////////
 
-    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] && (!pe_req_i.vm || pe_req_i.vfu == VFU_MaskUnit)) begin
+    if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
+        (!pe_req_i.vm || pe_req_i.vfu == VFU_MaskUnit)) begin
       vinsn_queue_d.vinsn[0]       = pe_req_i;
       vinsn_running_d[pe_req_i.id] = 1'b1;
 

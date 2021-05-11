@@ -9,7 +9,8 @@
 
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     parameter  int           unsigned NrLanes    = 0,
-    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble, // Support for floating-point data types
+    // Support for floating-point data types
+    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
     // Type used to address vector register file elements
     parameter  type                   vaddr_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
@@ -46,9 +47,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
-  /******************************
-   *  Vector instruction queue  *
-   ******************************/
+  ////////////////////////////////
+  //  Vector instruction queue  //
+  ////////////////////////////////
 
   // We store a certain number of in-flight vector instructions
   localparam VInsnQueueDepth = 4;
@@ -110,9 +111,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     end
   end
 
-  /******************
-   *  Result queue  *
-   ******************/
+  ////////////////////
+  //  Result queue  //
+  ////////////////////
 
   localparam int unsigned ResultQueueDepth = 2;
 
@@ -157,9 +158,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     end
   end
 
-  /********************
-   *  Helper signals  *
-   ********************/
+  //////////////////////
+  //  Helper signals  //
+  //////////////////////
 
   logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
 
@@ -167,9 +168,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
   assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX]};
 
-  /********************
-   *  Scalar operand  *
-   ********************/
+  //////////////////////
+  //  Scalar operand  //
+  //////////////////////
 
   elen_t scalar_op;
 
@@ -188,16 +189,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     endcase
   end
 
-  /****************
-   *  Multiplier  *
-   ****************/
+  //////////////////
+  //  Multiplier  //
+  //////////////////
 
   elen_t [3:0] vmul_simd_result;
   logic  [3:0] vmul_simd_in_valid;
   logic  [3:0] vmul_simd_in_ready;
   logic  [3:0] vmul_simd_out_valid;
   logic  [3:0] vmul_simd_out_ready;
-  // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the operand queues
+  // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the
+  // operand queues
   // Another choice would be to delay the mask grant when the vmul_result is committed
   strb_t [3:0] vmul_simd_mask;
 
@@ -292,16 +294,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     vmul_in_ready                                = vmul_simd_in_ready[vinsn_issue_q.vtype.vsew];
 
     // We read the responses of a single SIMD Multiplier
-    vmul_result                                      = vmul_simd_result[vinsn_processing.vtype.vsew];
-    vmul_mask                                        = vmul_simd_mask[vinsn_processing.vtype.vsew];
-    vmul_out_valid                                   = vmul_simd_out_valid[vinsn_processing.vtype.vsew];
-    vmul_simd_out_ready                              = '0;
+    vmul_result         = vmul_simd_result[vinsn_processing.vtype.vsew];
+    vmul_mask           = vmul_simd_mask[vinsn_processing.vtype.vsew];
+    vmul_out_valid      = vmul_simd_out_valid[vinsn_processing.vtype.vsew];
+    vmul_simd_out_ready = '0;
     vmul_simd_out_ready[vinsn_processing.vtype.vsew] = vmul_out_ready;
   end
 
-  /*************
-   *  Divider  *
-   ************/
+  ///////////////
+  //  Divider  //
+  ///////////////
 
   elen_t vdiv_result;
   // Short circuit to invalid input elements with a mask
@@ -312,8 +314,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   logic vdiv_in_ready;
   logic vdiv_out_ready;
 
-  // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the operand queues
-  // Another choice would be to delay the mask grant when the vdiv_result is committed
+  // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the
+  // operand queues. Another choice would be to delay the mask grant when the vdiv_result is
+  // committed.
   strb_t vdiv_mask;
 
   simd_div i_simd_div (
@@ -333,9 +336,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     .valid_o    (vdiv_out_valid                                             )
   );
 
-  /*********
-   *  FPU  *
-   ********/
+  ///////////
+  //  FPU  //
+  ///////////
 
   // FPU-related signals
   elen_t         vfpu_result;
@@ -387,9 +390,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
     // FPU preprocessing stage
     always_comb begin: fpu_operand_preprocessing_p
-      operand_a = mfpu_operand_i[1];                                           // vs2
+      operand_a = mfpu_operand_i[1]; // vs2
       operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]; // vs1, rs1
-      operand_c = mfpu_operand_i[2];                                           // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
+      operand_c = mfpu_operand_i[2]; // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
       // Default rounding-mode from fcsr.rm
       fp_rm     = vinsn_issue_q.fp_rm;
       fp_op     = ADD;
@@ -399,8 +402,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
       unique case (vinsn_issue_q.op)
         // Addition is between operands B and C, A was moved to C in the lane_sequencer
-        VFADD:
-          fp_op = ADD;
+        VFADD: fp_op = ADD;
         VFSUB: begin
           fp_op      = ADD;
           fp_sign[1] = 1'b1;
@@ -409,13 +411,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_op    = ADD;
           fp_opmod = 1'b1;
         end
-        VFMUL :
-          fp_op = MUL;
-        VFMACC, VFMADD, VFMSAC, VFMSUB: begin
+        VFMUL : fp_op = MUL;
+        VFMACC,
+        VFMADD,
+        VFMSAC,
+        VFMSUB: begin
           fp_op      = FMADD;
           fp_sign[2] = (vinsn_issue_q.op == VFMSAC) | (vinsn_issue_q.op == VFMSUB);
         end
-        VFNMACC, VFNMSAC, VFNMADD, VFNMSUB: begin
+        VFNMACC,
+        VFNMSAC,
+        VFNMADD,
+        VFNMSUB: begin
           fp_op      = FNMSUB;
           fp_sign[2] = (vinsn_issue_q.op == VFNMACC) | (vinsn_issue_q.op == VFNMADD);
         end
@@ -451,20 +458,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
       // Sign injection
       unique case (vinsn_issue_q.vtype.vsew)
-        EW16:
-          for (int b = 0; b < 4; b++) begin
+        EW16: for (int b = 0; b < 4; b++) begin
             operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
             operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
             operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
           end
-        EW32:
-          for (int b = 0; b < 2; b++) begin
+        EW32: for (int b = 0; b < 2; b++) begin
             operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
             operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
             operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
           end
-        EW64:
-          for (int b = 0; b < 1; b++) begin
+        EW64: for (int b = 0; b < 1; b++) begin
             operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
             operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
             operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
@@ -480,7 +484,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     assign vfpu_operands[2] = operand_c;
 
     // Do not raise exceptions on inactive elements
-    localparam FPULanes = FPUSupport == FPUSupportNone ? 1 : max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
+    localparam FPULanes = FPUSupport == FPUSupportNone ?
+      1 :
+      max_num_lanes(FPUFeatures.Width, FPUFeatures.FpFmtMask, FPUFeatures.EnableVectors);
     typedef logic [FPULanes-1:0] fpu_mask_t;
 
     fpu_mask_t vfpu_simd_mask;
@@ -530,14 +536,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     assign vfpu_out_valid    = 1'b0;
     assign fflags_ex_d       = '0;
     assign fflags_ex_valid_d = 1'b0;
-  end
+  end : no_fpu_gen
 
   assign fflags_ex_o       = fflags_ex_q;
   assign fflags_ex_valid_o = fflags_ex_valid_q;
 
-  /*************
-   *  Control  *
-   *************/
+  ///////////////
+  //  Control  //
+  ///////////////
 
   // Helper signal to handshake with the correct operand queues
   logic       operands_valid;
@@ -557,8 +563,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   // If vs2 and vd were swapped, re-route the handshake signals to/from the operand queues
   assign operands_valid = vinsn_issue_q.swap_vs2_vd_op
-                        ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
-                        : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) && (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) && (mask_valid_i || vinsn_issue_q.vm) && (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
+                        ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2) &&
+                           (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) &&
+                           (mask_valid_i || vinsn_issue_q.vm) &&
+                           (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
+                        : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) &&
+                           (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
+                           (mask_valid_i || vinsn_issue_q.vm) &&
+                           (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
 
   assign operands_ready = vinsn_issue_q.swap_vs2_vd_op
                         ? {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
@@ -600,9 +612,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     // Short-circuit invalid elements divisions with a mask
     issue_be = '0;
 
-    /***************************************
-     *  Issue the instruction to the unit  *
-     **************************************/
+    /////////////////////////////////////////
+    //  Issue the instruction to the unit  //
+    /////////////////////////////////////////
 
     // There is a vector instruction ready to be issued
     if (vinsn_issue_valid) begin
@@ -614,7 +626,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         vfpu_in_valid = vinsn_issue_fpu;
 
         // Is the unit in use ready?
-        if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) || (vinsn_issue_fpu && vfpu_in_ready)) begin
+        if ((vinsn_issue_mul && vmul_in_ready) || (vinsn_issue_div && vdiv_in_ready) ||
+            (vinsn_issue_fpu && vfpu_in_ready)) begin
           // Acknowledge the operands of this instruction
           mfpu_operand_ready_o = operands_ready;
           // Acknowledge the mask unit
@@ -622,34 +635,34 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
           begin
             // How many elements are we issuing?
-            automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+            automatic logic [3:0] issue_element_cnt =
+              (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
             // Update the number of elements still to be issued
-            if (issue_element_cnt > issue_cnt_q)
-              issue_element_cnt = issue_cnt_q;
+            if (issue_element_cnt > issue_cnt_q) issue_element_cnt = issue_cnt_q;
             issue_cnt_d = issue_cnt_q - issue_element_cnt;
 
             // Give the divider the correct be signal
-            issue_be = be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i);
+            issue_be = be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ?
+              {StrbWidth{1'b1}} :
+              mask_i);
           end
           // Finished issuing the micro-operations of this vector instruction
           if (issue_cnt_d == '0) begin
             // Bump issue counter and pointers
             vinsn_queue_d.issue_cnt -= 1;
-            if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
-              vinsn_queue_d.issue_pnt = '0;
-            else
-              vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+            if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
+            else vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
-            if (vinsn_queue_d.issue_cnt != 0)
-              issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+            if (vinsn_queue_d.issue_cnt != 0) issue_cnt_d =
+              vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
           end
         end
       end
     end
 
-    /**************************************
-     *  Write data into the result queue  *
-     **************************************/
+    ////////////////////////////////////////
+    //  Write data into the result queue  //
+    ////////////////////////////////////////
 
     // If the result queue is not full, it is ready to accept a result
     vmul_out_ready = ~result_queue_full;
@@ -678,17 +691,21 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     // Check if we have a valid result and we can add it to the result queue
     if (unit_out_valid && !result_queue_full) begin
       // How many elements have we processed?
-      automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
+      automatic logic [3:0] processed_element_cnt =
+        (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
 
       // Update the number of elements still to be processed
-      if (processed_element_cnt > to_process_cnt_q)
-        processed_element_cnt = to_process_cnt_q;
+      if (processed_element_cnt > to_process_cnt_q) processed_element_cnt = to_process_cnt_q;
 
       // Store the result in the result queue
-      result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing.id;
-      result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) + ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
+      result_queue_d[result_queue_write_pnt_q].id   = vinsn_processing.id;
+      result_queue_d[result_queue_write_pnt_q].addr = vaddr(vinsn_processing.vd, NrLanes) +
+        ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
       result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
-      result_queue_d[result_queue_write_pnt_q].be    = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ? {StrbWidth{1'b1}} : unit_out_mask);
+      result_queue_d[result_queue_write_pnt_q].be    =
+        be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ?
+          {StrbWidth{1'b1}} :
+          unit_out_mask);
       result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
       // Update the number of elements still to be processed
@@ -698,26 +715,22 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       if (to_process_cnt_d == '0) begin
         vinsn_queue_d.processing_cnt -= 1;
         // Bump issue processing pointers
-        if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1)
-          vinsn_queue_d.processing_pnt = '0;
-        else
-          vinsn_queue_d.processing_pnt = vinsn_queue_q.processing_pnt + 1;
+        if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1) vinsn_queue_d.processing_pnt = '0;
+        else vinsn_queue_d.processing_pnt = vinsn_queue_q.processing_pnt + 1;
 
-        if (vinsn_queue_d.processing_cnt != 0)
-          to_process_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
+        if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
+          vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
       end
 
       // Bump pointers and counters of the result queue
       result_queue_cnt_d += 1;
-      if (result_queue_write_pnt_q == ResultQueueDepth-1)
-        result_queue_write_pnt_d = 0;
-      else
-        result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+      if (result_queue_write_pnt_q == ResultQueueDepth-1) result_queue_write_pnt_d = 0;
+      else result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
     end
 
-    /********************************
-     *  Write results into the VRF  *
-     ********************************/
+    //////////////////////////////////
+    //  Write results into the VRF  //
+    //////////////////////////////////
 
     // Send result information to the VRF
     mfpu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q];
@@ -730,24 +743,22 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     // Deactivate the request.
     if (mfpu_result_gnt_i) begin
       // How many elements are we committing?
-      automatic logic [3:0] commit_element_cnt = (1 << (int'(EW64) - int'(vinsn_commit.vtype.vsew)));
+      automatic logic [3:0] commit_element_cnt =
+        (1 << (int'(EW64) - int'(vinsn_commit.vtype.vsew)));
 
       result_queue_valid_d[result_queue_read_pnt_q] = 1'b0;
       result_queue_d[result_queue_read_pnt_q]       = '0;
 
       // Increment the read pointer
-      if (result_queue_read_pnt_q == ResultQueueDepth-1)
-        result_queue_read_pnt_d = 0;
-      else
-        result_queue_read_pnt_d = result_queue_read_pnt_q + 1;
+      if (result_queue_read_pnt_q == ResultQueueDepth-1) result_queue_read_pnt_d = 0;
+      else result_queue_read_pnt_d = result_queue_read_pnt_q + 1;
 
       // Decrement the counter of results waiting to be written
       result_queue_cnt_d -= 1;
 
       // Decrement the counter of remaining vector elements waiting to be written
       commit_cnt_d = commit_cnt_q - commit_element_cnt;
-      if (commit_cnt_q < (1 << (int'(EW64) - vinsn_commit.vtype.vsew)))
-        commit_cnt_d = '0;
+      if (commit_cnt_q < (1 << (int'(EW64) - vinsn_commit.vtype.vsew))) commit_cnt_d = '0;
     end
 
     // Finished committing the results of a vector instruction
@@ -757,39 +768,38 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
       // Update the commit counters and pointers
       vinsn_queue_d.commit_cnt -= 1;
-      if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1)
-        vinsn_queue_d.commit_pnt = '0;
-      else
-        vinsn_queue_d.commit_pnt += 1;
+      if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1) vinsn_queue_d.commit_pnt = '0;
+      else vinsn_queue_d.commit_pnt += 1;
 
       // Update the commit counter for the next instruction
-      if (vinsn_queue_d.commit_cnt != '0)
-        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+      if (vinsn_queue_d.commit_cnt != '0) commit_cnt_d =
+        vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
     end
 
-    /****************************
-     *  Accept new instruction  *
-     ****************************/
+    //////////////////////////////
+    //  Accept new instruction  //
+    //////////////////////////////
 
     if (!vinsn_queue_full && vfu_operation_valid_i && vfu_operation_i.vfu == VFU_MFpu) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d = vfu_operation_i.vl;
-      if (vinsn_queue_d.processing_cnt == '0)
-        to_process_cnt_d = vfu_operation_i.vl;
-      if (vinsn_queue_d.commit_cnt == '0)
-        commit_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.issue_cnt == '0) issue_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.processing_cnt == '0) to_process_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.commit_cnt == '0) commit_cnt_d = vfu_operation_i.vl;
 
       // Floating-Point re-encoding for widening operations
       // Enabled only for the supported formats
       if (FPUSupport != FPUSupportNone) begin
         if (vfu_operation_i.wide_fp_imm) begin
-          unique casez ({vfu_operation_i.vtype.vsew, RVVH(FPUSupport), RVVF(FPUSupport), RVVD(FPUSupport)})
+          unique casez ({vfu_operation_i.vtype.vsew,
+            RVVH(FPUSupport),
+            RVVF(FPUSupport),
+            RVVD(FPUSupport)})
             {EW32, 1'b1, 1'b1, 1'b?}: begin
               for (int e = 0; e < 2; e++) begin
-                automatic fp16_t fp16 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
+                automatic fp16_t fp16 =
+                  vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
                 automatic fp32_t fp32;
                 fp32.s = fp16.s;
                 fp32.e = (fp16.e - 15) + 127;

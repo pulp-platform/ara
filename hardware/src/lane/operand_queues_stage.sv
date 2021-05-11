@@ -7,7 +7,8 @@
 // This stage holds the operand queues, holding elements for the VRFs.
 
 module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
-    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble // Support for floating-point data types
+    // Support for floating-point data types
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,
@@ -43,9 +44,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     input  logic               [1:0]                 mask_operand_ready_i
   );
 
-  /*********
-   *  ALU  *
-   *********/
+  ///////////
+  //  ALU  //
+  ///////////
 
   operand_queue #(
     .BufferDepth   (5         ),
@@ -87,9 +88,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_ready_i          (alu_operand_ready_i[1]         )
   );
 
-  /********************
-   *  Multiplier/FPU  *
-   ********************/
+  //////////////////////
+  //  Multiplier/FPU  //
+  //////////////////////
 
   operand_queue #(
     .BufferDepth   (5         ),
@@ -145,9 +146,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_ready_i          (mfpu_operand_ready_i[2]           )
   );
 
-  /*********************
-   *  Load/Store Unit  *
-   *********************/
+  ///////////////////////
+  //  Load/Store Unit  //
+  ///////////////////////
 
   operand_queue #(
     .BufferDepth(2         ),
@@ -187,9 +188,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_ready_i          (addrgen_operand_ready_i | sldu_operand_ready_i)
   );
 
-  /***************
-   *  Mask Unit  *
-   ***************/
+  /////////////////
+  //  Mask Unit  //
+  /////////////////
 
   operand_queue #(
     .BufferDepth(1         ),

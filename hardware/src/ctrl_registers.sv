@@ -7,14 +7,14 @@
 // static information about Ara's SoC.
 
 module ctrl_registers #(
-    parameter int DataWidth                      = 32,
-    parameter int unsigned AddrWidth             = 32,
+    parameter int   unsigned                 DataWidth       = 32,
+    parameter int   unsigned                 AddrWidth       = 32,
     // Parameters
-    parameter logic [DataWidth-1:0] DRAMBaseAddr = 0,
-    parameter logic [DataWidth-1:0] DRAMLength   = 0,
+    parameter logic          [DataWidth-1:0] DRAMBaseAddr    = 0,
+    parameter logic          [DataWidth-1:0] DRAMLength      = 0,
     // AXI Structs
-    parameter type axi_lite_req_t                = logic,
-    parameter type axi_lite_resp_t               = logic
+    parameter type                           axi_lite_req_t  = logic,
+    parameter type                           axi_lite_resp_t = logic
   ) (
     input  logic                           clk_i,
     input  logic                           rst_ni,
@@ -29,9 +29,9 @@ module ctrl_registers #(
 
   `include "common_cells/registers.svh"
 
-  /*****************
-   *  Definitions  *
-   *****************/
+  ///////////////////
+  //  Definitions  //
+  ///////////////////
 
   localparam int unsigned NumRegs          = 3;
   localparam int unsigned DataWidthInBytes = (DataWidth + 7) / 8;
@@ -55,9 +55,9 @@ module ctrl_registers #(
     ReadWriteReg
   };
 
-  /***************
-   *  Registers  *
-   ***************/
+  /////////////////
+  //  Registers  //
+  /////////////////
 
   logic [RegNumBytes-1:0] wr_active_d, wr_active_q;
 
@@ -87,9 +87,9 @@ module ctrl_registers #(
 
   `FF(wr_active_q, wr_active_d, '0);
 
-  /***************
-   *   Signals   *
-   ***************/
+  /////////////////
+  //   Signals   //
+  /////////////////
 
   assign dram_base_addr_o = dram_base_address;
   assign dram_end_addr_o  = dram_end_address;
