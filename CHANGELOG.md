@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fix `axi_addrgen_d.len` calculation in the Address Generation Unit
 - Correctly check whether the generated address corresponds to the vector load or the store unit
 - Typos on the ChangeLog's dates
+- Remove unwanted latches in the `addrgen`, `simd_div`, `instr_queue`, and `decoder`
 
 ## 1.2.0 - 2021-04-12
 
