@@ -212,6 +212,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     axi_addrgen_state_d = axi_addrgen_state_q;
     axi_addrgen_d       = axi_addrgen_q;
 
+    aligned_start_addr_d = aligned_start_addr_q;
+    aligned_end_addr_d   = aligned_end_addr_q;
+
     // No addrgen request to acknowledge
     addrgen_req_ready = 1'b0;
 
