@@ -299,7 +299,11 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
         serdiv_opa = opa_w64;
         serdiv_opb = opb_w64;
       end
-      default:;
+      default: begin
+        // Don't care
+        serdiv_opa = 'x;
+        serdiv_opb = 'x;
+      end
     endcase
   end
 
