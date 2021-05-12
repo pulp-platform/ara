@@ -69,7 +69,7 @@ RISCV_LDFLAGS_GCC  ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS_GCC)
 ifeq ($(COMPILER),gcc)
 	RISCV_OBJDUMP_FLAGS ?=
 else
-	RISCV_OBJDUMP_FLAGS ?=
+	RISCV_OBJDUMP_FLAGS ?= --mattr=+experimental-v
 endif
 
 # Compile two different versions of the runtime, since we cannot link code compiled with two different toolchains
