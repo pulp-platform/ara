@@ -721,6 +721,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.i does not use vs2
                 end
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                6'b100111: begin // vmv<nr>r.v
+                  // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
+                  automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
+                  unique case (insn.varith_type.rs1[2:0])
+                    3'd1 : vlmax <<= 0;
+                    3'd2 : vlmax <<= 1;
+                    3'd4 : vlmax <<= 2;
+                    3'd8 : vlmax <<= 3;
+                    default: begin
+                      // Trigger an error for the reserved simm values
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
+                  ara_req_d.op      = ara_pkg::VMERGE;
+                  ara_req_d.use_vs1 = 1'b0; // vmv.v.v does not use vs1
+                  ara_req_d.vl      = vlmax; // whole register move
+                end
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
                 6'b101100: begin
