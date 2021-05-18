@@ -57,7 +57,7 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; (
           end
           OPMVX: is_rs1_o = 1'b1 ;
           OPCFG: begin
-            is_rs1_o = 1'b1 ;
+            is_rs1_o = instr.vsetivli_type.func2 != 2'b11; // not vsetivli
             is_rs2_o = instr.vsetvl_type.func7 == 7'b100_0000; // vsetvl
             is_rd_o  = 1'b1 ;
           end
