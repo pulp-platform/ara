@@ -25,7 +25,8 @@ SECTIONS {
   .sdata2  : ALIGN(16) {
     *(.sdata2 .sdata2.* .gnu.linkonce.s2.*)
   } > L2
-  .sdata   : {
+
+  .sdata   : ALIGN(16) {
     __global_pointer$ = . + 0x800;
     *(.srodata.cst16) *(.srodata.cst8) *(.srodata.cst4) *(.srodata.cst2) *(.srodata .srodata.*)
     *(.sdata .sdata.* .gnu.linkonce.s.*)
