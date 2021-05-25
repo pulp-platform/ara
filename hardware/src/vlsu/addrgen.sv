@@ -195,6 +195,43 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  /////////////////////////////////////
+  //  Support for misaligned stores  //
+  /////////////////////////////////////
+
+  // Narrower AXI Data Byte-Width used for misaligned stores
+  logic [$clog2(AxiDataWidth/8)-1:0] narrow_AxiDataBWidth;
+  // Helper signal to calculate the narrow_AxiDataBWidth
+  // It carries information about the misalignment of the start address w.r.t. the AxiDataWidth
+  logic [$clog2(AxiDataWidth/8)-1:0] axi_addr_misalignment_n;
+  // Number of leading 1s of axi_addr_misalignment_n
+  localparam int unsigned LZC_OUT_WIDTH = cf_math_pkg::idx_width($clog2(AxiDataWidth/8));
+  logic [LZC_OUT_WIDTH-1:0] ones_cnt;
+  // Helper signal to calculate the narrow_AxiDataBWidth. It is the leading one count of
+  // axi_addr_misalignment_n + 1
+  logic [LZC_OUT_WIDTH:0] axi_mis_divider;
+
+  // Get the misalignment information for this vector memory instruction
+  // Subtracting 1 makes the count leading ones output meaningful information to get
+  // narrow_AxiDataBWidth. Negate to count leading ones, since the module count the leading
+  // zeroes by itself
+  assign axi_addr_misalignment_n = ~(axi_addrgen_d.addr[$clog2(AxiDataWidth/8)-1:0] - 1);
+
+  // Calculate the maximum number of Bytes we can send in a store-misaligned beat.
+  // This number must be a power of 2 not to get misaligned wrt the pack of data that the
+  // store unit receives from the lanes
+  lzc #(
+    .WIDTH   ($clog2(AxiDataWidth/8)),
+    .MODE    (1'b1                  )
+  ) i_lzc (
+    .in_i    (axi_addr_misalignment_n ),
+    .cnt_o   (ones_cnt       ),
+    .empty_o (/* Unconnected */     )
+  );
+
+  assign axi_mis_divider      = ones_cnt + 1;
+  assign narrow_AxiDataBWidth = (AxiDataWidth/8) >> axi_mis_divider;
+
   //////////////////////////////
   //  AXI Request Generation  //
   //////////////////////////////
@@ -207,6 +244,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   axi_addr_t aligned_start_addr_d, aligned_start_addr_q;
   axi_addr_t aligned_end_addr_d, aligned_end_addr_q;
 
+  logic [$clog2(AxiDataWidth/8):0] eff_AxiDataBWidth_d, eff_AxiDataBWidth_q;
+
   always_comb begin: axi_addrgen
     // Maintain state
     axi_addrgen_state_d = axi_addrgen_state_q;
@@ -214,6 +253,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
     aligned_start_addr_d = aligned_start_addr_q;
     aligned_end_addr_d   = aligned_end_addr_q;
+
+    eff_AxiDataBWidth_d = eff_AxiDataBWidth_q;
 
     // No addrgen request to acknowledge
     addrgen_req_ready = 1'b0;
@@ -234,15 +275,23 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           axi_addrgen_d       = addrgen_req;
           axi_addrgen_state_d = core_st_pending_i ? AXI_ADDRGEN_WAITING : AXI_ADDRGEN_REQUESTING;
 
-          // The start address is found by aligning the original request address by the width of the
-          // memory interface.
-          aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, $clog2(AxiDataWidth/8));
+          // In case of a misaligned store, reduce the effective AXI Data-Byte-Width since
+          // the store unit does not support misalignments between the Axi Bus and the
+          // data received from the lanes
+          eff_AxiDataBWidth_d =
+            ((axi_addrgen_d.addr[$clog2(AxiDataWidth/8)-1:0] != '0) && !axi_addrgen_d.is_load) ?
+            {1'b0, narrow_AxiDataBWidth} :
+            AxiDataWidth/8;
+
+          // The start address is found by aligning the original request address by the width of
+          // the memory interface.
+          aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, $clog2(eff_AxiDataBWidth_d));
           // The final address can be found similarly...
           aligned_end_addr_d   =
             aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
-            $clog2(AxiDataWidth/8)) + ((AxiDataWidth/8) - 1);
-          // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the same
-          // page as aligned_start_addr
+            $clog2(eff_AxiDataBWidth_d)) + ((eff_AxiDataBWidth_d) - 1);
+          // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
+          // same page as aligned_start_addr
           if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
             aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
         end
@@ -257,33 +306,38 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
         if (!axi_addrgen_queue_full && axi_ax_ready) begin
           if (axi_addrgen_q.is_burst) begin
+
+            /////////////////////////
+            //  Unit-Stride access //
+            /////////////////////////
+
             // AXI burst length
             automatic int unsigned burst_length;
 
             // 1 - AXI bursts are at most 4KiB long
             // 2 - AXI bursts are at most 256 beats long.
-            if (((1 << 12) >> $clog2(AxiDataWidth/8)) > 256)
-              burst_length = (1 << 12) >> $clog2(AxiDataWidth/8);
+            if (((1 << 12) >> $clog2(eff_AxiDataBWidth_q)) > 256)
+              burst_length = (1 << 12) >> $clog2(eff_AxiDataBWidth_q);
             else
               burst_length = 256;
             // 3 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
             // starts at the middle of a 4 KiB range, it cannot have the maximal
             // AXI burst length.
-            burst_length = burst_length - (aligned_start_addr_q[11:0] >> $clog2(AxiDataWidth/8));
+            burst_length = burst_length - (aligned_start_addr_q[11:0] >> $clog2(eff_AxiDataBWidth_q));
             // 4 - The AXI burst length cannot be longer than the number of beats required
             //     to access the memory regions between aligned_start_addr and
             //     aligned_end_addr
             if (burst_length > ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
-                  $clog2(AxiDataWidth/8)) + 1)
+                  $clog2(eff_AxiDataBWidth_q)) + 1)
               burst_length = ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
-                $clog2(AxiDataWidth/8)) + 1;
+                $clog2(eff_AxiDataBWidth_q)) + 1;
 
             // AR Channel
             if (axi_addrgen_q.is_load) begin
               axi_ar_o = '{
                 addr   : axi_addrgen_q.addr,
                 len    : burst_length - 1,
-                size   : $clog2(AxiDataWidth/8),
+                size   : $clog2(eff_AxiDataBWidth_q),
                 cache  : CACHE_MODIFIABLE,
                 burst  : BURST_INCR,
                 default: '0
@@ -295,7 +349,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               axi_aw_o = '{
                 addr   : axi_addrgen_q.addr,
                 len    : burst_length - 1,
-                size   : $clog2(AxiDataWidth/8),
+                // If misaligned store access, reduce the effective AXI width
+                // This hurts performance
+                size   : $clog2(eff_AxiDataBWidth_q),
                 cache  : CACHE_MODIFIABLE,
                 burst  : BURST_INCR,
                 default: '0
@@ -306,8 +362,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             // Send this request to the load/store units
             axi_addrgen_queue = '{
               addr   : axi_addrgen_q.addr,
-              size   : $clog2(AxiDataWidth/8),
               len    : burst_length - 1,
+              size   : $clog2(eff_AxiDataBWidth_q),
               is_load: axi_addrgen_q.is_load
             };
             axi_addrgen_queue_push = 1'b1;
@@ -449,11 +505,13 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       axi_addrgen_q        <= '0;
       aligned_start_addr_q <= '0;
       aligned_end_addr_q   <= '0;
+      eff_AxiDataBWidth_q  <= '0;
     end else begin
       axi_addrgen_state_q  <= axi_addrgen_state_d;
       axi_addrgen_q        <= axi_addrgen_d;
       aligned_start_addr_q <= aligned_start_addr_d;
       aligned_end_addr_q   <= aligned_end_addr_d;
+      eff_AxiDataBWidth_q  <= eff_AxiDataBWidth_d;
     end
   end
 
