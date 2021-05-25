@@ -144,8 +144,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // register
   rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
 
-  // Helper signal to discriminate between config/csr instructions and the others
-  logic is_config;
+  // Helper signals to discriminate between config/csr, load/store instructions and the others
+  logic is_config, is_load, is_store;
+  // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
+  // its counters of pending memory operations
+  // Ara should tell Ariane when a memory operation is completed, so that it can modify
+  // its pending load/store counters.
+  // A memory operation can be completed both when it is over and when vl_q == 0. In the latter case,
+  // Ara's decoder answers immediately, and this can cause a collision with an answer from Ara's VLSU.
+  // To avoid collisions, we give precedence to the VLSU, and we delay the vl_q == 0 memory op
+  // completion signal if a collision occurs
+  logic load_zero_vl, store_zero_vl;
 
   ///////////////
   //  Decoder  //
@@ -164,12 +173,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     lmul_vs1     = vtype_q.vlmul;
     illegal_insn = 1'b0;
 
+    is_load       = 1'b0;
+    is_store      = 1'b0;
+    load_zero_vl  = 1'b0;
+    store_zero_vl = 1'b0;
+
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
     acc_resp_o       = '{
       trans_id      : acc_req_i.trans_id,
-      load_complete : load_complete_i,
-      store_complete: store_complete_i,
+      load_complete : load_zero_vl | load_complete_i,
+      store_complete: store_zero_vl | store_complete_i,
       store_pending : store_pending_i,
       fflags_valid  : |fflags_ex_valid_i,
       default       : '0
@@ -1695,6 +1709,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // Instruction is of one of the RVV types
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
+          // The instruction is a load
+          is_load = 1'b1;
+
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
 
@@ -1809,6 +1826,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         riscv::OpcodeStoreFp: begin
           // Instruction is of one of the RVV types
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+
+          // The instruction is a store
+          is_store = 1'b1;
 
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
@@ -2068,9 +2088,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Any valid non-config instruction is a NOP if vl == 0
     if (acc_req_valid_i && vl_q == '0 && !is_config && !acc_resp_o.error) begin
-      acc_req_ready_o  = 1'b1;
-      acc_resp_valid_o = 1'b1;
+      // If we are acknowledging a memory operation, we must tell Ariane that the memory
+      // operation was resolved (to decrement its pending load/store counter)
+      // This can collide with the same signal from the vector load/store unit, so we must
+      // delay the zero_vl acknowledge by 1 cycle
+      acc_req_ready_o  = ~((is_load & load_complete_i) | (is_store & store_complete_i));
+      acc_resp_valid_o = ~((is_load & load_complete_i) | (is_store & store_complete_i));
       ara_req_valid_d  = 1'b0;
+      load_zero_vl     = is_load;
+      store_zero_vl    = is_store;
     end
   end: p_decoder
 
