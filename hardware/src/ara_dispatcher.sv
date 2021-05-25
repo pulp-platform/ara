@@ -1815,9 +1815,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_d.vl      = VLENB;
 
             illegal_insn     = 1'b0;
-            acc_req_ready_o  = 1'b1;
+            acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
-          end
+            ara_req_valid_d  = 1'b1;
 
           // Wait until the back-end answers to acknowledge those instructions
           if (ara_resp_valid_i) begin
@@ -1925,9 +1925,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_d.vl      = VLENB;
 
             illegal_insn     = 1'b0;
-            acc_req_ready_o  = 1'b1;
+            acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
-          end
+            ara_req_valid_d  = 1'b1;
 
           // Wait until the back-end answers to acknowledge those instructions
           if (ara_resp_valid_i) begin
