@@ -27,6 +27,7 @@
 #define enable_fp()
 #endif
 
+
 /**************
  *  Counters  *
  **************/
@@ -39,6 +40,20 @@ int test_case;
 /************
  *  Macros  *
  ************/
+
+#define read_vtype(buf) do { asm volatile ("csrr %[BUF], vtype" : [BUF] "=r" (buf)); } while (0);
+#define read_vl(buf)    do { asm volatile ("csrr %[BUF], vl" : [BUF] "=r" (buf)); } while (0);
+
+#define vtype(golden_vtype, vlmul, vsew, vta, vma) (golden_vtype = vlmul << 0 | vsew << 3 | vta << 6 | vma << 7)
+
+#define check_vtype_vl(casenum, vtype, golden_vtype, avl, vl)                       \
+  printf("Checking vtype and vl #%d...\n", casenum);                                \
+  if (vtype != golden_vtype || avl != vl) {                                         \
+    printf("FAILED. Got vtype = %lx, expected vtype = %lx. avl = %lx, vl = %lx.\n", vtype, golden_vtype, avl, vl); \
+    num_failed++;                                                                   \
+    return;                                                                         \
+  }                                                                                 \
+  printf("PASSED.\n");
 
 // In order to avoid that scalar loads run ahead of vector stores,
 // we use an instruction to ensure that all vector stores have been
@@ -147,6 +162,11 @@ int test_case;
 #define VCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%u,  casenum,Ru32,act)}
 #define VCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%hu, casenum,Ru16,act)}
 #define VCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %hhu,casenum,Ru8, act)}
+
+#define VVCMP_U64(casenum,ptr64,act...) {VCMP(uint64_t,%lu,casenum,ptr64,act)}
+#define VVCMP_U32(casenum,ptr32,act...) {VCMP(uint32_t,%u, casenum,ptr32,act)}
+#define VVCMP_U16(casenum,ptr16,act...) {VCMP(uint16_t,%hu,casenum,ptr16,act)}
+#define VVCMP_U8(casenum,ptr8,act...)  {VCMP(uint8_t, %hhu,casenum,ptr8, act)}
 
 #define VCMP_I64(casenum,vect,act...) {VSTORE_I64(vect); VCMP(int64_t,%ld, casenum,Ri64,act)}
 #define VCMP_I32(casenum,vect,act...) {VSTORE_I32(vect); VCMP(int32_t,%d,  casenum,Ri32,act)}
