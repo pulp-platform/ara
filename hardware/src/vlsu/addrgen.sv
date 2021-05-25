@@ -238,7 +238,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
   addrgen_req_t axi_addrgen_d, axi_addrgen_q;
   enum logic [1:0] {
-    AXI_ADDRGEN_IDLE, AXI_ADDRGEN_WAITING, AXI_ADDRGEN_REQUESTING, AXI_ADDRGEN_REQUESTING_STRIDE
+    AXI_ADDRGEN_IDLE, AXI_ADDRGEN_WAITING, AXI_ADDRGEN_REQUESTING
   } axi_addrgen_state_d, axi_addrgen_state_q;
 
   axi_addr_t aligned_start_addr_d, aligned_start_addr_q;
@@ -429,7 +429,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             axi_addrgen_queue = '{
               addr   : axi_addrgen_q.addr,
               size   : axi_addrgen_q.vew,
-              len    : axi_addrgen_q.len - 1,
+              len    : 0,
               is_load: axi_addrgen_q.is_load
             };
             axi_addrgen_queue_push = 1'b1;
@@ -443,56 +443,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             if (axi_addrgen_d.len == 0) begin
               addrgen_req_ready   = 1'b1;
               axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
-            end else begin
-              // Go on with the strided access
-              axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING_STRIDE;
             end
-          end
-        end
-      end
-      AXI_ADDRGEN_REQUESTING_STRIDE : begin
-
-        /////////////////////
-        //  Strided access //
-        /////////////////////
-
-        automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!axi_addrgen_q.is_load && axi_aw_ready_i);
-
-        if (axi_ax_ready) begin
-          // AR Channel
-          if (axi_addrgen_q.is_load) begin
-            axi_ar_o = '{
-              addr   : axi_addrgen_q.addr,
-              len    : 0,
-              size   : axi_addrgen_q.vew,
-              cache  : CACHE_MODIFIABLE,
-              burst  : BURST_INCR,
-              default: '0
-            };
-            axi_ar_valid_o = 1'b1;
-          end
-          // AW Channel
-          else begin
-            axi_aw_o = '{
-              addr   : axi_addrgen_q.addr,
-              len    : 0,
-              size   : axi_addrgen_q.vew,
-              cache  : CACHE_MODIFIABLE,
-              burst  : BURST_INCR,
-              default: '0
-            };
-            axi_aw_valid_o = 1'b1;
-          end
-
-          // Account for the requested operands
-          axi_addrgen_d.len = axi_addrgen_q.len - 1;
-          // Calculate the addresses for the next iteration, adding the correct stride
-          axi_addrgen_d.addr = axi_addrgen_q.addr + axi_addrgen_q.stride;
-
-          // Finished generating AXI requests
-          if (axi_addrgen_d.len == 0) begin
-            addrgen_req_ready   = 1'b1;
-            axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
           end
         end
       end
