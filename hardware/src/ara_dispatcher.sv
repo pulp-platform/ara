@@ -270,15 +270,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   default:;
                 endcase
 
-                if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd == '0) begin
-                  // Do not update the vector length
-                  vl_d = vl_q;
-                end else if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd != '0) begin
-                  // Set the vector length to vlmax
-                  vl_d = vlmax;
-                end else begin
-                  // Normal stripmining
-                  vl_d = (vlen_t'(acc_req_i.rs1) > vlmax) ? vlmax : vlen_t'(acc_req_i.rs1);
+                if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
+                  vl_d = vlen_t'(insn.vsetivli_type.uimm5);
+                end else begin // vsetvl || vsetvli
+                  if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd == '0) begin
+                    // Do not update the vector length
+                    vl_d = vl_q;
+                  end else if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd != '0) begin
+                    // Set the vector length to vlmax
+                    vl_d = vlmax;
+                  end else begin
+                    // Normal stripmining
+                    vl_d = (vlen_t'(acc_req_i.rs1) > vlmax) ? vlmax : vlen_t'(acc_req_i.rs1);
+                  end
                 end
               end
 
