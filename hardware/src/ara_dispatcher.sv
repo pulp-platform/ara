@@ -753,9 +753,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_valid_d  = 1'b0;
                     end
                   endcase
-                  ara_req_d.op      = ara_pkg::VMERGE;
-                  ara_req_d.use_vs1 = 1'b0; // vmv.v.v does not use vs1
-                  ara_req_d.vl      = vlmax; // whole register move
+                  // From here on, the only difference with a vmv.v.v is that the vector reg index
+                  // is in rs2. For the rest,, pretend to be a vmv.v.v
+                  ara_req_d.op            = ara_pkg::VMERGE;
+                  ara_req_d.use_scalar_op = 1'b0;
+                  ara_req_d.use_vs1       = 1'b1;
+                  ara_req_d.use_vs2       = 1'b0;
+                  ara_req_d.vs1           = insn.varith_type.rs2;
+                  ara_req_d.vl            = vlmax; // whole register move
                 end
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
