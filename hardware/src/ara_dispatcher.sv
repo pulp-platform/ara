@@ -145,7 +145,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
 
   // Helper signals to discriminate between config/csr, load/store instructions and the others
-  logic is_config, is_load, is_store;
+  logic is_config, is_vload, is_vstore;
   // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
   // its counters of pending memory operations
   // Ara should tell Ariane when a memory operation is completed, so that it can modify
@@ -173,8 +173,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     lmul_vs1     = vtype_q.vlmul;
     illegal_insn = 1'b0;
 
-    is_load       = 1'b0;
-    is_store      = 1'b0;
+    is_vload      = 1'b0;
+    is_vstore     = 1'b0;
     load_zero_vl  = 1'b0;
     store_zero_vl = 1'b0;
 
@@ -742,7 +742,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b100111: begin // vmv<nr>r.v
                   // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
                   automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
-                  unique case ({insn.varith_type.rs1}[2:0])
+                  unique case (insn.varith_type.rs1[17:15])
                     3'd0 : vlmax <<= 0;
                     3'd1 : vlmax <<= 1;
                     3'd3 : vlmax <<= 2;
@@ -1719,7 +1719,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
           // The instruction is a load
-          is_load = 1'b1;
+          is_vload = 1'b1;
 
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
@@ -1838,7 +1838,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
           // The instruction is a store
-          is_store = 1'b1;
+          is_vstore = 1'b1;
 
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
@@ -2103,11 +2103,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must
       // delay the zero_vl acknowledge by 1 cycle
-      acc_req_ready_o  = ~((is_load & load_complete_i) | (is_store & store_complete_i));
-      acc_resp_valid_o = ~((is_load & load_complete_i) | (is_store & store_complete_i));
+      acc_req_ready_o  = ~((is_vload & load_complete_i) | (is_vstore & store_complete_i));
+      acc_resp_valid_o = ~((is_vload & load_complete_i) | (is_vstore & store_complete_i));
       ara_req_valid_d  = 1'b0;
-      load_zero_vl     = is_load;
-      store_zero_vl    = is_store;
+      load_zero_vl     = is_vload;
+      store_zero_vl    = is_vstore;
     end
   end: p_decoder
 
