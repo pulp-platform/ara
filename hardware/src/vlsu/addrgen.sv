@@ -221,12 +221,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   // This number must be a power of 2 not to get misaligned wrt the pack of data that the
   // store unit receives from the lanes
   lzc #(
-    .WIDTH   ($clog2(AxiDataWidth/8)),
-    .MODE    (1'b1                  )
+    .WIDTH($clog2(AxiDataWidth/8)),
+    .MODE (1'b1                  )
   ) i_lzc (
-    .in_i    (axi_addr_misalignment_n ),
-    .cnt_o   (ones_cnt       ),
-    .empty_o (/* Unconnected */     )
+    .in_i   (axi_addr_misalignment_n),
+    .cnt_o  (ones_cnt               ),
+    .empty_o(/* Unconnected */      )
   );
 
   assign axi_mis_divider      = ones_cnt + 1;
@@ -323,7 +323,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             // 3 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
             // starts at the middle of a 4 KiB range, it cannot have the maximal
             // AXI burst length.
-            burst_length = burst_length - (aligned_start_addr_q[11:0] >> $clog2(eff_AxiDataBWidth_q));
+            burst_length =
+              burst_length - (aligned_start_addr_q[11:0] >> $clog2(eff_AxiDataBWidth_q));
             // 4 - The AXI burst length cannot be longer than the number of beats required
             //     to access the memory regions between aligned_start_addr and
             //     aligned_end_addr
