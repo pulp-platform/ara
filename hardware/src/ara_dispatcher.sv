@@ -1539,15 +1539,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // Ara cannot support instructions who operates on more than 64 bits.
                 unique case (FPUSupport)
                   FPUSupportHalfSingleDouble: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||
-                        int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64)) 
+                        int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
                         illegal_insn = 1'b1;
                   FPUSupportHalfSingle: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||
-                        int'(ara_req_d.vtype.vsew) > int'(EW32) || int'(ara_req_d.eew_vs2) > int'(EW32)) 
+                        int'(ara_req_d.vtype.vsew) > int'(EW32) || int'(ara_req_d.eew_vs2) > int'(EW32))
                         illegal_insn = 1'b1;
                   FPUSupportSingleDouble: if (int'(ara_req_d.vtype.vsew) < int'(EW32) ||
-                        int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64)) 
+                        int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
                         illegal_insn = 1'b1;
-                  FPUSupportHalf: if (int'(ara_req_d.vtype.vsew) != int'(EW16) || int'(ara_req_d.eew_vs2) > int'(EW16)) 
+                  FPUSupportHalf: if (int'(ara_req_d.vtype.vsew) != int'(EW16) || int'(ara_req_d.eew_vs2) > int'(EW16))
                         illegal_insn = 1'b1;
                   FPUSupportSingle: if (int'(ara_req_d.vtype.vsew) != int'(EW32) || int'(ara_req_d.eew_vs2) > int'(EW32))
                       illegal_insn = 1'b1;

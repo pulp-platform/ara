@@ -704,9 +704,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           // Update the element issue counter and the related issue_be signal for the divider
           begin
             // How many elements are we issuing?
-            automatic logic [3:0] issue_element_cnt = 
+            automatic logic [3:0] issue_element_cnt =
               (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
-            automatic logic [3:0] issue_element_cnt_narrow = 
+            automatic logic [3:0] issue_element_cnt_narrow =
               (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
 
             // Update the number of elements still to be issued
@@ -717,8 +717,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
             issue_cnt_d = (narrowing(vinsn_issue_q.fp_cvt_resize)) ? (issue_cnt_q - issue_element_cnt_narrow) : (issue_cnt_q - issue_element_cnt);
 
             // Give the correct be signal to the divider/FPU
-            issue_be = narrowing(vinsn_issue_q.fp_cvt_resize) ? 
-              be(issue_element_cnt_narrow, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i) : 
+            issue_be = narrowing(vinsn_issue_q.fp_cvt_resize) ?
+              be(issue_element_cnt_narrow, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i) :
               be(issue_element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm ? {StrbWidth{1'b1}} : mask_i);
           end
 
