@@ -170,7 +170,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX], VMFEQ};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFSGNJX], [VMFEQ:VMFGE]};
 
   //////////////////////
   //  Scalar operand  //
@@ -458,9 +458,29 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
           fp_op = SGNJ;
           fp_rm = RDN;
         end
-        VMFEQ: begin
+        VMFEQ, VMFNE: begin
           fp_op = CMP;
           fp_rm = RDN;
+        end
+        VMFLE: begin
+          fp_op = CMP;
+          fp_rm = RNE;
+        end
+        VMFLT: begin
+          fp_op = CMP;
+          fp_rm = RTZ;
+        end
+        VMFGT: begin
+          fp_sign[0] = 1'b1;
+          fp_sign[1] = 1'b1;
+          fp_op = CMP;
+          fp_rm = RTZ;
+        end
+        VMFGE: begin
+          fp_sign[0] = 1'b1;
+          fp_sign[1] = 1'b1;
+          fp_op = CMP;
+          fp_rm = RNE;
         end
         default:;
       endcase
@@ -544,12 +564,31 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       // Forward the result
       vfpu_processed_result = vfpu_result;
       // After a comparison, send the mask back to the mask unit
-      // Encode the mask in the bit after each comparison result
-      if (vinsn_processing.op == VMFEQ) begin
+      // 1) Negate the result if op == VMFNE (fpnew does not natively support a not-equal comparison)
+      // 2) Encode the mask in the bit after each comparison result
+      if (vinsn_processing.op inside {[VMFEQ:VMFGE]}) begin
         unique case (vinsn_processing.vtype.vsew)
-          EW16: for (int b = 0; b < 4; b++) vfpu_processed_result[16*b+1] = vfpu_mask[2*b];
-          EW32: for (int b = 0; b < 2; b++) vfpu_processed_result[32*b+1] = vfpu_mask[4*b];
-          EW64: for (int b = 0; b < 1; b++) vfpu_processed_result[   b+1] = vfpu_mask[8*b];
+          EW16: begin
+            for (int b = 0; b < 4; b++) vfpu_processed_result[16*b] =
+              (vinsn_processing.op == VMFNE) ?
+                ~vfpu_processed_result[16*b] :
+                vfpu_processed_result[16*b];
+            for (int b = 0; b < 4; b++) vfpu_processed_result[16*b+1] = vfpu_mask[2*b];
+          end
+          EW32: begin
+            for (int b = 0; b < 2; b++) vfpu_processed_result[32*b] =
+              (vinsn_processing.op == VMFNE) ?
+                ~vfpu_processed_result[32*b] :
+                vfpu_processed_result[32*b];
+            for (int b = 0; b < 2; b++) vfpu_processed_result[32*b+1] = vfpu_mask[4*b];
+          end
+          EW64: begin
+            for (int b = 0; b < 1; b++) vfpu_processed_result[b] =
+              (vinsn_processing.op == VMFNE) ?
+                ~vfpu_processed_result[b] :
+                vfpu_processed_result[b];
+            for (int b = 0; b < 1; b++) vfpu_processed_result[b+1] = vfpu_mask[8*b];
+          end
         endcase
       end
     end
@@ -711,7 +750,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         unit_out_result = vdiv_result;
         unit_out_mask   = vdiv_mask;
       end
-      [VFADD:VFSGNJX], VMFEQ: begin
+      [VFADD:VFSGNJX], [VMFEQ:VMFGE]: begin
         unit_out_valid  = vfpu_out_valid;
         unit_out_result = vfpu_processed_result;
         unit_out_mask   = vfpu_mask;
@@ -811,7 +850,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     //  Accept new instruction  //
     //////////////////////////////
 
-    if (!vinsn_queue_full && vfu_operation_valid_i && (vfu_operation_i.vfu == VFU_MFpu || vfu_operation_i.op == VMFEQ)) begin
+    if (!vinsn_queue_full && vfu_operation_valid_i && (vfu_operation_i.vfu == VFU_MFpu || vfu_operation_i.op inside {[VMFEQ:VMFGE]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters

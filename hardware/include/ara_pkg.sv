@@ -105,7 +105,7 @@ package ara_pkg;
     // Integer add-with-carry and subtract-with-borrow carry-out instructions
     VMADC, VMSBC,
     // Floating-point comparison instructions
-    VMFEQ,
+    VMFEQ, VMFLE, VMFLT, VMFNE, VMFGT, VMFGE,
     // Slide instructions
     VSLIDEUP, VSLIDEDOWN,
     // Load instructions
