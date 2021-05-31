@@ -203,34 +203,28 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   logic [$clog2(AxiDataWidth/8)-1:0] narrow_AxiDataBWidth;
   // Helper signal to calculate the narrow_AxiDataBWidth
   // It carries information about the misalignment of the start address w.r.t. the AxiDataWidth
-  logic [$clog2(AxiDataWidth/8)-1:0] axi_addr_misalignment_n;
-  // Number of leading 1s of axi_addr_misalignment_n
+  logic [$clog2(AxiDataWidth/8)-1:0] axi_addr_misalignment;
+  // Number of trailing 0s of axi_addr_misalignment
   localparam int unsigned LZC_OUT_WIDTH = cf_math_pkg::idx_width($clog2(AxiDataWidth/8));
-  logic [LZC_OUT_WIDTH-1:0] ones_cnt;
-  // Helper signal to calculate the narrow_AxiDataBWidth. It is the leading one count of
-  // axi_addr_misalignment_n + 1
-  logic [LZC_OUT_WIDTH:0] axi_mis_divider;
+  logic [LZC_OUT_WIDTH-1:0] zeroes_cnt;
 
   // Get the misalignment information for this vector memory instruction
-  // Subtracting 1 makes the count leading ones output meaningful information to get
-  // narrow_AxiDataBWidth. Negate to count leading ones, since the module count the leading
-  // zeroes by itself
-  assign axi_addr_misalignment_n = ~(axi_addrgen_d.addr[$clog2(AxiDataWidth/8)-1:0] - 1);
+  assign axi_addr_misalignment = axi_addrgen_d.addr[$clog2(AxiDataWidth/8)-1:0];
 
   // Calculate the maximum number of Bytes we can send in a store-misaligned beat.
   // This number must be a power of 2 not to get misaligned wrt the pack of data that the
   // store unit receives from the lanes
   lzc #(
     .WIDTH($clog2(AxiDataWidth/8)),
-    .MODE (1'b1                  )
+    .MODE (1'b0                  )
   ) i_lzc (
-    .in_i   (axi_addr_misalignment_n),
-    .cnt_o  (ones_cnt               ),
+    .in_i   (axi_addr_misalignment  ),
+    .cnt_o  (zeroes_cnt             ),
     .empty_o(/* Unconnected */      )
   );
 
-  assign axi_mis_divider      = ones_cnt + 1;
-  assign narrow_AxiDataBWidth = (AxiDataWidth/8) >> axi_mis_divider;
+  // Effective AXI data width for misaligned stores
+  assign narrow_AxiDataBWidth = (AxiDataWidth/8) >> ($clog2(AxiDataWidth/8) - zeroes_cnt);
 
   //////////////////////////////
   //  AXI Request Generation  //
