@@ -182,11 +182,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load && axi_w_ready_i) begin
       // Bytes valid in the current W beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
-        axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8,
-        vinsn_issue_q.op == VSSE ? '0 : len_q);
+        axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
       automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr,
-        axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8,
-        vinsn_issue_q.op == VSSE ? '0 : len_q);
+        axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
 
       // Account for the issued bytes
       // How many bytes are valid in this VRF word
