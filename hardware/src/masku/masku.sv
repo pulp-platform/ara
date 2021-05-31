@@ -274,7 +274,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       unique case (vinsn_issue.op) inside
         [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) |
           (masku_operand_b_i & ~bit_enable_mask);
-        [VMSEQ:VMFEQ] : begin
+        [VMSEQ:VMFGE] : begin
           automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
           unique case (vinsn_issue.vtype.vsew)
@@ -376,7 +376,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t commit_cnt_d, commit_cnt_q;
 
   // Always broadcast information about which is the target FU of the request
-  assign masku_operand_fu_o = (vinsn_issue.op == VMFEQ) ? MaskFUMFpu : MaskFUAlu;
+  assign masku_operand_fu_o = (vinsn_issue.op inside {[VMFEQ:VMFGE]}) ? MaskFUMFpu : MaskFUAlu;
 
   always_comb begin: p_masku
     // Maintain state
@@ -533,7 +533,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Increment the VRF pointer
-          if (vinsn_issue.op inside {[VMSEQ:VMFEQ]}) begin
+          if (vinsn_issue.op inside {[VMSEQ:VMFGE]}) begin
             vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
 
             // Filled-up a word, or finished execution
