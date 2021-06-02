@@ -669,7 +669,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
 
     // Finished committing the results of a vector instruction
-    if (vinsn_commit_valid && commit_cnt_d == '0 && masku_result_gnt_i) begin
+    // When the masku acts as a master for the VRF, wait the grant from the operand requester
+    if (vinsn_commit_valid && commit_cnt_d == '0 && (!(vinsn_issue.op inside {[VMSEQ:VMFGE]}) || masku_result_gnt_i)) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
