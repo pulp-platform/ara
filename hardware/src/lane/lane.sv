@@ -81,6 +81,30 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   /////////////////
+  //  Spill Reg  //
+  /////////////////
+
+  // Cut the mask_ready_o timing-critical path
+  strb_t mask_i_q;
+  logic  mask_valid_i_q, mask_ready_o_d, mask_ready_q;
+
+  spill_register #(
+    .T(strb_t)
+  ) i_spill_register (
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
+    .valid_i(mask_valid_i),
+    .ready_o(mask_ready_q),
+    .data_i (mask_i),
+    .valid_o(mask_valid_i_q),
+    .ready_i(mask_ready_o_d),
+    .data_o (mask_i_q)
+  );
+
+  // Ara's protocol is actually a req-gnt one
+  assign mask_ready_o = mask_ready_q & mask_valid_i;
+
+  /////////////////
   //  Sequencer  //
   /////////////////
 
@@ -342,9 +366,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_valid_o (mask_operand_valid_o[1]),
     .mask_operand_ready_i (mask_operand_ready_i[1]),
     .mask_operand_fu_i    (mask_operand_fu_i      ),
-    .mask_i               (mask_i                 ),
-    .mask_valid_i         (mask_valid_i           ),
-    .mask_ready_o         (mask_ready_o           )
+    .mask_i               (mask_i_q               ),
+    .mask_valid_i         (mask_valid_i_q         ),
+    .mask_ready_o         (mask_ready_o_d         )
   );
 
   //////////////////

@@ -58,7 +58,7 @@ package ara_pkg;
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;
-  localparam int unsigned LatMultiplierEW16 = 0;
+  localparam int unsigned LatMultiplierEW16 = 1;
   localparam int unsigned LatMultiplierEW8  = 0;
 
   // FPU latencies.
