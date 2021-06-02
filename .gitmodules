@@ -1,3 +1,7 @@
+[submodule "toolchain/riscv-gnu-toolchain"]
+	path = toolchain/riscv-gnu-toolchain
+	url = https://github.com/riscv/riscv-gnu-toolchain.git
+	ignore = dirty
 [submodule "toolchain/riscv-isa-sim"]
 	path = toolchain/riscv-isa-sim
 	url = https://github.com/riscv/riscv-isa-sim.git
@@ -27,8 +31,4 @@
 [submodule "toolchain/riscv-llvm"]
 	path = toolchain/riscv-llvm
 	url = https://github.com/llvm/llvm-project.git
-	ignore = dirty
-[submodule "toolchain/riscv-gnu-toolchain"]
-	path = toolchain/riscv-gnu-toolchain
-	url = https://github.com/riscv/riscv-gnu-toolchain.git
 	ignore = dirty
