@@ -30,10 +30,10 @@ void TEST_CASE1(void) {
   VSET(512, e8, m1);
   // Check that the whole register was loaded
   VSTORE(uint8_t, e8, v16, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 0, buf_vector_0, gold_vector_0);
+  VMCMP(uint8_t, %hhu, 0, buf_vector_0, gold_vector_0, 512);
   // Check that the neighbour registers are okay
   VSTORE(uint8_t, e8, v17, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 0, buf_vector_0, zero_vector_0);
+  VMCMP(uint8_t, %hhu, 0, buf_vector_0, zero_vector_0, 512);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_1, uint16_t, 256);
@@ -51,10 +51,10 @@ void TEST_CASE1(void) {
   VSET(256, e16, m1);
   // Check that the whole register was loaded
   VSTORE(uint16_t, e16, v16, buf_vector_1);
-  VMCMP(uint16_t, %hu, 1, buf_vector_1, gold_vector_1);
+  VMCMP(uint16_t, %hu, 1, buf_vector_1, gold_vector_1, 256);
   // Check that the neighbour registers are okay
   VSTORE(uint16_t, e16, v17, buf_vector_1);
-  VMCMP(uint16_t, %hu, 1, buf_vector_1, zero_vector_1);
+  VMCMP(uint16_t, %hu, 1, buf_vector_1, zero_vector_1, 256);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_2, uint32_t, 128);
@@ -72,10 +72,10 @@ void TEST_CASE1(void) {
   VSET(128, e32, m1);
   // Check that the whole register was loaded
   VSTORE(uint32_t, e32, v16, buf_vector_2);
-  VMCMP(uint32_t, %u, 2, buf_vector_2, gold_vector_2);
+  VMCMP(uint32_t, %u, 2, buf_vector_2, gold_vector_2, 128);
   // Check that the neighbour registers are okay
   VSTORE(uint32_t, e32, v17, buf_vector_2);
-  VMCMP(uint32_t, %u, 2, buf_vector_2, zero_vector_2);
+  VMCMP(uint32_t, %u, 2, buf_vector_2, zero_vector_2, 128);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_3, uint64_t, 64);
@@ -93,10 +93,10 @@ void TEST_CASE1(void) {
   VSET(64, e64, m1);
   // Check that the whole register was loaded3
   VSTORE(uint64_t, e64, v16, buf_vector_3);
-  VMCMP(uint64_t, %lu, 3, buf_vector_3, gold_vector_3);
+  VMCMP(uint64_t, %lu, 3, buf_vector_3, gold_vector_3, 64);
   // Check that the neighbour registers are okay
   VSTORE(uint64_t, e64, v17, buf_vector_3);
-  VMCMP(uint64_t, %lu, 3, buf_vector_3, zero_vector_3);
+  VMCMP(uint64_t, %lu, 3, buf_vector_3, zero_vector_3, 64);
 }
 
 ////////////
@@ -121,10 +121,10 @@ void TEST_CASE2(void) {
   VSET(1024, e8, m2);
   // Check that the whole register was loaded
   VSTORE(uint8_t, e8, v16, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 4, buf_vector_0, gold_vector_0);
+  VMCMP(uint8_t, %hhu, 4, buf_vector_0, gold_vector_0, 1024);
   // Check that the neighbour registers are okay
   VSTORE(uint8_t, e8, v18, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 4, buf_vector_0, zero_vector_0);
+  VMCMP(uint8_t, %hhu, 4, buf_vector_0, zero_vector_0, 1024);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_1, uint16_t, 512);
@@ -142,10 +142,10 @@ void TEST_CASE2(void) {
   VSET(512, e16, m2);
   // Check that the whole register was loaded
   VSTORE(uint16_t, e16, v16, buf_vector_1);
-  VMCMP(uint16_t, %hu, 5, buf_vector_1, gold_vector_1);
+  VMCMP(uint16_t, %hu, 5, buf_vector_1, gold_vector_1, 512);
   // Check that the neighbour registers are okay
   VSTORE(uint16_t, e16, v18, buf_vector_1);
-  VMCMP(uint16_t, %hu, 5, buf_vector_1, zero_vector_1);
+  VMCMP(uint16_t, %hu, 5, buf_vector_1, zero_vector_1, 512);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_2, uint32_t, 256);
@@ -163,10 +163,10 @@ void TEST_CASE2(void) {
   VSET(256, e32, m2);
   // Check that the whole register was loaded
   VSTORE(uint32_t, e32, v16, buf_vector_2);
-  VMCMP(uint32_t, %u, 6, buf_vector_2, gold_vector_2);
+  VMCMP(uint32_t, %u, 6, buf_vector_2, gold_vector_2, 256);
   // Check that the neighbour registers are okay
   VSTORE(uint32_t, e32, v18, buf_vector_2);
-  VMCMP(uint32_t, %u, 6, buf_vector_2, zero_vector_2);
+  VMCMP(uint32_t, %u, 6, buf_vector_2, zero_vector_2, 256);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_3, uint64_t, 128);
@@ -184,10 +184,10 @@ void TEST_CASE2(void) {
   VSET(128, e64, m2);
   // Check that the whole register was loaded3
   VSTORE(uint64_t, e64, v16, buf_vector_3);
-  VMCMP(uint64_t, %lu, 7, buf_vector_3, gold_vector_3);
+  VMCMP(uint64_t, %lu, 7, buf_vector_3, gold_vector_3, 128);
   // Check that the neighbour registers are okay
   VSTORE(uint64_t, e64, v18, buf_vector_3);
-  VMCMP(uint64_t, %lu, 7, buf_vector_3, zero_vector_3);
+  VMCMP(uint64_t, %lu, 7, buf_vector_3, zero_vector_3, 128);
 }
 
 ////////////
@@ -212,10 +212,10 @@ void TEST_CASE3(void) {
   VSET(2048, e8, m4);
   // Check that the whole register was loaded
   VSTORE(uint8_t, e8, v16, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 8, buf_vector_0, gold_vector_0);
+  VMCMP(uint8_t, %hhu, 8, buf_vector_0, gold_vector_0, 2048);
   // Check that the neighbour registers are okay
   VSTORE(uint8_t, e8, v20, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 8, buf_vector_0, zero_vector_0);
+  VMCMP(uint8_t, %hhu, 8, buf_vector_0, zero_vector_0, 2048);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_1, uint16_t, 1024);
@@ -233,10 +233,10 @@ void TEST_CASE3(void) {
   VSET(1024, e16, m4);
   // Check that the whole register was loaded
   VSTORE(uint16_t, e16, v16, buf_vector_1);
-  VMCMP(uint16_t, %hu, 9, buf_vector_1, gold_vector_1);
+  VMCMP(uint16_t, %hu, 9, buf_vector_1, gold_vector_1, 1024);
   // Check that the neighbour registers are okay
   VSTORE(uint16_t, e16, v20, buf_vector_1);
-  VMCMP(uint16_t, %hu, 9, buf_vector_1, zero_vector_1);
+  VMCMP(uint16_t, %hu, 9, buf_vector_1, zero_vector_1, 1024);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_2, uint32_t, 512);
@@ -254,10 +254,10 @@ void TEST_CASE3(void) {
   VSET(512, e32, m4);
   // Check that the whole register was loaded
   VSTORE(uint32_t, e32, v16, buf_vector_2);
-  VMCMP(uint32_t, %u, 10, buf_vector_2, gold_vector_2);
+  VMCMP(uint32_t, %u, 10, buf_vector_2, gold_vector_2, 512);
   // Check that the neighbour registers are okay
   VSTORE(uint32_t, e32, v20, buf_vector_2);
-  VMCMP(uint32_t, %u, 10, buf_vector_2, zero_vector_2);
+  VMCMP(uint32_t, %u, 10, buf_vector_2, zero_vector_2, 512);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_3, uint64_t, 256);
@@ -275,10 +275,10 @@ void TEST_CASE3(void) {
   VSET(256, e64, m4);
   // Check that the whole register was loaded3
   VSTORE(uint64_t, e64, v16, buf_vector_3);
-  VMCMP(uint64_t, %lu, 11, buf_vector_3, gold_vector_3);
+  VMCMP(uint64_t, %lu, 11, buf_vector_3, gold_vector_3, 256);
   // Check that the neighbour registers are okay
   VSTORE(uint64_t, e64, v20, buf_vector_3);
-  VMCMP(uint64_t, %lu, 11, buf_vector_3, zero_vector_3);
+  VMCMP(uint64_t, %lu, 11, buf_vector_3, zero_vector_3, 256);
 }
 
 
@@ -305,10 +305,10 @@ void TEST_CASE4(void) {
   VSET(4096, e8, m8);
   // Check that the whole register was loaded
   VSTORE(uint8_t, e8, v16, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 12, buf_vector_0, gold_vector_0);
+  VMCMP(uint8_t, %hhu, 12, buf_vector_0, gold_vector_0, 4096);
   // Check that the neighbour registers are okay
   VSTORE(uint8_t, e8, v24, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 12, buf_vector_0, zero_vector_0);
+  VMCMP(uint8_t, %hhu, 12, buf_vector_0, zero_vector_0, 4096);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_1, uint16_t, 2048);
@@ -327,10 +327,10 @@ void TEST_CASE4(void) {
   VSET(2048, e16, m8);
   // Check that the whole register was loaded
   VSTORE(uint16_t, e16, v16, buf_vector_1);
-  VMCMP(uint16_t, %hu, 13, buf_vector_1, gold_vector_1);
+  VMCMP(uint16_t, %hu, 13, buf_vector_1, gold_vector_1, 2048);
   // Check that the neighbour registers are okay
   VSTORE(uint16_t, e16, v24, buf_vector_1);
-  VMCMP(uint16_t, %hu, 13, buf_vector_1, zero_vector_1);
+  VMCMP(uint16_t, %hu, 13, buf_vector_1, zero_vector_1, 2048);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_2, uint32_t, 1024);
@@ -349,10 +349,10 @@ void TEST_CASE4(void) {
   VSET(1024, e32, m8);
   // Check that the whole register was loaded
   VSTORE(uint32_t, e32, v16, buf_vector_2);
-  VMCMP(uint32_t, %u, 14, buf_vector_2, gold_vector_2);
+  VMCMP(uint32_t, %u, 14, buf_vector_2, gold_vector_2, 1024);
   // Check that the neighbour registers are okay
   VSTORE(uint32_t, e32, v24, buf_vector_2);
-  VMCMP(uint32_t, %u, 14, buf_vector_2, zero_vector_2);
+  VMCMP(uint32_t, %u, 14, buf_vector_2, zero_vector_2, 1024);
 
   // Initialize a golden vector
   INIT_MEM_CNT(gold_vector_3, uint64_t, 512);
@@ -371,10 +371,10 @@ void TEST_CASE4(void) {
   VSET(512, e64, m8);
   // Check that the whole register was loaded3
   VSTORE(uint64_t, e64, v16, buf_vector_3);
-  VMCMP(uint64_t, %lu, 15, buf_vector_3, gold_vector_3);
+  VMCMP(uint64_t, %lu, 15, buf_vector_3, gold_vector_3, 512);
   // Check that the neighbour registers are okay
   VSTORE(uint64_t, e64, v24, buf_vector_3);
-  VMCMP(uint64_t, %lu, 15, buf_vector_3, zero_vector_3);
+  VMCMP(uint64_t, %lu, 15, buf_vector_3, zero_vector_3, 512);
 }
 
 ////////////
@@ -399,10 +399,10 @@ void TEST_CASE5(void) {
   VSET(512, e8, m1);
   // Check that the whole register was loaded
   VSTORE(uint8_t, e8, v16, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 016, buf_vector_0, gold_vector_0);
+  VMCMP(uint8_t, %hhu, 016, buf_vector_0, gold_vector_0, 512);
   // Check that the neighbour registers are okay
   VSTORE(uint8_t, e8, v17, buf_vector_0);
-  VMCMP(uint8_t, %hhu, 16, buf_vector_0, zero_vector_0);
+  VMCMP(uint8_t, %hhu, 16, buf_vector_0, zero_vector_0, 512);
 }
 
 int main(void){
