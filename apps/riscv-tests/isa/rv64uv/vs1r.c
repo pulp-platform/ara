@@ -2,51 +2,155 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 //
-// Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
-//         Basile Bougenot <bbougenot@student.ethz.ch>
+// Author: Matteo Perotti
+//
+// For simplicity, this test depends on vl1r
 
 #include "vector_macros.h"
-#include <inttypes.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-static volatile uint8_t OUTPUT[256] __attribute__((aligned(64)));
+uint64_t counter;
 
+//////////
+// vs1r //
+//////////
+
+// 1 whole register load
 void TEST_CASE1(void) {
-  VSET(256, e8, m1);
-  volatile uint8_t GOLD[256];
-  uint8_t counter = 0;
-  for (int i = 0; i < 256; i++) {
-    GOLD[i] = counter;
-    counter++;
-  }
-  MEMBARRIER;
-  __asm__ volatile("vle8.v v1, (%[A])" ::[A] "r"(GOLD));
-  __asm__ volatile("vs1r.v v1, (%[A])" ::[A] "r"(OUTPUT));
-  VEC_CMP_BUFF_U8(1, v1, OUTPUT, GOLD);
+  // Initialize a golden vector
+  INIT_MEM_CNT(gold_vector_0, uint8_t, 512);
+  // Initialize a zero golden vector
+  INIT_MEM_ZEROES(zero_vector_0, uint8_t, 512);
+  // Reserve space for a buffer in memory
+  INIT_MEM_ZEROES(buf_vector_0, uint8_t, 512);
+  // Set vl and vtype to super short values
+  VSET(1, e64, m2);
+  // Initialize register + neighbours to pattern value
+  VCLEAR(v16);
+  // Load a buffer from memory - whole register load
+  asm volatile("vl1re8.v v16, (%0)" :: "r" (gold_vector_0));
+  // Check that the whole register was loaded
+  asm volatile("vs1r.v v16, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 0, buf_vector_0, gold_vector_0);
+  // Check that the neighbour registers are okay
+  asm volatile("vs1r.v v17, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 0, buf_vector_0, zero_vector_0);
 }
 
+//////////
+// vs2r //
+//////////
+
+// 2 whole registers load
 void TEST_CASE2(void) {
-  VSET(256, e8, m1);
-  volatile uint8_t GOLD[256];
-  uint8_t counter = 0;
-  for (int i = 0; i < 256; i++) {
-    GOLD[i] = counter;
-    counter++;
-  }
-  MEMBARRIER;
-  __asm__ volatile("vle8.v v2, (%[A])" ::[A] "r"(GOLD));
-  __asm__ volatile("vs1r.v v2, (%[A])" ::[A] "r"(OUTPUT));
-  VEC_CMP_BUFF_U8(1, v2, OUTPUT, GOLD);
+  // Initialize a golden vector
+  INIT_MEM_CNT(gold_vector_0, uint8_t, 1024);
+  // Initialize a zero golden vector
+  INIT_MEM_ZEROES(zero_vector_0, uint8_t, 1024);
+  // Reserve space for a buffer in memory
+  INIT_MEM_ZEROES(buf_vector_0, uint8_t, 1024);
+  // Set vl and vtype to super short values
+  VSET(1, e64, m4);
+  // Initialize register + neighbours to pattern value
+  VCLEAR(v16);
+  // Load a buffer from memory - whole register load
+  asm volatile("vl2re8.v v16, (%0)" :: "r" (gold_vector_0));
+  // Check that the whole register was loaded
+  asm volatile("vs2r.v v16, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 1, buf_vector_0, gold_vector_0);
+  // Check that the neighbour registers are okay
+  asm volatile("vs2r.v v18, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 1, buf_vector_0, zero_vector_0);
+}
+
+//////////
+// vs4r //
+//////////
+
+// 4 whole registers load
+void TEST_CASE3(void) {
+  // Initialize a golden vector
+  INIT_MEM_CNT(gold_vector_0, uint8_t, 2048);
+  // Initialize a zero golden vector
+  INIT_MEM_ZEROES(zero_vector_0, uint8_t, 2048);
+  // Reserve space for a buffer in memory
+  INIT_MEM_ZEROES(buf_vector_0, uint8_t, 2048);
+  // Set vl and vtype to super short values
+  VSET(1, e64, m8);
+  // Initialize register + neighbours to pattern value
+  VCLEAR(v16);
+  // Load a buffer from memory - whole register load
+  asm volatile("vl4re8.v v16, (%0)" :: "r" (gold_vector_0));
+  // Check that the whole register was loaded
+  asm volatile("vs4r.v v16, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 2, buf_vector_0, gold_vector_0);
+  // Check that the neighbour registers are okay
+  asm volatile("vs4r.v v20, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 2, buf_vector_0, zero_vector_0);
+}
+
+
+//////////
+// vs8r //
+//////////
+
+// 8 whole registers load
+void TEST_CASE4(void) {
+  // Initialize a golden vector
+  INIT_MEM_CNT(gold_vector_0, uint8_t, 4096);
+  // Initialize a zero golden vector
+  INIT_MEM_ZEROES(zero_vector_0, uint8_t, 4096);
+  // Reserve space for a buffer in memory
+  INIT_MEM_ZEROES(buf_vector_0, uint8_t, 4096);
+  // Set vl and vtype to super short values
+  VSET(1, e64, m8);
+  // Initialize register + neighbours to pattern value
+  VCLEAR(v16);
+  VCLEAR(v24);
+  // Load a buffer from memory - whole register load
+  asm volatile("vl8re8.v v16, (%0)" :: "r" (gold_vector_0));
+  // Check that the whole register was loaded
+  asm volatile("vs8r.v v16, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 3, buf_vector_0, gold_vector_0);
+  // Check that the neighbour registers are okay
+  asm volatile("vs8r.v v24, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 3, buf_vector_0, zero_vector_0);
+}
+
+////////////
+// Others //
+////////////
+
+// Check with initial vl == 0
+void TEST_CASE5(void) {
+  // Initialize a golden vector
+  INIT_MEM_CNT(gold_vector_0, uint8_t, 512);
+  // Initialize a zero golden vector
+  INIT_MEM_ZEROES(zero_vector_0, uint8_t, 512);
+  // Reserve space for a buffer in memory
+  INIT_MEM_ZEROES(buf_vector_0, uint8_t, 512);
+  // Set vl and vtype to super short values
+  VSET(0, e64, m2);
+  // Initialize register + neighbours to pattern value
+  VCLEAR(v16);
+  // Load a buffer from memory - whole register load
+  asm volatile("vl1re8.v v16, (%0)" :: "r" (gold_vector_0));
+  // Check that the whole register was loaded
+  asm volatile("vs1r.v v16, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 4, buf_vector_0, gold_vector_0);
+  // Check that the neighbour registers are okay
+  asm volatile("vs1r.v v17, (%0)" :: "r" (buf_vector_0));
+  VMCMP(uint8_t, %hhu, 4, buf_vector_0, zero_vector_0);
 }
 
 int main(void) {
   INIT_CHECK();
   enable_vec();
+
   TEST_CASE1();
   TEST_CASE2();
+  TEST_CASE3();
+  TEST_CASE4();
+  TEST_CASE5();
+
   EXIT_CHECK();
 }
