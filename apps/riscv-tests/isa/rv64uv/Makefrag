@@ -111,6 +111,7 @@ rv64uv_sc_tests = vadd \
                   vfslide1down \
                   vl \
                   vl1r \
+                  vle1 \
                   vs \
                   vs1r \
                   vls \
