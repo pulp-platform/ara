@@ -113,10 +113,10 @@ int test_case;
   printf("PASSED.\n");
 
 // Check the results against an in-memory vector of golden values
-#define VMCMP(T,str,casenum,vexp,vgold)                                                \
+#define VMCMP(T,str,casenum,vexp,vgold,size)                                          \
   printf("Checking the results of the test case %d:\n", casenum);                     \
   MEMORY_BARRIER;                                                                     \
-  for (unsigned int i = 0; i < sizeof(vexp)/sizeof(T); i++) {                         \
+  for (unsigned int i = 0; i < size; i++) {                                           \
     if (vexp[i] != vgold[i]) {                                                        \
       printf("Index %d FAILED. Got "#str", expected "#str".\n", i, vexp[i], vgold[i]);\
       num_failed++;                                                                   \
@@ -190,11 +190,6 @@ int test_case;
 #define VCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%u,  casenum,Ru32,act)}
 #define VCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%hu, casenum,Ru16,act)}
 #define VCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %hhu,casenum,Ru8, act)}
-
-#define VMCMP_U64(casenum,vect,act...) {VSTORE_U64(vect); VCMP(uint64_t,%lu, casenum,Ru64,act)}
-#define VMCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%u,  casenum,Ru32,act)}
-#define VMCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%hu, casenum,Ru16,act)}
-#define VMCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %hhu,casenum,Ru8, act)}
 
 #define VVCMP_U64(casenum,ptr64,act...) {VCMP(uint64_t,%lu,casenum,ptr64,act)}
 #define VVCMP_U32(casenum,ptr32,act...) {VCMP(uint32_t,%u, casenum,ptr32,act)}
