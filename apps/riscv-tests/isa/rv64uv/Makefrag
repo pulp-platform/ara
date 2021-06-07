@@ -114,6 +114,7 @@ rv64uv_sc_tests = vadd \
                   vle1 \
                   vs \
                   vs1r \
+                  vse1 \
                   vls \
                   vss \
                   vsetivli
