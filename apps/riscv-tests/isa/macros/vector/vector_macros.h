@@ -112,6 +112,19 @@ int test_case;
   }                                                                                   \
   printf("PASSED.\n");
 
+// Check the results against an in-memory vector of golden values
+#define VMCMP(T,str,casenum,vexp,vgold)                                                \
+  printf("Checking the results of the test case %d:\n", casenum);                     \
+  MEMORY_BARRIER;                                                                     \
+  for (unsigned int i = 0; i < sizeof(vexp)/sizeof(T); i++) {                         \
+    if (vexp[i] != vgold[i]) {                                                        \
+      printf("Index %d FAILED. Got "#str", expected "#str".\n", i, vexp[i], vgold[i]);\
+      num_failed++;                                                                   \
+      return;                                                                         \
+    }                                                                                 \
+  }                                                                                   \
+  printf("PASSED.\n");
+
 // Macros to set vector length, type and multiplier
 #define VSET(VLEN,VTYPE,LMUL)                                                          \
   do {                                                                                 \
@@ -152,6 +165,22 @@ int test_case;
     asm volatile("vsetvl zero, %[vl], %[vtype]" :: [vl] "r" (vl), [vtype] "r" (vtype));           \
   } while(0)
 
+// Macro to initialize a vector with progressive values from a counter
+#define INIT_MEM_CNT(vec_name, T, size) \
+  T vec_name[size];                     \
+  counter = 0;                          \
+  for (int i = 0 ; i < size; i++) {     \
+    vec_name[i] = (T) counter;          \
+    counter++;                          \
+  }                                     \
+
+// Macro to initialize a vector with zeroes
+#define INIT_MEM_ZEROES(vec_name, T, size) \
+  T vec_name[size];                        \
+  for (int i = 0 ; i < size; i++) {        \
+    vec_name[i] = 0;                       \
+  }                                        \
+
 /***************************
  *  Type-dependant macros  *
  ***************************/
@@ -161,6 +190,11 @@ int test_case;
 #define VCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%u,  casenum,Ru32,act)}
 #define VCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%hu, casenum,Ru16,act)}
 #define VCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %hhu,casenum,Ru8, act)}
+
+#define VMCMP_U64(casenum,vect,act...) {VSTORE_U64(vect); VCMP(uint64_t,%lu, casenum,Ru64,act)}
+#define VMCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%u,  casenum,Ru32,act)}
+#define VMCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%hu, casenum,Ru16,act)}
+#define VMCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %hhu,casenum,Ru8, act)}
 
 #define VVCMP_U64(casenum,ptr64,act...) {VCMP(uint64_t,%lu,casenum,ptr64,act)}
 #define VVCMP_U32(casenum,ptr32,act...) {VCMP(uint32_t,%u, casenum,ptr32,act)}
