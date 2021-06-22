@@ -57,7 +57,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     input  masku_fu_e                    mask_operand_fu_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
-    output logic                         mask_ready_o
+    output logic                         mask_ready_o,
+    // Interface with the edge spill register
+    output logic                         mask_expected_o
   );
 
   ///////////////
@@ -84,6 +86,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   assign mfpu_mask_operand_ready = mask_operand_fu_i == MaskFUMFpu ? mask_operand_ready_i : 1'b0;
   assign mask_operand_o          = mask_operand_fu_i == MaskFUAlu  ? alu_mask_operand : mfpu_mask_operand;
   assign mask_operand_valid_o    = mask_operand_fu_i == MaskFUAlu  ? alu_mask_operand_valid : mfpu_mask_operand_valid;
+
+  // Tell the spill register if the lane is expecting a mask operand or not
+  logic mask_expected_alu, mask_expected_mfpu;
+  assign mask_expected_o = mask_expected_alu | mask_expected_mfpu;
 
   //////////////////
   //  Vector ALU  //
@@ -117,7 +123,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_ready_i (alu_mask_operand_ready),
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
-    .mask_ready_o         (alu_mask_ready       )
+    .mask_ready_o         (alu_mask_ready       ),
+    .mask_expected_o      (mask_expected_alu    )
   );
 
   ///////////////////
@@ -156,7 +163,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_ready_i (mfpu_mask_operand_ready),
     .mask_i               (mask_i               ),
     .mask_valid_i         (mask_valid_i         ),
-    .mask_ready_o         (mfpu_mask_ready      )
+    .mask_ready_o         (mfpu_mask_ready      ),
+    .mask_expected_o      (mask_expected_mfpu   )
   );
 
 endmodule : vector_fus_stage

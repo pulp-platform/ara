@@ -88,21 +88,28 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   strb_t mask_i_q;
   logic  mask_valid_i_q, mask_ready_o_d, mask_ready_q;
 
+  // Register the mask only if the request targets the lane
+  logic mask_lane_valid, mask_expected;
+  assign mask_lane_valid = mask_valid_i & mask_expected;
+
+  // Ara's protocol is actually a req-gnt one
+  // The mask unit broadcasts its mask to the whole system,
+  // even if the mask targets the slide unit.
+  // The lanes should acknowledge ONLY their masks.
+  assign mask_ready_o = mask_ready_q & mask_lane_valid;
+
   spill_register #(
     .T(strb_t)
   ) i_spill_register (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .valid_i(mask_valid_i),
+    .valid_i(mask_lane_valid),
     .ready_o(mask_ready_q),
     .data_i (mask_i),
     .valid_o(mask_valid_i_q),
     .ready_i(mask_ready_o_d),
     .data_o (mask_i_q)
   );
-
-  // Ara's protocol is actually a req-gnt one
-  assign mask_ready_o = mask_ready_q & mask_valid_i;
 
   /////////////////
   //  Sequencer  //
@@ -368,7 +375,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_fu_i    (mask_operand_fu_i      ),
     .mask_i               (mask_i_q               ),
     .mask_valid_i         (mask_valid_i_q         ),
-    .mask_ready_o         (mask_ready_o_d         )
+    .mask_ready_o         (mask_ready_o_d         ),
+    .mask_expected_o      (mask_expected          )
   );
 
   //////////////////

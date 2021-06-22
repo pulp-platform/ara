@@ -40,7 +40,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                         mask_operand_ready_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
-    output logic                         mask_ready_o
+    output logic                         mask_ready_o,
+    // Interface with the edge spill register
+    output logic                         mask_expected_o
   );
 
   import cf_math_pkg::idx_width;
@@ -155,6 +157,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   assign mask_operand_o       = result_queue_q[result_queue_read_pnt_q].wdata;
   assign mask_operand_valid_o = result_queue_q[result_queue_read_pnt_q].mask &&
     result_queue_valid_q[result_queue_read_pnt_q];
+
+  // Signal to the spill register if the lane is expecting a mask operand or not
+  // If not, the spill register must not grant and store the generic request from the mask unit
+  // since the data is not for the lanes
+  assign mask_expected_o = ~vinsn_issue_q.vm & vinsn_issue_valid;
 
   //////////////////////
   //  Scalar operand  //
