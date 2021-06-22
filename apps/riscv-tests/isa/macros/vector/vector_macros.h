@@ -166,17 +166,17 @@ int test_case;
   } while(0)
 
 // Macro to initialize a vector with progressive values from a counter
-#define INIT_MEM_CNT(vec_name, T, size) \
-  T vec_name[size];                     \
+#define INIT_MEM_CNT(vec_name, size) \
   counter = 0;                          \
   for (int i = 0 ; i < size; i++) {     \
-    vec_name[i] = (T) counter;          \
+    vec_name[i] = counter;              \
     counter++;                          \
   }                                     \
 
 // Macro to initialize a vector with zeroes
-#define INIT_MEM_ZEROES(vec_name, T, size) \
-  T vec_name[size];                        \
+// The vector is initialized on the stack, use this function with caution
+// Easy to go in the UART address space
+#define INIT_MEM_ZEROES(vec_name, size) \
   for (int i = 0 ; i < size; i++) {        \
     vec_name[i] = 0;                       \
   }                                        \
