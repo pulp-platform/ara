@@ -756,8 +756,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     3'd7 : vlmax <<= 3;
                     default: begin
                       // Trigger an error for the reserved simm values
-                      acc_resp_o.error = 1'b1;
-                      ara_req_valid_d  = 1'b0;
+                      illegal_insn = 1'b1;
                     end
                   endcase
                   // From here on, the only difference with a vmv.v.v is that the vector reg index
