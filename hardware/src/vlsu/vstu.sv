@@ -262,7 +262,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       if (vinsn_queue_d.issue_cnt != 0)
         issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
-          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].eew_vs1);
+          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
     end
 
     ////////////////////////////
