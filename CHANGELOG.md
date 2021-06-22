@@ -6,27 +6,44 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- Script to align all the elf sections to the AXI Data Width (the testbench requires it)
+- RISC-V V intrinsics can now be compiled
+- Add support for `vsetivli`, `vmv<nr>r.v` instructions
+- Add support for strided memory operations
+- Add support for stores misaligned w.r.t. the AXI Data Width
+
 ### Changed
 
 - Alignment with lowRISC's coding guidelines
+- Update Ara support for RISC-V V extension to V 0.10, with the exception of the instructions that were already missing
+- Replace toolchain from GCC to LLVM when compiling for RISC-V V extension
+- Update toolchain and SPIKE support to RISC-V V 0.10
+- Patches for GCC and SPIKE are no longer required
+- Ara benchmarks are now compatible with RISC-V V 0.10
 
 ### Fixed
+
 - Fix `vrf_seq_byte` definition in the Load Unit
 - Fix check to discriminate a valid byte in the VRF word, in the Load Unit
 - Fix `axi_addrgen_d.len` calculation in the Address Generation Unit
 - Correctly check whether the generated address corresponds to the vector load or the store unit
 - Typos on the ChangeLog's dates
 - Remove unwanted latches in the `addrgen`, `simd_div`, `instr_queue`, and `decoder`
+- Fix `vl == 0` memory operations bug. Ara correctly tells Ariane that the memory operation is over
 
 ## 1.2.0 - 2021-04-12
 
 ### Added
+
 - Hardware support for:
   - Vector slide instructions (vslideup, vslide1up, vfslide1up, vslidedown, vslide1down, vfslide1down)
 - Software implementation of a integer 2D convolution kernel
 - CI job to check the conv2d execution on Ara
 
 ### Fixed
+
 - Removed dependency to a specific gcc g++ version in Makefile
 - Arithmetic and memory vector instructions with `vl == 0` are considered as a `NOP`
 - Increment bit width of the vector length type (`vlen_t`), accounting for vectors whose length is `VLMAX`
@@ -37,6 +54,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Retrigger the `compile` module if the ModelSim compilation did not succeed
 
 ### Changed
+
 - The `encoding.h` in the common Ara runtime is now a copy from the `encoding.h` in the Spike submodule
 
 ## 1.1.1 - 2021-03-25
