@@ -27,7 +27,6 @@
 #define enable_fp()
 #endif
 
-
 /**************
  *  Counters  *
  **************/
@@ -46,13 +45,13 @@ int test_case;
 
 #define vtype(golden_vtype, vlmul, vsew, vta, vma) (golden_vtype = vlmul << 0 | vsew << 3 | vta << 6 | vma << 7)
 
-#define check_vtype_vl(casenum, vtype, golden_vtype, avl, vl)                       \
-  printf("Checking vtype and vl #%d...\n", casenum);                                \
-  if (vtype != golden_vtype || avl != vl) {                                         \
+#define check_vtype_vl(casenum, vtype, golden_vtype, avl, vl)                                                      \
+  printf("Checking vtype and vl #%d...\n", casenum);                                                               \
+  if (vtype != golden_vtype || avl != vl) {                                                                        \
     printf("FAILED. Got vtype = %lx, expected vtype = %lx. avl = %lx, vl = %lx.\n", vtype, golden_vtype, avl, vl); \
-    num_failed++;                                                                   \
-    return;                                                                         \
-  }                                                                                 \
+    num_failed++;                                                                                                  \
+    return;                                                                                                        \
+  }                                                                                                                \
   printf("PASSED.\n");
 
 // In order to avoid that scalar loads run ahead of vector stores,
@@ -88,7 +87,7 @@ int test_case;
     num_failed++;                                                       \
     return;                                                             \
   }                                                                     \
-  printf("PASSED.\n");                                         \
+  printf("PASSED.\n");                                                  \
 
 // Check the result against a floating-point scalar golden value
 #define FCMP(casenum,act,exp)                                           \
@@ -114,14 +113,14 @@ int test_case;
   printf("PASSED.\n");
 
 // Macros to set vector length, type and multiplier
-#define VSET(VLEN,VTYPE,LMUL)                                                      \
-  do {                                                                             \
+#define VSET(VLEN,VTYPE,LMUL)                                                          \
+  do {                                                                                 \
   asm volatile ("vsetvli t0, %[A]," #VTYPE "," #LMUL ", ta, ma \n" :: [A] "r" (VLEN)); \
   } while(0)
 
-#define VSETMAX(VTYPE,LMUL)                                                        \
-  do {                                                                             \
-  int64_t scalar = -1;                                                             \
+#define VSETMAX(VTYPE,LMUL)                                                            \
+  do {                                                                                 \
+  int64_t scalar = -1;                                                                 \
   asm volatile ("vsetvli t1, %[A]," #VTYPE "," #LMUL", ta, ma \n":: [A] "r" (scalar)); \
   } while(0)
 

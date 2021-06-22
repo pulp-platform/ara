@@ -61,16 +61,16 @@ typedef union double_hex {
 } double_hex;
 
 // Check fcsr.fflags against an expected FFLAGS value
-#define CHECK_FFLAGS(FFLAGS)                                                                           \
-  do {                                                                                                 \
-    uint64_t gold_ff = FFLAGS;                                                                         \
-    uint64_t      ff;                                                                                  \
-    asm volatile ("frflags %0" : "=r" (ff));                                                           \
-    if (ff != gold_ff) {                                                                               \
+#define CHECK_FFLAGS(FFLAGS)                                                                             \
+  do {                                                                                                   \
+    uint64_t gold_ff = FFLAGS;                                                                           \
+    uint64_t      ff;                                                                                    \
+    asm volatile ("frflags %0" : "=r" (ff));                                                             \
+    if (ff != gold_ff) {                                                                                 \
       printf("fflags check FAILED. Current fflags is 0x%02lx, while expecting 0x%02lx.\n", ff, gold_ff); \
-      num_failed++;                                                                                    \
-      return;                                                                                          \
-    }                                                                                                  \
+      num_failed++;                                                                                      \
+      return;                                                                                            \
+    }                                                                                                    \
   } while(0)
 
 // Change rounding-mode
