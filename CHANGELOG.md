@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - `benchmarks` app to benchmark Ara
 - CI task to create roofline plots of `imatmul` and `fmatmul`, available as artifacts
+- Vector floating-point compare instructions (`vmfeq`, `vmfne`, `vmflt`, `vmfle`, `vmfgt`, `vmfge`)
+- Vector single-width floating-point/integer type-convert instructions (`vfcvt.xu.f`, `vfcvt.x.f`, `vfcvt.rtz.xu.f`, `vfcvt.rtz.x.f`, `vfcvt.f.xu`, `vfcvt.f.x`)
+- Vector widening floating-point/integer type-convert instructions (`vfwcvt.xu.f`, `vfwcvt.x.f`, `vfwcvt.rtz.xu.f`, `vfwcvt.rtz.x.f`, `vfwcvt.f.xu`, `vfwcvt.f.x`, `vfwcvt.f.f`)
+- Vector narrowing floating-point/integer type-convert instructions (`vfncvt.xu.f`, `vfncvt.x.f`, `vfncvt.rtz.xu.f`, `vfncvt.rtz.x.f`, `vfncvt.f.xu`, `vfncvt.f.x`, `vfncvt.f.f`)
+
+### Changed
+
+- Add spill register at the lane edge, to cut the timing-critical interface between the Mask unit and the VFUs
+- Increase latency of the 16-bit multiplier from 0 to 1 to cut an in-lane timing-critical path
 
 ## 2.1.0 - 2021-07-16
 
