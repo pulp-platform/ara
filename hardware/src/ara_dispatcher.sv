@@ -744,10 +744,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b100111: begin // vmv<nr>r.v
+                  automatic int unsigned vlmax;
                   // Execute also if vl == 0
                   ignore_zero_vl_check = 1'b1;
                   // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
-                  automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
+                  vlmax = VLENB >> vtype_d.vsew;
                   unique case (insn.varith_type.rs1[17:15])
                     3'd0 : vlmax <<= 0;
                     3'd1 : vlmax <<= 1;
