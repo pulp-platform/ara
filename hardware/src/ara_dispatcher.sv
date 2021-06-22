@@ -1875,10 +1875,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Decode the lumop field
               case (insn.vmem_type.rs2)
                 5'b00000:;      // Unit-strided
-                5'b01000: begin // Unit-strided, whole registers
-                  // {mew, width} can be used as a hint for internal VRF organization
-                  ara_req_d.vtype.vsew = EW8;
-                end
+                5'b01000:;      // Unit-strided, whole registers
                 5'b01011: begin // Unit-strided, mask load, EEW=1
                   // We operate ceil(vl/8) bytes
                   ara_req_d.vl         = (vl_q >> 3) + |vl_q[2:0];
@@ -1929,19 +1926,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             default:;
           endcase
 
-          // Vector register register loads are encoded as loads of length VLENB, length multiplier
-          // LMUL_1 and element width EW8. They overwrite all this decoding.
+          // Vector whole register loads overwrite all the other decoding information.
           if (ara_req_d.op == VLE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew_vs1 = EW8;
-            ara_req_d.emul    = LMUL_1;
-            ara_req_d.vl      = VLENB;
-
             // Execute also if vl == 0
             ignore_zero_vl_check = 1'b1;
+            // The LMUL value is kept in the instruction itself
             illegal_insn     = 1'b0;
             acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
             ara_req_valid_d  = 1'b1;
+
+            // Maximum vector length. VLMAX = nf * VLEN / EW8.
+            ara_req_d.vtype.vsew = EW8;
+            unique case (insn.vmem_type.nf)
+              3'd0: begin
+                ara_req_d.vl = VLENB << 0;
+                ara_req_d.emul = LMUL_1;
+              end
+              3'd1: begin
+                ara_req_d.vl = VLENB << 1;
+                ara_req_d.emul = LMUL_2;
+              end
+              3'd3:  begin
+                ara_req_d.vl = VLENB << 2;
+                ara_req_d.emul = LMUL_4;
+              end
+              3'd7:  begin
+                ara_req_d.vl = VLENB << 3;
+                ara_req_d.emul = LMUL_8;
+              end
+              default: begin
+                // Trigger an error for the reserved simm values
+                illegal_insn     = 1'b1;
+              end
+            endcase
           end
 
           // Wait until the back-end answers to acknowledge those instructions
@@ -2042,14 +2060,36 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             default:;
           endcase
 
-          // Vector register register stores are encoded as stores of length VLENB, length
+          // Vector whole register stores are encoded as stores of length VLENB, length
           // multiplier LMUL_1 and element width EW8. They overwrite all this decoding.
           if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew_vs1 = EW8;
-            ara_req_d.emul    = LMUL_1;
-            ara_req_d.vl      = VLENB;
             // Execute also if vl == 0
             ignore_zero_vl_check = 1'b1;
+
+            // Maximum vector length. VLMAX = nf * VLEN / EW8.
+            ara_req_d.vtype.vsew = EW8;
+            unique case (insn.vmem_type.nf)
+              3'd0: begin
+                ara_req_d.vl = VLENB << 0;
+                ara_req_d.emul = LMUL_1;
+              end
+              3'd1: begin
+                ara_req_d.vl = VLENB << 1;
+                ara_req_d.emul = LMUL_2;
+              end
+              3'd3:  begin
+                ara_req_d.vl = VLENB << 2;
+                ara_req_d.emul = LMUL_4;
+              end
+              3'd7:  begin
+                ara_req_d.vl = VLENB << 3;
+                ara_req_d.emul = LMUL_8;
+              end
+              default: begin
+                // Trigger an error for the reserved simm values
+                illegal_insn     = 1'b1;
+              end
+            endcase
 
             illegal_insn     = 1'b0;
             acc_req_ready_o  = 1'b0;
