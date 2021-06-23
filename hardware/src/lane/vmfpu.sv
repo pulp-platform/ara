@@ -895,25 +895,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
       if (processed_element_cnt_narrow > to_process_cnt_q)
         processed_element_cnt_narrow = to_process_cnt_q;
 
-      // Store the result in the result queue
-      result_queue_d[result_queue_write_pnt_q].id   = vinsn_processing.id;
-      result_queue_d[result_queue_write_pnt_q].addr = vaddr(vinsn_processing.vd, NrLanes) +
-        ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
-      result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
-      result_queue_d[result_queue_write_pnt_q].be    =
-        be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ?
-          {StrbWidth{1'b1}} :
-          unit_out_mask);
-      result_queue_d[result_queue_write_pnt_q].mask  = vinsn_processing.vfu == VFU_MaskUnit;
-      result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-
       // Update the number of elements still to be processed
       // If the instruction is a narrowing one, we have processed elements for one half of vtype.vsew
       to_process_cnt_d = (narrowing(vinsn_processing.fp_cvt_resize)) ? (to_process_cnt_q - processed_element_cnt_narrow) : (to_process_cnt_q - processed_element_cnt);
 
       // Store the result in the result queue
       result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing.id;
-      result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) + ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
+      result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing.vd, NrLanes) +
+        ((vinsn_processing.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing.vtype.vsew));
       // FP narrowing instructions pack the result in two different cycles, and only some 16-bit slices are active
       if (narrowing(vinsn_processing.fp_cvt_resize)) begin
         for (int b = 0; b < 4; b++) begin
@@ -924,7 +913,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
         result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
       end
       if (!narrowing(vinsn_processing.fp_cvt_resize) || !narrowing_select_out_q)
-        result_queue_d[result_queue_write_pnt_q].be  = be(processed_element_cnt, vinsn_processing.vtype.vsew) & (vinsn_processing.vm ? {StrbWidth{1'b1}} : unit_out_mask);
+        result_queue_d[result_queue_write_pnt_q].be =
+          be(processed_element_cnt, vinsn_processing.vtype.vsew) &
+            (vinsn_processing.vm ? {StrbWidth{1'b1}} : unit_out_mask);
+
+      result_queue_d[result_queue_write_pnt_q].mask  = vinsn_processing.vfu == VFU_MaskUnit;
 
       // Update the narrowing selector, validate the result, bump result queue pointers/counters
       if (narrowing(vinsn_processing.fp_cvt_resize)) begin
