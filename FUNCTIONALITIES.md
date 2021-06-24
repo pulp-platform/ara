@@ -11,6 +11,8 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 
 - Vector unit-strided loads: `vle<eew>, vl1r.v`
 - Vector unit-strided stores: `vse<eew>`, `vs1r.v`
+- Vector strided loads: `vlse<eew>`
+- Vector strided stores: `vsse<eew>`
 
 ## Vector Integer Arithmetic Instructions
 
@@ -30,6 +32,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector widening integer multiply-add instructions: `vwmaccu`, `vwmacc`, `vwmaccsu`, `vwmaccus`
 - Vector integer merge instructions: `vmerge`
 - Vector integer move instructions: `vmv`
+- Vector whole-register move instructions: `vmv<nr>r`
 
 ## Vector Floating-Point Instructions
 

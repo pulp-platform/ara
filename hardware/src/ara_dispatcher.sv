@@ -58,9 +58,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
   function automatic riscv::xlen_t xlen_vtype(vtype_t vtype);
-    xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vlmul[2],
-      vtype.vsew, vtype.vlmul[1:0]};
-  endfunction : xlen_vtype
+    xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vsew,
+      vtype.vlmul[2:0]};
+  endfunction: xlen_vtype
 
   // Converts between the XLEN-bit vtype CSR and its internal representation
   function automatic vtype_t vtype_xlen(riscv::xlen_t xlen);
@@ -68,8 +68,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       vill  : xlen[riscv::XLEN-1],
       vma   : xlen[7],
       vta   : xlen[6],
-      vsew  : vew_e'(xlen[4:2]),
-      vlmul : vlmul_e'({xlen[5], xlen[1:0]})
+      vsew  : vew_e'(xlen[5:3]),
+      vlmul : vlmul_e'(xlen[2:0])
     };
   endfunction : vtype_xlen
 
@@ -144,8 +144,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // register
   rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
 
-  // Helper signal to discriminate between config/csr instructions and the others
-  logic is_config;
+  // Helper signals to discriminate between config/csr, load/store instructions and the others
+  logic is_config, is_vload, is_vstore;
+  // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
+  // its counters of pending memory operations
+  // Ara should tell Ariane when a memory operation is completed, so that it can modify
+  // its pending load/store counters.
+  // A memory operation can be completed both when it is over and when vl_q == 0. In the latter case,
+  // Ara's decoder answers immediately, and this can cause a collision with an answer from Ara's VLSU.
+  // To avoid collisions, we give precedence to the VLSU, and we delay the vl_q == 0 memory op
+  // completion signal if a collision occurs
+  logic load_zero_vl, store_zero_vl;
 
   ///////////////
   //  Decoder  //
@@ -164,12 +173,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     lmul_vs1     = vtype_q.vlmul;
     illegal_insn = 1'b0;
 
+    is_vload      = 1'b0;
+    is_vstore     = 1'b0;
+    load_zero_vl  = 1'b0;
+    store_zero_vl = 1'b0;
+
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
     acc_resp_o       = '{
       trans_id      : acc_req_i.trans_id,
-      load_complete : load_complete_i,
-      store_complete: store_complete_i,
+      load_complete : load_zero_vl | load_complete_i,
+      store_complete: store_zero_vl | store_complete_i,
       store_pending : store_pending_i,
       fflags_valid  : |fflags_ex_valid_i,
       default       : '0
@@ -223,7 +237,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
               // Update vtype
               if (insn.vsetvli_type.func1 == 1'b0) begin // vsetvli
-                vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetvli_type.zimm10));
+                vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetvli_type.zimm11));
+              end else if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
+                vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetivli_type.zimm10));
               end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
                 vtype_d = vtype_xlen(acc_req_i.rs2[7:0]);
               end else
@@ -254,15 +270,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   default:;
                 endcase
 
-                if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd == '0) begin
-                  // Do not update the vector length
-                  vl_d = vl_q;
-                end else if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd != '0) begin
-                  // Set the vector length to vlmax
-                  vl_d = vlmax;
-                end else begin
-                  // Normal stripmining
-                  vl_d = (vlen_t'(acc_req_i.rs1) > vlmax) ? vlmax : vlen_t'(acc_req_i.rs1);
+                if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
+                  vl_d = vlen_t'(insn.vsetivli_type.uimm5);
+                end else begin // vsetvl || vsetvli
+                  if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd == '0) begin
+                    // Do not update the vector length
+                    vl_d = vl_q;
+                  end else if (insn.vsetvl_type.rs1 == '0 && insn.vsetvl_type.rd != '0) begin
+                    // Set the vector length to vlmax
+                    vl_d = vlmax;
+                  end else begin
+                    // Normal stripmining
+                    vl_d = (vlen_t'(acc_req_i.rs1) > vlmax) ? vlmax : vlen_t'(acc_req_i.rs1);
+                  end
                 end
               end
 
@@ -719,6 +739,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.i does not use vs2
                 end
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                6'b100111: begin // vmv<nr>r.v
+                  // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
+                  automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
+                  unique case (insn.varith_type.rs1[17:15])
+                    3'd0 : vlmax <<= 0;
+                    3'd1 : vlmax <<= 1;
+                    3'd3 : vlmax <<= 2;
+                    3'd7 : vlmax <<= 3;
+                    default: begin
+                      // Trigger an error for the reserved simm values
+                      acc_resp_o.error = 1'b1;
+                      ara_req_valid_d  = 1'b0;
+                    end
+                  endcase
+                  // From here on, the only difference with a vmv.v.v is that the vector reg index
+                  // is in rs2. For the rest,, pretend to be a vmv.v.v
+                  ara_req_d.op            = ara_pkg::VMERGE;
+                  ara_req_d.use_scalar_op = 1'b0;
+                  ara_req_d.use_vs1       = 1'b1;
+                  ara_req_d.use_vs2       = 1'b0;
+                  ara_req_d.vs1           = insn.varith_type.rs2;
+                  ara_req_d.vl            = vlmax; // whole register move
+                end
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
                 6'b101001: ara_req_d.op = ara_pkg::VSRA;
                 6'b101100: begin
@@ -1675,6 +1718,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // Instruction is of one of the RVV types
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
+          // The instruction is a load
+          is_vload = 1'b1;
+
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
 
@@ -1685,6 +1731,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_d.scalar_op = acc_req_i.rs1;
           ara_req_valid_d     = 1'b1;
 
+          // Decode the element width
+          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
+            default: begin // Invalid. Element is too wide, or encoding is non-existant.
+              acc_req_ready_o  = 1'b1;
+              acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
+          endcase
+
           // Decode the addressing mode
           unique case (insn.vmem_type.mop)
             2'b00: begin
@@ -1693,7 +1753,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Decode the lumop field
               case (insn.vmem_type.rs2)
                 5'b00000:;      // Unit-strided
-                5'b01000:;      // Unit-strided, whole registers
+                5'b01000: begin // Unit-strided, whole registers
+                  // {mew, width} can be used as a hint for internal VRF organization
+                  ara_req_d.vtype.vsew = EW8;
+                end
+                5'b01011: begin // Unit-strided, mask load, EEW=1
+                  // We operate ceil(vl/8) bytes
+                  ara_req_d.vl         = (vl_q >> 3) + |vl_q[2:0];
+                  ara_req_d.vtype.vsew = EW8;
+                end
                 5'b10000: begin // Unit-strided, fault-only first
                   // TODO: Not implemented
                   illegal_insn     = 1'b1;
@@ -1707,35 +1775,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
               endcase
             end
-            2'b01: begin // Invalid
-              illegal_insn     = 1'b1;
-              acc_req_ready_o  = 1'b1;
-              acc_resp_valid_o = 1'b1;
-            end
             2'b10: begin
               ara_req_d.op     = VLSE;
               ara_req_d.stride = acc_req_i.rs2;
             end
-            2'b11: begin
+            2'b01, // Indexed-unordered
+            2'b11: begin // Indexed-ordered
               ara_req_d.op      = VLXE;
               // These also read vs2
               ara_req_d.vs2     = insn.vmem_type.rs2;
               ara_req_d.use_vs2 = 1'b1;
             end
             default:;
-          endcase
-
-          // Decode the element width
-          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.vtype.vsew = EW8;
-            4'b0101: ara_req_d.vtype.vsew = EW16;
-            4'b0110: ara_req_d.vtype.vsew = EW32;
-            4'b0111: ara_req_d.vtype.vsew = EW64;
-            default: begin // Invalid. Element is too wide, or encoding is non-existant.
-              illegal_insn     = 1'b1;
-              acc_req_ready_o  = 1'b1;
-              acc_resp_valid_o = 1'b1;
-            end
           endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can
@@ -1764,8 +1815,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_d.vl      = VLENB;
 
             illegal_insn     = 1'b0;
-            acc_req_ready_o  = 1'b1;
+            acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
+            ara_req_valid_d  = 1'b1;
           end
 
           // Wait until the back-end answers to acknowledge those instructions
@@ -1785,6 +1837,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // Instruction is of one of the RVV types
           automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
+          // The instruction is a store
+          is_vstore = 1'b1;
+
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
 
@@ -1796,6 +1851,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_d.scalar_op = acc_req_i.rs1;
           ara_req_valid_d     = 1'b1;
 
+          // Decode the element width
+          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
+            4'b0000: ara_req_d.vtype.vsew = EW8;
+            4'b0101: ara_req_d.vtype.vsew = EW16;
+            4'b0110: ara_req_d.vtype.vsew = EW32;
+            4'b0111: ara_req_d.vtype.vsew = EW64;
+            default: begin // Invalid. Element is too wide, or encoding is non-existant.
+              acc_req_ready_o  = 1'b1;
+              acc_resp_o.error = 1'b1;
+              acc_resp_valid_o = 1'b1;
+              ara_req_valid_d  = 1'b0;
+            end
+          endcase
+
           // Decode the addressing mode
           unique case (insn.vmem_type.mop)
             2'b00: begin
@@ -1805,6 +1874,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               unique case (insn.vmem_type.rs2)
                 5'b00000:;     // Unit-strided
                 5'b01000:;     // Unit-strided, whole registers
+                5'b01011: begin // Unit-strided, mask store, EEW=1
+                  // We operate ceil(vl/8) bytes
+                  ara_req_d.vl         = (vl_q >> 3) + |vl_q[2:0];
+                  ara_req_d.vtype.vsew = EW8;
+                end
                 default: begin // Reserved
                   illegal_insn     = 1'b1;
                   acc_req_ready_o  = 1'b1;
@@ -1824,19 +1898,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               ara_req_d.use_vs2 = 1'b1;
             end
             default:;
-          endcase
-
-          // Decode the element width
-          unique case ({insn.vmem_type.mew, insn.vmem_type.width})
-            4'b0000: ara_req_d.vtype.vsew = EW8;
-            4'b0101: ara_req_d.vtype.vsew = EW16;
-            4'b0110: ara_req_d.vtype.vsew = EW32;
-            4'b0111: ara_req_d.vtype.vsew = EW64;
-            default: begin // Invalid. Element is too wide, or encoding is non-existant.
-              illegal_insn     = 1'b1;
-              acc_req_ready_o  = 1'b1;
-              acc_resp_valid_o = 1'b1;
-            end
           endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can
@@ -1865,8 +1926,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_d.vl      = VLENB;
 
             illegal_insn     = 1'b0;
-            acc_req_ready_o  = 1'b1;
+            acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
+            ara_req_valid_d  = 1'b1;
           end
 
           // Wait until the back-end answers to acknowledge those instructions
@@ -2037,9 +2099,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Any valid non-config instruction is a NOP if vl == 0
     if (acc_req_valid_i && vl_q == '0 && !is_config && !acc_resp_o.error) begin
-      acc_req_ready_o  = 1'b1;
-      acc_resp_valid_o = 1'b1;
+      // If we are acknowledging a memory operation, we must tell Ariane that the memory
+      // operation was resolved (to decrement its pending load/store counter)
+      // This can collide with the same signal from the vector load/store unit, so we must
+      // delay the zero_vl acknowledge by 1 cycle
+      acc_req_ready_o  = ~((is_vload & load_complete_i) | (is_vstore & store_complete_i));
+      acc_resp_valid_o = ~((is_vload & load_complete_i) | (is_vstore & store_complete_i));
       ara_req_valid_d  = 1'b0;
+      load_zero_vl     = is_vload;
+      store_zero_vl    = is_vstore;
     end
   end: p_decoder
 

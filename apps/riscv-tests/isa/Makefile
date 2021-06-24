@@ -32,11 +32,20 @@ default: all
 # Build rules
 #--------------------------------------------------------------------
 
+# Original GCC variables
 RISCV_PREFIX ?= riscv$(XLEN)-unknown-elf-
 RISCV_GCC ?= $(RISCV_PREFIX)gcc
 RISCV_GCC_OPTS ?= -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles
 RISCV_GCC_OPTS_C ?= -O2
-RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
+
+# Added LLVM variables
+RISCV_LLVM ?= clang -fuse-ld=lld
+RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax -nostdlib -nostartfiles
+RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax -nostdlib -nostartfiles
+LLVM_V_VERSION ?= v0p10
+
+# Original objdump + spike variables
+RISCV_OBJDUMP ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
 RISCV_SIM ?= spike
 
 vpath %.S $(src_dir)
@@ -48,13 +57,13 @@ vpath %.S $(src_dir)
 	$(RISCV_OBJDUMP) $< > $@
 
 %.out: %
-	$(RISCV_SIM) --isa=rv64gcv --varch="vlen:2048,elen:64,slen:2048" $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv --varch="vlen:4096,elen:64,slen:4096" $< 2> $@
 
 %.out32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
 
 %.cout: %
-	$(RISCV_SIM) --isa=rv64gcv_zfh --varch="vlen:2048,elen:64,slen:2048" $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv_zfh --varch="vlen:4096,elen:64,slen:4096" $< 2> $@
 
 %.cout32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
@@ -81,12 +90,12 @@ endef
 
 define compile_template_c
 
-$$($(1)_p_tests): $(1)-p-%: $(1)/%.c
-	$$(RISCV_GCC) $(2) -I../benchmarks/../env -I../benchmarks/common -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf ../benchmarks/common/syscalls.c -static -nostdlib ../benchmarks/common/crt.S  -nostartfiles -lm -lgcc -T ../benchmarks/common/test.ld -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -o $$@ $$<
+$$($(1)_p_tests): $(1)-p-%: $(1)/%.c ../benchmarks/common/crt.S ../benchmarks/common/syscalls.c
+	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) $(2)$$(LLVM_V_VERSION) $(3) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 $$(RISCV_LD_OPTS) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
 $(1)_tests += $$($(1)_p_tests)
 
-$$($(1)_v_tests): $(1)-v-%: $(1)/%.c
-	$$(RISCV_GCC) $(2) -I../benchmarks/../env -I../benchmarks/common -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 -mcmodel=medany -static -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf ../benchmarks/common/syscalls.c -static -nostdlib ../benchmarks/common/crt.S  -nostartfiles -lm -lgcc -T ../benchmarks/common/test.ld -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -o $$@ $$<
+$$($(1)_v_tests): $(1)-v-%: $(1)/%.c ../benchmarks/common/crt.S ../benchmarks/common/syscalls.c
+	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) $(2)$$(LLVM_V_VERSION) $(3) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 $$(RISCV_LD_OPTS) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
 $(1)_tests += $$($(1)_v_tests)
 
 $(1)_tests_dump = $$(addsuffix .dump, $$($(1)_tests))
@@ -114,7 +123,7 @@ $(eval $(call compile_template,rv64um,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv64ua,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv64uf,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv64ud,-march=rv64g -mabi=lp64))
-$(eval $(call compile_template_c,rv64uv,-march=rv64gcv -mabi=lp64))
+$(eval $(call compile_template_c,rv64uv,-march=rv64g, -mabi=lp64))
 $(eval $(call compile_template,rv64si,-march=rv64g -mabi=lp64))
 $(eval $(call compile_template,rv64mi,-march=rv64g -mabi=lp64))
 endif

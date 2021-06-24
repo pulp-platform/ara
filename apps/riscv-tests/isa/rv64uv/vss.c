@@ -2,99 +2,137 @@
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
 //
-// Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
-//         Basile Bougenot <bbougenot@student.ethz.ch>
+// Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
 #include "vector_macros.h"
 
+// Positive-stride tests
 void TEST_CASE1(void) {
-  VSET(4,e8,m1);
-  volatile uint32_t STRIDE = 1;
-  volatile uint8_t OUP[] = {0xde, 0xad, 0xbe, 0xef};
-  VLOAD_U8(v1,0xff,0x00,0xf0,0x0f);
-  __asm__ volatile("vsse8.v v1, (%0), %[rs2]"::"r"(OUP), [rs2] "r" (STRIDE));
-  VEC_EQUAL_U8_RAW(1,OUP,0xff,0x00,0xf0,0x0f);
+  VSET(4, e8, m1);
+  volatile uint8_t OUT1[] = {0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x00, 0x00};
+  uint64_t stride = 3;
+  VLOAD_8(v1, 0x9f, 0xe4, 0x19, 0x20);
+  asm volatile ("vsse8.v v1, (%0), %1" :: "r" (OUT1), "r" (stride));
+  VVCMP_U8(1, OUT1, 0x9f, 0x00, 0x00, 0xe4,
+                    0x00, 0x00, 0x19, 0x00,
+                    0x00, 0x20, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00);
 }
 
-// void TEST_CASE2(void) {
-//   VSET(4,e8,m1);
-//   volatile int STRIDE = 1;
-//   volatile int8_t OUP[] = {0xef, 0xef, 0xef, 0xef};
-//   VLOAD_8(v1,0xff,0x00,0xf0,0x0f);
-//   VLOAD_8(v0,12,0,0,0);
-//   __asm__ volatile("vsse8.v v1, (%0), %1, v0.t"::"r"(OUP), "r" (STRIDE));
-//   VEC_EQUAL_8_RAW(2,OUP,0xef,0xef,0xf0,0x0f);
-// }
+void TEST_CASE2(void) {
+  VSET(8, e16, m1);
+  volatile uint16_t OUT1[] = {0x0000, 0x0000, 0x0000, 0x0000,
+                              0x0000, 0x0000, 0x0000, 0x0000,
+                              0x0000, 0x0000, 0x0000, 0x0000,
+                              0x0000, 0x0000, 0x0000, 0x0000};
+  uint64_t stride = 4;
+  VLOAD_16(v1, 0x9f11, 0xe478, 0x1549, 0x3240, 0x2f11, 0xe448, 0x1546, 0x3220);
+  asm volatile ("vsse16.v v1, (%0), %1" :: "r" (OUT1), "r" (stride));
+  VVCMP_U16(2, OUT1, 0x9f11, 0x0000, 0xe478, 0x0000,
+                     0x1549, 0x0000, 0x3240, 0x0000,
+                     0x2f11, 0x0000, 0xe448, 0x0000,
+                     0x1546, 0x0000, 0x3220, 0x0000);
+}
 
 void TEST_CASE3(void) {
-  VSET(4,e16,m1);
-  volatile uint32_t STRIDE = -2;
-  volatile uint16_t OUP[] = {0xdead, 0xbeef, 0xdead, 0xbeef};
-  VLOAD_U16(v1,0xffff,0x0000,0xf0f0,0x0f0f);
-  __asm__ volatile("vsse16.v v1, (%0), %[rs2]"::"r"(&OUP[3]), [rs2] "r" (STRIDE));
-  VEC_EQUAL_U16_RAW(3,OUP,0x0f0f,0xf0f0,0x0000,0xffff);
+  VSET(4, e32, m1);
+  volatile uint32_t OUT1[] = {0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                              0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                              0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                              0x00000000, 0x00000000, 0x00000000, 0x00000000};
+  uint64_t stride = 8;
+  VLOAD_32(v1, 0x9f872456, 0xe1356784, 0x13241139, 0x20862497);
+  asm volatile ("vsse32.v v1, (%0), %1" :: "r" (OUT1), "r" (stride));
+  VVCMP_U32(3, OUT1, 0x9f872456, 0x00000000, 0xe1356784, 0x00000000,
+                     0x13241139, 0x00000000, 0x20862497, 0x00000000,
+                     0x00000000, 0x00000000, 0x00000000, 0x00000000,
+                     0x00000000, 0x00000000, 0x00000000, 0x00000000);
 }
 
-// void TEST_CASE4(void) {
-//   VSET(4,e16,m1);
-//   volatile int STRIDE = -2;
-//   volatile int16_t OUP[] = {0xdead, 0xbeef, 0xdead, 0xbeef};
-//   VLOAD_16(v1,0xffff,0x0000,0xf0f0,0x0f0f);
-//   VLOAD_16(v0,12,0,0,0);
-//   __asm__ volatile("vsse16.v v1, (%0), %1, v0.t"::"r"(&OUP[3]), "r" (STRIDE));
-//   VEC_EQUAL_16_RAW(2,OUP,0x0f0f,0xf0f0,0xdead,0xbeef);
-// }
+void TEST_CASE4(void) {
+  VSET(16, e64, m1);
+  volatile uint64_t OUT1[] = {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000};
+  uint64_t stride = 16;
+  VLOAD_64(v1, 0x9f87245315434136, 0xe135578794246784, 0x1315345345241139, 0x2086252110062497,
+               0x1100229933847136, 0xaaffaaffaaffaaff, 0xaf87245315434136, 0xa135578794246784,
+               0x2315345345241139, 0x1086252110062497, 0x1100229933847134, 0xaaffaaffaaffaaf4,
+               0x9315345345241139, 0x9086252110062497, 0x9100229933847134, 0x9affaaffaaffaaf4);
+  asm volatile ("vsse64.v v1, (%0), %1" :: "r" (OUT1), "r" (stride));
+  VVCMP_U64(4, OUT1, 0x9f87245315434136, 0x0000000000000000, 0xe135578794246784, 0x0000000000000000, \
+                     0x1315345345241139, 0x0000000000000000, 0x2086252110062497, 0x0000000000000000, \
+                     0x1100229933847136, 0x0000000000000000, 0xaaffaaffaaffaaff, 0x0000000000000000, \
+                     0xaf87245315434136, 0x0000000000000000, 0xa135578794246784, 0x0000000000000000, \
+                     0x2315345345241139, 0x0000000000000000, 0x1086252110062497, 0x0000000000000000, \
+                     0x1100229933847134, 0x0000000000000000, 0xaaffaaffaaffaaf4, 0x0000000000000000, \
+                     0x9315345345241139, 0x0000000000000000, 0x9086252110062497, 0x0000000000000000, \
+                     0x9100229933847134, 0x0000000000000000, 0x9affaaffaaffaaf4, 0x0000000000000000);
+}
 
+// Masked strided store
 void TEST_CASE5(void) {
-  VSET(4,e32,m1);
-  volatile uint32_t STRIDE = 4;
-  volatile uint32_t OUP5[] = {0xdeadbeef, 0xdeadbeef, 0xdeadbeef, 0xdeadbeef};
-  VLOAD_U32(v1,0xffffffff,0x00000000,0xf0f0f0f0,0x0f0f0f0f);
-  __asm__ volatile("vsse32.v v1, (%0), %[rs2]"::"r"(OUP5), [rs2] "r" (STRIDE));
-  VEC_EQUAL_U32_RAW(5,OUP5,0xffffffff,0x00000000,0xf0f0f0f0,0x0f0f0f0f);
+  VSET(4, e8, m1);
+  volatile uint8_t OUT1[] = {0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x00, 0x00};
+  uint64_t stride = 3;
+  VLOAD_8(v0, 0xAA);
+  VLOAD_8(v1, 0x9f, 0xe4, 0x19, 0x20);
+  asm volatile ("vsse8.v v1, (%0), %1, v0.t" :: "r" (OUT1), "r" (stride));
+  VVCMP_U8(5, OUT1, 0x00, 0x00, 0x00, 0xe4,
+                    0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x20, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00);
 }
 
-// void TEST_CASE6(void) {
-//   VSET(4,e32,m1);
-//   volatile int STRIDE = 4;
-//   volatile int32_t OUP[] = {0xdeadbeef, 0xdeadbeef, 0xdeadbeef, 0xdeadbeef};
-//   VLOAD_32(v1,0xffffffff,0x00000000,0xf0f0f0f0,0x0f0f0f0f);
-//   VLOAD_32(v0,12,0,0,0);
-//   __asm__ volatile("vsse32.v v1, (%0), %1, v0.t"::"r"(OUP), "r" (STRIDE));
-//   VEC_EQUAL_32_RAW(6,OUP,0xdeadbeef,0xdeadbeef,0xf0f0f0f0,0x0f0f0f0f);
-// }
-
-void TEST_CASE7(void) {
-  VSET(4,e64,m1);
-  volatile uint32_t STRIDE = 8;
-  volatile uint64_t OUP[] = {0xdeadbeefdeadbeef,0xdeadbeefdeadbeef,0xdeadbeefdeadbeef,0xdeadbeefdeadbeef};
-  VLOAD_U64(v1,0xdeadbeef00000000,0xdeadbeefffffffff,0xdeadbeeff0f0f0f0,0xdeadbeef0f0f0f0f);
-  __asm__ volatile("vsse64.v v1, (%0), %[rs2]"::"r"(OUP), [rs2] "r" (STRIDE));
-  VEC_EQUAL_U64_RAW(7,OUP,0xdeadbeef00000000,0xdeadbeefffffffff,0xdeadbeeff0f0f0f0,0xdeadbeef0f0f0f0f);
+void TEST_CASE6(void) {
+  VSET(16, e64, m1);
+  volatile uint64_t OUT1[] = {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, \
+                              0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000};
+  uint64_t stride = 16;
+  VLOAD_64(v1, 0x9f87245315434136, 0xe135578794246784, 0x1315345345241139, 0x2086252110062497,
+               0x1100229933847136, 0xaaffaaffaaffaaff, 0xaf87245315434136, 0xa135578794246784,
+               0x2315345345241139, 0x1086252110062497, 0x1100229933847134, 0xaaffaaffaaffaaf4,
+               0x9315345345241139, 0x9086252110062497, 0x9100229933847134, 0x9affaaffaaffaaf4);
+  VLOAD_8(v0, 0xAA, 0xAA);
+  asm volatile ("vsse64.v v1, (%0), %1, v0.t" :: "r" (OUT1), "r" (stride));
+  VVCMP_U64(6, OUT1, 0x0000000000000000, 0x0000000000000000, 0xe135578794246784, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0x2086252110062497, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0xaaffaaffaaffaaff, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0xa135578794246784, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0x1086252110062497, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0xaaffaaffaaffaaf4, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0x9086252110062497, 0x0000000000000000, \
+                     0x0000000000000000, 0x0000000000000000, 0x9affaaffaaffaaf4, 0x0000000000000000);
 }
-
-
-// void TEST_CASE8(void) {
-//   VSET(4,e64,m1);
-//   volatile int STRIDE = 8;
-//   volatile int64_t OUP[] = {0xdeadbeefdeadbeef,0xdeadbeefdeadbeef,0xdeadbeefdeadbeef,0xdeadbeefdeadbeef};
-//   VLOAD_64(v1,0xdeadbeef00000000,0xdeadbeefffffffff,0xdeadbeeff0f0f0f0,0xdeadbeef0f0f0f0f);
-//   VLOAD_64(v0,0x6,0,0,0x0);
-//   __asm__ volatile("vsse64.v v1, (%0), %1, v0.t"::"r"(OUP), "r" (STRIDE));
-//   VEC_EQUAL_64_RAW(8,OUP,0xdeadbeefdeadbeef,0xdeadbeefffffffff,0xdeadbeeff0f0f0f0,0xdeadbeefdeadbeef);
-// }
-
 
 int main(void){
   INIT_CHECK();
   enable_vec();
+
   TEST_CASE1();
+  TEST_CASE2();
   TEST_CASE3();
+  TEST_CASE4();
+
   TEST_CASE5();
-  TEST_CASE7();
-  // TEST_CASE2();
-  // TEST_CASE4();
-  // TEST_CASE6();
-  // TEST_CASE8();
+  TEST_CASE6();
+
   EXIT_CHECK();
 }

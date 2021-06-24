@@ -41,7 +41,7 @@ void matmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
   int64_t block_size_p;
 
   // Set the vector configuration
-  asm volatile("vsetvli %0, %1, e64, m4" : "=r"(block_size_p) : "r"(P));
+  asm volatile("vsetvli %0, %1, e64, m4, ta, ma" : "=r"(block_size_p) : "r"(P));
 
   // Slice the matrix into a manageable number of columns p_
   for (int64_t p = 0; p < P; p += block_size_p) {
@@ -52,7 +52,7 @@ void matmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
     const int64_t *b_ = b + p;
     int64_t *c_ = c + p;
 
-    asm volatile("vsetvli zero, %0, e64, m4" ::"r"(p_));
+    asm volatile("vsetvli zero, %0, e64, m4, ta, ma" ::"r"(p_));
 
     // Iterate over the rows
     for (int64_t m = 0; m < M; m += block_size) {
@@ -166,7 +166,7 @@ void matmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
   int64_t block_size_p;
 
   // Set the vector configuration
-  asm volatile("vsetvli %0, %1, e64, m2" : "=r"(block_size_p) : "r"(P));
+  asm volatile("vsetvli %0, %1, e64, m2, ta, ma" : "=r"(block_size_p) : "r"(P));
 
   // Slice the matrix into a manageable number of columns p_
   for (int64_t p = 0; p < P; p += block_size_p) {
@@ -177,7 +177,7 @@ void matmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
     const int64_t *b_ = b + p;
     int64_t *c_ = c + p;
 
-    asm volatile("vsetvli zero, %0, e64, m2" ::"r"(p_));
+    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(p_));
 
     // Iterate over the rows
     for (int64_t m = 0; m < M; m += block_size) {

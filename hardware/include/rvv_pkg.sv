@@ -118,12 +118,21 @@ package rvv_pkg;
 
   typedef struct packed {
     logic func1;
-    logic [30:20] zimm10;
+    logic [30:20] zimm11;
     logic [19:15] rs1;
     opcodev_func3_e func3;
     logic [11:7] rd;
     logic [6:0] opcode;
   } vsetvli_type_t;
+
+  typedef struct packed {
+    logic [31:30] func2;
+    logic [29:20] zimm10;
+    logic [19:15] uimm5;
+    opcodev_func3_e func3;
+    logic [11:7] rd;
+    logic [6:0] opcode;
+  } vsetivli_type_t;
 
   typedef struct packed {
     logic [31:25] func7;
@@ -141,6 +150,7 @@ package rvv_pkg;
     vamo_type_t vamo_type;
     varith_type_t varith_type;
     vsetvli_type_t vsetvli_type;
+    vsetivli_type_t vsetivli_type;
     vsetvl_type_t vsetvl_type;
   } rvv_instruction_t;
 

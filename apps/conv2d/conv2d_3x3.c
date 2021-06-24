@@ -46,7 +46,7 @@ void conv2d_vec_4xC_slice_init_3x3(int64_t *o, int64_t C) {
   int64_t ldo = C << 3;
 
   // Set the vector configuration
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
   // Fetch 4 output rows
   asm volatile("vmv.v.i v0,  0; add %0, %0, %1" : "+&r"(o) : "r"(ldo));
   asm volatile("vmv.v.i v2,  0; add %0, %0, %1" : "+&r"(o) : "r"(ldo));
@@ -60,7 +60,7 @@ void conv2d_vec_4xC_slice_preload_3x3(int64_t *i, int64_t C, int64_t F) {
   int64_t ldi = (C + F - 1) << 3;
 
   // Set the vector configuration
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Fetch the first floor(F/2) + 1 input rows
   asm volatile("vle64.v v8,  (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
   asm volatile("vle64.v v10, (%0); add %0, %0, %1" : "+r"(i));
@@ -80,7 +80,7 @@ void conv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
   int64_t *f_;
 
   // Compute on C elements
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Fetch 4 + F - 1 - 2 rows of the input matrix
   asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
   asm volatile("vle64.v v14, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
@@ -88,7 +88,7 @@ void conv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
   asm volatile("vle64.v v18, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
 
   // Compute on C elements
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
   f_ = f;
   // Fetch the first column of the filter, and start calculating its
   // contribution on the four output rows (v0, v2, v4, v6)
@@ -176,7 +176,7 @@ void conv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
 
 void conv2d_vec_4xC_slice_move_3x3(int64_t C, int64_t F) {
   // Move C+F-1 elements
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Move the last floor(F/2) + 1 input rows
   asm volatile("vmv.v.v v8, v16");
   asm volatile("vmv.v.v v10, v18");

@@ -45,7 +45,7 @@ void conv2d_vec_4xC_slice_init_7x7(int64_t *o, int64_t C) {
   int64_t ldo = C << 3;
 
   // Set the vector configuration
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
   // Fetch 2 output rows
   asm volatile("vmv.v.i v0,  0; add %0, %0, %1" : "+&r"(o) : "r"(ldo));
   asm volatile("vmv.v.i v2,  0;" : "+r"(o));
@@ -57,7 +57,7 @@ void conv2d_vec_4xC_slice_preload_7x7(int64_t *i, int64_t C, int64_t F) {
   int64_t ldi = (C + F - 1) << 3;
 
   // Set the vector configuration
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Fetch the first F-1 = 6 input rows
   asm volatile("vle64.v v4,  (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
   asm volatile("vle64.v v6,  (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
@@ -82,13 +82,13 @@ void conv2d_vec_4xC_7x7(int64_t *o, int64_t *i, int64_t *f, int64_t C,
   int64_t *f_;
 
   // Compute on C elements
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Fetch other 2 rows of the input matrix
   asm volatile("vle64.v v16, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
   asm volatile("vle64.v v18, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
 
   // Compute on C elements
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
   f_ = f;
   // Fetch the first column of the filter, and start calculating its
   // contribution on the two output rows (v0, v2)
@@ -222,7 +222,7 @@ void conv2d_vec_4xC_7x7(int64_t *o, int64_t *i, int64_t *f, int64_t C,
 
 void conv2d_vec_4xC_slice_move_7x7(int64_t C, int64_t F) {
   // Move C+F-1 elements
-  asm volatile("vsetvli zero, %0, e64, m2" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Move the last F-1 input rows
   asm volatile("vmv.v.v v4, v8");
   asm volatile("vmv.v.v v6, v10");
