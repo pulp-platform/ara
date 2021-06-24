@@ -8,45 +8,44 @@
 #include "vector_macros.h"
 
 void TEST_CASE1() {
-  VSET(4,e32,m1);
-  VLOAD_F32(v2,_f(3.14159265).i,_f(-0.778).i,_f(-3000).i,_f(-5667.2346).i);
-  VLOAD_F32(v3,_f(3.14159265).i,_f(-0.779).i,_f(-2000).i,_f(-5667.2346).i);
+  VSET(4, e32, m1);
+  VLOAD_F32(v2, _f(3.14159265).i, _f(-0.778).i, _f(-3000).i, _f(-5667.2346).i);
+  VLOAD_F32(v3, _f(3.14159265).i, _f(-0.779).i, _f(-2000).i, _f(-5667.2346).i);
   __asm__ volatile("vmfle.vv v1, v2, v3");
-  VEC_CMP_U32(1,v1,13,0,0,0);
+  VEC_CMP_U32(1, v1, 13, 0, 0, 0);
 }
 
 void TEST_CASE2() {
-  VSET(4,e32,m1);
-  VLOAD_F32(v2,_f(3.14159265).i,_f(-0.778).i,_f(-3000).i,_f(-5667.2346).i);
-  VLOAD_F32(v3,_f(3.14159265).i,_f(-0.779).i,_f(-2000).i,_f(-5667.2346).i);
-  VLOAD_U32(v0,5,0,0,0);
+  VSET(4, e32, m1);
+  VLOAD_F32(v2, _f(3.14159265).i, _f(-0.778).i, _f(-3000).i, _f(-5667.2346).i);
+  VLOAD_F32(v3, _f(3.14159265).i, _f(-0.779).i, _f(-2000).i, _f(-5667.2346).i);
+  VLOAD_U32(v0, 5, 0, 0, 0);
   CLEAR(v1);
   __asm__ volatile("vmfle.vv v1, v2, v3, v0.t");
-  VEC_CMP_U32(2,v1,5,0,0,0);
+  VEC_CMP_U32(2, v1, 5, 0, 0, 0);
   VPRINTF("bla\n");
 }
 
 void TEST_CASE3() {
-  VSET(4,e32,m1);
-  VLOAD_F32(v2,_f(3.14159265).i,_f(-0.778).i,_f(1024).i,_f(-5667.2346).i);
-  FLOAD32(f10,_f(3.14159264).i);
+  VSET(4, e32, m1);
+  VLOAD_F32(v2, _f(3.14159265).i, _f(-0.778).i, _f(1024).i, _f(-5667.2346).i);
+  FLOAD32(f10, _f(3.14159264).i);
   CLEAR(v1);
   __asm__ volatile("vmfle.vf v1, v2, f10");
-  VEC_CMP_U32(3,v1,11,0,0,0);
+  VEC_CMP_U32(3, v1, 11, 0, 0, 0);
 }
 
 void TEST_CASE4() {
-  VSET(4,e32,m1);
-  VLOAD_F32(v2,_f(3.14159265).i,_f(-0.778).i,_f(1024).i,_f(-5667.2346).i);
-  FLOAD32(f10,_f(3.14159264).i);
-  VLOAD_U32(v0,5,0,1,0);
+  VSET(4, e32, m1);
+  VLOAD_F32(v2, _f(3.14159265).i, _f(-0.778).i, _f(1024).i, _f(-5667.2346).i);
+  FLOAD32(f10, _f(3.14159264).i);
+  VLOAD_U32(v0, 5, 0, 1, 0);
   CLEAR(v1);
   __asm__ volatile("vmfle.vf v1, v2, f10, v0.t");
-  VEC_CMP_U32(4,v1,1,0,0,0);
-
+  VEC_CMP_U32(4, v1, 1, 0, 0, 0);
 }
 
-int main(void){
+int main(void) {
   INIT_CHECK();
   enable_vec();
   enable_fp();

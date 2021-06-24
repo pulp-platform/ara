@@ -5,6 +5,11 @@
 // Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 //         Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
+#ifndef __FLOAT_MACROS_H__
+#define __FLOAT_MACROS_H__
+
+#include <stdint.h>
+
 // Zero encoding is common to all the formats
 #define pZero  0x0
 
@@ -138,3 +143,5 @@ typedef union double_hex {
     nan_boxed_val.ui64 = VAL_64B;               \
     VAR_NAME = nan_boxed_val.d;                 \
   } while(0)
+
+#endif // __FLOAT_MACROS_H__

@@ -5,23 +5,23 @@
 // Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 //         Basile Bougenot <bbougenot@student.ethz.ch>
 
-#include <stdint.h>
 #include "vector_macros.h"
+#include <stdint.h>
 
-int main(void){
+int main(void) {
   INIT_CHECK();
   enable_vec();
   uint64_t scalar = 314;
   uint64_t scalar2 = 0;
-  __asm__ volatile("vsetvl t0, %[A], %[B]" :: [A] "r" (scalar), [B] "r" (scalar2));
+  __asm__ volatile("vsetvl t0, %[A], %[B]" ::[A] "r"(scalar), [B] "r"(scalar2));
   scalar = 15;
   scalar2 = 5;
-  __asm__ volatile("vsetvl t0, %[A], %[B]" :: [A] "r" (scalar), [B] "r" (scalar2));
+  __asm__ volatile("vsetvl t0, %[A], %[B]" ::[A] "r"(scalar), [B] "r"(scalar2));
   scalar = 255;
   scalar2 = 10;
-  __asm__ volatile("vsetvl t0, %[A], %[B]" :: [A] "r" (scalar), [B] "r" (scalar2));
+  __asm__ volatile("vsetvl t0, %[A], %[B]" ::[A] "r"(scalar), [B] "r"(scalar2));
   scalar = 69;
   scalar2 = 15;
-  __asm__ volatile("vsetvl t0, %[A], %[B]" :: [A] "r" (scalar), [B] "r" (scalar2));
-  return(0);
+  __asm__ volatile("vsetvl t0, %[A], %[B]" ::[A] "r"(scalar), [B] "r"(scalar2));
+  return (0);
 }
