@@ -8,8 +8,7 @@ extern int64_t timer;
 // Return the current value of the cycle counter
 inline int64_t get_cycle_count() {
   int64_t cycle_count;
-  asm volatile("csrr %[cycle_count], cycle"
-               : [ cycle_count ] "=r"(cycle_count));
+  asm volatile("csrr %[cycle_count], cycle" : [cycle_count] "=r"(cycle_count));
   return cycle_count;
 };
 

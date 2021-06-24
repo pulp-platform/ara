@@ -624,11 +624,9 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
                            (unsigned long)(value > 0 ? value : 0 - value),
                            value < 0, base, precision, width, flags);
         } else {
-          const int value = (flags & FLAGS_CHAR)
-                                ? (char)va_arg(va, int)
-                                : (flags & FLAGS_SHORT)
-                                      ? (short int)va_arg(va, int)
-                                      : va_arg(va, int);
+          const int value = (flags & FLAGS_CHAR)    ? (char)va_arg(va, int)
+                            : (flags & FLAGS_SHORT) ? (short int)va_arg(va, int)
+                                                    : va_arg(va, int);
           idx = _ntoa_long(out, buffer, idx, maxlen,
                            (unsigned int)(value > 0 ? value : 0 - value),
                            value < 0, base, precision, width, flags);
@@ -646,11 +644,10 @@ static int _vsnprintf(out_fct_type out, char *buffer, const size_t maxlen,
                            false, base, precision, width, flags);
         } else {
           const unsigned int value =
-              (flags & FLAGS_CHAR)
-                  ? (unsigned char)va_arg(va, unsigned int)
-                  : (flags & FLAGS_SHORT)
-                        ? (unsigned short int)va_arg(va, unsigned int)
-                        : va_arg(va, unsigned int);
+              (flags & FLAGS_CHAR) ? (unsigned char)va_arg(va, unsigned int)
+              : (flags & FLAGS_SHORT)
+                  ? (unsigned short int)va_arg(va, unsigned int)
+                  : va_arg(va, unsigned int);
           idx = _ntoa_long(out, buffer, idx, maxlen, value, false, base,
                            precision, width, flags);
         }
