@@ -5,25 +5,25 @@
 // Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 //         Basile Bougenot <bbougenot@student.ethz.ch>
 
-#include <stdint.h>
 #include "vector_macros.h"
+#include <stdint.h>
 
-int main(void){
+int main(void) {
   INIT_CHECK();
   enable_vec();
   uint64_t scalar = 314;
-  __asm__ volatile("vsetvli t0, %[A], e8, m1" :: [A] "r" (scalar));
+  __asm__ volatile("vsetvli t0, %[A], e8, m1" ::[A] "r"(scalar));
   scalar = 15;
-  __asm__ volatile("vsetvli t0, %[A], e16, m2" :: [A] "r" (scalar));
+  __asm__ volatile("vsetvli t0, %[A], e16, m2" ::[A] "r"(scalar));
   scalar = 255;
-  __asm__ volatile("vsetvli t0, %[A], e32, m4" :: [A] "r" (scalar));
+  __asm__ volatile("vsetvli t0, %[A], e32, m4" ::[A] "r"(scalar));
   scalar = 69;
-  __asm__ volatile("vsetvli t0, %[A], e64, m8" :: [A] "r" (scalar));
+  __asm__ volatile("vsetvli t0, %[A], e64, m8" ::[A] "r"(scalar));
   scalar = 69;
-  __asm__ volatile("vsetvli t0, %[A], e128, m8" :: [A] "r" (scalar));
+  __asm__ volatile("vsetvli t0, %[A], e128, m8" ::[A] "r"(scalar));
   scalar = 15;
-  __asm__ volatile("vsetvli t0, %[A], e8, m8" :: [A] "r" (scalar));
+  __asm__ volatile("vsetvli t0, %[A], e8, m8" ::[A] "r"(scalar));
   scalar = 10000;
-  __asm__ volatile("vsetvli t0, %[A], e16, m2" :: [A] "r" (scalar));
-  return(0);
+  __asm__ volatile("vsetvli t0, %[A], e16, m2" ::[A] "r"(scalar));
+  return (0);
 }

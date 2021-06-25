@@ -430,12 +430,74 @@ jobs:
           apps/riscv-tests/isa/*.dump
           apps/riscv-tests/isa/*.out32
 
+###################
+#  Linting stage  #
+###################
+
+  check-license:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+    - name: Install Python requirements
+      run: pip install -r python-requirements.txt
+    - name: Check license
+      run: python scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
+
+  check-clang-format:
+    runs-on: ubuntu-latest
+    needs: ['tc-llvm']
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+    - name: Install Python requirements
+      run: pip install -r python-requirements.txt
+    - name: Download the LLVM toolchain
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-llvm
+    - name: Untar LLVM
+      run: tar xvf tc-llvm.tar
+    - name: Run clang-format
+      run: |
+        for file in `find apps -type f -name "*.[c|h|cpp|hpp]" | grep -vP "apps/riscv-tests"`; do
+          ./scripts/run-clang-format.py --clang-format-executable install/riscv-llvm/bin/clang-format $file || EXIT_STATUS=$?
+        done
+        for file in `find apps/riscv-tests/isa/rv64uv -type f -name "*.[c|h|cpp|hpp]"`; do
+          ./scripts/run-clang-format.py --clang-format-executable install/riscv-llvm/bin/clang-format $file || EXIT_STATUS=$?
+        done
+        exit $EXIT_STATUS
+
+  check-trailing-whitespaces:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Determine base commit
+      run: |
+        if [[ -n $GITHUB_BASE_REF ]]; then
+          # Make sure we have the latest version of the target branch
+          git fetch origin $GITHUB_BASE_REF
+          echo "base=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
+        else
+          echo "base=HEAD~1" >> $GITHUB_ENV
+        fi
+
+    - name: Check for trailing whitespaces and tabs
+      run: git diff --check $base HEAD --
+
 ####################
 #  Clean-up stage  #
 ####################
 
   clean-up:
     runs-on: ubuntu-latest
+    if: always()
     needs: ["simulate-hello-world", "simulate-imatmul", "simulate-fmatmul", "simulate-conv2d", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
       - uses: actions/checkout@v2
@@ -448,3 +510,6 @@ jobs:
             tc-isa-sim
             tc-verilator
             compile-ara
+            compile-apps
+            compile-riscv-tests
+            riscv-tests-spike

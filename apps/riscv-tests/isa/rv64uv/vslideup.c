@@ -66,25 +66,25 @@ void TEST_CASE3() {
   VSET(16, e8, m1);
   VLOAD_8(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_8(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-  asm volatile("vslideup.vx v1, v2, %[A]" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A]" ::[A] "r"(scalar));
   VCMP_U8(9, v1, -1, -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
 
   VSET(16, e16, m1);
   VLOAD_16(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_16(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-  asm volatile("vslideup.vx v1, v2, %[A]" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A]" ::[A] "r"(scalar));
   VCMP_U16(10, v1, -1, -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
 
   VSET(16, e32, m1);
   VLOAD_32(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_32(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-  asm volatile("vslideup.vx v1, v2, %[A]" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A]" ::[A] "r"(scalar));
   VCMP_U32(11, v1, -1, -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
 
   VSET(16, e64, m1);
   VLOAD_64(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_64(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
-  asm volatile("vslideup.vx v1, v2, %[A]" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A]" ::[A] "r"(scalar));
   VCMP_U64(12, v1, -1, -1, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
 }
 
@@ -95,32 +95,32 @@ void TEST_CASE4() {
   VLOAD_8(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_8(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
   VLOAD_8(v0, 0xAA, 0xAA);
-  asm volatile("vslideup.vx v1, v2, %[A], v0.t" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A], v0.t" ::[A] "r"(scalar));
   VCMP_U8(13, v1, -1, -1, -1, 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13);
 
   VSET(16, e16, m1);
   VLOAD_16(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_16(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
   VLOAD_8(v0, 0xAA, 0xAA);
-  asm volatile("vslideup.vx v1, v2, %[A], v0.t" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A], v0.t" ::[A] "r"(scalar));
   VCMP_U16(14, v1, -1, -1, -1, 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13);
 
   VSET(16, e32, m1);
   VLOAD_32(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_32(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
   VLOAD_8(v0, 0xAA, 0xAA);
-  asm volatile("vslideup.vx v1, v2, %[A], v0.t" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A], v0.t" ::[A] "r"(scalar));
   VCMP_U32(15, v1, -1, -1, -1, 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13);
 
   VSET(16, e64, m1);
   VLOAD_64(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   VLOAD_64(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
   VLOAD_8(v0, 0xAA, 0xAA);
-  asm volatile("vslideup.vx v1, v2, %[A], v0.t" :: [A] "r" (scalar));
+  asm volatile("vslideup.vx v1, v2, %[A], v0.t" ::[A] "r"(scalar));
   VCMP_U64(16, v1, -1, -1, -1, 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13);
 }
 
-int main(void){
+int main(void) {
   INIT_CHECK();
   enable_vec();
 

@@ -88,13 +88,13 @@ void matmul_vec_4x4(double *c, const double *a, const double *b, int64_t N,
   b += P;
 
   // Prefetch one row of scalar values
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
 
   // Compute the multiplication
   int64_t n = 0;
@@ -104,7 +104,7 @@ void matmul_vec_4x4(double *c, const double *a, const double *b, int64_t N,
     a = (const double *)a_ + ++n;
 
     asm volatile("vfmacc.vf v0, %0, v16" ::"f"(t0));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
     a += N;
 
     // Load one row of B
@@ -112,13 +112,13 @@ void matmul_vec_4x4(double *c, const double *a, const double *b, int64_t N,
     b += P;
 
     asm volatile("vfmacc.vf v4, %0, v16" ::"f"(t1));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v8, %0, v16" ::"f"(t2));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v12, %0, v16" ::"f"(t3));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
 
     if (n == N - 1)
       break;
@@ -126,7 +126,7 @@ void matmul_vec_4x4(double *c, const double *a, const double *b, int64_t N,
     a = (const double *)a_ + ++n;
 
     asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
     a += N;
 
     // Load one row of B
@@ -134,13 +134,13 @@ void matmul_vec_4x4(double *c, const double *a, const double *b, int64_t N,
     b += P;
 
     asm volatile("vfmacc.vf v4, %0, v20" ::"f"(t1));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v8, %0, v20" ::"f"(t2));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v12, %0, v20" ::"f"(t3));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
   }
 
   // Last iteration: store results
@@ -217,21 +217,21 @@ void matmul_vec_8x8(double *c, const double *a, const double *b, int64_t N,
   b += P;
 
   // Prefetch one row of scalar values
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t4) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t4) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t5) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t5) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t6) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t6) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t7) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t7) : [a] "r"(a));
 
   // Compute the multiplication
   int64_t n = 0;
@@ -241,7 +241,7 @@ void matmul_vec_8x8(double *c, const double *a, const double *b, int64_t N,
     a = (const double *)a_ + ++n;
 
     asm volatile("vfmacc.vf v0, %0, v18" ::"f"(t0));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
     a += N;
 
     // Load one row of B
@@ -249,25 +249,25 @@ void matmul_vec_8x8(double *c, const double *a, const double *b, int64_t N,
     b += P;
 
     asm volatile("vfmacc.vf v2, %0, v18" ::"f"(t1));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v4, %0, v18" ::"f"(t2));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v6, %0, v18" ::"f"(t3));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v8, %0, v18" ::"f"(t4));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t4) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t4) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v10, %0, v18" ::"f"(t5));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t5) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t5) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v12, %0, v18" ::"f"(t6));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t6) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t6) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v14, %0, v18" ::"f"(t7));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t7) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t7) : [a] "r"(a));
 
     if (n == N - 1)
       break;
@@ -275,7 +275,7 @@ void matmul_vec_8x8(double *c, const double *a, const double *b, int64_t N,
     a = (const double *)a_ + ++n;
 
     asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
     a += N;
 
     // Load one row of B
@@ -283,25 +283,25 @@ void matmul_vec_8x8(double *c, const double *a, const double *b, int64_t N,
     b += P;
 
     asm volatile("vfmacc.vf v2, %0, v20" ::"f"(t1));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v4, %0, v20" ::"f"(t2));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v6, %0, v20" ::"f"(t3));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v8, %0, v20" ::"f"(t4));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t4) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t4) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v10, %0, v20" ::"f"(t5));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t5) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t5) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v12, %0, v20" ::"f"(t6));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t6) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t6) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v14, %0, v20" ::"f"(t7));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t7) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t7) : [a] "r"(a));
   }
 
   // Last iteration: store results
@@ -398,37 +398,37 @@ void matmul_vec_16x16(double *c, const double *a, const double *b, int64_t N,
   b += P;
 
   // Prefetch one row of scalar values
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t4) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t4) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t5) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t5) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t6) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t6) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t7) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t7) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t8) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t8) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t9) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t9) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t10) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t10) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t11) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t11) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t12) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t12) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t13) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t13) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t14) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t14) : [a] "r"(a));
   a += N;
-  asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t15) : [ a ] "r"(a));
+  asm volatile("fld %[t], (%[a])" : [t] "=f"(t15) : [a] "r"(a));
 
   // Compute the multiplication
   int64_t n = 0;
@@ -438,7 +438,7 @@ void matmul_vec_16x16(double *c, const double *a, const double *b, int64_t N,
     a = (const double *)a_ + ++n;
 
     asm volatile("vfmacc.vf v0, %0, v16" ::"f"(t0));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
     a += N;
 
     // Load one row of B
@@ -446,49 +446,49 @@ void matmul_vec_16x16(double *c, const double *a, const double *b, int64_t N,
     b += P;
 
     asm volatile("vfmacc.vf v1, %0, v16" ::"f"(t1));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v2, %0, v16" ::"f"(t2));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v3, %0, v16" ::"f"(t3));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v4, %0, v16" ::"f"(t4));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t4) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t4) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v5, %0, v16" ::"f"(t5));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t5) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t5) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v6, %0, v16" ::"f"(t6));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t6) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t6) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v7, %0, v16" ::"f"(t7));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t7) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t7) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v8, %0, v16" ::"f"(t8));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t8) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t8) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v9, %0, v16" ::"f"(t9));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t9) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t9) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v10, %0, v16" ::"f"(t10));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t10) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t10) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v11, %0, v16" ::"f"(t11));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t11) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t11) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v12, %0, v16" ::"f"(t12));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t12) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t12) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v13, %0, v16" ::"f"(t13));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t13) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t13) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v14, %0, v16" ::"f"(t14));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t14) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t14) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v15, %0, v16" ::"f"(t15));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t15) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t15) : [a] "r"(a));
 
     if (n == N - 1)
       break;
@@ -496,7 +496,7 @@ void matmul_vec_16x16(double *c, const double *a, const double *b, int64_t N,
     a = (const double *)a_ + ++n;
 
     asm volatile("vfmacc.vf v0, %0, v17" ::"f"(t0));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t0) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t0) : [a] "r"(a));
     a += N;
 
     // Load one row of B
@@ -504,49 +504,49 @@ void matmul_vec_16x16(double *c, const double *a, const double *b, int64_t N,
     b += P;
 
     asm volatile("vfmacc.vf v1, %0, v17" ::"f"(t1));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t1) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t1) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v2, %0, v17" ::"f"(t2));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t2) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t2) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v3, %0, v17" ::"f"(t3));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t3) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t3) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v4, %0, v17" ::"f"(t4));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t4) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t4) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v5, %0, v17" ::"f"(t5));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t5) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t5) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v6, %0, v17" ::"f"(t6));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t6) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t6) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v7, %0, v17" ::"f"(t7));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t7) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t7) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v8, %0, v17" ::"f"(t8));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t8) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t8) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v9, %0, v17" ::"f"(t9));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t9) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t9) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v10, %0, v17" ::"f"(t10));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t10) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t10) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v11, %0, v17" ::"f"(t11));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t11) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t11) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v12, %0, v17" ::"f"(t12));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t12) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t12) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v13, %0, v17" ::"f"(t13));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t13) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t13) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v14, %0, v17" ::"f"(t14));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t14) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t14) : [a] "r"(a));
     a += N;
     asm volatile("vfmacc.vf v15, %0, v17" ::"f"(t15));
-    asm volatile("fld %[t], (%[a])" : [ t ] "=f"(t15) : [ a ] "r"(a));
+    asm volatile("fld %[t], (%[a])" : [t] "=f"(t15) : [a] "r"(a));
   }
 
   // Last iteration: store results

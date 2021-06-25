@@ -54,7 +54,7 @@ void TEST_CASE5() {
   VCMP_U8(5, v1, 0x32, 0xF0);
 }
 
-int main(void){
+int main(void) {
   INIT_CHECK();
   enable_vec();
 
