@@ -10,8 +10,18 @@ ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$ARA_DIR)
 INSTALL_DIR := $(abspath $(ROOT_DIR)/../install)
 VERILATOR_INCLUDE := $(INSTALL_DIR)/verilator/share/verilator/include/vltstd
 
+# Choose Ara's configuration
+ifndef config
+	ifdef ARA_CONFIGURATION
+		config := $(ARA_CONFIGURATION)
+	else
+		config := default
+	endif
+endif
+
 # Include configuration
-include $(abspath $(ROOT_DIR)/../config/config.mk)
+config_file := $(ROOT_DIR)/../config/$(config).mk
+include $(abspath $(ROOT_DIR)/../config/$(config).mk)
 
 # build path
 buildpath      ?= build
@@ -89,13 +99,13 @@ $(buildpath)/$(library):
 
 # Compilation
 .PHONY: compile
-compile: dpi lib $(buildpath) bender $(buildpath)/compile.tcl
-$(buildpath)/compile.tcl: Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
-	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test $(bender_defs) > $(buildpath)/compile.tcl
-	echo "exit" >> $(buildpath)/compile.tcl
-	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile.tcl
+compile: dpi lib $(buildpath) bender $(buildpath)/compile_$(config).tcl
+$(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test $(bender_defs) > $(buildpath)/compile_$(config).tcl
+	echo "exit" >> $(buildpath)/compile_$(config).tcl
+	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile_$(config).tcl
 	# Remove the file if compilation did not succeed
-	if [ `cat $(buildpath)/transcript | grep "\*\* Error" | wc -l` -ne 0 ]; then rm $(buildpath)/compile.tcl; fi
+	if [ `cat $(buildpath)/transcript | grep "\*\* Error" | wc -l` -ne 0 ]; then rm $(buildpath)/compile_$(config).tcl; fi
 
 # Simulation
 .PHONY: sim
@@ -121,11 +131,11 @@ tests := $(ara_tests) $(cva6_tests)
 .PHONY: verilate
 verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
-$(veril_library)/V$(veril_top): Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
+$(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
-	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script
+	./bender script verilator -t rtl -t ara_test -t cva6_test -t verilator $(bender_defs) > $(veril_library)/bender_script_$(config)
 # Verilate the design
-	$(veril_path)/verilator -f $(veril_library)/bender_script                     \
+	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
   -O3                                                                           \
   -Wno-BLKANDNBLK                                                               \

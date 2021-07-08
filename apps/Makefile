@@ -39,7 +39,7 @@ all: $(BINARIES)
 
 # Pre-process the linker-script to correclty align the sections
 .PHONY: linker_script
-linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/config.mk
+linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/$(config).mk
 	chmod +x $(COMMON_DIR)/script/align_sections.sh
 	rm -f $(COMMON_DIR)/link.ld && cp $(COMMON_DIR)/arch.link.ld $(COMMON_DIR)/link.ld
 	$(COMMON_DIR)/script/align_sections.sh $(nr_lanes) $(COMMON_DIR)/link.ld
