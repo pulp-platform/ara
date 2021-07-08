@@ -169,6 +169,9 @@ jobs:
 
   compile-apps:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: tc-llvm
     steps:
     - uses: actions/checkout@v2
@@ -183,15 +186,18 @@ jobs:
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
     - name: Compile applications
-      run: make -C apps
+      run: config=${{ matrix.ara_config }} make -C apps
     - name: Upload applications
       uses: actions/upload-artifact@v2
       with:
-        name: compile-apps
+        name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
 
   compile-riscv-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-llvm", "tc-gcc", "tc-isa-sim"]
     steps:
     - uses: actions/checkout@v2
@@ -218,15 +224,18 @@ jobs:
     - name: Untar GCC
       run: tar xvf tc-gcc.tar
     - name: Compile applications
-      run: make -C apps riscv_tests
+      run: config=${{ matrix.ara_config }} make -C apps riscv_tests
     - name: Upload applications
       uses: actions/upload-artifact@v2
       with:
-        name: compile-riscv-tests
+        name: compile-riscv-tests-${{ matrix.ara_config }}
         path: apps/bin
 
   compile-ara:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-verilator", "tc-isa-sim"]
     steps:
     - uses: actions/checkout@v2
@@ -262,13 +271,13 @@ jobs:
       run: |
         sudo apt-get install libelf-dev
         make -C hardware apply-patches
-        make -C hardware verilate
+        config=${{ matrix.ara_config }} make -C hardware verilate
     - name: Tar Verilated model of Ara
       run: tar -cvf ara.tar hardware/build/verilator hardware/bender
     - name: Upload Ara Verilated model
       uses: actions/upload-artifact@v2
       with:
-        name: compile-ara
+        name: compile-ara-${{ matrix.ara_config }}
         path: ara.tar
 
 ####################
@@ -277,6 +286,9 @@ jobs:
 
   simulate-hello-world:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v2
@@ -289,19 +301,22 @@ jobs:
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
-        name: compile-ara
+        name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
-        name: compile-apps
+        name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run test
-      run: make -C hardware app=hello_world simv
+      run: config=${{ matrix.ara_config }} make -C hardware app=hello_world simv
 
   simulate-imatmul:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v2
@@ -314,19 +329,22 @@ jobs:
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
-        name: compile-ara
+        name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
-        name: compile-apps
+        name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run test
-      run: make -C hardware app=imatmul simv
+      run: config=${{ matrix.ara_config }} make -C hardware app=imatmul simv
 
   simulate-fmatmul:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v2
@@ -339,19 +357,22 @@ jobs:
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
-        name: compile-ara
+        name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
-        name: compile-apps
+        name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run test
-      run: make -C hardware app=fmatmul simv
+      run: config=${{ matrix.ara_config }} make -C hardware app=fmatmul simv
 
   simulate-conv2d:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v2
@@ -364,16 +385,16 @@ jobs:
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
-        name: compile-ara
+        name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get applications
       uses: actions/download-artifact@v2
       with:
-        name: compile-apps
+        name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run test
-      run: make -C hardware app=conv2d simv
+      run: config=${{ matrix.ara_config }} make -C hardware app=conv2d simv
 
 ########################
 #  RISC-V Tests stage  #
@@ -381,6 +402,9 @@ jobs:
 
   riscv-tests-simv:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v2
@@ -393,16 +417,16 @@ jobs:
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v2
       with:
-        name: compile-ara
+        name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get RISC-V tests
       uses: actions/download-artifact@v2
       with:
-        name: compile-riscv-tests
+        name: compile-riscv-tests-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run tests
-      run: make -C hardware -j4 riscv_tests_simv
+      run: config=${{ matrix.ara_config }} make -C hardware -j4 riscv_tests_simv
 
   riscv-tests-spike:
     runs-on: ubuntu-latest
@@ -518,7 +542,21 @@ jobs:
             tc-gcc
             tc-isa-sim
             tc-verilator
-            compile-ara
-            compile-apps
-            compile-riscv-tests
             riscv-tests-spike
+
+  clean-up-compile-runs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+    if: always()
+    needs: ["simulate-hello-world", "simulate-imatmul", "simulate-fmatmul", "simulate-conv2d", "riscv-tests-spike", "riscv-tests-simv"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Delete artifacts
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: |
+            compile-ara-${{ matrix.ara_config }}
+            compile-apps-${{ matrix.ara_config }}
+            compile-riscv-tests-${{ matrix.ara_config }}
