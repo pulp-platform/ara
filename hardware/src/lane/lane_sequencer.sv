@@ -377,14 +377,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               VSLIDEUP: begin
                 // We need to trim full words from the end of the vector that are not used
                 // as operands by the slide unit.
-                automatic vlen_t vslideup_adj = pe_req_i.stride >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
-
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes - vslideup_adj;
-
-                if ((operand_request_i[SlideAddrGenA].vl + vslideup_adj) * NrLanes != pe_req_i.vl)
-                  operand_request_i[SlideAddrGenA].vl += 1;
+                operand_request_i[SlideAddrGenA].vl =
+                  (pe_req_i.vl - pe_req_i.stride + NrLanes - 1) / NrLanes;
               end
               VSLIDEDOWN: begin
                 // We need to trim full words from the start of the vector that are not used
@@ -421,13 +417,14 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               VSLIDEUP: begin
                 // We need to trim full words from the end of the vector that are not used
                 // as operands by the slide unit.
-                automatic vlen_t vslideup_adj = (pe_req_i.stride / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew));
-
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[MaskM].vl = ((pe_req_i.vl / NrLanes / 8) >> (int'(EW64) - int'(pe_req_i.vtype.vsew))) - vslideup_adj;
+                operand_request_i[MaskM].vl =
+                  ((pe_req_i.vl - pe_req_i.stride + NrLanes - 1) / 8 / NrLanes)
+                  >> (int'(EW64) - int'(pe_req_i.vtype.vsew));
 
-                if (((operand_request_i[MaskM].vl + vslideup_adj) << (int'(EW64) - int'(pe_req_i.vtype.vsew))) * NrLanes * 8 != pe_req_i.vl)
+                if (((operand_request_i[MaskM].vl + pe_req_i.stride) <<
+                    (int'(EW64) - int'(pe_req_i.vtype.vsew)) * NrLanes * 8 != pe_req_i.vl))
                   operand_request_i[MaskM].vl += 1;
               end
               VSLIDEDOWN: begin
