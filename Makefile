@@ -131,7 +131,7 @@ ${VERIL_INSTALL_DIR}: Makefile
 	cd $(CURDIR)/toolchain/verilator && git reset --hard && git fetch && git checkout ${VERIL_VERSION}
 	# Compile verilator
 	cd $(CURDIR)/toolchain/verilator && git clean -xfdf && autoconf && \
-	./configure --prefix=$(VERIL_INSTALL_DIR) && make -j4 && make install
+	CC=clang CXX=clang++ ./configure --prefix=$(VERIL_INSTALL_DIR) && make -j4 && make install
 
 # RISC-V Tests
 riscv_tests:
