@@ -385,8 +385,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               VSLIDEDOWN: begin
                 // We need to trim full words from the start of the vector that are not used
                 // as operands by the slide unit.
-                automatic vlen_t vslidedown_adj         = pe_req_i.stride >> ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2));
-                operand_request_i[SlideAddrGenA].vstart = vslidedown_adj;
+                operand_request_i[SlideAddrGenA].vstart = pe_req_i.stride / NrLanes;
 
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
@@ -394,9 +393,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
                   operand_request_i[SlideAddrGenA].vl += 1;
 
-                // If the vslidedown stride is not a full VRF word, we will need to request an extra word
+                // If the vslidedown stride is not a full VRF word, we will need to request an extra
+                // word
                 if (!pe_req_i.use_scalar_op)
-                  if (pe_req_i.stride - (vslidedown_adj << ($clog2(NrLanes) + int'(EW64) - int'(pe_req_i.eew_vs2))) != 0)
+                  if ((pe_req_i.stride &
+                    ((vlen_t'(1) << ($clog2(NrLanes) + int'(EW64 - pe_req_i.eew_vs2))) - 1)) != 0)
                     operand_request_i[SlideAddrGenA].vl += 1;
               end
             endcase
