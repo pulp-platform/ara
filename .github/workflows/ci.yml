@@ -138,13 +138,18 @@ jobs:
         cache-name: cache-verilator
       with:
         path: install/verilator
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
+        key: ${{ runner.os }}-build-llvm10-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
         restore-keys:
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
+          ${{ runner.os }}-build-llvm10-${{ env.cache-name }}-${{ env.tc-verilator-hash }}
     - name: Download Verilator
       if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
       run: |
         git submodule update --init --recursive -- toolchain/verilator
+    - name: Install LLVM and Clang
+      if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "10.0"
     - name: Compile Verilator
       if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
       run: |
@@ -249,6 +254,10 @@ jobs:
         ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
     - name: Download RTL submodules
       run: git submodule update --init --recursive hardware
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "10.0"
     - name: Compile Verilated model of Ara
       run: |
         sudo apt-get install libelf-dev
