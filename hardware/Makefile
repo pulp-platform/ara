@@ -142,6 +142,7 @@ $(veril_library)/V$(veril_top): Makefile ../Bender.yml $(shell find src -type f)
   -Wno-WIDTHCONCAT                                                              \
   --Mdir $(veril_library) --trace                                               \
   -Itb/dpi                                                                      \
+  --compiler clang                                                              \
   -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top)"                       \
   -CFLAGS "-DNR_LANES=$(nr_lanes)"                                              \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
