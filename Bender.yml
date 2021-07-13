@@ -16,6 +16,9 @@ dependencies:
 workspace:
   checkout_dir: "hardware/deps"
 
+export_include_dirs:
+  - hardware/include
+
 sources:
   files:
     # Headers

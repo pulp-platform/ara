@@ -23,6 +23,15 @@ endif
 config_file := $(ROOT_DIR)/../config/$(config).mk
 include $(abspath $(ROOT_DIR)/../config/$(config).mk)
 
+# Clang flags for Verilator command
+ifneq (${CLANG_PATH},)
+	CLANG_CXXFLAGS := -CFLAGS "-nostdinc++ -isystem $(CLANG_PATH)/include/c++/v1"
+	CLANG_LDFLAGS  := -LDFLAGS "-L $(CLANG_PATH)/lib -Wl,-rpath,$(CLANG_PATH)/lib -lc++ -nostdlib++"
+else
+	CLANG_CXXFLAGS := ""
+	CLANG_LDFLAGS  := ""
+endif
+
 # build path
 buildpath      ?= build
 resultpath     ?= results
@@ -141,24 +150,26 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -Wno-BLKANDNBLK                                                               \
   -Wno-CASEINCOMPLETE                                                           \
   -Wno-CMPCONST                                                                 \
+  -Wno-LATCH                                                                    \
   -Wno-LITENDIAN                                                                \
-  -Wno-MODDUP                                                                   \
-  -Wno-PINMISSING                                                               \
-  -Wno-SYMRSVDWORD                                                              \
   -Wno-UNOPTFLAT                                                                \
   -Wno-UNPACKED                                                                 \
   -Wno-UNSIGNED                                                                 \
   -Wno-WIDTH                                                                    \
   -Wno-WIDTHCONCAT                                                              \
-  --Mdir $(veril_library) --trace                                               \
+  --hierarchical                                                                \
+  tb/verilator/waiver.vlt                                                       \
+  --Mdir $(veril_library)                                                       \
   -Itb/dpi                                                                      \
   --compiler clang                                                              \
-  -CFLAGS "-std=c++11 -Wall -DTOPLEVEL_NAME=$(veril_top)"                       \
+  -CFLAGS "-DTOPLEVEL_NAME=$(veril_top)"                                        \
   -CFLAGS "-DNR_LANES=$(nr_lanes)"                                              \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp \
+  $(CLANG_CXXFLAGS)                                                             \
   -LDFLAGS "-lelf"                                                              \
+  $(CLANG_LDFLAGS)                                                              \
   --exe                                                                         \
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp/*.cc            \
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp/*.cc      \
