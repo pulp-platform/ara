@@ -253,7 +253,7 @@ static void WriteSegment(const MemArea &m, uint32_t offset,
       "0x" << std::hex << m.addr_loc.size << " "
       << "write with offset: 0x" << std::hex << offset << " "
       << "write with size: 0x" << std::hex << data.size() << "\n";
-  assert(m.width_byte <= 32);
+  assert(m.width_byte <= 64);
   assert(m.addr_loc.size == 0 || offset + data.size() <= m.addr_loc.size);
   assert((offset % m.width_byte) == 0);
 
@@ -262,11 +262,11 @@ static void WriteSegment(const MemArea &m, uint32_t offset,
   SVScoped scoped(m.location.data());
 
   // This "mini buffer" is used to transfer each write to SystemVerilog. It's
-  // not massively efficient, but doing so ensures that we pass 256 bits (32
+  // not massively efficient, but doing so ensures that we pass 512 bits (64
   // bytes) of initialised data each time. This is for simutil_set_mem (defined
   // in prim_util_memload.svh), whose "val" argument has SystemVerilog type bit
-  // [255:0].
-  uint8_t minibuf[32];
+  // [511:0].
+  uint8_t minibuf[64];
   memset(minibuf, 0, sizeof minibuf);
   assert(m.width_byte <= sizeof minibuf);
 
@@ -421,8 +421,8 @@ bool DpiMemUtil::RegisterMemoryArea(const std::string name,
                                     const std::string location,
                                     size_t width_bit,
                                     const MemAreaLoc *addr_loc) {
-  assert((width_bit <= 256) &&
-         "TODO: Memory loading only supported up to 256 bits.");
+  assert((width_bit <= 512) &&
+         "TODO: Memory loading only supported up to 512 bits.");
   assert(width_bit % 8 == 0);
 
   // First, create and register the memory by name
