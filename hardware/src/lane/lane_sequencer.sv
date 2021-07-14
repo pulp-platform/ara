@@ -190,6 +190,13 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
         if (lane_id_i < pe_req_i.vl[idx_width(NrLanes)-1:0]) vfu_operation_d.vl += 1;
 
+        // Mute request if the instruction runs in the lane and the vl is zero.
+        if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu})) begin
+          vfu_operation_valid_d = 1'b0;
+          // We are already done with this instruction
+          vinsn_done_d[pe_req_i.id] |= 1'b1;
+        end
+
         // Vector start calculation
         vfu_operation_d.vstart = pe_req_i.vstart / NrLanes;
         // If lane_id_i < vstart % NrLanes, this lane needs to execute one micro-operation less.
