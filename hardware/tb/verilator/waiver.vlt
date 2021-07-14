@@ -17,5 +17,8 @@ lint_off -rule MODDUP
 // Ignore missing pins on Ariane
 lint_off -rule PINMISSING -file "*/cva6/*" -match "*"
 
+// Ignore missing pins on the axi_cdc_src
+lint_off -rule PINMISSING -file "*/axi/*" -match "*"
+
 // Ignore usage of reserved words on Ariane
 lint_off -rule SYMRSVDWORD -file "*/cva6/*" -match "*"
