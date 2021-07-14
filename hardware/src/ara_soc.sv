@@ -16,6 +16,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  int           unsigned AxiAddrWidth = 64,
     parameter  int           unsigned AxiUserWidth = 1,
     parameter  int           unsigned AxiIdWidth   = 6,
+    // Main memory
+    parameter  int           unsigned L2NumWords   = 2**21,
     // Dependant parameters. DO NOT CHANGE!
     localparam type                   axi_data_t   = logic [AxiDataWidth-1:0],
     localparam type                   axi_strb_t   = logic [AxiDataWidth/8-1:0],
@@ -23,68 +25,22 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     localparam type                   axi_user_t   = logic [AxiUserWidth-1:0],
     localparam type                   axi_id_t     = logic [AxiIdWidth-1:0]
   ) (
-    input  logic             clk_i,
-    input  logic             rst_ni,
-    output logic      [63:0] exit_o,
+    input  logic        clk_i,
+    input  logic        rst_ni,
+    output logic [63:0] exit_o,
     // Scan chain
-    input  logic             scan_enable_i,
-    input  logic             scan_data_i,
-    output logic             scan_data_o,
+    input  logic        scan_enable_i,
+    input  logic        scan_data_i,
+    output logic        scan_data_o,
     // UART APB interface
-    output logic             uart_penable_o,
-    output logic             uart_pwrite_o,
-    output logic      [31:0] uart_paddr_o,
-    output logic             uart_psel_o,
-    output logic      [31:0] uart_pwdata_o,
-    input  logic      [31:0] uart_prdata_i,
-    input  logic             uart_pready_i,
-    input  logic             uart_pslverr_i,
-    // AXI interface
-    output logic             axi_aw_valid_o,
-    output axi_id_t          axi_aw_id_o,
-    output axi_addr_t        axi_aw_addr_o,
-    output len_t             axi_aw_len_o,
-    output size_t            axi_aw_size_o,
-    output burst_t           axi_aw_burst_o,
-    output logic             axi_aw_lock_o,
-    output cache_t           axi_aw_cache_o,
-    output prot_t            axi_aw_prot_o,
-    output qos_t             axi_aw_qos_o,
-    output region_t          axi_aw_region_o,
-    output atop_t            axi_aw_atop_o,
-    output axi_user_t        axi_aw_user_o,
-    input  logic             axi_aw_ready_i,
-    output logic             axi_w_valid_o,
-    output axi_data_t        axi_w_data_o,
-    output axi_strb_t        axi_w_strb_o,
-    output logic             axi_w_last_o,
-    output axi_user_t        axi_w_user_o,
-    input  logic             axi_w_ready_i,
-    input  logic             axi_b_valid_i,
-    input  axi_id_t          axi_b_id_i,
-    input  resp_t            axi_b_resp_i,
-    input  axi_user_t        axi_b_user_i,
-    output logic             axi_b_ready_o,
-    output logic             axi_ar_valid_o,
-    output axi_id_t          axi_ar_id_o,
-    output axi_addr_t        axi_ar_addr_o,
-    output len_t             axi_ar_len_o,
-    output size_t            axi_ar_size_o,
-    output burst_t           axi_ar_burst_o,
-    output logic             axi_ar_lock_o,
-    output cache_t           axi_ar_cache_o,
-    output prot_t            axi_ar_prot_o,
-    output qos_t             axi_ar_qos_o,
-    output region_t          axi_ar_region_o,
-    output axi_user_t        axi_ar_user_o,
-    input  logic             axi_ar_ready_i,
-    input  logic             axi_r_valid_i,
-    input  axi_id_t          axi_r_id_i,
-    input  axi_data_t        axi_r_data_i,
-    input  resp_t            axi_r_resp_i,
-    input  logic             axi_r_last_i,
-    input  axi_user_t        axi_r_user_i,
-    output logic             axi_r_ready_o
+    output logic        uart_penable_o,
+    output logic        uart_pwrite_o,
+    output logic [31:0] uart_paddr_o,
+    output logic        uart_psel_o,
+    output logic [31:0] uart_pwdata_o,
+    input  logic [31:0] uart_prdata_i,
+    input  logic        uart_pready_i,
+    input  logic        uart_pslverr_i
   );
 
   //////////////////////
@@ -207,9 +163,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     MaxSlvTrans       : 4,
     FallThrough       : 1'b0,
     LatencyMode       : axi_pkg::CUT_MST_PORTS,
-    PipelineStages    : 0,
     AxiIdWidthSlvPorts: AxiCoreIdWidth,
     AxiIdUsedSlvPorts : AxiCoreIdWidth,
+    UniqueIds         : 1'b0,
     AxiAddrWidth      : AxiAddrWidth,
     AxiDataWidth      : AxiWideDataWidth,
     NoAddrRules       : NrAXISlaves
@@ -255,6 +211,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   //  L2  //
   //////////
 
+  `include "common_cells/registers.svh"
+
   // The L2 memory does not support atomics
 
   axi_soc_wide_req_t  l2mem_wide_axi_req_wo_atomics;
@@ -273,109 +231,55 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .mst_resp_i(l2mem_wide_axi_resp_wo_atomics)
   );
 
-  // AXI interface with the DRAM
-  axi_req_t  dram_wide_axi_req;
-  axi_resp_t dram_wide_axi_resp;
+  logic                      l2_req;
+  logic                      l2_we;
+  logic [AxiAddrWidth-1:0]   l2_addr;
+  logic [AxiDataWidth/8-1:0] l2_be;
+  logic [AxiDataWidth-1:0]   l2_wdata;
+  logic [AxiDataWidth-1:0]   l2_rdata;
+  logic                      l2_rvalid;
 
-  axi_llc_top #(
-    .SetAssociativity (8                         ),
-    .NumLines         (64                        ),
-    .NumBlocks        (8                         ),
-    .AxiIdWidth       (AxiSocIdWidth             ),
-    .AxiAddrWidth     (AxiAddrWidth              ),
-    .AxiDataWidth     (AxiWideDataWidth          ),
-    .AxiUserWidth     (AxiUserWidth              ),
-    .AxiLiteAddrWidth (AxiAddrWidth              ),
-    .AxiLiteDataWidth (AxiNarrowDataWidth        ),
-    .slv_req_t        (axi_soc_wide_req_t        ),
-    .slv_resp_t       (axi_soc_wide_resp_t       ),
-    .mst_req_t        (axi_req_t                 ),
-    .mst_resp_t       (axi_resp_t                ),
-    .lite_req_t       (axi_lite_soc_narrow_req_t ),
-    .lite_resp_t      (axi_lite_soc_narrow_resp_t),
-    .rule_full_t      (axi_pkg::xbar_rule_64_t   ),
-    .axi_addr_t       (axi_addr_t                )
-  ) i_l2 (
-    .clk_i               (clk_i                         ),
-    .rst_ni              (rst_ni                        ),
-    .test_i              (1'b0                          ),
-    .slv_req_i           (l2mem_wide_axi_req_wo_atomics ),
-    .slv_resp_o          (l2mem_wide_axi_resp_wo_atomics),
-    .mst_req_o           (dram_wide_axi_req             ),
-    .mst_resp_i          (dram_wide_axi_resp            ),
-    .conf_req_i          ('0                            ),
-    .conf_resp_o         (/* Unused */                  ),
-    .cached_start_addr_i (DRAMBase                      ),
-    .cached_end_addr_i   (DRAMBase + DRAMLength         ),
-    .spm_start_addr_i    ('0                            ),
-    .axi_llc_events_o    (/* Unused */                  )
+  axi_to_mem #(
+    .AddrWidth (AxiAddrWidth       ),
+    .DataWidth (AxiDataWidth       ),
+    .IdWidth   (AxiSocIdWidth      ),
+    .NumBanks  (1                  ),
+    .axi_req_t (axi_soc_wide_req_t ),
+    .axi_resp_t(axi_soc_wide_resp_t)
+  ) i_axi_to_mem (
+    .clk_i       (clk_i                         ),
+    .rst_ni      (rst_ni                        ),
+    .axi_req_i   (l2mem_wide_axi_req_wo_atomics ),
+    .axi_resp_o  (l2mem_wide_axi_resp_wo_atomics),
+    .mem_req_o   (l2_req                        ),
+    .mem_gnt_i   (l2_req                        ), // Always available
+    .mem_we_o    (l2_we                         ),
+    .mem_addr_o  (l2_addr                       ),
+    .mem_strb_o  (l2_be                         ),
+    .mem_wdata_o (l2_wdata                      ),
+    .mem_rdata_i (l2_rdata                      ),
+    .mem_rvalid_i(l2_rvalid                     ),
+    .mem_atop_o  (/* Unused */                  ),
+    .busy_o      (/* Unused */                  )
   );
 
-  axi_req_t  dram_wide_axi_req_cut;
-  axi_resp_t dram_wide_axi_resp_cut;
-
-  axi_cut #(
-    .ar_chan_t(ar_chan_t ),
-    .r_chan_t (r_chan_t  ),
-    .aw_chan_t(aw_chan_t ),
-    .w_chan_t (w_chan_t  ),
-    .b_chan_t (b_chan_t  ),
-    .req_t    (axi_req_t ),
-    .resp_t   (axi_resp_t)
-  ) i_dram_axi_cut (
-    .clk_i     (clk_i                 ),
-    .rst_ni    (rst_ni                ),
-    .slv_req_i (dram_wide_axi_req     ),
-    .slv_resp_o(dram_wide_axi_resp    ),
-    .mst_req_o (dram_wide_axi_req_cut ),
-    .mst_resp_i(dram_wide_axi_resp_cut)
+  tc_sram #(
+    .NumWords (L2NumWords  ),
+    .NumPorts (1           ),
+    .DataWidth(AxiDataWidth)
+  ) i_dram (
+    .clk_i  (clk_i                                                                      ),
+    .rst_ni (rst_ni                                                                     ),
+    .req_i  (l2_req                                                                     ),
+    .we_i   (l2_we                                                                      ),
+    .addr_i (l2_addr[$clog2(L2NumWords)-1+$clog2(AxiDataWidth/8):$clog2(AxiDataWidth/8)]),
+    .wdata_i(l2_wdata                                                                   ),
+    .be_i   (l2_be                                                                      ),
+    .rdata_o(l2_rdata                                                                   )
   );
 
-  assign axi_aw_valid_o                  = dram_wide_axi_req_cut.aw_valid;
-  assign axi_aw_id_o                     = dram_wide_axi_req_cut.aw.id;
-  assign axi_aw_addr_o                   = dram_wide_axi_req_cut.aw.addr;
-  assign axi_aw_len_o                    = dram_wide_axi_req_cut.aw.len;
-  assign axi_aw_size_o                   = dram_wide_axi_req_cut.aw.size;
-  assign axi_aw_burst_o                  = dram_wide_axi_req_cut.aw.burst;
-  assign axi_aw_lock_o                   = dram_wide_axi_req_cut.aw.lock;
-  assign axi_aw_cache_o                  = dram_wide_axi_req_cut.aw.cache;
-  assign axi_aw_prot_o                   = dram_wide_axi_req_cut.aw.prot;
-  assign axi_aw_qos_o                    = dram_wide_axi_req_cut.aw.qos;
-  assign axi_aw_region_o                 = dram_wide_axi_req_cut.aw.region;
-  assign axi_aw_atop_o                   = dram_wide_axi_req_cut.aw.atop;
-  assign axi_aw_user_o                   = dram_wide_axi_req_cut.aw.user;
-  assign dram_wide_axi_resp_cut.aw_ready = axi_aw_ready_i;
-  assign axi_w_valid_o                   = dram_wide_axi_req_cut.w_valid;
-  assign axi_w_data_o                    = dram_wide_axi_req_cut.w.data;
-  assign axi_w_strb_o                    = dram_wide_axi_req_cut.w.strb;
-  assign axi_w_last_o                    = dram_wide_axi_req_cut.w.last;
-  assign axi_w_user_o                    = dram_wide_axi_req_cut.w.user;
-  assign dram_wide_axi_resp_cut.w_ready  = axi_w_ready_i;
-  assign dram_wide_axi_resp_cut.b_valid  = axi_b_valid_i;
-  assign dram_wide_axi_resp_cut.b.id     = axi_b_id_i;
-  assign dram_wide_axi_resp_cut.b.resp   = axi_b_resp_i;
-  assign dram_wide_axi_resp_cut.b.user   = axi_b_user_i;
-  assign axi_b_ready_o                   = dram_wide_axi_req_cut.b_ready;
-  assign axi_ar_valid_o                  = dram_wide_axi_req_cut.ar_valid;
-  assign axi_ar_id_o                     = dram_wide_axi_req_cut.ar.id;
-  assign axi_ar_addr_o                   = dram_wide_axi_req_cut.ar.addr;
-  assign axi_ar_len_o                    = dram_wide_axi_req_cut.ar.len;
-  assign axi_ar_size_o                   = dram_wide_axi_req_cut.ar.size;
-  assign axi_ar_burst_o                  = dram_wide_axi_req_cut.ar.burst;
-  assign axi_ar_lock_o                   = dram_wide_axi_req_cut.ar.lock;
-  assign axi_ar_cache_o                  = dram_wide_axi_req_cut.ar.cache;
-  assign axi_ar_prot_o                   = dram_wide_axi_req_cut.ar.prot;
-  assign axi_ar_qos_o                    = dram_wide_axi_req_cut.ar.qos;
-  assign axi_ar_region_o                 = dram_wide_axi_req_cut.ar.region;
-  assign axi_ar_user_o                   = dram_wide_axi_req_cut.ar.user;
-  assign dram_wide_axi_resp_cut.ar_ready = axi_ar_ready_i;
-  assign dram_wide_axi_resp_cut.r_valid  = axi_r_valid_i;
-  assign dram_wide_axi_resp_cut.r.data   = axi_r_data_i;
-  assign dram_wide_axi_resp_cut.r.id     = axi_r_id_i;
-  assign dram_wide_axi_resp_cut.r.last   = axi_r_last_i;
-  assign dram_wide_axi_resp_cut.r.resp   = axi_r_resp_i;
-  assign dram_wide_axi_resp_cut.r.user   = axi_r_user_i;
-  assign axi_r_ready_o                   = dram_wide_axi_req_cut.r_ready;
+  // One-cycle latency
+  `FF(l2_rvalid, l2_req, 1'b0);
 
   ////////////
   //  UART  //
