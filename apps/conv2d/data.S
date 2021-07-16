@@ -15,7 +15,7 @@ F:
     .word 0x00000003
     .word 0x00000000
 .global i
-.align NR_LANES*4
+.align 16
 i:
     .word 0x0000229a
     .word 0x00000000
@@ -8730,7 +8730,7 @@ i:
     .word 0x000007bb
     .word 0x00000000
 .global f
-.align NR_LANES*4
+.align 16
 f:
     .word 0x00000000
     .word 0x00000000
@@ -8751,7 +8751,7 @@ f:
     .word 0x00000009
     .word 0x00000000
 .global o
-.align NR_LANES*4
+.align 16
 o:
     .word 0x00000000
     .word 0x00000000
@@ -16946,7 +16946,7 @@ o:
     .word 0x00000000
     .word 0x00000000
 .global golden_o
-.align NR_LANES*4
+.align 16
 golden_o:
     .word 0x000bf2d0
     .word 0x00000000

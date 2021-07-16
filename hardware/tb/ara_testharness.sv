@@ -10,7 +10,6 @@
 module ara_testharness #(
     // Ara-specific parameters
     parameter int unsigned NrLanes      = 0,
-    parameter int unsigned NumWords     = 2**21, // memory size
     // AXI Parameters
     parameter int unsigned AxiUserWidth = 1,
     parameter int unsigned AxiIdWidth   = 6,
@@ -23,7 +22,6 @@ module ara_testharness #(
   );
 
   `include "axi/typedef.svh"
-  `include "common_cells/registers.svh"
 
   /*****************
    *  Definitions  *
@@ -72,67 +70,21 @@ module ara_testharness #(
     .AxiIdWidth  (AxiIdWidth   ),
     .AxiUserWidth(AxiUserWidth )
   ) i_ara_soc (
-    .clk_i          (clk_i             ),
-    .rst_ni         (rst_ni            ),
-    .exit_o         (exit_o            ),
-    .scan_enable_i  (1'b0              ),
-    .scan_data_i    (1'b0              ),
-    .scan_data_o    (/* Unused */      ),
+    .clk_i         (clk_i       ),
+    .rst_ni        (rst_ni      ),
+    .exit_o        (exit_o      ),
+    .scan_enable_i (1'b0        ),
+    .scan_data_i   (1'b0        ),
+    .scan_data_o   (/* Unused */),
     // UART
-    .uart_penable_o (uart_penable      ),
-    .uart_pwrite_o  (uart_pwrite       ),
-    .uart_paddr_o   (uart_paddr        ),
-    .uart_psel_o    (uart_psel         ),
-    .uart_pwdata_o  (uart_pwdata       ),
-    .uart_prdata_i  (uart_prdata       ),
-    .uart_pready_i  (uart_pready       ),
-    .uart_pslverr_i (uart_pslverr      ),
-    // AXI
-    .axi_aw_valid_o (dram_req.aw_valid ),
-    .axi_aw_id_o    (dram_req.aw.id    ),
-    .axi_aw_addr_o  (dram_req.aw.addr  ),
-    .axi_aw_len_o   (dram_req.aw.len   ),
-    .axi_aw_size_o  (dram_req.aw.size  ),
-    .axi_aw_burst_o (dram_req.aw.burst ),
-    .axi_aw_lock_o  (dram_req.aw.lock  ),
-    .axi_aw_cache_o (dram_req.aw.cache ),
-    .axi_aw_prot_o  (dram_req.aw.prot  ),
-    .axi_aw_qos_o   (dram_req.aw.qos   ),
-    .axi_aw_region_o(dram_req.aw.region),
-    .axi_aw_atop_o  (dram_req.aw.atop  ),
-    .axi_aw_user_o  (dram_req.aw.user  ),
-    .axi_aw_ready_i (dram_resp.aw_ready),
-    .axi_w_valid_o  (dram_req.w_valid  ),
-    .axi_w_data_o   (dram_req.w.data   ),
-    .axi_w_strb_o   (dram_req.w.strb   ),
-    .axi_w_last_o   (dram_req.w.last   ),
-    .axi_w_user_o   (dram_req.w.user   ),
-    .axi_w_ready_i  (dram_resp.w_ready ),
-    .axi_b_valid_i  (dram_resp.b_valid ),
-    .axi_b_id_i     (dram_resp.b.id    ),
-    .axi_b_resp_i   (dram_resp.b.resp  ),
-    .axi_b_user_i   (dram_resp.b.user  ),
-    .axi_b_ready_o  (dram_req.b_ready  ),
-    .axi_ar_valid_o (dram_req.ar_valid ),
-    .axi_ar_id_o    (dram_req.ar.id    ),
-    .axi_ar_addr_o  (dram_req.ar.addr  ),
-    .axi_ar_len_o   (dram_req.ar.len   ),
-    .axi_ar_size_o  (dram_req.ar.size  ),
-    .axi_ar_burst_o (dram_req.ar.burst ),
-    .axi_ar_lock_o  (dram_req.ar.lock  ),
-    .axi_ar_cache_o (dram_req.ar.cache ),
-    .axi_ar_prot_o  (dram_req.ar.prot  ),
-    .axi_ar_qos_o   (dram_req.ar.qos   ),
-    .axi_ar_region_o(dram_req.ar.region),
-    .axi_ar_user_o  (dram_req.ar.user  ),
-    .axi_ar_ready_i (dram_resp.ar_ready),
-    .axi_r_valid_i  (dram_resp.r_valid ),
-    .axi_r_data_i   (dram_resp.r.data  ),
-    .axi_r_id_i     (dram_resp.r.id    ),
-    .axi_r_resp_i   (dram_resp.r.resp  ),
-    .axi_r_last_i   (dram_resp.r.last  ),
-    .axi_r_user_i   (dram_resp.r.user  ),
-    .axi_r_ready_o  (dram_req.r_ready  )
+    .uart_penable_o(uart_penable),
+    .uart_pwrite_o (uart_pwrite ),
+    .uart_paddr_o  (uart_paddr  ),
+    .uart_psel_o   (uart_psel   ),
+    .uart_pwdata_o (uart_pwdata ),
+    .uart_prdata_i (uart_prdata ),
+    .uart_pready_i (uart_pready ),
+    .uart_pslverr_i(uart_pslverr)
   );
 
   /**********
@@ -151,59 +103,5 @@ module ara_testharness #(
     .pready_o (uart_pready ),
     .pslverr_o(uart_pslverr)
   );
-
-  /**********
-   *  DRAM  *
-   **********/
-
-  logic                      req;
-  logic                      we;
-  logic [AxiAddrWidth-1:0]   addr;
-  logic [AxiDataWidth/8-1:0] be;
-  logic [AxiDataWidth-1:0]   wdata;
-  logic [AxiDataWidth-1:0]   rdata;
-  logic                      rvalid;
-
-  axi_to_mem #(
-    .AddrWidth (AxiAddrWidth),
-    .DataWidth (AxiDataWidth),
-    .IdWidth   (AxiIdWidth  ),
-    .NumBanks  (1           ),
-    .axi_req_t (axi_req_t   ),
-    .axi_resp_t(axi_resp_t  )
-  ) i_axi_to_mem (
-    .clk_i       (clk_i       ),
-    .rst_ni      (rst_ni      ),
-    .axi_req_i   (dram_req    ),
-    .axi_resp_o  (dram_resp   ),
-    .mem_req_o   (req         ),
-    .mem_gnt_i   (req         ), // Always available
-    .mem_we_o    (we          ),
-    .mem_addr_o  (addr        ),
-    .mem_strb_o  (be          ),
-    .mem_wdata_o (wdata       ),
-    .mem_rdata_i (rdata       ),
-    .mem_rvalid_i(rvalid      ),
-    .mem_atop_o  (/* Unused */),
-    .busy_o      (/* Unused */)
-  );
-
-  tc_sram #(
-    .NumWords (NumWords    ),
-    .NumPorts (1           ),
-    .DataWidth(AxiDataWidth)
-  ) i_dram (
-    .clk_i  (clk_i                                                                 ),
-    .rst_ni (rst_ni                                                                ),
-    .req_i  (req                                                                   ),
-    .we_i   (we                                                                    ),
-    .addr_i (addr[$clog2(NumWords)-1+$clog2(AxiDataWidth/8):$clog2(AxiDataWidth/8)]),
-    .wdata_i(wdata                                                                 ),
-    .be_i   (be                                                                    ),
-    .rdata_o(rdata                                                                 )
-  );
-
-  // One-cycle latency
-  `FF(rvalid, req, 1'b0);
 
 endmodule : ara_testharness

@@ -7,6 +7,8 @@
 // This is one of Ara's  lanes. It contains part of the vector register file
 // together with the execution units.
 
+`include "ara/ara.svh"
+
 module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes         = 1, // Number of lanes
     // Support for floating-point data types
@@ -34,10 +36,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic     [4:0]                                 fflags_ex_o,
     output logic                                           fflags_ex_valid_o,
     // Interface with the sequencer
-    input  pe_req_t                                        pe_req_i,
+    input  `STRUCT_PORT(pe_req_t)                          pe_req_i,
     input  logic                                           pe_req_valid_i,
     output logic                                           pe_req_ready_o,
-    output pe_resp_t                                       pe_resp_o,
+    output `STRUCT_PORT(pe_resp_t)                         pe_resp_o,
     // Interface with the Store unit
     output elen_t                                          stu_operand_o,
     output logic                                           stu_operand_valid_o,
@@ -62,9 +64,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          ldu_result_be_i,
     output logic                                           ldu_result_gnt_o,
     // Interface with the Mask unit
-    output elen_t    [2:0]                                 mask_operand_o,
-    output logic     [2:0]                                 mask_operand_valid_o,
-    input  logic     [2:0]                                 mask_operand_ready_i,
+    output `STRUCT_VECT(elen_t, [2:0])                     mask_operand_o,
+    output logic                [2:0]                      mask_operand_valid_o,
+    input  logic                [2:0]                      mask_operand_ready_i,
     input  logic                                           masku_result_req_i,
     input  vid_t                                           masku_result_id_i,
     input  vaddr_t                                         masku_result_addr_i,

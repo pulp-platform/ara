@@ -302,7 +302,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d = pe_req_i.vl << int'(pe_req_i.eew_vs1);
+        issue_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;

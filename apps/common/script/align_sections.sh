@@ -4,4 +4,4 @@
 # Align the sections by AxiWideBeWidth
 # NB: this script modify ALL the ALIGN directives
 let ALIGNMENT=4*$1;
-sed -i "s/ALIGN([0-9]*)/ALIGN($ALIGNMENT)/g" $2
+sed -i "s/ALIGNMENT/$ALIGNMENT/g" $2

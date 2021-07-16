@@ -206,7 +206,8 @@ package ara_pkg;
     elen_t scalar_op;
     logic use_scalar_op;
 
-    // 2nd scalar operand: stride for constant-strided vector load/stores, slide offset for vector slides
+    // 2nd scalar operand: stride for constant-strided vector load/stores, slide offset for vector
+    // slides
     elen_t stride;
 
     // Destination vector register
@@ -381,6 +382,40 @@ package ara_pkg;
             return idx[byte_idx[2:0]];
           end
         endcase
+      2: unique case (ew)
+          rvv_pkg::EW64: begin
+            automatic vlen_t [15:0] idx;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12;
+            idx[11] = 11; idx[10] = 10; idx[09] = 09; idx[08] = 08;
+            idx[07] = 07; idx[06] = 06; idx[05] = 05; idx[04] = 04;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[3:0]];
+          end
+          rvv_pkg::EW32: begin
+            automatic vlen_t [15:0] idx;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12;
+            idx[11] = 07; idx[10] = 06; idx[09] = 05; idx[08] = 04;
+            idx[07] = 11; idx[06] = 10; idx[05] = 09; idx[04] = 08;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[3:0]];
+          end
+          rvv_pkg::EW16: begin
+            automatic vlen_t [15:0] idx;
+            idx[15] = 15; idx[14] = 14; idx[13] = 07; idx[12] = 06;
+            idx[11] = 11; idx[10] = 10; idx[09] = 03; idx[08] = 02;
+            idx[07] = 13; idx[06] = 12; idx[05] = 05; idx[04] = 04;
+            idx[03] = 09; idx[02] = 08; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[3:0]];
+          end
+          rvv_pkg::EW8: begin
+            automatic vlen_t [15:0] idx;
+            idx[15] = 15; idx[14] = 07; idx[13] = 11; idx[12] = 03;
+            idx[11] = 13; idx[10] = 05; idx[09] = 09; idx[08] = 01;
+            idx[07] = 14; idx[06] = 06; idx[05] = 10; idx[04] = 02;
+            idx[03] = 12; idx[02] = 04; idx[01] = 08; idx[00] = 00;
+            return idx[byte_idx[3:0]];
+          end
+        endcase
       4: unique case (ew)
           rvv_pkg::EW64: begin
             automatic vlen_t [31:0] idx;
@@ -431,7 +466,234 @@ package ara_pkg;
             return idx[byte_idx[4:0]];
           end
         endcase
-    // TODO: Remaining NrLanes. Generalize this case accordingly to the function below.
+      8: unique case (ew)
+          rvv_pkg::EW64: begin
+            automatic vlen_t [63:0] idx;
+            idx[63] = 63; idx[62] = 62; idx[61] = 61; idx[60] = 60;
+            idx[59] = 59; idx[58] = 58; idx[57] = 57; idx[56] = 56;
+            idx[55] = 55; idx[54] = 54; idx[53] = 53; idx[52] = 52;
+            idx[51] = 51; idx[50] = 50; idx[49] = 49; idx[48] = 48;
+            idx[47] = 47; idx[46] = 46; idx[45] = 45; idx[44] = 44;
+            idx[43] = 43; idx[42] = 42; idx[41] = 41; idx[40] = 40;
+            idx[39] = 39; idx[38] = 38; idx[37] = 37; idx[36] = 36;
+            idx[35] = 35; idx[34] = 34; idx[33] = 33; idx[32] = 32;
+            idx[31] = 31; idx[30] = 30; idx[29] = 29; idx[28] = 28;
+            idx[27] = 27; idx[26] = 26; idx[25] = 25; idx[24] = 24;
+            idx[23] = 23; idx[22] = 22; idx[21] = 21; idx[20] = 20;
+            idx[19] = 19; idx[18] = 18; idx[17] = 17; idx[16] = 16;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12;
+            idx[11] = 11; idx[10] = 10; idx[09] = 09; idx[08] = 08;
+            idx[07] = 07; idx[06] = 06; idx[05] = 05; idx[04] = 04;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[5:0]];
+          end
+          rvv_pkg::EW32: begin
+            automatic vlen_t [63:0] idx;
+            idx[63] = 63; idx[62] = 62; idx[61] = 61; idx[60] = 60;
+            idx[59] = 55; idx[58] = 54; idx[57] = 53; idx[56] = 52;
+            idx[55] = 47; idx[54] = 46; idx[53] = 45; idx[52] = 44;
+            idx[51] = 39; idx[50] = 38; idx[49] = 37; idx[48] = 36;
+            idx[47] = 31; idx[46] = 30; idx[45] = 29; idx[44] = 28;
+            idx[43] = 23; idx[42] = 22; idx[41] = 21; idx[40] = 20;
+            idx[39] = 15; idx[38] = 14; idx[37] = 13; idx[36] = 12;
+            idx[35] = 07; idx[34] = 06; idx[33] = 05; idx[32] = 04;
+            idx[31] = 59; idx[30] = 58; idx[29] = 57; idx[28] = 56;
+            idx[27] = 51; idx[26] = 50; idx[25] = 49; idx[24] = 48;
+            idx[23] = 43; idx[22] = 42; idx[21] = 41; idx[20] = 40;
+            idx[19] = 35; idx[18] = 34; idx[17] = 33; idx[16] = 32;
+            idx[15] = 27; idx[14] = 26; idx[13] = 25; idx[12] = 24;
+            idx[11] = 19; idx[10] = 18; idx[09] = 17; idx[08] = 16;
+            idx[07] = 11; idx[06] = 10; idx[05] = 09; idx[04] = 08;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[5:0]];
+          end
+          rvv_pkg::EW16: begin
+            automatic vlen_t [63:0] idx;
+            idx[63] = 63; idx[62] = 62; idx[61] = 55; idx[60] = 54;
+            idx[59] = 47; idx[58] = 46; idx[57] = 39; idx[56] = 38;
+            idx[55] = 31; idx[54] = 30; idx[53] = 23; idx[52] = 22;
+            idx[51] = 15; idx[50] = 14; idx[49] = 07; idx[48] = 06;
+            idx[47] = 59; idx[46] = 58; idx[45] = 51; idx[44] = 50;
+            idx[43] = 43; idx[42] = 42; idx[41] = 35; idx[40] = 34;
+            idx[39] = 27; idx[38] = 26; idx[37] = 19; idx[36] = 18;
+            idx[35] = 11; idx[34] = 10; idx[33] = 03; idx[32] = 02;
+            idx[31] = 61; idx[30] = 60; idx[29] = 53; idx[28] = 52;
+            idx[27] = 45; idx[26] = 44; idx[25] = 37; idx[24] = 36;
+            idx[23] = 29; idx[22] = 28; idx[21] = 21; idx[20] = 20;
+            idx[19] = 13; idx[18] = 12; idx[17] = 05; idx[16] = 04;
+            idx[15] = 57; idx[14] = 56; idx[13] = 49; idx[12] = 48;
+            idx[11] = 41; idx[10] = 40; idx[09] = 33; idx[08] = 32;
+            idx[07] = 25; idx[06] = 24; idx[05] = 17; idx[04] = 16;
+            idx[03] = 09; idx[02] = 08; idx[01] = 01; idx[00] = 00;
+            return idx[byte_idx[5:0]];
+          end
+          rvv_pkg::EW8: begin
+            automatic vlen_t [63:0] idx;
+            idx[63] = 63; idx[62] = 55; idx[61] = 47; idx[60] = 39;
+            idx[59] = 31; idx[58] = 23; idx[57] = 15; idx[56] = 07;
+            idx[55] = 59; idx[54] = 51; idx[53] = 43; idx[52] = 35;
+            idx[51] = 27; idx[50] = 19; idx[49] = 11; idx[48] = 03;
+            idx[47] = 61; idx[46] = 53; idx[45] = 45; idx[44] = 37;
+            idx[43] = 29; idx[42] = 21; idx[41] = 13; idx[40] = 05;
+            idx[39] = 57; idx[38] = 49; idx[37] = 41; idx[36] = 33;
+            idx[35] = 25; idx[34] = 17; idx[33] = 09; idx[32] = 01;
+            idx[31] = 62; idx[30] = 54; idx[29] = 46; idx[28] = 38;
+            idx[27] = 30; idx[26] = 22; idx[25] = 14; idx[24] = 06;
+            idx[23] = 58; idx[22] = 50; idx[21] = 42; idx[20] = 34;
+            idx[19] = 26; idx[18] = 18; idx[17] = 10; idx[16] = 02;
+            idx[15] = 60; idx[14] = 52; idx[13] = 44; idx[12] = 36;
+            idx[11] = 28; idx[10] = 20; idx[09] = 12; idx[08] = 04;
+            idx[07] = 56; idx[06] = 48; idx[05] = 40; idx[04] = 32;
+            idx[03] = 24; idx[02] = 16; idx[01] = 08; idx[00] = 00;
+            return idx[byte_idx[5:0]];
+          end
+        endcase
+      16: unique case (ew)
+          rvv_pkg::EW64: begin
+            automatic vlen_t [127:0] idx;
+            idx[127] = 127; idx[126] = 126; idx[125] = 125; idx[124] = 124;
+            idx[123] = 123; idx[122] = 122; idx[121] = 121; idx[120] = 120;
+            idx[119] = 119; idx[118] = 118; idx[117] = 117; idx[116] = 116;
+            idx[115] = 115; idx[114] = 114; idx[113] = 113; idx[112] = 112;
+            idx[111] = 111; idx[110] = 110; idx[109] = 109; idx[108] = 108;
+            idx[107] = 107; idx[106] = 106; idx[105] = 105; idx[104] = 104;
+            idx[103] = 103; idx[102] = 102; idx[101] = 101; idx[100] = 100;
+            idx[099] = 099; idx[098] = 098; idx[097] = 097; idx[096] = 096;
+            idx[095] = 095; idx[094] = 094; idx[093] = 093; idx[092] = 092;
+            idx[091] = 091; idx[090] = 090; idx[089] = 089; idx[088] = 088;
+            idx[087] = 087; idx[086] = 086; idx[085] = 085; idx[084] = 084;
+            idx[083] = 083; idx[082] = 082; idx[081] = 081; idx[080] = 080;
+            idx[079] = 079; idx[078] = 078; idx[077] = 077; idx[076] = 076;
+            idx[075] = 075; idx[074] = 074; idx[073] = 073; idx[072] = 072;
+            idx[071] = 071; idx[070] = 070; idx[069] = 069; idx[068] = 068;
+            idx[067] = 067; idx[066] = 066; idx[065] = 065; idx[064] = 064;
+            idx[063] = 063; idx[062] = 062; idx[061] = 061; idx[060] = 060;
+            idx[059] = 059; idx[058] = 058; idx[057] = 057; idx[056] = 056;
+            idx[055] = 055; idx[054] = 054; idx[053] = 053; idx[052] = 052;
+            idx[051] = 051; idx[050] = 050; idx[049] = 049; idx[048] = 048;
+            idx[047] = 047; idx[046] = 046; idx[045] = 045; idx[044] = 044;
+            idx[043] = 043; idx[042] = 042; idx[041] = 041; idx[040] = 040;
+            idx[039] = 039; idx[038] = 038; idx[037] = 037; idx[036] = 036;
+            idx[035] = 035; idx[034] = 034; idx[033] = 033; idx[032] = 032;
+            idx[031] = 031; idx[030] = 030; idx[029] = 029; idx[028] = 028;
+            idx[027] = 027; idx[026] = 026; idx[025] = 025; idx[024] = 024;
+            idx[023] = 023; idx[022] = 022; idx[021] = 021; idx[020] = 020;
+            idx[019] = 019; idx[018] = 018; idx[017] = 017; idx[016] = 016;
+            idx[015] = 015; idx[014] = 014; idx[013] = 013; idx[012] = 012;
+            idx[011] = 011; idx[010] = 010; idx[009] = 009; idx[008] = 008;
+            idx[007] = 007; idx[006] = 006; idx[005] = 005; idx[004] = 004;
+            idx[003] = 003; idx[002] = 002; idx[001] = 001; idx[000] = 000;
+            return idx[byte_idx[6:0]];
+          end
+          rvv_pkg::EW32: begin
+            automatic vlen_t [127:0] idx;
+            idx[127] = 127; idx[126] = 126; idx[125] = 125; idx[124] = 124;
+            idx[123] = 119; idx[122] = 118; idx[121] = 117; idx[120] = 116;
+            idx[119] = 111; idx[118] = 110; idx[117] = 109; idx[116] = 108;
+            idx[115] = 103; idx[114] = 102; idx[113] = 101; idx[112] = 100;
+            idx[111] = 095; idx[110] = 094; idx[109] = 093; idx[108] = 092;
+            idx[107] = 087; idx[106] = 086; idx[105] = 085; idx[104] = 084;
+            idx[103] = 079; idx[102] = 078; idx[101] = 077; idx[100] = 076;
+            idx[099] = 071; idx[098] = 070; idx[097] = 069; idx[096] = 068;
+            idx[095] = 063; idx[094] = 062; idx[093] = 061; idx[092] = 060;
+            idx[091] = 055; idx[090] = 054; idx[089] = 053; idx[088] = 052;
+            idx[087] = 047; idx[086] = 046; idx[085] = 045; idx[084] = 044;
+            idx[083] = 039; idx[082] = 038; idx[081] = 037; idx[080] = 036;
+            idx[079] = 031; idx[078] = 030; idx[077] = 029; idx[076] = 028;
+            idx[075] = 023; idx[074] = 022; idx[073] = 021; idx[072] = 020;
+            idx[071] = 015; idx[070] = 014; idx[069] = 013; idx[068] = 012;
+            idx[067] = 007; idx[066] = 006; idx[065] = 005; idx[064] = 004;
+            idx[063] = 123; idx[062] = 122; idx[061] = 121; idx[060] = 120;
+            idx[059] = 115; idx[058] = 114; idx[057] = 113; idx[056] = 112;
+            idx[055] = 107; idx[054] = 106; idx[053] = 105; idx[052] = 104;
+            idx[051] = 099; idx[050] = 098; idx[049] = 097; idx[048] = 096;
+            idx[047] = 091; idx[046] = 090; idx[045] = 089; idx[044] = 088;
+            idx[043] = 083; idx[042] = 082; idx[041] = 081; idx[040] = 080;
+            idx[039] = 075; idx[038] = 074; idx[037] = 073; idx[036] = 072;
+            idx[035] = 067; idx[034] = 066; idx[033] = 065; idx[032] = 064;
+            idx[031] = 059; idx[030] = 058; idx[029] = 057; idx[028] = 056;
+            idx[027] = 051; idx[026] = 050; idx[025] = 049; idx[024] = 048;
+            idx[023] = 043; idx[022] = 042; idx[021] = 041; idx[020] = 040;
+            idx[019] = 035; idx[018] = 034; idx[017] = 033; idx[016] = 032;
+            idx[015] = 027; idx[014] = 026; idx[013] = 025; idx[012] = 024;
+            idx[011] = 019; idx[010] = 018; idx[009] = 017; idx[008] = 016;
+            idx[007] = 011; idx[006] = 010; idx[005] = 009; idx[004] = 008;
+            idx[003] = 003; idx[002] = 002; idx[001] = 001; idx[000] = 000;
+            return idx[byte_idx[6:0]];
+          end
+          rvv_pkg::EW16: begin
+            automatic vlen_t [127:0] idx;
+            idx[127] = 127; idx[126] = 126; idx[125] = 119; idx[124] = 118;
+            idx[123] = 111; idx[122] = 110; idx[121] = 103; idx[120] = 102;
+            idx[119] = 095; idx[118] = 094; idx[117] = 087; idx[116] = 086;
+            idx[115] = 079; idx[114] = 078; idx[113] = 071; idx[112] = 070;
+            idx[111] = 063; idx[110] = 062; idx[109] = 055; idx[108] = 054;
+            idx[107] = 047; idx[106] = 046; idx[105] = 039; idx[104] = 038;
+            idx[103] = 031; idx[102] = 030; idx[101] = 023; idx[100] = 022;
+            idx[099] = 015; idx[098] = 014; idx[097] = 007; idx[096] = 006;
+            idx[095] = 123; idx[094] = 122; idx[093] = 115; idx[092] = 114;
+            idx[091] = 107; idx[090] = 106; idx[089] = 099; idx[088] = 098;
+            idx[087] = 091; idx[086] = 090; idx[085] = 083; idx[084] = 082;
+            idx[083] = 075; idx[082] = 074; idx[081] = 067; idx[080] = 066;
+            idx[079] = 059; idx[078] = 058; idx[077] = 051; idx[076] = 050;
+            idx[075] = 043; idx[074] = 042; idx[073] = 035; idx[072] = 034;
+            idx[071] = 027; idx[070] = 026; idx[069] = 019; idx[068] = 018;
+            idx[067] = 011; idx[066] = 010; idx[065] = 003; idx[064] = 002;
+            idx[063] = 125; idx[062] = 124; idx[061] = 117; idx[060] = 116;
+            idx[059] = 109; idx[058] = 108; idx[057] = 101; idx[056] = 100;
+            idx[055] = 093; idx[054] = 092; idx[053] = 085; idx[052] = 084;
+            idx[051] = 077; idx[050] = 076; idx[049] = 069; idx[048] = 068;
+            idx[047] = 061; idx[046] = 060; idx[045] = 053; idx[044] = 052;
+            idx[043] = 045; idx[042] = 044; idx[041] = 037; idx[040] = 036;
+            idx[039] = 029; idx[038] = 028; idx[037] = 021; idx[036] = 020;
+            idx[035] = 013; idx[034] = 012; idx[033] = 005; idx[032] = 004;
+            idx[031] = 121; idx[030] = 120; idx[029] = 113; idx[028] = 112;
+            idx[027] = 105; idx[026] = 104; idx[025] = 097; idx[024] = 096;
+            idx[023] = 089; idx[022] = 088; idx[021] = 081; idx[020] = 080;
+            idx[019] = 073; idx[018] = 072; idx[017] = 065; idx[016] = 064;
+            idx[015] = 057; idx[014] = 056; idx[013] = 049; idx[012] = 048;
+            idx[011] = 041; idx[010] = 040; idx[009] = 033; idx[008] = 032;
+            idx[007] = 025; idx[006] = 024; idx[005] = 017; idx[004] = 016;
+            idx[003] = 009; idx[002] = 008; idx[001] = 001; idx[000] = 000;
+            return idx[byte_idx[6:0]];
+          end
+          rvv_pkg::EW8: begin
+            automatic vlen_t [127:0] idx;
+            idx[127] = 127; idx[126] = 119; idx[125] = 111; idx[124] = 103;
+            idx[123] = 095; idx[122] = 087; idx[121] = 079; idx[120] = 071;
+            idx[119] = 063; idx[118] = 055; idx[117] = 047; idx[116] = 039;
+            idx[115] = 031; idx[114] = 023; idx[113] = 015; idx[112] = 007;
+            idx[111] = 123; idx[110] = 115; idx[109] = 107; idx[108] = 099;
+            idx[107] = 091; idx[106] = 083; idx[105] = 075; idx[104] = 067;
+            idx[103] = 059; idx[102] = 051; idx[101] = 043; idx[100] = 035;
+            idx[099] = 027; idx[098] = 019; idx[097] = 011; idx[096] = 003;
+            idx[095] = 125; idx[094] = 117; idx[093] = 109; idx[092] = 101;
+            idx[091] = 093; idx[090] = 085; idx[089] = 077; idx[088] = 069;
+            idx[087] = 061; idx[086] = 053; idx[085] = 045; idx[084] = 037;
+            idx[083] = 029; idx[082] = 021; idx[081] = 013; idx[080] = 005;
+            idx[079] = 121; idx[078] = 113; idx[077] = 105; idx[076] = 097;
+            idx[075] = 089; idx[074] = 081; idx[073] = 073; idx[072] = 065;
+            idx[071] = 057; idx[070] = 049; idx[069] = 041; idx[068] = 033;
+            idx[067] = 025; idx[066] = 017; idx[065] = 009; idx[064] = 001;
+            idx[063] = 126; idx[062] = 118; idx[061] = 110; idx[060] = 102;
+            idx[059] = 094; idx[058] = 086; idx[057] = 078; idx[056] = 070;
+            idx[055] = 062; idx[054] = 054; idx[053] = 046; idx[052] = 038;
+            idx[051] = 030; idx[050] = 022; idx[049] = 014; idx[048] = 006;
+            idx[047] = 122; idx[046] = 114; idx[045] = 106; idx[044] = 098;
+            idx[043] = 090; idx[042] = 082; idx[041] = 074; idx[040] = 066;
+            idx[039] = 058; idx[038] = 050; idx[037] = 042; idx[036] = 034;
+            idx[035] = 026; idx[034] = 018; idx[033] = 010; idx[032] = 002;
+            idx[031] = 124; idx[030] = 116; idx[029] = 108; idx[028] = 100;
+            idx[027] = 092; idx[026] = 084; idx[025] = 076; idx[024] = 068;
+            idx[023] = 060; idx[022] = 052; idx[021] = 044; idx[020] = 036;
+            idx[019] = 028; idx[018] = 020; idx[017] = 012; idx[016] = 004;
+            idx[015] = 120; idx[014] = 112; idx[013] = 104; idx[012] = 096;
+            idx[011] = 088; idx[010] = 080; idx[009] = 072; idx[008] = 064;
+            idx[007] = 056; idx[006] = 048; idx[005] = 040; idx[004] = 032;
+            idx[003] = 024; idx[002] = 016; idx[001] = 008; idx[000] = 000;
+            return idx[byte_idx[6:0]];
+          end
+        endcase
     endcase
 
   /*automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;

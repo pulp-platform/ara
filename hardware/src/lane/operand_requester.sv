@@ -283,6 +283,12 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               hazard : operand_request_i[requester].hazard,
               default: '0
             };
+
+            // Mute the requisition if the vl is zero
+            if (operand_request_i[requester].vl == '0) begin
+              state_d                              = IDLE;
+              operand_queue_cmd_valid_o[requester] = 1'b0;
+            end
           end
         end
 

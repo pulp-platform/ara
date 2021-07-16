@@ -241,7 +241,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               // Masked vector instructions also run on the mask unit
-              pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_id_n] = !ara_req_i.vm;
+              pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_id_n] |= !ara_req_i.vm;
 
               // Some instructions need to wait for an acknowledgment
               // before being committed with Ariane

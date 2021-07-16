@@ -120,7 +120,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
         // The request was accepted: load how many elements to process/commit
         load_cnt      = 1'b1;
         // Check if the next byte is valid or not. If not, skip it.
-        issue_state_d = (be_q[cnt_init_val]) ? ISSUE_VALID : ISSUE_SKIP;
+        issue_state_d = (be_q[cnt_init_val << vew_q]) ? ISSUE_VALID : ISSUE_SKIP;
       end
       ISSUE_VALID: begin
         // The inputs are valid
@@ -134,7 +134,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
             issue_state_d = WAIT_DONE;
           // If we are not issuing the last operands, decide if to process or skip the next byte
           end else begin
-            issue_state_d = (be_q[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
+            issue_state_d = (be_q[issue_cnt_d << vew_q]) ? ISSUE_VALID : ISSUE_SKIP;
           end
         end
       end
@@ -146,7 +146,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
           issue_state_d = WAIT_DONE;
         // If we are not issuing the last operands, decide if to process or skip the next byte
         end else begin
-          issue_state_d = (be_q[issue_cnt_d]) ? ISSUE_VALID : ISSUE_SKIP;
+          issue_state_d = (be_q[issue_cnt_d << vew_q]) ? ISSUE_VALID : ISSUE_SKIP;
         end
       end
       WAIT_DONE: begin
@@ -171,7 +171,7 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
       COMMIT_IDLE: begin
         // Start if the issue CU has already started
         if (issue_state_q != ISSUE_IDLE) begin
-          commit_state_d = (be_q[cnt_init_val]) ? COMMIT_READY : COMMIT_SKIP;
+          commit_state_d = (be_q[cnt_init_val << vew_q]) ? COMMIT_READY : COMMIT_SKIP;
         end
       end
       COMMIT_READY: begin
@@ -184,19 +184,18 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
             commit_state_d = COMMIT_DONE;
           // If we are not committing the last result, decide if to process or skip the next one
           end else begin
-            commit_state_d = (be_q[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
+            commit_state_d = (be_q[commit_cnt_d << vew_q]) ? COMMIT_READY : COMMIT_SKIP;
           end
         end
       end
       COMMIT_SKIP: begin
-        serdiv_out_ready = 1'b1;
         commit_cnt_en    = 1'b1;
         // If we are skipping the last result, complete the execution
         if (commit_cnt_q == '0) begin
           commit_state_d = COMMIT_DONE;
         // If we are not committing the last result, decide if to process or skip the next one
         end else begin
-          commit_state_d = (be_q[commit_cnt_d]) ? COMMIT_READY : COMMIT_SKIP;
+          commit_state_d = (be_q[commit_cnt_d << vew_q]) ? COMMIT_READY : COMMIT_SKIP;
         end
       end
       COMMIT_DONE: begin
@@ -329,10 +328,10 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
 
   // Output buffer
   // Shift the partial result and update the output buffer with the new masked byte/halfword/word
-  // If we are skipping a byte, just shift
+  // If we are skipping an element, just shift
   always_comb begin
     if (commit_state_q == COMMIT_SKIP) begin
-      shifted_result       = result_q << 8;
+      shifted_result       = result_q << (8 << vew_q);
       serdiv_result_masked = '0;
     end else begin
       case (vew_q)

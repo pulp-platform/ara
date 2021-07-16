@@ -8,13 +8,16 @@ package:
     - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
 
 dependencies:
-  axi:                { git: "https://github.com/pulp-platform/axi.git",                rev: axi_llc    }
-  common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.19.0 }
+  axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.29.1 }
+  common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1 }
   cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: acc_port   }
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.1  }
 
 workspace:
   checkout_dir: "hardware/deps"
+
+export_include_dirs:
+  - hardware/include
 
 sources:
   files:
@@ -24,6 +27,7 @@ sources:
 
     # Sources
     # Level 1
+    - hardware/src/axi_to_mem.sv
     - hardware/src/ctrl_registers.sv
     - hardware/src/cva6_accel_first_pass_decoder.sv
     - hardware/src/ara_dispatcher.sv

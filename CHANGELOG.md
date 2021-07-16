@@ -6,13 +6,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix calculation of `vstu`'s vector length
+- Fix `vslideup` and `vslidedown` operand's vector length trimming
+- Mute mask requests on idle lanes
+- Mute instructions with vector length zero on the respective `lane_sequencer` and `operand_requester`
+- Fix `simd_div`'s offset calculation
+- Delay acknowledgment of memory requests if the `axi_inval_filter` is busy
+
 ### Added
 
 - Format source files in the `apps` folder with clang-format by running `make format`
+- Support for the `2_lanes`, `8_lanes`, and `16_lanes` configurations, besides the default `4_lanes` one
 
 ### Changed
 
 - Compile Verilator and Ara's verilated model with LLVM, for a faster compile time.
+- Verilator updated to version v4.210.
+- Verilation is done with a hierarchical verilation flow
+- Replace `ara_soc`'s LLC with a simple main memory
+- Reduce number of words on the main memory, for faster Verilation
+- Update `common_cells` to v1.22.1
+- Update `axi` to v0.29.1
 
 ## 2.0.0 - 2021-06-24
 

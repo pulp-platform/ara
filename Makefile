@@ -24,7 +24,7 @@ GCC_INSTALL_DIR     ?= ${INSTALL_DIR}/riscv-gcc
 LLVM_INSTALL_DIR    ?= ${INSTALL_DIR}/riscv-llvm
 ISA_SIM_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim
 VERIL_INSTALL_DIR   ?= ${INSTALL_DIR}/verilator
-VERIL_VERSION       ?= v4.106
+VERIL_VERSION       ?= v4.210
 
 CMAKE ?= cmake
 
@@ -35,6 +35,17 @@ CC     = gcc
 endif
 ifeq ($(origin CXX),default)
 CXX    = g++
+endif
+
+# We need a recent LLVM to compile Verilator
+CLANG_CC  ?= clang
+CLANG_CXX ?= clang++
+ifneq (${CLANG_PATH},)
+	CLANG_CXXFLAGS := "-nostdinc++ -isystem $(CLANG_PATH)/include/c++/v1"
+	CLANG_LDFLAGS  := "-L $(CLANG_PATH)/lib -Wl,-rpath,$(CLANG_PATH)/lib -lc++ -nostdlib++"
+else
+	CLANG_CXXFLAGS := ""
+	CLANG_LDFLAGS  := ""
 endif
 
 # Default target
@@ -131,7 +142,8 @@ ${VERIL_INSTALL_DIR}: Makefile
 	cd $(CURDIR)/toolchain/verilator && git reset --hard && git fetch && git checkout ${VERIL_VERSION}
 	# Compile verilator
 	cd $(CURDIR)/toolchain/verilator && git clean -xfdf && autoconf && \
-	CC=clang CXX=clang++ ./configure --prefix=$(VERIL_INSTALL_DIR) && make -j4 && make install
+	CC=$(CLANG_CC) CXX=$(CLANG_CXX) CXXFLAGS=$(CLANG_CXXFLAGS) LDFLAGS=$(CLANG_LDFLAGS) \
+		./configure --prefix=$(VERIL_INSTALL_DIR) && make -j8 && make install
 
 # RISC-V Tests
 riscv_tests:

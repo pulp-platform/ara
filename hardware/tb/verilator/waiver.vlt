@@ -1,0 +1,24 @@
+// Copyright 2021 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+
+`verilator_config
+
+// Hierarchical verilation
+hier_block -module "lane"
+
+// Hierarchical modules will be renamed by Verilator. Disable the DECLFILENAME
+// check for those right away
+lint_off -rule DECLFILENAME -file "*" -match "*lane*"
+
+// Ignore duplicate modules, since this is handled by Bender
+lint_off -rule MODDUP
+
+// Ignore missing pins on Ariane
+lint_off -rule PINMISSING -file "*/cva6/*" -match "*"
+
+// Ignore missing pins on the axi_cdc_src
+lint_off -rule PINMISSING -file "*/axi/*" -match "*"
+
+// Ignore usage of reserved words on Ariane
+lint_off -rule SYMRSVDWORD -file "*/cva6/*" -match "*"

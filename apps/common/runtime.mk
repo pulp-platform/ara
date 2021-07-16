@@ -20,8 +20,18 @@ SHELL = /usr/bin/env bash
 
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$ARA_DIR)
+
+# Choose Ara's configuration
+ifndef config
+	ifdef ARA_CONFIGURATION
+		config := $(ARA_CONFIGURATION)
+	else
+		config := default
+	endif
+endif
+
 # Include configuration
-include $(ARA_DIR)/config/config.mk
+include $(ARA_DIR)/config/$(config).mk
 
 INSTALL_DIR         ?= $(ARA_DIR)/install
 GCC_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-gcc

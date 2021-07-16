@@ -60,8 +60,10 @@ make verilator
 
 ## Configuration
 
-Ara's parameters are centralized in the `config` folder, in the `config.mk` file.
+Ara's parameters are centralized in the `config` folder, which provides several configurations to the vector machine.
 Please check `config/README.md` for more details.
+
+Prepend `config=chosen_ara_configuration` to your Makefile commands, or export the `ARA_CONFIGURATION` variable, to chose a configuration other than the `default` one.
 
 ## Software
 

@@ -461,13 +461,18 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         else
           mask_queue_write_pnt_d = mask_queue_write_pnt_q + 1;
 
-        // Trigger the request signal
-        mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};
-
         // Account for the operands that were issued
         read_cnt_d = read_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
         if (read_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
           read_cnt_d = '0;
+
+        // Trigger the request signal
+        mask_queue_valid_d[mask_queue_write_pnt_q] = {NrLanes{1'b1}};
+
+        // Are there lanes with no valid elements?
+        // If so, mute their request signal
+        if (read_cnt_q < NrLanes)
+          mask_queue_valid_d[mask_queue_write_pnt_q] = (1 << read_cnt_q) - 1;
 
         // Consumed all valid bytes from the lane operands
         if (mask_pnt_d == NrLanes*64 || read_cnt_d == '0) begin
