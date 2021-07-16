@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kernel/matmul.h"
+#include "kernel/fmatmul.h"
 #include "printf.h"
 #include "runtime.h"
 
@@ -95,9 +95,9 @@ void print_matrix(double const *matrix, uint64_t num_rows,
 
 int main() {
   printf("\n");
-  printf("============\n");
-  printf("=  MATMUL  =\n");
-  printf("============\n");
+  printf("=============\n");
+  printf("=  FMATMUL  =\n");
+  printf("=============\n");
   printf("\n");
   printf("\n");
 
@@ -115,9 +115,9 @@ int main() {
     init_matrix(b, s, s, B_a, B_b, B_c);
 
     // Matrices are initialized --> Start calculating
-    printf("Calculating matmul...\n");
+    printf("Calculating fmatmul...\n");
     start_timer();
-    matmul(c, a, b, s, s, s);
+    fmatmul(c, a, b, s, s, s);
     stop_timer();
 
     // Metrics
