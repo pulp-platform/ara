@@ -22,25 +22,26 @@
 
 #include <stdint.h>
 
-void fmatmul(double *c, const double *a, const double *b, int64_t m, int64_t n,
-             int64_t p);
+void fmatmul(double *c, const double *a, const double *b, unsigned long int m,
+             unsigned long int n, unsigned long int p);
 
-void fmatmul_4x4(double *c, const double *a, const double *b, int64_t m,
-                 int64_t n, int64_t p);
+void fmatmul_4x4(double *c, const double *a, const double *b,
+                 unsigned long int m, unsigned long int n, unsigned long int p);
 void fmatmul_vec_4x4_slice_init();
-void fmatmul_vec_4x4(double *c, const double *a, const double *b, int64_t n,
-                     int64_t p);
+void fmatmul_vec_4x4(double *c, const double *a, const double *b,
+                     unsigned long int n, unsigned long int p);
 
-void fmatmul_8x8(double *c, const double *a, const double *b, int64_t m,
-                 int64_t n, int64_t p);
+void fmatmul_8x8(double *c, const double *a, const double *b,
+                 unsigned long int m, unsigned long int n, unsigned long int p);
 void fmatmul_vec_8x8_slice_init();
-void fmatmul_vec_8x8(double *c, const double *a, const double *b, int64_t n,
-                     int64_t p);
+void fmatmul_vec_8x8(double *c, const double *a, const double *b,
+                     unsigned long int n, unsigned long int p);
 
-void fmatmul_16x16(double *c, const double *a, const double *b, int64_t m,
-                   int64_t n, int64_t p);
+void fmatmul_16x16(double *c, const double *a, const double *b,
+                   unsigned long int m, unsigned long int n,
+                   unsigned long int p);
 void fmatmul_vec_16x16_slice_init();
-void fmatmul_vec_16x16(double *c, const double *a, const double *b, int64_t n,
-                       int64_t p);
+void fmatmul_vec_16x16(double *c, const double *a, const double *b,
+                       unsigned long int n, unsigned long int p);
 
 #endif

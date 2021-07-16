@@ -22,19 +22,22 @@
 
 #include <stdint.h>
 
-void imatmul(int64_t *c, const int64_t *a, const int64_t *b, int64_t m,
-             int64_t n, int64_t p);
+void imatmul(int64_t *c, const int64_t *a, const int64_t *b,
+             const unsigned long int m, const unsigned long int n,
+             const unsigned long int p);
 
-void imatmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t m,
-                 int64_t n, int64_t p);
+void imatmul_4x4(int64_t *c, const int64_t *a, const int64_t *b,
+                 const unsigned long int m, const unsigned long int n,
+                 const unsigned long int p);
 void imatmul_vec_4x4_slice_init();
-void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t n,
-                     int64_t p);
+void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b,
+                     const unsigned long int n, const unsigned long int p);
 
-void imatmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t m,
-                 int64_t n, int64_t p);
+void imatmul_8x8(int64_t *c, const int64_t *a, const int64_t *b,
+                 const unsigned long int m, const unsigned long int n,
+                 const unsigned long int p);
 void imatmul_vec_8x8_slice_init();
-void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t n,
-                     int64_t p);
+void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b,
+                     const unsigned long int n, const unsigned long int p);
 
 #endif
