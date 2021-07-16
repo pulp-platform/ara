@@ -387,6 +387,43 @@ jobs:
     - name: Run test
       run: config=${{ matrix.ara_config }} make -C hardware app=conv2d simv
 
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+    needs: ["compile-ara", "compile-apps"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download the LLVM toolchain
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-llvm
+    - name: Untar LLVM
+      run: tar xvf tc-llvm.tar
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara-${{ matrix.ara_config }}
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Benchmark Ara
+      run: config=${{ matrix.ara_config }} ./scripts/benchmark.sh
+    - name: Tar runtime results
+      run: |
+        tar -cvf benchmarks-${{ matrix.ara_config }}.tar *.benchmark
+    - name: Upload runtime results
+      uses: actions/upload-artifact@v2
+      with:
+        name: benchmark-${{ matrix.ara_config }}
+        path: benchmarks-${{ matrix.ara_config }}.tar
+
 ########################
 #  RISC-V Tests stage  #
 ########################
@@ -551,3 +588,4 @@ jobs:
             compile-ara-${{ matrix.ara_config }}
             compile-apps-${{ matrix.ara_config }}
             compile-riscv-tests-${{ matrix.ara_config }}
+            benchmark-${{ matrix.ara_config }}
