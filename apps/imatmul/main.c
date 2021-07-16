@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kernel/matmul.h"
+#include "kernel/imatmul.h"
 #include "printf.h"
 #include "runtime.h"
 
@@ -92,9 +92,9 @@ void print_matrix(int64_t const *matrix, uint64_t num_rows,
 
 int main() {
   printf("\n");
-  printf("============\n");
-  printf("=  MATMUL  =\n");
-  printf("============\n");
+  printf("=============\n");
+  printf("=  IMATMUL  =\n");
+  printf("=============\n");
   printf("\n");
   printf("\n");
 
@@ -112,9 +112,9 @@ int main() {
     init_matrix(b, s, s, B_a, B_b, B_c);
 
     // Matrices are initialized --> Start calculating
-    printf("Calculating matmul...\n");
+    printf("Calculating imatmul...\n");
     start_timer();
-    matmul(c, a, b, s, s, s);
+    imatmul(c, a, b, s, s, s);
     stop_timer();
 
     // Metrics
@@ -123,8 +123,8 @@ int main() {
     float utilization = 100 * performance / (2.0 * NR_LANES);
 
     printf("The execution took %d cycles.\n", runtime);
-    printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
-           performance, utilization);
+    printf("The performance is %f OP/cycle (%f%% utilization).\n", performance,
+           utilization);
 
     // Verify the result
     printf("Verifying result...\n");
