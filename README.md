@@ -35,7 +35,7 @@ To build this toolchain, run the following command in the project's root directo
 
 ```bash
 # Build the LLVM toolchain
-make toolchain
+make toolchain-llvm
 ```
 
 Ara also requires an updated Spike ISA simulator, with support for the vector extension.
@@ -95,7 +95,7 @@ cd hardware
 # Apply the patches (only need to run this once)
 make apply-patches
 # Only compile the hardware without running the simulation.
-make build
+make compile
 # Run the simulation with the *hello_world* binary loaded
 app=hello_world make sim
 # Run the simulation with the *some_binary* binary. This allows specifying the full path to the binary
