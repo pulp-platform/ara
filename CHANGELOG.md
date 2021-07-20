@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add spill register at the lane edge, to cut the timing-critical interface between the Mask unit and the VFUs
 - Increase latency of the 16-bit multiplier from 0 to 1 to cut an in-lane timing-critical path
 
+### Changed
+
+- Widen CVA6's cache lines
+- Implement back-to-back accelerator instruction issue mechanism on CVA6
+
 ## 2.1.0 - 2021-07-16
 
 ### Fixed
