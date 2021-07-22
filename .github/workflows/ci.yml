@@ -37,6 +37,7 @@ jobs:
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive -- toolchain/riscv-llvm
     - name: Download Newlib
+      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive -- toolchain/newlib
     - name: Compile LLVM
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
