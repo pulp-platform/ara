@@ -2221,7 +2221,33 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Update the EEW
-    if (ara_req_valid_d && ara_req_d.use_vd) eew_d[ara_req_d.vd] = ara_req_d.vtype.vsew;
+    if (ara_req_valid_d && ara_req_d.use_vd) begin
+      unique case (ara_req_d.emul)
+        LMUL_1: begin
+          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
+        end
+        LMUL_2: begin
+          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 1] = ara_req_d.vtype.vsew;
+        end
+        LMUL_4: begin
+          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 1] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 2] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 3] = ara_req_d.vtype.vsew;
+        end
+        LMUL_8: begin
+          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 1] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 2] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 3] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 4] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 5] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 6] = ara_req_d.vtype.vsew;
+          eew_d[ara_req_d.vd + 7] = ara_req_d.vtype.vsew;
+        end
+      endcase
+    end
 
     // Any valid non-config instruction is a NOP if vl == 0, with some exceptions
     if (acc_req_valid_i && vl_q == '0 && !is_config && !ignore_zero_vl_check && !acc_resp_o.error) begin
