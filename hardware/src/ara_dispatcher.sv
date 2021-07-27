@@ -748,12 +748,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Execute also if vl == 0
                   ignore_zero_vl_check = 1'b1;
                   // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
-                  vlmax = VLENB >> vtype_d.vsew;
+                  vlmax = VLENB;
                   unique case (insn.varith_type.rs1[17:15])
-                    3'd0 : vlmax <<= 0;
-                    3'd1 : vlmax <<= 1;
-                    3'd3 : vlmax <<= 2;
-                    3'd7 : vlmax <<= 3;
+                    3'd0 : begin
+                      vlmax <<= 0;
+                      ara_req_d.emul = LMUL_1;
+                    end
+                    3'd1 : begin
+                      vlmax <<= 1;
+                      ara_req_d.emul = LMUL_2;
+                    end
+                    3'd3 : begin
+                      vlmax <<= 2;
+                      ara_req_d.emul = LMUL_4;
+                    end
+                    3'd7 : begin
+                      vlmax <<= 3;
+                      ara_req_d.emul = LMUL_8;
+                    end
                     default: begin
                       // Trigger an error for the reserved simm values
                       illegal_insn = 1'b1;
