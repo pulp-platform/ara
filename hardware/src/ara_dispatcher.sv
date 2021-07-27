@@ -1921,6 +1921,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             default:;
           endcase
 
+          // For memory operations: EMUL = LMUL * (EEW / SEW)
+          // EEW is encoded in the instruction
+          ara_req_d.emul = vlmul_e'(vtype_q.vlmul + (ara_req_d.vtype.vsew - vtype_q.vsew));
+
           // Instructions with an integer LMUL have extra constraints on the registers they can
           // access.
           unique case (ara_req_d.emul)
@@ -2054,6 +2058,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
             default:;
           endcase
+
+          // For memory operations: EMUL = LMUL * (EEW / SEW)
+          // EEW is encoded in the instruction
+          ara_req_d.emul = vlmul_e'(vtype_q.vlmul + (ara_req_d.vtype.vsew - vtype_q.vsew));
 
           // Instructions with an integer LMUL have extra constraints on the registers they can
           // access.
@@ -2299,6 +2307,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           eew_d[ara_req_d.vd + 6] = ara_req_d.vtype.vsew;
           eew_d[ara_req_d.vd + 7] = ara_req_d.vtype.vsew;
         end
+        default: ; // EMUL < 1
       endcase
     end
 
