@@ -385,7 +385,6 @@ void TEST_CASE4(void) {
   asm volatile("vl8re64.v v16, (%0)" :: "r" (gold_vec_64b));
   // Change vtype and vl to match the whole register
   VSET(512, e64, m8);
-//  printf("Random delay 1...\n");
   // Check that the whole register was loaded3
   VSTORE(uint64_t, e64, v16, buf_vec_64b);
   VMCMP(uint64_t, %lu, 15, buf_vec_64b, gold_vec_64b, 512);
