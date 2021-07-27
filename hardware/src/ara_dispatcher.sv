@@ -778,6 +778,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.use_vs1       = 1'b1;
                   ara_req_d.use_vs2       = 1'b0;
                   ara_req_d.vs1           = insn.varith_type.rs2;
+                  ara_req_d.vtype.vsew    = EW8;
                   ara_req_d.vl            = vlmax; // whole register move
                 end
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
