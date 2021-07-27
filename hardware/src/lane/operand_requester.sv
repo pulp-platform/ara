@@ -268,7 +268,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Send a command to the operand queue
             operand_queue_cmd_o[requester] = '{
               eew : operand_request_i[requester].eew,
-              vl  : operand_request_i[requester].vl,
+              // The number of elements initially refers to vsew, but the requester must refer to eew
+              vl    : ((operand_request_i[requester].vl <<
+                         operand_request_i[requester].vtype.vsew) >>
+                           operand_request_i[requester].eew),
               conv: operand_request_i[requester].conv
             };
             operand_queue_cmd_valid_o[requester] = 1'b1;
@@ -278,7 +281,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               addr : vaddr(operand_request_i[requester].vs, NrLanes) +
               (operand_request_i[requester].vstart >>
                 (int'(EW64) - int'(operand_request_i[requester].eew))),
-              len    : operand_request_i[requester].vl,
+              // The number of elements initially refers to vsew, but the requester must refer to eew
+              len    : ((operand_request_i[requester].vl <<
+                         operand_request_i[requester].vtype.vsew) >>
+                           operand_request_i[requester].eew),
               vew    : operand_request_i[requester].eew,
               hazard : operand_request_i[requester].hazard,
               default: '0
@@ -332,7 +338,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 // Send a command to the operand queue
                 operand_queue_cmd_o[requester] = '{
                   eew : operand_request_i[requester].eew,
-                  vl  : operand_request_i[requester].vl,
+                  vl    : ((operand_request_i[requester].vl <<
+                            operand_request_i[requester].vtype.vsew) >>
+                            operand_request_i[requester].eew),
                   conv: operand_request_i[requester].conv
                 };
                 operand_queue_cmd_valid_o[requester] = 1'b1;
@@ -342,7 +350,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   addr : vaddr(operand_request_i[requester].vs, NrLanes) +
                   (operand_request_i[requester].vstart >>
                     (int'(EW64) - int'(operand_request_i[requester].eew))),
-                  len    : operand_request_i[requester].vl,
+                  // The number of elements initially refers to vsew, but the requester must refer to eew
+                  len    : ((operand_request_i[requester].vl <<
+                             operand_request_i[requester].vtype.vsew) >>
+                             operand_request_i[requester].eew),
                   vew    : operand_request_i[requester].eew,
                   hazard : operand_request_i[requester].hazard,
                   default: '0
