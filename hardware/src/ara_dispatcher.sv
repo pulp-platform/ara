@@ -146,6 +146,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
   // Helper signals to discriminate between config/csr, load/store instructions and the others
   logic is_config, is_vload, is_vstore;
+  // Whole-register memory-ops / move should be executed even when vl == 0
+  logic ignore_zero_vl_check;
   // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
   // its counters of pending memory operations
   // Ara should tell Ariane when a memory operation is completed, so that it can modify
@@ -206,7 +208,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     };
     ara_req_valid_d = 1'b0;
 
-    is_config = 1'b0;
+    is_config            = 1'b0;
+    ignore_zero_vl_check = 1'b0;
 
     // Is Ara idle?
     if (state_q == WAIT_IDLE && ara_idle_i) state_d = NORMAL_OPERATION;
@@ -741,6 +744,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b100111: begin // vmv<nr>r.v
+                  // Execute also if vl == 0
+                  ignore_zero_vl_check = 1'b1;
                   // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
                   automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
                   unique case (insn.varith_type.rs1[17:15])
@@ -1931,6 +1936,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_d.emul    = LMUL_1;
             ara_req_d.vl      = VLENB;
 
+            // Execute also if vl == 0
+            ignore_zero_vl_check = 1'b1;
             illegal_insn     = 1'b0;
             acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
@@ -2041,6 +2048,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_d.eew_vs1 = EW8;
             ara_req_d.emul    = LMUL_1;
             ara_req_d.vl      = VLENB;
+            // Execute also if vl == 0
+            ignore_zero_vl_check = 1'b1;
 
             illegal_insn     = 1'b0;
             acc_req_ready_o  = 1'b0;
@@ -2214,8 +2223,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Update the EEW
     if (ara_req_valid_d && ara_req_d.use_vd) eew_d[ara_req_d.vd] = ara_req_d.vtype.vsew;
 
-    // Any valid non-config instruction is a NOP if vl == 0
-    if (acc_req_valid_i && vl_q == '0 && !is_config && !acc_resp_o.error) begin
+    // Any valid non-config instruction is a NOP if vl == 0, with some exceptions
+    if (acc_req_valid_i && vl_q == '0 && !is_config && !ignore_zero_vl_check && !acc_resp_o.error) begin
       // If we are acknowledging a memory operation, we must tell Ariane that the memory
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must
