@@ -10,9 +10,9 @@
 
 uint64_t counter;
 
-uint8_t  gold_vec_8b[4096];
-uint8_t  zero_vec_8b[4096];
-uint8_t  buf_vec_8b[4096];
+uint8_t gold_vec_8b[4096];
+uint8_t zero_vec_8b[4096];
+uint8_t buf_vec_8b[4096];
 
 //////////
 // vs1r //
@@ -31,13 +31,13 @@ void TEST_CASE1(void) {
   // Initialize register + neighbours to pattern value
   VCLEAR(v16);
   // Load a buffer from memory - whole register load
-  asm volatile("vl1re8.v v16, (%0)" :: "r" (gold_vec_8b));
+  asm volatile("vl1re8.v v16, (%0)" ::"r"(gold_vec_8b));
   // Check that the whole register was loaded
-  asm volatile("vs1r.v v16, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 0, buf_vec_8b, gold_vec_8b, 512);
+  asm volatile("vs1r.v v16, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 0, buf_vec_8b, gold_vec_8b, 512);
   // Check that the neighbour registers are okay
-  asm volatile("vs1r.v v17, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 0, buf_vec_8b, zero_vec_8b, 512);
+  asm volatile("vs1r.v v17, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 0, buf_vec_8b, zero_vec_8b, 512);
 }
 
 //////////
@@ -57,13 +57,13 @@ void TEST_CASE2(void) {
   // Initialize register + neighbours to pattern value
   VCLEAR(v16);
   // Load a buffer from memory - whole register load
-  asm volatile("vl2re8.v v16, (%0)" :: "r" (gold_vec_8b));
+  asm volatile("vl2re8.v v16, (%0)" ::"r"(gold_vec_8b));
   // Check that the whole register was loaded
-  asm volatile("vs2r.v v16, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 1, buf_vec_8b, gold_vec_8b, 512);
+  asm volatile("vs2r.v v16, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 1, buf_vec_8b, gold_vec_8b, 512);
   // Check that the neighbour registers are okay
-  asm volatile("vs2r.v v18, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 1, buf_vec_8b, zero_vec_8b, 512);
+  asm volatile("vs2r.v v18, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 1, buf_vec_8b, zero_vec_8b, 512);
 }
 
 //////////
@@ -83,15 +83,14 @@ void TEST_CASE3(void) {
   // Initialize register + neighbours to pattern value
   VCLEAR(v16);
   // Load a buffer from memory - whole register load
-  asm volatile("vl4re8.v v16, (%0)" :: "r" (gold_vec_8b));
+  asm volatile("vl4re8.v v16, (%0)" ::"r"(gold_vec_8b));
   // Check that the whole register was loaded
-  asm volatile("vs4r.v v16, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 2, buf_vec_8b, gold_vec_8b, 512);
+  asm volatile("vs4r.v v16, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 2, buf_vec_8b, gold_vec_8b, 512);
   // Check that the neighbour registers are okay
-  asm volatile("vs4r.v v20, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 2, buf_vec_8b, zero_vec_8b, 512);
+  asm volatile("vs4r.v v20, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 2, buf_vec_8b, zero_vec_8b, 512);
 }
-
 
 //////////
 // vs8r //
@@ -111,13 +110,13 @@ void TEST_CASE4(void) {
   VCLEAR(v16);
   VCLEAR(v24);
   // Load a buffer from memory - whole register load
-  asm volatile("vl8re8.v v16, (%0)" :: "r" (gold_vec_8b));
+  asm volatile("vl8re8.v v16, (%0)" ::"r"(gold_vec_8b));
   // Check that the whole register was loaded
-  asm volatile("vs8r.v v16, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 3, buf_vec_8b, gold_vec_8b, 512);
+  asm volatile("vs8r.v v16, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 3, buf_vec_8b, gold_vec_8b, 512);
   // Check that the neighbour registers are okay
-  asm volatile("vs8r.v v24, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 3, buf_vec_8b, zero_vec_8b, 512);
+  asm volatile("vs8r.v v24, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 3, buf_vec_8b, zero_vec_8b, 512);
 }
 
 ////////////
@@ -137,13 +136,13 @@ void TEST_CASE5(void) {
   // Initialize register + neighbours to pattern value
   VCLEAR(v16);
   // Load a buffer from memory - whole register load
-  asm volatile("vl1re8.v v16, (%0)" :: "r" (gold_vec_8b));
+  asm volatile("vl1re8.v v16, (%0)" ::"r"(gold_vec_8b));
   // Check that the whole register was loaded
-  asm volatile("vs1r.v v16, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 4, buf_vec_8b, gold_vec_8b, 512);
+  asm volatile("vs1r.v v16, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 4, buf_vec_8b, gold_vec_8b, 512);
   // Check that the neighbour registers are okay
-  asm volatile("vs1r.v v17, (%0)" :: "r" (buf_vec_8b));
-  VMCMP(uint8_t, %hhu, 4, buf_vec_8b, zero_vec_8b, 512);
+  asm volatile("vs1r.v v17, (%0)" ::"r"(buf_vec_8b));
+  VMCMP(uint8_t, % hhu, 4, buf_vec_8b, zero_vec_8b, 512);
 }
 
 int main(void) {
