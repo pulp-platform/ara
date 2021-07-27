@@ -5,9 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Fixed
 
 - Fix typo on the build instructions of the README
+
+### Added
+
+- `benchmarks` app to benchmark Ara
+- CI task to create roofline plots of `imatmul` and `fmatmul`, available as artifacts
 
 ## 2.1.0 - 2021-07-16
 

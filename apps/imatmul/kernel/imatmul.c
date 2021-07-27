@@ -17,16 +17,16 @@
 // Author: Matheus Cavalcante, ETH Zurich
 //         Samuel Riedel, ETH Zurich
 
-#include "matmul.h"
+#include "imatmul.h"
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-void matmul(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
-            int64_t N, int64_t P) {
+void imatmul(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
+             int64_t N, int64_t P) {
   if (M <= 4) {
-    matmul_4x4(c, a, b, M, N, P);
+    imatmul_4x4(c, a, b, M, N, P);
   } else {
-    matmul_8x8(c, a, b, M, N, P);
+    imatmul_8x8(c, a, b, M, N, P);
   }
 }
 
@@ -34,8 +34,8 @@ void matmul(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
 // 4x4
 // ---------------
 
-void matmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
-                int64_t N, int64_t P) {
+void imatmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
+                 int64_t N, int64_t P) {
   // We work on 4 rows of the matrix at once
   int64_t block_size = 4;
   int64_t block_size_p;
@@ -60,21 +60,21 @@ void matmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
       const int64_t *a_ = a + m * N;
       int64_t *c__ = c_ + m * P;
 
-      matmul_vec_4x4_slice_init();
-      matmul_vec_4x4(c__, a_, b_, N, P);
+      imatmul_vec_4x4_slice_init();
+      imatmul_vec_4x4(c__, a_, b_, N, P);
     }
   }
 }
 
-void matmul_vec_4x4_slice_init() {
+void imatmul_vec_4x4_slice_init() {
   asm volatile("vmv.v.i v0,  0");
   asm volatile("vmv.v.i v4,  0");
   asm volatile("vmv.v.i v8,  0");
   asm volatile("vmv.v.i v12, 0");
 }
 
-void matmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
-                    int64_t P) {
+void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
+                     int64_t P) {
   // Temporary variables
   int64_t t0, t1, t2, t3;
 
@@ -159,8 +159,8 @@ void matmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
 // 8x8
 // ---------------
 
-void matmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
-                int64_t N, int64_t P) {
+void imatmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
+                 int64_t N, int64_t P) {
   // We work on 4 rows of the matrix at once
   int64_t block_size = 8;
   int64_t block_size_p;
@@ -185,13 +185,13 @@ void matmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
       const int64_t *a_ = a + m * N;
       int64_t *c__ = c_ + m * P;
 
-      matmul_vec_8x8_slice_init();
-      matmul_vec_8x8(c__, a_, b_, N, P);
+      imatmul_vec_8x8_slice_init();
+      imatmul_vec_8x8(c__, a_, b_, N, P);
     }
   }
 }
 
-void matmul_vec_8x8_slice_init() {
+void imatmul_vec_8x8_slice_init() {
   asm volatile("vmv.v.i v0,  0");
   asm volatile("vmv.v.i v2,  0");
   asm volatile("vmv.v.i v4,  0");
@@ -202,8 +202,8 @@ void matmul_vec_8x8_slice_init() {
   asm volatile("vmv.v.i v14, 0");
 }
 
-void matmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
-                    int64_t P) {
+void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
+                     int64_t P) {
   // Temporary variables
   int64_t t0, t1, t2, t3, t4, t5, t6, t7;
 

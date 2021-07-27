@@ -37,6 +37,7 @@ jobs:
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive -- toolchain/riscv-llvm
     - name: Download Newlib
+      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive -- toolchain/newlib
     - name: Compile LLVM
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
@@ -275,10 +276,11 @@ jobs:
 #  Simulate stage  #
 ####################
 
-  simulate-hello-world:
+  simulate:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        app:        [hello_world, imatmul, fmatmul, conv2d]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
@@ -301,91 +303,7 @@ jobs:
         name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run test
-      run: config=${{ matrix.ara_config }} make -C hardware app=hello_world simv
-
-  simulate-imatmul:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
-    needs: ["compile-ara", "compile-apps"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
-    - name: Get Verilated model of Ara
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-ara-${{ matrix.ara_config }}
-    - name: Untar Verilated model of Ara
-      run: tar xvf ara.tar
-    - name: Get applications
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-apps-${{ matrix.ara_config }}
-        path: apps/bin
-    - name: Run test
-      run: config=${{ matrix.ara_config }} make -C hardware app=imatmul simv
-
-  simulate-fmatmul:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
-    needs: ["compile-ara", "compile-apps"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
-    - name: Get Verilated model of Ara
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-ara-${{ matrix.ara_config }}
-    - name: Untar Verilated model of Ara
-      run: tar xvf ara.tar
-    - name: Get applications
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-apps-${{ matrix.ara_config }}
-        path: apps/bin
-    - name: Run test
-      run: config=${{ matrix.ara_config }} make -C hardware app=fmatmul simv
-
-  simulate-conv2d:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
-    needs: ["compile-ara", "compile-apps"]
-    steps:
-    - uses: actions/checkout@v2
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v2
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
-    - name: Get Verilated model of Ara
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-ara-${{ matrix.ara_config }}
-    - name: Untar Verilated model of Ara
-      run: tar xvf ara.tar
-    - name: Get applications
-      uses: actions/download-artifact@v2
-      with:
-        name: compile-apps-${{ matrix.ara_config }}
-        path: apps/bin
-    - name: Run test
-      run: config=${{ matrix.ara_config }} make -C hardware app=conv2d simv
+      run: config=${{ matrix.ara_config }} app=${{ matrix.app }} make -C hardware simv
 
 ########################
 #  RISC-V Tests stage  #
@@ -515,6 +433,89 @@ jobs:
     - name: Check for trailing whitespaces and tabs
       run: git diff --check $base HEAD --
 
+#####################
+#  Benchmark stage  #
+#####################
+
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+    needs: ["compile-ara", "compile-apps"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download the LLVM toolchain
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-llvm
+    - name: Untar LLVM
+      run: tar xvf tc-llvm.tar
+    - name: Get Spike artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: tc-isa-sim
+    - name: Untar Spike
+      run: tar xvf tc-isa-sim.tar
+    - name: Get Verilated model of Ara
+      uses: actions/download-artifact@v2
+      with:
+        name: compile-ara-${{ matrix.ara_config }}
+    - name: Untar Verilated model of Ara
+      run: tar xvf ara.tar
+    - name: Benchmark Ara
+      run: config=${{ matrix.ara_config }} ./scripts/benchmark.sh
+    - name: Tar runtime results
+      run: |
+        tar -cvf benchmarks-${{ matrix.ara_config }}.tar *.benchmark
+    - name: Upload runtime results
+      uses: actions/upload-artifact@v2
+      with:
+        name: benchmark-${{ matrix.ara_config }}
+        path: benchmarks-${{ matrix.ara_config }}.tar
+
+  roofline:
+    runs-on: ubuntu-latest
+    needs: benchmark
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get benchmark results (2 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: benchmark-2_lanes
+    - name: Get benchmark results (4 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: benchmark-4_lanes
+    - name: Get benchmark results (8 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: benchmark-8_lanes
+    - name: Get benchmark results (16 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: benchmark-16_lanes
+    - name: Untar the results
+      run: |
+        tar xvf benchmarks-2_lanes.tar
+        tar xvf benchmarks-4_lanes.tar
+        tar xvf benchmarks-8_lanes.tar
+        tar xvf benchmarks-16_lanes.tar
+    - name: Install gnuplot
+      run: sudo apt-get install gnuplot
+    - name: Plot the rooflines
+      run: gnuplot -c scripts/benchmark.gnuplot
+    - name: Upload the imatmul roofline
+      uses: actions/upload-artifact@v2
+      with:
+        name: imatmul_roofline
+        path: imatmul.png
+    - name: Upload the fmatmul roofline
+      uses: actions/upload-artifact@v2
+      with:
+        name: fmatmul_roofline
+        path: fmatmul.png
+
 ####################
 #  Clean-up stage  #
 ####################
@@ -522,7 +523,7 @@ jobs:
   clean-up:
     runs-on: ubuntu-latest
     if: always()
-    needs: ["simulate-hello-world", "simulate-imatmul", "simulate-fmatmul", "simulate-conv2d", "riscv-tests-spike", "riscv-tests-simv"]
+    needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
       - uses: actions/checkout@v2
       - name: Delete artifacts
@@ -541,7 +542,7 @@ jobs:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     if: always()
-    needs: ["simulate-hello-world", "simulate-imatmul", "simulate-fmatmul", "simulate-conv2d", "riscv-tests-spike", "riscv-tests-simv"]
+    needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
       - uses: actions/checkout@v2
       - name: Delete artifacts
@@ -551,3 +552,4 @@ jobs:
             compile-ara-${{ matrix.ara_config }}
             compile-apps-${{ matrix.ara_config }}
             compile-riscv-tests-${{ matrix.ara_config }}
+            benchmark-${{ matrix.ara_config }}
