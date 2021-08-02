@@ -1,10 +1,28 @@
-#include "conv2d.h"
+// Copyright 2020 ETH Zurich and University of Bologna.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: Matteo Perotti
+
+#include "iconv2d.h"
 #include <stdio.h>
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-void conv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
-                int64_t F) {
+void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
+                 int64_t F) {
   // We work on 4 rows of the output matrix at once
   int64_t block_size_o = 4;
   // We work on block_size_o + F - 1 rows of the input matrix at once
@@ -14,15 +32,15 @@ void conv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
   int64_t *o_ = o;
 
   // For simplicity, compute over the padding rows as well
-  conv2d_vec_4xC_slice_init_3x3(o_, C);
+  iconv2d_vec_4xC_slice_init_3x3(o_, C);
   // Preload the first two input rows -> This is not needed in the other rounds
-  conv2d_vec_4xC_slice_preload_3x3(i_, C, F);
+  iconv2d_vec_4xC_slice_preload_3x3(i_, C, F);
   // The first F-1 rows have already been loaded by
-  // conv2d_vec_4xC_slice_preload_3x3()
+  // iconv2d_vec_4xC_slice_preload_3x3()
   int64_t *i__ = i_ + (F - 1) * (C + F - 1);
-  conv2d_vec_4xC_3x3(o_, i__, f, C, F);
+  iconv2d_vec_4xC_3x3(o_, i__, f, C, F);
   // Re-use some of the already-loaded input rows
-  conv2d_vec_4xC_slice_move_3x3(C, F);
+  iconv2d_vec_4xC_slice_move_3x3(C, F);
 
   // Iterate over the output rows
   for (int64_t r = block_size_o; r < R; r += block_size_o) {
@@ -30,18 +48,18 @@ void conv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
     o_ = o + r * C;
 
     // For simplicity, compute over the padding rows as well
-    conv2d_vec_4xC_slice_init_3x3(o_, C);
+    iconv2d_vec_4xC_slice_init_3x3(o_, C);
     // The first F-1 rows have already been loaded by
-    // conv2d_vec_4xC_slice_init()
+    // iconv2d_vec_4xC_slice_init()
     i__ = i_ + (F - 1) * (C + F - 1);
-    conv2d_vec_4xC_3x3(o_, i__, f, C, F);
+    iconv2d_vec_4xC_3x3(o_, i__, f, C, F);
     // Re-use some of the already-loaded input rows
-    conv2d_vec_4xC_slice_move_3x3(C, F);
+    iconv2d_vec_4xC_slice_move_3x3(C, F);
   }
 }
 
 // Load 4 rows of the output matrix
-void conv2d_vec_4xC_slice_init_3x3(int64_t *o, int64_t C) {
+void iconv2d_vec_4xC_slice_init_3x3(int64_t *o, int64_t C) {
   // Helper variables
   int64_t ldo = C << 3;
 
@@ -55,7 +73,7 @@ void conv2d_vec_4xC_slice_init_3x3(int64_t *o, int64_t C) {
 }
 
 // Load 4 rows of the output matrix
-void conv2d_vec_4xC_slice_preload_3x3(int64_t *i, int64_t C, int64_t F) {
+void iconv2d_vec_4xC_slice_preload_3x3(int64_t *i, int64_t C, int64_t F) {
   // Helper variables
   int64_t ldi = (C + F - 1) << 3;
 
@@ -67,8 +85,8 @@ void conv2d_vec_4xC_slice_preload_3x3(int64_t *i, int64_t C, int64_t F) {
 }
 
 // Calculate 4 output matrix rows
-void conv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
-                        int64_t F) {
+void iconv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
+                         int64_t F) {
 
   // Temporary variables
   int64_t t0, t1, t2;
@@ -174,7 +192,7 @@ void conv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
   asm volatile("vse64.v  v6, (%0);" : "+r"(o));
 }
 
-void conv2d_vec_4xC_slice_move_3x3(int64_t C, int64_t F) {
+void iconv2d_vec_4xC_slice_move_3x3(int64_t C, int64_t F) {
   // Move C+F-1 elements
   asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
   // Move the last floor(F/2) + 1 input rows
