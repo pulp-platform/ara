@@ -24,22 +24,19 @@
 #include "printf.h"
 #include "runtime.h"
 
-#ifdef IMATMUL
-#include "benchmark/imatmul_bmark.c"
+#if defined( IMATMUL )
 #include "kernel/imatmul.h"
-#else
+#include "benchmark/imatmul.bmark"
 
-#ifdef FMATMUL
-#include "benchmark/fmatmul_bmark.c"
+#elif defined( FMATMUL )
 #include "kernel/fmatmul.h"
-#else
+#include "benchmark/fmatmul.bmark"
 
-#ifdef ICONV2D
-#include "benchmark/iconv2d_bmark.c"
-#include "conv2d.h"
-#else
+#elif defined( ICONV2D )
+#include "kernel/iconv2d.h"
+#include "benchmark/iconv2d.bmark"
 
-#ifdef FCONV2D
-#include "benchmark/fconv2d_bmark.c"
-#include "conv2d.h"
+#elif defined( FCONV2D )
+#include "kernel/fconv2d.h"
+#include "benchmark/fconv2d.bmark"
 #endif
