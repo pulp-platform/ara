@@ -22,8 +22,6 @@ import numpy as np
 import scipy.signal
 import sys
 
-allowed_filter_size
-
 def rand_matrix(N, M, seed):
 	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
 
@@ -41,7 +39,7 @@ def emit(name, array, alignment='3'):
 # Define the filter size and the matrix dimension (max, for now, is 128 64-bit elements)
 if len(sys.argv) > 1:
 	matrix_width = int(sys.argv[1])
-	assert(matrix_dimension <= 128), "The width of the image cannot be greater than 128 64-bit \
+	assert(matrix_width <= 128), "The width of the image cannot be greater than 128 64-bit \
 	                                  elements. If this is not enough, modify the algorithm."
 	filter_size = int(sys.argv[2])
 	# Filter size must be odd
