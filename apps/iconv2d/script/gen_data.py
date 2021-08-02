@@ -1,8 +1,28 @@
+# Copyright 2021 ETH Zurich and University of Bologna.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #!/usr/bin/env python3
+
+# arg1: image size, arg2: filter size
 
 import numpy as np
 import scipy.signal
 import sys
+
+allowed_filter_size
 
 def rand_matrix(N, M, seed):
 	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
@@ -18,17 +38,21 @@ def emit(name, array, alignment='3'):
 			s += "%02x" % bs[i+3-n]
 		print("    .word 0x%s" % s)
 
-# Define the filter size
+# Define the filter size and the matrix dimension (max, for now, is 128 64-bit elements)
 if len(sys.argv) > 1:
-	filter_size = int(sys.argv[1])
+	matrix_width = int(sys.argv[1])
+	assert(matrix_dimension <= 128), "The width of the image cannot be greater than 128 64-bit \
+	                                  elements. If this is not enough, modify the algorithm."
+	filter_size = int(sys.argv[2])
 	# Filter size must be odd
 	assert(filter_size % 2 == 1), "The filter size must be an odd integer number"
 else:
+	matrix_width = 64
 	filter_size = 3
 
-# Input image
-M = 64
-N = 64
+# Input image. Take a square image
+M = matrix_width
+N = matrix_width
 padding = int(filter_size/2)
 M_pad = M + 2*padding
 N_pad = N + 2*padding
