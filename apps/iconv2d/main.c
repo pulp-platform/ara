@@ -88,7 +88,12 @@ int main() {
 
   // Performance metrics
   int64_t runtime = get_timer();
+  float performance = 2.0 * F * F * M * N / runtime;
+  float utilization = 100 * performance / (2.0 * NR_LANES);
+
   printf("The execution took %d cycles.\n", runtime);
+  printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n", performance,
+         utilization);
 
   // Verify correctness
   printf("Verifying result...\n");
