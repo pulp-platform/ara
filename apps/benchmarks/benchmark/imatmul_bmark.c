@@ -16,30 +16,31 @@
 
 // Author: Matheus Cavalcante, ETH Zurich
 //         Samuel Riedel, ETH Zurich
-//         Matteo Perotti, ETH Zurich
 
-#include <stdint.h>
-#include <string.h>
+// Define Matrix dimensions:
+// C = AB with A=[MxN], B=[NxP], C=[MxP]
+#define M 128
+#define N 128
+#define P 128
 
-#include "printf.h"
-#include "runtime.h"
+int64_t a[M * N] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int64_t b[N * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int64_t c[M * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
-#ifdef IMATMUL
-#include "benchmark/imatmul_bmark.c"
-#include "kernel/imatmul.h"
-#else
-
-#ifdef FMATMUL
-#include "benchmark/fmatmul_bmark.c"
-#include "kernel/fmatmul.h"
-#else
-
-#ifdef ICONV2D
-#include "benchmark/iconv2d_bmark.c"
-#include "conv2d.h"
-#else
-
-#ifdef FCONV2D
-#include "benchmark/fconv2d_bmark.c"
-#include "conv2d.h"
+// Define the size of the matrix, and the kernel to call
+#ifndef SIZE
+#define SIZE 16
 #endif
+
+int main() {
+  // Measure runtime with a hot cache
+  start_timer();
+  imatmul(c, a, b, SIZE, SIZE, SIZE);
+  stop_timer();
+
+  int64_t runtime = get_timer();
+  float performance = 2.0 * SIZE * SIZE * SIZE / runtime;
+  printf("[performance]: %d %f\n", SIZE, performance);
+
+  return 0;
+}
