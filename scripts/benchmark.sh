@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Python in use
+PYTHON=python3
+
 # Include Ara's configuration
 if [ -z ${config} ]; then
     if [ -z ${ARA_CONFIGURATION} ]; then
@@ -21,26 +24,26 @@ source ${tmpscript}
 ## MATMUL ##
 ############
 
-# Measure the runtime of the following kernels
-for kernel in imatmul fmatmul; do
-
-    # Log the performance results
-    > ${kernel}_${nr_lanes}.benchmark
-
-    # Measure the following matrix sizes
-    for size in 4 8 16 32 64 128; do
-
-        tempfile=`mktemp`
-
-        DEFINES="-DSIZE=$size -D${kernel^^}=1" \
-               make -C apps/ bin/benchmarks
-        make -C hardware/ simv app=benchmarks > $tempfile
-
-        # Extract the performance
-        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
-
-    done
-done
+## Measure the runtime of the following kernels
+#for kernel in imatmul fmatmul; do
+#
+#    # Log the performance results
+#    > ${kernel}_${nr_lanes}.benchmark
+#
+#    # Measure the following matrix sizes
+#    for size in 4 8 16 32 64 128; do
+#
+#        tempfile=`mktemp`
+#
+#        DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+#               make -C apps/ bin/benchmarks
+#        make -C hardware/ simv app=benchmarks > $tempfile
+#
+#        # Extract the performance
+#        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+#
+#    done
+#done
 
 ############
 ## CONV2D ##
@@ -53,7 +56,10 @@ for kernel in iconv2d; do
     > ${kernel}_${nr_lanes}.benchmark
 
     # Measure the following matrix and filter sizes
-    for msize in 4 8 16 32 64 128; do
+    # The input image is also padded, and the max vl is 128
+    # MAXVL_M2_64b - F_MAX + 1 = 128 - 7 + 1 = 122 is the max number of elements
+    # Actually 120, since it must be divible by 4
+    for msize in 4 8 16 32 64 112; do
         for fsize in 3 5 7; do
             tempfile=`mktemp`
 
@@ -62,7 +68,7 @@ for kernel in iconv2d; do
 
             DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
-            make -C hardware/ simv app=benchmarks > $tempfile
+            make -C hardware/ simc app=benchmarks > $tempfile
 
             # Extract the performance
             cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
