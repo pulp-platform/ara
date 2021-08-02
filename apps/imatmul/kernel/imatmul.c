@@ -26,8 +26,12 @@ void imatmul(int64_t *c, const int64_t *a, const int64_t *b,
              const unsigned long int P) {
   if (M <= 4) {
     imatmul_4x4(c, a, b, M, N, P);
-  } else {
+  } else if (M <= 128) {
     imatmul_8x8(c, a, b, M, N, P);
+  } else {
+    // Vector length is 64 elements. With an 4x4 matmul,
+    // we can use LMUL=4, having a vl of 256.
+    imatmul_4x4(c, a, b, M, N, P);
   }
 }
 

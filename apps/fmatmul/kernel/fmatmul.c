@@ -28,8 +28,16 @@ void fmatmul(double *c, const double *a, const double *b,
     fmatmul_4x4(c, a, b, M, N, P);
   } else if (M <= 8) {
     fmatmul_8x8(c, a, b, M, N, P);
-  } else {
+  } else if (M <= 64) {
     fmatmul_16x16(c, a, b, M, N, P);
+  } else if (M <= 128) {
+    // Vector length is 64 elements. With an 8x8 matmul,
+    // we can use LMUL=2, having a vl of 128.
+    fmatmul_8x8(c, a, b, M, N, P);
+  } else {
+    // Vector length is 64 elements. With an 4x4 matmul,
+    // we can use LMUL=4, having a vl of 256.
+    fmatmul_4x4(c, a, b, M, N, P);
   }
 }
 
