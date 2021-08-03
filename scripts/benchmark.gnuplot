@@ -61,3 +61,24 @@ plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 
      'fmatmul_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
      'fmatmul_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+
+# Title
+set title "iconv2d performance (matrices of size #elements x #elements)"
+
+# Set axis labels
+set xlabel 'Matrix size (#elements)'
+set ylabel 'Performance (FLOP/cycle)'
+
+# Output png
+set term png
+set out "iconv2d.png"
+
+# Plot the rooflines
+plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
+     'iconv2d_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
+     'iconv2d_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
+     'iconv2d_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
+     'iconv2d_16.benchmark' w p lw 2 lc 7 pt 2 notitle
