@@ -28,6 +28,8 @@ This version of Spike is patched to align the behavior of the `vcsr` CSR with th
 We provide a Python script to run `clang-format` and format the C and C++ files of this repository (`scripts/run-clang-format.py`).
 This file is licensed under the MIT license.
 
+`jacobi2d` comes from an adaptation of the software in `https://github.com/RALC88/riscv-vectorized-benchmark-suite`. The source file `apps/jacobi2d/main.c` contains the original licence.
+
 ### Verilator simulations
 
 In order to run Verilator simulations, you will need a modern Verilator installation.
