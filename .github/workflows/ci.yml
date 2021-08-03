@@ -515,6 +515,12 @@ jobs:
       with:
         name: fmatmul_roofline
         path: fmatmul.png
+    - name: Upload the iconv2d roofline
+      uses: actions/upload-artifact@v2
+      with:
+        name: iconv2d_roofline
+        path: iconv2d.png
+
 
 ####################
 #  Clean-up stage  #
