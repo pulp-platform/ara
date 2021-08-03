@@ -84,6 +84,8 @@ int main() {
     iconv2d_7x7(o, i, f, M, N, F);
   else
     printf("Error: the filter size is different from 3 or 5 or 7.\n");
+  // Poll benchmark_reg == ara_busy until it is zero, then stop the timer
+  while(benchmark_reg);
   stop_timer();
 
   // Performance metrics
