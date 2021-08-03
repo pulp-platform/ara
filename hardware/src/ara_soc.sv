@@ -420,7 +420,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .axi_lite_slave_resp_o(axi_lite_ctrl_registers_resp),
     .dram_base_addr_o     (/* Unused */                ),
     .dram_end_addr_o      (/* Unused */                ),
-    .exit_o               (exit_o                      )
+    .exit_o               (exit_o                      ),
+    .benchmark_reg_o      (/* Unused */                )
   );
 
   axi_dw_converter #(

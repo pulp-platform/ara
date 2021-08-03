@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+extern uint64_t benchmark_reg;
+
 extern int64_t timer;
 
 // Return the current value of the cycle counter

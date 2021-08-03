@@ -54,6 +54,7 @@ SECTIONS {
   eoc_address_reg        = 0xD0000000;
   dram_start_address_reg = 0xD0000008;
   dram_end_address_reg   = 0xD0000010;
+  benchmark_reg          = 0xD0000018;
 
   fake_uart              = 0xC0000000;
 }

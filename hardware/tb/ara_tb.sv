@@ -142,4 +142,20 @@ module ara_tb;
     end
   end
 
+  /**************
+   *  Ara Busy  *
+   **************/
+
+  // This process helps in determining if Ara is still running at least one instruction
+  // This is useful during a benchmark, when we are counting executed cycles
+  // We must be sure that every vector instruction is completely over
+  logic ara_busy;
+  assign ara_busy = |(dut.i_ara_soc.i_ara.i_sequencer.vinsn_running_q);
+
+  // The LSb of benchmark_reg is updated synchronously with the value of ara_busy
+  // Check it at the end of the kernel to know when to stop the cycle count
+  always @(posedge clk) begin
+    dut.i_ara_soc.i_ctrl_registers.i_axi_lite_regs.reg_q[24] = ara_busy;
+  end
+
 endmodule : ara_tb
