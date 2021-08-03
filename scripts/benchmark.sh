@@ -24,26 +24,26 @@ source ${tmpscript}
 ## MATMUL ##
 ############
 
-## Measure the runtime of the following kernels
-#for kernel in imatmul fmatmul; do
-#
-#    # Log the performance results
-#    > ${kernel}_${nr_lanes}.benchmark
-#
-#    # Measure the following matrix sizes
-#    for size in 4 8 16 32 64 128; do
-#
-#        tempfile=`mktemp`
-#
-#        DEFINES="-DSIZE=$size -D${kernel^^}=1" \
-#               make -C apps/ bin/benchmarks
-#        make -C hardware/ simv app=benchmarks > $tempfile
-#
-#        # Extract the performance
-#        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
-#
-#    done
-#done
+# Measure the runtime of the following kernels
+for kernel in imatmul fmatmul; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+
+    # Measure the following matrix sizes
+    for size in 4 8 16 32 64 128; do
+
+        tempfile=`mktemp`
+
+        DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+               make -C apps/ bin/benchmarks
+        make -C hardware/ simv app=benchmarks > $tempfile
+
+        # Extract the performance
+        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+
+    done
+done
 
 ############
 ## CONV2D ##
