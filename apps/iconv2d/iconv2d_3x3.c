@@ -107,7 +107,8 @@ void iconv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
   asm volatile("ld %1, (%0);" : "+&r"(f_), "=&r"(t2));
 
   // Fetch 4 + F - 1 - 2 rows of the input matrix
-  // Compute on C + F - 1 elements, instead of C elements, to cover the latency of the load instructions
+  // Compute on C + F - 1 elements, instead of C elements, to cover the latency
+  // of the load instructions
   asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
   asm volatile("vmacc.vx v0, %0, v8" ::"r"(t0));
   asm volatile("vmacc.vx v2, %0, v10" ::"r"(t0));
