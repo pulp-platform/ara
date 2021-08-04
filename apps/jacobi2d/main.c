@@ -288,9 +288,6 @@ int main() {
   printf("Processing the vector benchmark\n");
   start_timer();
   jacobi_2d_vector(TSTEPS, N, A_v, B_v);
-  // Poll benchmark_reg == ara_busy until it is zero, then stop the timer
-  while (benchmark_reg)
-    ;
   stop_timer();
   int64_t runtime = get_timer();
   // 2* since we have 2 jacobi kernels, one on A_v, one on B_v
