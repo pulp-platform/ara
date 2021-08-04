@@ -68,7 +68,7 @@ for kernel in iconv2d; do
 
             DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
-            make -C hardware/ simc app=benchmarks > $tempfile
+            make -C hardware/ simv app=benchmarks > $tempfile
 
             # Extract the performance
             cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
