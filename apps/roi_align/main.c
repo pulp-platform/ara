@@ -1,9 +1,10 @@
 /*
     Original implementation taken from
     https://github.com/longcw/RoIAlign.pytorch No license found on the website.
-    A question about the license was made here https://github.com/longcw/RoIAlign.pytorch/issues/48
-    Following the answer to this question, a correct header will be added also here
-    Adaptation by: Matteo Perotti, ETH Zurich, <mperotti@iis.ee.ethz.ch>
+    A question about the license was made here
+   https://github.com/longcw/RoIAlign.pytorch/issues/48 Following the answer to
+   this question, a correct header will be added also here Adaptation by: Matteo
+   Perotti, ETH Zurich, <mperotti@iis.ee.ethz.ch>
 */
 
 #include <math.h>
