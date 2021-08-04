@@ -135,9 +135,6 @@ int main() {
   // Call the main kernel, and measure cycles
   start_timer();
   dropout_vec(N, I, SCALE, SEL, o);
-  // Poll benchmark_reg == ara_busy until it is zero, then stop the timer
-  while (benchmark_reg)
-    ;
   stop_timer();
   // Performance metrics
   int64_t runtime = get_timer();
