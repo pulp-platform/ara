@@ -8,7 +8,9 @@ extern int64_t timer;
 // Return the current value of the cycle counter
 inline int64_t get_cycle_count() {
   int64_t cycle_count;
-  asm volatile("csrr %[cycle_count], cycle" : [cycle_count] "=r"(cycle_count));
+  // The fence is needed to be sure that Ara is idle, and it is not performing the last
+  // vector stores when we read mcycle with stop_timer()
+  asm volatile("fence; csrr %[cycle_count], cycle" : [cycle_count] "=r"(cycle_count));
   return cycle_count;
 };
 
