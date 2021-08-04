@@ -64,11 +64,11 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 /* jacobi-2d.c: this file is part of PolyBench/C */
 
 /*************************************************************************
-* RISC-V Vectorized Version
-* Author: Cristóbal Ramírez Lazo
-* email: cristobal.ramirez@bsc.es
-* Barcelona Supercomputing Center (2020)
-*************************************************************************/
+ * RISC-V Vectorized Version
+ * Author: Cristóbal Ramírez Lazo
+ * email: cristobal.ramirez@bsc.es
+ * Barcelona Supercomputing Center (2020)
+ *************************************************************************/
 
 // Porting to Ara SW environment
 // Author: Matteo Perotti, ETH Zurich, <mperotti@iis.ee.ethz.ch>
@@ -77,8 +77,8 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 #include <string.h>
 
 #include "printf.h"
-#include "runtime.h"
 #include "riscv_vector.h"
+#include "runtime.h"
 
 // Define vector size
 #if defined(SIMTINY)
@@ -246,8 +246,7 @@ DATA_TYPE similarity_check(DATA_TYPE a, DATA_TYPE b, double threshold) {
   if (FABS(diff) > threshold) {
     printf("fabs(diff): %llx, threshold: %llx\n", diff, threshold);
     return 0;
-  }
-  else
+  } else
     return 1;
 }
 
@@ -290,7 +289,8 @@ int main() {
   start_timer();
   jacobi_2d_vector(TSTEPS, N, A_v, B_v);
   // Poll benchmark_reg == ara_busy until it is zero, then stop the timer
-  while(benchmark_reg);
+  while (benchmark_reg)
+    ;
   stop_timer();
   int64_t runtime = get_timer();
   // 2* since we have 2 jacobi kernels, one on A_v, one on B_v
@@ -298,8 +298,8 @@ int main() {
   float performance = 2.0 * (TSTEPS * 5.0 * N * N / runtime);
   float utilization = 100.0 * performance / NR_LANES;
   printf("Vector jacobi2d cycle count: %d\n", runtime);
-  printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n", performance,
-         utilization);
+  printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n",
+         performance, utilization);
 
 #ifdef RESULT_PRINT
   printf("Scalar A mtx:\n");

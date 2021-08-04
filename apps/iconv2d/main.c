@@ -85,7 +85,8 @@ int main() {
   else
     printf("Error: the filter size is different from 3 or 5 or 7.\n");
   // Poll benchmark_reg == ara_busy until it is zero, then stop the timer
-  while(benchmark_reg);
+  while (benchmark_reg)
+    ;
   stop_timer();
 
   // Performance metrics
