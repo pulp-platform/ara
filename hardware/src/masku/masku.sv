@@ -274,7 +274,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       unique case (vinsn_issue.op) inside
         [VMANDNOT:VMXNOR]: alu_result = (masku_operand_a_i & bit_enable_mask) |
           (masku_operand_b_i & ~bit_enable_mask);
-        [VMSEQ:VMFGE] : begin
+        [VMFEQ:VMSBC] : begin
           automatic logic [ELEN*NrLanes-1:0] alu_result_flat = '0;
 
           unique case (vinsn_issue.vtype.vsew)
@@ -533,7 +533,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Increment the VRF pointer
-          if (vinsn_issue.op inside {[VMSEQ:VMFGE]}) begin
+          if (vinsn_issue.op inside {[VMFEQ:VMSBC]}) begin
             vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
 
             // Filled-up a word, or finished execution
@@ -670,7 +670,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Finished committing the results of a vector instruction
     // When the masku acts as a master for the VRF, wait the grant from the operand requester
-    if (vinsn_commit_valid && commit_cnt_d == '0 && (!(vinsn_issue.op inside {[VMSEQ:VMFGE]}) || masku_result_gnt_i)) begin
+    if (vinsn_commit_valid && commit_cnt_d == '0 && (!(vinsn_issue.op inside {[VMFEQ:VMSBC]}) || masku_result_gnt_i)) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 

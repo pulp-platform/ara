@@ -99,14 +99,14 @@ package ara_pkg;
     VFADD, VFSUB, VFRSUB, VFMUL, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB, VFNMSUB,
     VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX, VFCVTRTZXUF, VFCVTRTZXF,
     VFCVTFF,
-    // Mask operations
-    VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
+    // Floating-point comparison instructions
+    VMFEQ, VMFLE, VMFLT, VMFNE, VMFGT, VMFGE,
     // Integer comparison instructions
     VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSGT,
     // Integer add-with-carry and subtract-with-borrow carry-out instructions
     VMADC, VMSBC,
-    // Floating-point comparison instructions
-    VMFEQ, VMFLE, VMFLT, VMFNE, VMFGT, VMFGE,
+    // Mask operations
+    VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Slide instructions
     VSLIDEUP, VSLIDEDOWN,
     // Load instructions

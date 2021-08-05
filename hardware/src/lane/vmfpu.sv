@@ -172,7 +172,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
   assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
-  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VFCVTFF], [VMFEQ:VMFGE]};
+  assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VMFGE]};
 
   //////////////////////
   //  Scalar operand  //
