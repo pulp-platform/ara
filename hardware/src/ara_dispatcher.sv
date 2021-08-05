@@ -2285,27 +2285,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     if (ara_req_valid_d && ara_req_d.use_vd) begin
       unique case (ara_req_d.emul)
         LMUL_1: begin
-          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
+          for (int i = 0; i < 1; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
         end
         LMUL_2: begin
-          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 1] = ara_req_d.vtype.vsew;
+          for (int i = 0; i < 2; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
         end
         LMUL_4: begin
-          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 1] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 2] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 3] = ara_req_d.vtype.vsew;
+          for (int i = 0; i < 4; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
         end
         LMUL_8: begin
-          eew_d[ara_req_d.vd]     = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 1] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 2] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 3] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 4] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 5] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 6] = ara_req_d.vtype.vsew;
-          eew_d[ara_req_d.vd + 7] = ara_req_d.vtype.vsew;
+          for (int i = 0; i < 8; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
         end
         default: ; // EMUL < 1
       endcase
