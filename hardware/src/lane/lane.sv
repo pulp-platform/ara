@@ -67,6 +67,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output `STRUCT_VECT(elen_t, [2:0])                     mask_operand_o,
     output logic                [2:0]                      mask_operand_valid_o,
     input  logic                [2:0]                      mask_operand_ready_i,
+    input  masku_fu_e                                      mask_operand_fu_i,
     input  logic                                           masku_result_req_i,
     input  vid_t                                           masku_result_id_i,
     input  vaddr_t                                         masku_result_addr_i,
@@ -77,6 +78,37 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          mask_i,
     input  logic                                           mask_valid_i,
     output logic                                           mask_ready_o
+  );
+
+  /////////////////
+  //  Spill Reg  //
+  /////////////////
+
+  // Cut the mask_ready_o timing-critical path
+  strb_t mask_i_q;
+  logic  mask_valid_i_q, mask_ready_o_d, mask_ready_q;
+
+  // Register the mask only if the request targets the lane
+  logic mask_lane_valid, mask_expected;
+  assign mask_lane_valid = mask_valid_i & mask_expected;
+
+  // Ara's protocol is actually a req-gnt one
+  // The mask unit broadcasts its mask to the whole system,
+  // even if the mask targets the slide unit.
+  // The lanes should acknowledge ONLY their masks.
+  assign mask_ready_o = mask_ready_q & mask_lane_valid;
+
+  spill_register #(
+    .T(strb_t)
+  ) i_mask_ready_spill_register (
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
+    .valid_i(mask_lane_valid),
+    .ready_o(mask_ready_q),
+    .data_i (mask_i),
+    .valid_o(mask_valid_i_q),
+    .ready_i(mask_ready_o_d),
+    .data_o (mask_i_q)
   );
 
   /////////////////
@@ -340,9 +372,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_o       (mask_operand_o[1]      ),
     .mask_operand_valid_o (mask_operand_valid_o[1]),
     .mask_operand_ready_i (mask_operand_ready_i[1]),
-    .mask_i               (mask_i                 ),
-    .mask_valid_i         (mask_valid_i           ),
-    .mask_ready_o         (mask_ready_o           )
+    .mask_operand_fu_i    (mask_operand_fu_i      ),
+    .mask_i               (mask_i_q               ),
+    .mask_valid_i         (mask_valid_i_q         ),
+    .mask_ready_o         (mask_ready_o_d         ),
+    .mask_expected_o      (mask_expected          )
   );
 
   //////////////////

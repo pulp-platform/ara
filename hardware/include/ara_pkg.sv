@@ -58,7 +58,7 @@ package ara_pkg;
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;
-  localparam int unsigned LatMultiplierEW16 = 0;
+  localparam int unsigned LatMultiplierEW16 = 1;
   localparam int unsigned LatMultiplierEW8  = 0;
 
   // FPU latencies.
@@ -97,13 +97,16 @@ package ara_pkg;
     VDIVU, VDIV, VREMU, VREM,
     // FPU
     VFADD, VFSUB, VFRSUB, VFMUL, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB, VFNMSUB,
-    VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX,
-    // Mask operations
-    VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
+    VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX, VFCVTRTZXUF, VFCVTRTZXF,
+    VFCVTFF,
+    // Floating-point comparison instructions
+    VMFEQ, VMFLE, VMFLT, VMFNE, VMFGT, VMFGE,
     // Integer comparison instructions
     VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSGT,
     // Integer add-with-carry and subtract-with-borrow carry-out instructions
     VMADC, VMSBC,
+    // Mask operations
+    VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
     // Slide instructions
     VSLIDEUP, VSLIDEDOWN,
     // Load instructions
@@ -133,7 +136,7 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  localparam int unsigned NumConversions = 8;
+  localparam int unsigned NumConversions = 9;
 
   typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
@@ -143,8 +146,18 @@ package ara_pkg;
     OpQueueConversionSExt4,
     OpQueueConversionZExt8,
     OpQueueConversionSExt8,
-    OpQueueConversionWideFP2
+    OpQueueConversionWideFP2,
+    OpQueueAdjustFPCvt
   } opqueue_conversion_e;
+  // OpQueueAdjustFPCvt is introduced to support widening FP conversions, to comply with the
+  // required SIMD input format of the FPU module (fpnew)
+
+  // The FPU needs to know if, during the conversion, there is also a width change
+  typedef enum logic [1:0] {
+    CVT_SAME,
+    CVT_WIDE,
+    CVT_NARROW
+  } fp_resize_e;
 
   // Floating-Point structs for re-encoding during widening FP operations
   typedef struct packed {
@@ -224,6 +237,8 @@ package ara_pkg;
     fpnew_pkg::roundmode_e fp_rm;
     // Widen FP immediate (re-encoding)
     logic wide_fp_imm;
+    // Resizing of FP conversions
+    fp_resize_e fp_cvt_resize;
 
     // Vector machine metadata
     vlen_t vl;
@@ -310,6 +325,8 @@ package ara_pkg;
     fpnew_pkg::roundmode_e fp_rm;
     // Widen FP immediate (re-encoding)
     logic wide_fp_imm;
+    // Resizing of FP conversions
+    fp_resize_e fp_cvt_resize;
 
     // Vector machine metadata
     vlen_t vl;
@@ -757,6 +774,15 @@ package ara_pkg;
     endcase
   endfunction : deshuffle_index
 
+  /////////////////////////
+  //  MASKU definitions  //
+  /////////////////////////
+
+  // Which FU should process the mask unit request?
+  typedef enum logic {
+    MaskFUAlu, MaskFUMFpu
+  } masku_fu_e;
+
   ////////////////////////
   //  Lane definitions  //
   ////////////////////////
@@ -823,6 +849,7 @@ package ara_pkg;
 
     fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
     logic wide_fp_imm;            // Widen FP immediate (re-encoding)
+    fp_resize_e fp_cvt_resize;    // Resizing of FP conversions
 
     // Vector machine metadata
     vlen_t vl;

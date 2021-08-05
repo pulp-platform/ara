@@ -193,15 +193,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     for (int lane = 0; lane < NrLanes; lane++) acc_resp_o.fflags |= fflags_ex_i[lane];
 
     ara_req_d = '{
-      vl       : vl_q,
-      vstart   : vstart_q,
-      vtype    : vtype_q,
-      emul     : vtype_q.vlmul,
-      eew_vs1  : vtype_q.vsew,
-      eew_vs2  : vtype_q.vsew,
-      eew_vd_op: vtype_q.vsew,
-      eew_vmask: eew_q[VMASK],
-      default  : '0
+      vl           : vl_q,
+      vstart       : vstart_q,
+      vtype        : vtype_q,
+      emul         : vtype_q.vlmul,
+      eew_vs1      : vtype_q.vsew,
+      eew_vs2      : vtype_q.vsew,
+      eew_vd_op    : vtype_q.vsew,
+      eew_vmask    : eew_q[VMASK],
+      fp_cvt_resize: CVT_SAME,
+      default      : '0
     };
     ara_req_valid_d = 1'b0;
 
@@ -1329,6 +1330,112 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
                   6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
                   6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
+                  6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
+                  6'b011001: ara_req_d.op = ara_pkg::VMFLE;
+                  6'b011011: ara_req_d.op = ara_pkg::VMFLT;
+                  6'b011100: ara_req_d.op = ara_pkg::VMFNE;
+                  6'b010010: begin // VFUNARY0
+                    // These instructions do not use vs1
+                    ara_req_d.use_vs1 = 1'b0;
+
+                    case (insn.varith_type.rs1)
+                      5'b00000: ara_req_d.op = VFCVTXUF;
+                      5'b00001: ara_req_d.op = VFCVTXF;
+                      5'b00010: ara_req_d.op = VFCVTFXU;
+                      5'b00011: ara_req_d.op = VFCVTFX;
+                      5'b00110: ara_req_d.op = VFCVTRTZXUF;
+                      5'b00111: ara_req_d.op = VFCVTRTZXF;
+                      5'b01000: begin // Widening VFCVTXUF
+                        ara_req_d.op             = VFCVTXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01001: begin // Widening VFCVTXF
+                        ara_req_d.op             = VFCVTXF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01010: begin // Widening VFCVTFXU
+                        ara_req_d.op             = VFCVTFXU;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01011: begin // Widening VFCVTFX
+                        ara_req_d.op             = VFCVTFX;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01100: begin // Widening VFCVTFF
+                        ara_req_d.op             = VFCVTFF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01110: begin // Widening VFCVTRTZXUF
+                        ara_req_d.op             = VFCVTRTZXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b01111: begin // Widening VFCVTRTZXF
+                        ara_req_d.op             = VFCVTRTZXF;
+                        ara_req_d.fp_cvt_resize  = CVT_WIDE;
+                        ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                        ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                        ara_req_d.conversion_vs2 = OpQueueAdjustFPCvt;
+                      end
+                      5'b10000: begin // Narrowing VFCVTXUF
+                        ara_req_d.op             = VFCVTXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10001: begin // Narrowing VFCVTXF
+                        ara_req_d.op             = VFCVTXF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10010: begin // Narrowing VFCVTFXU
+                        ara_req_d.op             = VFCVTFXU;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10011: begin // Narrowing VFCVTFX
+                        ara_req_d.op             = VFCVTFX;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10100: begin // Narrowing VFCVTFF
+                        ara_req_d.op             = VFCVTFF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10110: begin // Narrowing VFCVTRTZXUF
+                        ara_req_d.op             = VFCVTRTZXUF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      5'b10111: begin // Narrowing VFCVTRTZXF
+                        ara_req_d.op             = VFCVTRTZXF;
+                        ara_req_d.fp_cvt_resize  = CVT_NARROW;
+                        ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                      end
+                      default: begin
+                        // Trigger an error
+                        acc_resp_o.error = 1'b1;
+                        ara_req_valid_d  = 1'b0;
+                      end
+                    endcase
+                  end
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b101000: begin
                     ara_req_d.op             = ara_pkg::VFMADD;
@@ -1479,15 +1586,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // Ara cannot support instructions who operates on more than 64 bits.
                 unique case (FPUSupport)
                   FPUSupportHalfSingleDouble: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||
-                        int'(ara_req_d.vtype.vsew) > int'(EW64)) illegal_insn = 1'b1;
+                        int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
+                        illegal_insn = 1'b1;
                   FPUSupportHalfSingle: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||
-                        int'(ara_req_d.vtype.vsew) > int'(EW32)) illegal_insn = 1'b1;
+                        int'(ara_req_d.vtype.vsew) > int'(EW32) || int'(ara_req_d.eew_vs2) > int'(EW32))
+                        illegal_insn = 1'b1;
                   FPUSupportSingleDouble: if (int'(ara_req_d.vtype.vsew) < int'(EW32) ||
-                        int'(ara_req_d.vtype.vsew) > int'(EW64)) illegal_insn = 1'b1;
-                  FPUSupportHalf: if (int'(ara_req_d.vtype.vsew) != int'(EW16)) illegal_insn = 1'b1;
-                  FPUSupportSingle: if (int'(ara_req_d.vtype.vsew) != int'(EW32))
+                        int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
+                        illegal_insn = 1'b1;
+                  FPUSupportHalf: if (int'(ara_req_d.vtype.vsew) != int'(EW16) || int'(ara_req_d.eew_vs2) > int'(EW16))
+                        illegal_insn = 1'b1;
+                  FPUSupportSingle: if (int'(ara_req_d.vtype.vsew) != int'(EW32) || int'(ara_req_d.eew_vs2) > int'(EW32))
                       illegal_insn = 1'b1;
-                  FPUSupportDouble: if (int'(ara_req_d.vtype.vsew) != int'(EW64))
+                  FPUSupportDouble: if (int'(ara_req_d.vtype.vsew) != int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
                       illegal_insn = 1'b1;
                   default: illegal_insn = 1'b1; // Unsupported configuration
                 endcase
@@ -1537,6 +1648,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.stride = 1;
                   end
                   6'b010111: ara_req_d.op = ara_pkg::VMERGE;
+                  6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
+                  6'b011001: ara_req_d.op = ara_pkg::VMFLE;
+                  6'b011011: ara_req_d.op = ara_pkg::VMFLT;
+                  6'b011100: ara_req_d.op = ara_pkg::VMFNE;
+                  6'b011101: ara_req_d.op = ara_pkg::VMFGT;
+                  6'b011111: ara_req_d.op = ara_pkg::VMFGE;
                   6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                   6'b100111: begin
                     ara_req_d.op             = ara_pkg::VFRSUB;
