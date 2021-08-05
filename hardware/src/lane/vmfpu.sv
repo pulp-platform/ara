@@ -1012,7 +1012,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     //  Accept new instruction  //
     //////////////////////////////
 
-    if (!vinsn_queue_full && vfu_operation_valid_i && (vfu_operation_i.vfu == VFU_MFpu || vfu_operation_i.op inside {[VMFEQ:VMFGE]})) begin
+    if (!vinsn_queue_full && vfu_operation_valid_i &&
+      (vfu_operation_i.vfu == VFU_MFpu || vfu_operation_i.op inside {[VMFEQ:VMFGE]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters

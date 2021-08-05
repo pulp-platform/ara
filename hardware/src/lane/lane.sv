@@ -100,7 +100,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   spill_register #(
     .T(strb_t)
-  ) i_spill_register (
+  ) i_mask_ready_spill_register (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
     .valid_i(mask_lane_valid),
