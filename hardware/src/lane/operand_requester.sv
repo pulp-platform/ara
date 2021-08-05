@@ -268,23 +268,33 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Send a command to the operand queue
             operand_queue_cmd_o[requester] = '{
               eew : operand_request_i[requester].eew,
-              // The number of elements initially refers to vsew, but the requester must refer to eew
-              vl    : ((operand_request_i[requester].vl <<
-                         operand_request_i[requester].vtype.vsew) >>
-                           operand_request_i[requester].eew),
+              // For memory operations, the number of elements initially refers to the new EEW (vsew here),
+              // but the requester must refer to the old EEW (eew here)
+              // This reasoning cannot be applied also to widening instructions, which modify vsew
+              // treating it as the EEW of vd
+              vl  : operand_request_i[requester].conv == OpQueueConversionNone ?
+                      ((operand_request_i[requester].vl <<
+                      operand_request_i[requester].vtype.vsew) >>
+                      operand_request_i[requester].eew) :
+                      operand_request_i[requester].vl,
               conv: operand_request_i[requester].conv
             };
             operand_queue_cmd_valid_o[requester] = 1'b1;
 
             // Store the request
             requester_d = '{
-              addr : vaddr(operand_request_i[requester].vs, NrLanes) +
+              addr   : vaddr(operand_request_i[requester].vs, NrLanes) +
               (operand_request_i[requester].vstart >>
                 (int'(EW64) - int'(operand_request_i[requester].eew))),
-              // The number of elements initially refers to vsew, but the requester must refer to eew
-              len    : ((operand_request_i[requester].vl <<
+              // For memory operations, the number of elements initially refers to the new EEW (vsew here),
+              // but the requester must refer to the old EEW (eew here)
+              // This reasoning cannot be applied also to widening instructions, which modify vsew
+              // treating it as the EEW of vd
+              len    : operand_request_i[requester].conv == OpQueueConversionNone ?
+                         ((operand_request_i[requester].vl <<
                          operand_request_i[requester].vtype.vsew) >>
-                           operand_request_i[requester].eew),
+                         operand_request_i[requester].eew) :
+                         operand_request_i[requester].vl,
               vew    : operand_request_i[requester].eew,
               hazard : operand_request_i[requester].hazard,
               default: '0
