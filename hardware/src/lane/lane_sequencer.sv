@@ -398,8 +398,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 // Since this request goes outside of the lane, we might need to request an
                 // extra operand regardless of whether it is valid in this lane or not.
                 operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes;
-                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
-                  operand_request_i[SlideAddrGenA].vl += 1;
+//                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+//                  operand_request_i[SlideAddrGenA].vl += 1;
 
                 // If the vslidedown stride is not a full VRF word, we will need to request an extra
                 // word
