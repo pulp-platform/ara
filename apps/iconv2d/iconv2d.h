@@ -10,6 +10,8 @@ void iconv2d_vec_4xC_slice_preload_3x3(int64_t *i, int64_t C, int64_t F);
 void iconv2d_vec_4xC_slice_move_3x3(int64_t C, int64_t F);
 void iconv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
                          int64_t F);
+void iconv2d_vec_4xC_3x3_full(int64_t *o, int64_t *i, int64_t *f, int64_t C,
+                              int64_t F);
 
 void iconv2d_5x5(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
                  int64_t F);
