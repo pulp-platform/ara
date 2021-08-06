@@ -60,6 +60,18 @@
 #define RM_RUP 0x3
 #define RM_RMM 0x4
 
+// vfclass output
+#define CLASS_mInf  0x001
+#define CLASS_mNorm 0x002
+#define CLASS_mSub  0x004
+#define CLASS_mZero 0x008
+#define CLASS_pZero 0x010
+#define CLASS_pSub  0x020
+#define CLASS_pNorm 0x040
+#define CLASS_pInf  0x080
+#define CLASS_sNAN  0x100
+#define CLASS_qNAN  0x200
+
 typedef union double_hex {
   double      d;
   uint64_t ui64;
