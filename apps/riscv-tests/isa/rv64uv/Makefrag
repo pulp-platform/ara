@@ -101,6 +101,7 @@ rv64uv_sc_tests = vadd \
                   vfredmax \
                   vfwredusum \
                   vfwredosum \
+                  vfclass \
                   vfsgnj \
                   vfsgnjn \
                   vfsgnjx \
@@ -141,7 +142,7 @@ rv64uv_sc_tests = vadd \
                   vsuxei \
                   vsetivli
 
-#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfclass vfdiv vfirst vfrdiv vfsqrt vid viota vl vlff vl_nocheck vlx vmsbf vmsif vmsof vpopc_m vrgather vsadd vsaddu vsetvl vsetivli vsetvli vsmul vssra vssrl vssub vssubu vsux vsx
+#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfdiv vfirst vfrdiv vfsqrt vid viota vl vlff vl_nocheck vlx vmsbf vmsif vmsof vpopc_m vrgather vsadd vsaddu vsetvl vsetivli vsetvli vsmul vssra vssrl vssub vssubu vsux vsx
 
 rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
