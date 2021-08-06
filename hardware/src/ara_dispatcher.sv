@@ -779,6 +779,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.use_vs2       = 1'b0;
                   ara_req_d.vs1           = insn.varith_type.rs2;
                   ara_req_d.vtype.vsew    = EW8;
+                  ara_req_d.scale_vl      = 1'b1;
                   ara_req_d.vl            = vlmax; // whole register move
                 end
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
@@ -2001,6 +2002,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
+
+          // vl depends on the EEW in the instruction
+          ara_req_d.scale_vl = 1'b1;
 
           // These generate a request to Ara's backend
           ara_req_d.vs1       = insn.vmem_type.rd; // vs3 is encoded in the same position as rd
