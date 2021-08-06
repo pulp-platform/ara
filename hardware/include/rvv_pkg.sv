@@ -29,14 +29,14 @@ package rvv_pkg;
 
   // Length multiplier
   typedef enum logic [2:0] {
-    LMUL_1,
-    LMUL_2,
-    LMUL_4,
-    LMUL_8,
-    LMUL_RSVD,
-    LMUL_1_8,
-    LMUL_1_4,
-    LMUL_1_2
+    LMUL_1    = 3'b000,
+    LMUL_2    = 3'b001,
+    LMUL_4    = 3'b010,
+    LMUL_8    = 3'b011,
+    LMUL_RSVD = 3'b100,
+    LMUL_1_8  = 3'b101,
+    LMUL_1_4  = 3'b110,
+    LMUL_1_2  = 3'b111
   } vlmul_e;
 
   // Vector type register

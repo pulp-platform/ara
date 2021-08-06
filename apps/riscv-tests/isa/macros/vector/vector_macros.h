@@ -112,6 +112,19 @@ int test_case;
   }                                                                                   \
   printf("PASSED.\n");
 
+// Check the results against an in-memory vector of golden values
+#define VMCMP(T,str,casenum,vexp,vgold,size)                                          \
+  printf("Checking the results of the test case %d:\n", casenum);                     \
+  MEMORY_BARRIER;                                                                     \
+  for (unsigned int i = 0; i < size; i++) {                                           \
+    if (vexp[i] != vgold[i]) {                                                        \
+      printf("Index %d FAILED. Got "#str", expected "#str".\n", i, vexp[i], vgold[i]);\
+      num_failed++;                                                                   \
+      return;                                                                         \
+    }                                                                                 \
+  }                                                                                   \
+  printf("PASSED.\n");
+
 // Macros to set vector length, type and multiplier
 #define VSET(VLEN,VTYPE,LMUL)                                                          \
   do {                                                                                 \
@@ -151,6 +164,22 @@ int test_case;
     asm volatile("vmv.v.i "#register", 0");                                                       \
     asm volatile("vsetvl zero, %[vl], %[vtype]" :: [vl] "r" (vl), [vtype] "r" (vtype));           \
   } while(0)
+
+// Macro to initialize a vector with progressive values from a counter
+#define INIT_MEM_CNT(vec_name, size) \
+  counter = 0;                          \
+  for (int i = 0 ; i < size; i++) {     \
+    vec_name[i] = counter;              \
+    counter++;                          \
+  }                                     \
+
+// Macro to initialize a vector with zeroes
+// The vector is initialized on the stack, use this function with caution
+// Easy to go in the UART address space
+#define INIT_MEM_ZEROES(vec_name, size) \
+  for (int i = 0 ; i < size; i++) {        \
+    vec_name[i] = 0;                       \
+  }                                        \
 
 /***************************
  *  Type-dependant macros  *
