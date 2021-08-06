@@ -195,6 +195,9 @@ package ara_pkg;
   typedef struct packed {
     ara_op_e op; // Operation
 
+    // Rescale vl taking into account the new and old EEW
+    logic scale_vl;
+
     // Mask vector register operand
     logic vm;
     rvv_pkg::vew_e eew_vmask;
@@ -287,6 +290,9 @@ package ara_pkg;
     rvv_pkg::vew_e eew_vmask;
 
     vfu_e vfu; // VFU responsible for handling this instruction
+
+    // Rescale vl taking into account the new and old EEW
+    logic scale_vl;
 
     // 1st vector register operand
     logic [4:0] vs1;
@@ -807,6 +813,8 @@ package ara_pkg;
     vid_t id; // ID of the vector instruction
 
     logic [4:0] vs; // Vector register operand
+
+    logic scale_vl; // Rescale vl taking into account the new and old EEW
 
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion
