@@ -368,6 +368,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
+
+
+
           VFU_SlideUnit: begin
             operand_request_i[SlideAddrGenA] = '{
               id     : pe_req_i.id,
@@ -391,22 +394,85 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                   (pe_req_i.vl - pe_req_i.stride + NrLanes - 1) / NrLanes;
               end
               VSLIDEDOWN: begin
+                // Extra elements to ask, because of the stride
+                logic [$clog2(8*NrLanes)-1:0] extra_stride;
+                // Need one bit more than vl, since we will also add the stride contribution
+                logic [$size(pe_req_i.vl):0] vl_tot;
+
                 // We need to trim full words from the start of the vector that are not used
                 // as operands by the slide unit.
                 operand_request_i[SlideAddrGenA].vstart = pe_req_i.stride / NrLanes;
 
-                // Since this request goes outside of the lane, we might need to request an
-                // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes;
-//                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+                // The stride move the initial address in boundaries of 8*NrLanes Byte.
+                // If the stride is not multiple of a full VRF word (8*NrLanes Byte),
+                // we must request it as well from the VRF
+
+                // Find the number of extra elements to ask, related to the stride
+                unique case (pe_req_i.eew_vs2)
+                  EW8:  extra_stride =        pe_req_i.stride[$clog2(8*NrLanes)-1:0];
+                  EW16: extra_stride = {1'b0, pe_req_i.stride[$clog2(4*NrLanes)-1:0]};
+                  EW32: extra_stride = {2'b0, pe_req_i.stride[$clog2(2*NrLanes)-1:0]};
+                  EW64: extra_stride = {3'b0, pe_req_i.stride[$clog2(1*NrLanes)-1:0]};
+                  default:
+                    extra_stride = {3'b0, pe_req_i.stride[$clog2(1*NrLanes)-1:0]};
+                endcase
+
+                // Find the total number of elements to be asked
+                vl_tot = pe_req_i.vl;
+                if (!pe_req_i.use_scalar_op)
+                  vl_tot += extra_stride;
+
+                // Ask the elements, and ask one more if we do not perfectly divide NrLanes
+                operand_request_i[SlideAddrGenA].vl = vl_tot / NrLanes;
+                if (operand_request_i[SlideAddrGenA].vl * NrLanes != vl_tot)
+                  operand_request_i[SlideAddrGenA].vl += 1;
+
+                // We ask full words (8*NrLanes Byte) to the VRF
+                // If the stride does not divide a VRF word, we will have an offset that ranges
+                // from (0 -> 255) B. We will need to ask all these additional Bytes as well.
+                // If a full word does not divide vl, we will also ask for all the additional
+                // Bytes, from (0 -> 255) B.
+                // Remember that here the vl refers to the elements to be requested within a single Lane,
+                // so we must also divide by NrLanes, and ask an additional element if NrLanes does
+                // not divide vl.
+
+//                // Find how many bytes we need in total, and the stride in Bytes.
+//                vl_bytes = pe_req_i.vl << int'(EW64 - pe_req_i.eew_vs2);
+//                stride_bytes = (pe_req_i.stride << int'(EW64 - pe_req_i.eew_vs2));
+//                // Analyze the stride only for generic vslides
+//                stride_bytes_masked = stride_bytes & ~{($clog2(8*NrLanes)+1){pe_req_i.use_scalar_op}};
+//
+//                // Find how many Bytes do not divide 8*NrLanes
+//                stride_bytes_mod_word = stride_bytes_masked[$clog2(8*NrLanes)-1:0];
+//
+//                // Find how many Bytes to ask in total
+//                vl_tot_bytes = vl_bytes + stride_bytes_mod_word;
+//
+//                // How many elements ask in total
+//                vl_tot_elm = vl_tot_bytes >> int'(EW64 - pe_req_i.eew_vs2);
+//
+//                operand_request_i[SlideAddrGenA].vl = vl_tot_elm / NrLanes;
+//                if (operand_request_i[SlideAddrGenA].vl * NrLanes != vl_tot_elm)
 //                  operand_request_i[SlideAddrGenA].vl += 1;
 
-                // If the vslidedown stride is not a full VRF word, we will need to request an extra
-                // word
-                if (!pe_req_i.use_scalar_op)
-                  if ((pe_req_i.stride &
-                    ((vlen_t'(1) << ($clog2(NrLanes) + int'(EW64 - pe_req_i.eew_vs2))) - 1)) != 0)
-                    operand_request_i[SlideAddrGenA].vl += 1;
+//                // Find how many bytes we need in total, and the stride in Bytes.
+//                vl_bytes = pe_req_i.vl << int'(EW64 - pe_req_i.eew_vs2);
+//                stride_bytes = (pe_req_i.stride << int'(EW64 - pe_req_i.eew_vs2));
+//                // Analyze the stride only for generic vslides
+//                stride_bytes_masked = stride_bytes & ~{($clog2(8*NrLanes)+1){pe_req_i.use_scalar_op}};
+//
+//                // Find how many Bytes do not divide 8*NrLanes
+//                vl_bytes_mod_word = vl_bytes[$clog2(8*NrLanes)-1:0];
+//                stride_bytes_mod_word = stride_bytes[$clog2(8*NrLanes)-1:0];
+//
+//                // Find how many Bytes divide 8*NrLanes
+//                vl_vrf_word_clean = (vl_bytes / (64 * NrLanes)) * 64 * NrLanes;
+//
+//                extra_bytes = {0, vl_bytes_mod_word} + {0, stride_bytes_mod_word};
+//                extra_elements = extra_bytes >> int'(EW64 - pe_req_i.eew_vs2);
+//
+//                operand_request_i[SlideAddrGenA].vl = vl_vrf_word_clean / NrLanes;
+//                operand_request_i[SlideAddrGenA].vl += extra_elements / NrLanes + |extra_elements[NrLanes-1:0];
               end
             endcase
 
