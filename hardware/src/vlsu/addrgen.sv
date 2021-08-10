@@ -306,6 +306,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!
           axi_addrgen_q.is_load && axi_aw_ready_i);
 
+        // Before starting a transaction on a different channel, wait the formers to complete
+        // Otherwise, the ordering of the responses is not guaranteed, and with the current
+        // implementation we can incur in deadlocks
+        if (axi_addrgen_queue_empty || (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
+             (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load)) begin
         if (!axi_addrgen_queue_full && axi_ax_ready) begin
           if (axi_addrgen_q.is_burst) begin
 
@@ -448,6 +453,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
             end
           end
+        end
         end
       end
     endcase
