@@ -172,7 +172,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
    ****************/
 
   operand_queue #(
-    .BufferDepth(2         ),
+    .BufferDepth(4         ),
     .FPUSupport (FPUSupport)
   ) i_operand_queue_slide_addrgen_a (
     .clk_i                    (clk_i                                         ),
