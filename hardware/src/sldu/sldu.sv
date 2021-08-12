@@ -390,7 +390,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             // Increment vector instruction queue pointers and counters
-            vinsn_queue_d.issue_pnt += 1;
+            if (vinsn_queue_d.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
+            else vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
             vinsn_queue_d.issue_cnt -= 1;
           end
         end
