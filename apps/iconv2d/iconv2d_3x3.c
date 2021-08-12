@@ -60,10 +60,9 @@ void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
 
     // The first F-1 rows have already been loaded by
     // iconv2d_vec_4xC_slice_init()
-//    iconv2d_vec_4xC_3x3_full(o_, i__, f, C, F);
+    //    iconv2d_vec_4xC_3x3_full(o_, i__, f, C, F);
 
     int64_t t3, t4, t5;
-
 
     // Fetch C + F - 1 elements (padding included)
     asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
@@ -73,8 +72,8 @@ void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
     // contribution on the four output rows (v0, v2, v4, v6)
 
     // Fetch 4 + F - 1 - 2 rows of the input matrix
-    // Compute on C + F - 1 elements, instead of C elements, to cover the latency
-    // of the load instructions
+    // Compute on C + F - 1 elements, instead of C elements, to cover the
+    // latency of the load instructions
     asm volatile("vmv.v.v v8, v16");
     asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i__) : "r"(ldi));
     asm volatile("vmul.vx v0, v8, %0" ::"r"(t0));
@@ -109,9 +108,14 @@ void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
 
     f_ = f + 1;
     // Fetch the middle column of the filter, and start calculating its
-    // contributions on the output rows To do so, slide down the input rows by one
-    asm volatile("ld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&r"(t3) : "r"(ldf));
-    asm volatile("ld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&r"(t4) : "r"(ldf));
+    // contributions on the output rows To do so, slide down the input rows by
+    // one
+    asm volatile("ld %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&r"(t3)
+                 : "r"(ldf));
+    asm volatile("ld %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&r"(t4)
+                 : "r"(ldf));
     asm volatile("ld %1, (%0);" : "+&r"(f_), "=&r"(t5));
 
     asm volatile("vmacc.vx v0, %0, v20" ::"r"(t3));
@@ -135,7 +139,9 @@ void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
 
     asm volatile("vmacc.vx v4, %0, v28" ::"r"(t5));
     f_ = f + 2;
-    asm volatile("ld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&r"(t3) : "r"(ldf));
+    asm volatile("ld %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&r"(t3)
+                 : "r"(ldf));
     asm volatile("vmacc.vx v6, %0, v28" ::"r"(t4));
     asm volatile("vslidedown.vi v24, v12, 2");
 
@@ -144,9 +150,10 @@ void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
     asm volatile("vslidedown.vi v26, v14, 2");
 
     // Repeat for the last filter column, and then store the output rows
-    asm volatile("ld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&r"(t4) : "r"(ldf));
+    asm volatile("ld %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&r"(t4)
+                 : "r"(ldf));
     asm volatile("ld %1, (%0);" : "+&r"(f_), "=&r"(t5));
-
 
     asm volatile("vmacc.vx v0, %0, v22" ::"r"(t4));
     o_ = o + r * C;
@@ -174,14 +181,13 @@ void iconv2d_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
     asm volatile("vmacc.vx v6, %0, v30" ::"r"(t5));
     asm volatile("vse64.v  v6, (%0);" : "+r"(o_));
 
-/*
-  UNROLL 1
-*/
+    /*
+      UNROLL 1
+    */
 
-/*
-  UNROLL 0
-*/
-
+    /*
+      UNROLL 0
+    */
   }
 }
 
@@ -317,7 +323,7 @@ void iconv2d_vec_4xC_3x3(int64_t *o, int64_t *i, int64_t *f, int64_t C,
 
 // Calculate 4 output matrix rows
 void iconv2d_vec_4xC_3x3_full(int64_t *o, int64_t *i, int64_t *f, int64_t C,
-                         int64_t F) {
+                              int64_t F) {
 
   // Temporary variables
   int64_t t0, t1, t2;
