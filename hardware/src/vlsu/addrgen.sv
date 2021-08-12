@@ -49,6 +49,44 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::BURST_INCR;
   import axi_pkg::CACHE_MODIFIABLE;
 
+  ////////////////////
+  //  PE Req Queue  //
+  ////////////////////
+
+  // The address generation process interacts with another process, that
+  // generates the AXI requests. They interact through the following signals.
+  typedef struct packed {
+    axi_addr_t addr;
+    vlen_t len;
+    elen_t stride;
+    vew_e vew;
+    logic is_load;
+    logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
+  } addrgen_req_t;
+  addrgen_req_t addrgen_req;
+  logic         addrgen_req_valid;
+  logic         addrgen_req_ready;
+
+  logic pe_req_buf_full;
+  pe_req_t pe_req_q;
+
+  fifo_v3 #(
+    .DEPTH(2                ),
+    .dtype(pe_req_t)
+  ) i_pe_req_queue (
+    .clk_i     (clk_i                                                    ),
+    .rst_ni    (rst_ni                                                   ),
+    .flush_i   (1'b0                                                     ),
+    .testmode_i(1'b0                                                     ),
+    .data_i    (pe_req_i                                                 ),
+    .push_i    (addrgen_ack_o                                            ),
+    .full_o    (pe_req_buf_full                                          ),
+    .data_o    (pe_req_q                                                 ),
+    .pop_i     (addrgen_req_ready                                        ),
+    .empty_o   (/* Unused */                                             ),
+    .usage_o   (/* Unused */                                             )
+  );
+
   /////////////////////
   //  Address Queue  //
   /////////////////////
@@ -96,20 +134,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     ADDRGEN_SCATTER_GATHER
   } state_q, state_d;
 
-  // The address generation process interacts with another process, that
-  // generates the AXI requests. They interact through the following signals.
-  typedef struct packed {
-    axi_addr_t addr;
-    vlen_t len;
-    elen_t stride;
-    vew_e vew;
-    logic is_load;
-    logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
-  } addrgen_req_t;
-  addrgen_req_t addrgen_req;
-  logic         addrgen_req_valid;
-  logic         addrgen_req_ready;
-
   always_comb begin: addr_generation
     // Maintain state
     state_d = state_q;
@@ -129,54 +153,54 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     case (state_q)
       IDLE: begin
         // Received a new request
-        if (pe_req_valid_i &&
+        if (pe_req_valid_i && !pe_req_buf_full &&
             (is_load(pe_req_i.op) || is_store(pe_req_i.op)) && !vinsn_running_q[pe_req_i.id]) begin
           // Mark the instruction as running in this unit
           vinsn_running_d[pe_req_i.id] = 1'b1;
 
-          case (pe_req_i.op)
-            VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
-            default: begin
-              state_d = ADDRGEN;
+          // Acknowledge the instruction and buffer it
+          addrgen_ack_o   = 1'b1;
+          // Ara does not support misaligned AXI requests
+          if (|(pe_req_i.scalar_op & (elen_t'(1 << pe_req_i.vtype.vsew) - 1))) begin
+            state_d         = IDLE;
+            addrgen_error_o = 1'b1;
+          end else begin
+            case (pe_req_i.op)
+              VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
+              default: begin
+                state_d = ADDRGEN;
 
-              // Request early
-              addrgen_req = '{
-                addr    : pe_req_i.scalar_op,
-                len     : pe_req_i.vl,
-                stride  : pe_req_i.stride,
-                vew     : pe_req_i.vtype.vsew,
-                is_load : is_load(pe_req_i.op),
-                // Unit-strided loads/stores trigger incremental AXI bursts.
-                is_burst: (pe_req_i.op inside {VLE, VSE})
-              };
-              addrgen_req_valid = 1'b1;
-            end
-          endcase
+                // Request early
+                addrgen_req = '{
+                  addr    : pe_req_i.scalar_op,
+                  len     : pe_req_i.vl,
+                  stride  : pe_req_i.stride,
+                  vew     : pe_req_i.vtype.vsew,
+                  is_load : is_load(pe_req_i.op),
+                  // Unit-strided loads/stores trigger incremental AXI bursts.
+                  is_burst: (pe_req_i.op inside {VLE, VSE})
+                };
+                addrgen_req_valid = 1'b1;
+              end
+            endcase
+          end
         end
       end
       ADDRGEN: begin
-        // Ara does not support misaligned AXI requests
-        if (|(pe_req_i.scalar_op & (elen_t'(1 << pe_req_i.vtype.vsew) - 1))) begin
-          state_d         = IDLE;
-          addrgen_ack_o   = 1'b1;
-          addrgen_error_o = 1'b1;
-        end else begin
-          addrgen_req = '{
-            addr    : pe_req_i.scalar_op,
-            len     : pe_req_i.vl,
-            stride  : pe_req_i.stride,
-            vew     : pe_req_i.vtype.vsew,
-            is_load : is_load(pe_req_i.op),
-            // Unit-strided loads/stores trigger incremental AXI bursts.
-            is_burst: (pe_req_i.op inside {VLE, VSE})
-          };
-          addrgen_req_valid = 1'b1;
+        addrgen_req = '{
+          addr    : pe_req_q.scalar_op,
+          len     : pe_req_q.vl,
+          stride  : pe_req_q.stride,
+          vew     : pe_req_q.vtype.vsew,
+          is_load : is_load(pe_req_q.op),
+          // Unit-strided loads/stores trigger incremental AXI bursts.
+          is_burst: (pe_req_q.op inside {VLE, VSE})
+        };
+        addrgen_req_valid = 1'b1;
 
-          if (addrgen_req_ready) begin
-            addrgen_req_valid = '0;
-            addrgen_ack_o     = 1'b1;
-            state_d           = IDLE;
-          end
+        if (addrgen_req_ready) begin
+          addrgen_req_valid = '0;
+          state_d           = IDLE;
         end
       end
       ADDRGEN_SCATTER_GATHER : begin
@@ -311,149 +335,149 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // implementation we can incur in deadlocks
         if (axi_addrgen_queue_empty || (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
              (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load)) begin
-        if (!axi_addrgen_queue_full && axi_ax_ready) begin
-          if (axi_addrgen_q.is_burst) begin
+          if (!axi_addrgen_queue_full && axi_ax_ready) begin
+            if (axi_addrgen_q.is_burst) begin
 
-            /////////////////////////
-            //  Unit-Stride access //
-            /////////////////////////
+              /////////////////////////
+              //  Unit-Stride access //
+              /////////////////////////
 
-            // AXI burst length
-            automatic int unsigned burst_length;
+              // AXI burst length
+              automatic int unsigned burst_length;
 
-            // 1 - AXI bursts are at most 4KiB long
-            // 2 - AXI bursts are at most 256 beats long.
-            if (((1 << 12) >> eff_axi_data_bwidth_log_q) > 256)
-              burst_length = (1 << 12) >> eff_axi_data_bwidth_log_q;
-            else
-              burst_length = 256;
-            // 3 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
-            // starts at the middle of a 4 KiB range, it cannot have the maximal
-            // AXI burst length.
-            burst_length =
-              burst_length - (aligned_start_addr_q[11:0] >> eff_axi_data_bwidth_log_q);
-            // 4 - The AXI burst length cannot be longer than the number of beats required
-            //     to access the memory regions between aligned_start_addr and
-            //     aligned_end_addr
-            if (burst_length > ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
-                  eff_axi_data_bwidth_log_q) + 1)
-              burst_length = ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
-                eff_axi_data_bwidth_log_q) + 1;
+              // 1 - AXI bursts are at most 4KiB long
+              // 2 - AXI bursts are at most 256 beats long.
+              if (((1 << 12) >> eff_axi_data_bwidth_log_q) > 256)
+                burst_length = (1 << 12) >> eff_axi_data_bwidth_log_q;
+              else
+                burst_length = 256;
+              // 3 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
+              // starts at the middle of a 4 KiB range, it cannot have the maximal
+              // AXI burst length.
+              burst_length =
+                burst_length - (aligned_start_addr_q[11:0] >> eff_axi_data_bwidth_log_q);
+              // 4 - The AXI burst length cannot be longer than the number of beats required
+              //     to access the memory regions between aligned_start_addr and
+              //     aligned_end_addr
+              if (burst_length > ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
+                    eff_axi_data_bwidth_log_q) + 1)
+                burst_length = ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
+                  eff_axi_data_bwidth_log_q) + 1;
 
-            // AR Channel
-            if (axi_addrgen_q.is_load) begin
-              axi_ar_o = '{
+              // AR Channel
+              if (axi_addrgen_q.is_load) begin
+                axi_ar_o = '{
+                  addr   : axi_addrgen_q.addr,
+                  len    : burst_length - 1,
+                  size   : eff_axi_data_bwidth_log_q,
+                  cache  : CACHE_MODIFIABLE,
+                  burst  : BURST_INCR,
+                  default: '0
+                };
+                axi_ar_valid_o = 1'b1;
+              end
+              // AW Channel
+              else begin
+                axi_aw_o = '{
+                  addr   : axi_addrgen_q.addr,
+                  len    : burst_length - 1,
+                  // If misaligned store access, reduce the effective AXI width
+                  // This hurts performance
+                  size   : eff_axi_data_bwidth_log_q,
+                  cache  : CACHE_MODIFIABLE,
+                  burst  : BURST_INCR,
+                  default: '0
+                };
+                axi_aw_valid_o = 1'b1;
+              end
+
+              // Send this request to the load/store units
+              axi_addrgen_queue = '{
                 addr   : axi_addrgen_q.addr,
                 len    : burst_length - 1,
                 size   : eff_axi_data_bwidth_log_q,
-                cache  : CACHE_MODIFIABLE,
-                burst  : BURST_INCR,
-                default: '0
+                is_load: axi_addrgen_q.is_load
               };
-              axi_ar_valid_o = 1'b1;
-            end
-            // AW Channel
-            else begin
-              axi_aw_o = '{
+              axi_addrgen_queue_push = 1'b1;
+
+              // Account for the requested operands
+              axi_addrgen_d.len = axi_addrgen_q.len -
+              ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >> int'(axi_addrgen_q.vew));
+              if (axi_addrgen_q.len < ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >>
+                    int'(axi_addrgen_q.vew)))
+                axi_addrgen_d.len = 0;
+              axi_addrgen_d.addr = aligned_end_addr_q + 1;
+
+              // Finished generating AXI requests
+              if (axi_addrgen_d.len == 0) begin
+                addrgen_req_ready   = 1'b1;
+                axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+              end
+
+              // Calculate the addresses for the next iteration
+              // The start address is found by aligning the original request address by the width of
+              // the memory interface.
+              aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, eff_axi_data_bwidth_log_q);
+              // The final address can be found similarly...
+              aligned_end_addr_d   =
+                aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
+                eff_axi_data_bwidth_log_q) + ((eff_axi_data_bwidth_q) - 1);
+              // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
+              // same page as aligned_start_addr
+              if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
+                aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
+            end else begin
+
+              /////////////////////
+              //  Strided access //
+              /////////////////////
+
+              // AR Channel
+              if (axi_addrgen_q.is_load) begin
+                axi_ar_o = '{
+                  addr   : axi_addrgen_q.addr,
+                  len    : 0,
+                  size   : axi_addrgen_q.vew,
+                  cache  : CACHE_MODIFIABLE,
+                  burst  : BURST_INCR,
+                  default: '0
+                };
+                axi_ar_valid_o = 1'b1;
+              end
+              // AW Channel
+              else begin
+                axi_aw_o = '{
+                  addr   : axi_addrgen_q.addr,
+                  len    : 0,
+                  size   : axi_addrgen_q.vew,
+                  cache  : CACHE_MODIFIABLE,
+                  burst  : BURST_INCR,
+                  default: '0
+                };
+                axi_aw_valid_o = 1'b1;
+              end
+
+              // Send this request to the load/store units
+              axi_addrgen_queue = '{
                 addr   : axi_addrgen_q.addr,
-                len    : burst_length - 1,
-                // If misaligned store access, reduce the effective AXI width
-                // This hurts performance
-                size   : eff_axi_data_bwidth_log_q,
-                cache  : CACHE_MODIFIABLE,
-                burst  : BURST_INCR,
-                default: '0
-              };
-              axi_aw_valid_o = 1'b1;
-            end
-
-            // Send this request to the load/store units
-            axi_addrgen_queue = '{
-              addr   : axi_addrgen_q.addr,
-              len    : burst_length - 1,
-              size   : eff_axi_data_bwidth_log_q,
-              is_load: axi_addrgen_q.is_load
-            };
-            axi_addrgen_queue_push = 1'b1;
-
-            // Account for the requested operands
-            axi_addrgen_d.len = axi_addrgen_q.len -
-            ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >> int'(axi_addrgen_q.vew));
-            if (axi_addrgen_q.len < ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >>
-                  int'(axi_addrgen_q.vew)))
-              axi_addrgen_d.len = 0;
-            axi_addrgen_d.addr = aligned_end_addr_q + 1;
-
-            // Finished generating AXI requests
-            if (axi_addrgen_d.len == 0) begin
-              addrgen_req_ready   = 1'b1;
-              axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
-            end
-
-            // Calculate the addresses for the next iteration
-            // The start address is found by aligning the original request address by the width of
-            // the memory interface.
-            aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, eff_axi_data_bwidth_log_q);
-            // The final address can be found similarly...
-            aligned_end_addr_d   =
-              aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
-              eff_axi_data_bwidth_log_q) + ((eff_axi_data_bwidth_q) - 1);
-            // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
-            // same page as aligned_start_addr
-            if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
-              aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
-          end else begin
-
-            /////////////////////
-            //  Strided access //
-            /////////////////////
-
-            // AR Channel
-            if (axi_addrgen_q.is_load) begin
-              axi_ar_o = '{
-                addr   : axi_addrgen_q.addr,
-                len    : 0,
                 size   : axi_addrgen_q.vew,
-                cache  : CACHE_MODIFIABLE,
-                burst  : BURST_INCR,
-                default: '0
-              };
-              axi_ar_valid_o = 1'b1;
-            end
-            // AW Channel
-            else begin
-              axi_aw_o = '{
-                addr   : axi_addrgen_q.addr,
                 len    : 0,
-                size   : axi_addrgen_q.vew,
-                cache  : CACHE_MODIFIABLE,
-                burst  : BURST_INCR,
-                default: '0
+                is_load: axi_addrgen_q.is_load
               };
-              axi_aw_valid_o = 1'b1;
-            end
+              axi_addrgen_queue_push = 1'b1;
 
-            // Send this request to the load/store units
-            axi_addrgen_queue = '{
-              addr   : axi_addrgen_q.addr,
-              size   : axi_addrgen_q.vew,
-              len    : 0,
-              is_load: axi_addrgen_q.is_load
-            };
-            axi_addrgen_queue_push = 1'b1;
+              // Account for the requested operands
+              axi_addrgen_d.len = axi_addrgen_q.len - 1;
+              // Calculate the addresses for the next iteration, adding the correct stride
+              axi_addrgen_d.addr = axi_addrgen_q.addr + axi_addrgen_q.stride;
 
-            // Account for the requested operands
-            axi_addrgen_d.len = axi_addrgen_q.len - 1;
-            // Calculate the addresses for the next iteration, adding the correct stride
-            axi_addrgen_d.addr = axi_addrgen_q.addr + axi_addrgen_q.stride;
-
-            // Finished generating AXI requests
-            if (axi_addrgen_d.len == 0) begin
-              addrgen_req_ready   = 1'b1;
-              axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+              // Finished generating AXI requests
+              if (axi_addrgen_d.len == 0) begin
+                addrgen_req_ready   = 1'b1;
+                axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+              end
             end
           end
-        end
         end
       end
     endcase
