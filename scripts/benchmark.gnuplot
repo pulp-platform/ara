@@ -23,6 +23,10 @@ set ylabel 'Performance (OP/cycle)'
 # Legend on the bottom
 set key bottom right
 
+#############
+## IMATMUL ##
+#############
+
 # Title
 set title "imatmul performance (matrices of size #elements x #elements)"
 
@@ -40,6 +44,10 @@ plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
      'imatmul_16.benchmark' w p lw 2 lc 7 pt 2 notitle
 unset out
+
+#############
+## FMATMUL ##
+#############
 
 # Title
 set title "fmatmul performance (matrices of size #elements x #elements)"
@@ -62,12 +70,16 @@ plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
      'fmatmul_16.benchmark' w p lw 2 lc 7 pt 2 notitle
 
+#############
+## ICONV2D ##
+#############
+
 # Title
 set title "iconv2d performance (matrices of size #elements x #elements)"
 
 # Set axis labels
 set xlabel 'Matrix size (#elements)'
-set ylabel 'Performance (FLOP/cycle)'
+set ylabel 'Performance (OP/cycle)'
 
 # Output png
 set term png
