@@ -264,7 +264,7 @@ void VerilatorSimCtrl::PrintStatistics() const {
 }
 
 const char *VerilatorSimCtrl::GetTraceFileName() const {
-#ifdef VM_TRACE_FMT_FST
+#ifdef VM_TRACE_FST
   return "sim.fst";
 #else
   return "sim.vcd";
@@ -280,6 +280,8 @@ void VerilatorSimCtrl::Run() {
     top_->trace(tracer_, 99, 0);
   }
 
+  Trace();
+
   // Evaluate all initial blocks, including the DPI setup routines
   top_->eval();
 
@@ -288,7 +290,6 @@ void VerilatorSimCtrl::Run() {
 
   time_begin_ = std::chrono::steady_clock::now();
   UnsetReset();
-  Trace();
 
   unsigned long start_reset_cycle_ = initial_reset_delay_cycles_;
   unsigned long end_reset_cycle_ = start_reset_cycle_ + reset_duration_cycles_;
