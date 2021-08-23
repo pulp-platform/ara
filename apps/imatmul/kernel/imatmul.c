@@ -21,12 +21,17 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-void imatmul(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
-             int64_t N, int64_t P) {
+void imatmul(int64_t *c, const int64_t *a, const int64_t *b,
+             const unsigned long int M, const unsigned long int N,
+             const unsigned long int P) {
   if (M <= 4) {
     imatmul_4x4(c, a, b, M, N, P);
-  } else {
+  } else if (M <= 128) {
     imatmul_8x8(c, a, b, M, N, P);
+  } else {
+    // Vector length is 64 elements. With an 4x4 matmul,
+    // we can use LMUL=4, having a vl of 256.
+    imatmul_4x4(c, a, b, M, N, P);
   }
 }
 
@@ -34,19 +39,20 @@ void imatmul(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
 // 4x4
 // ---------------
 
-void imatmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
-                 int64_t N, int64_t P) {
+void imatmul_4x4(int64_t *c, const int64_t *a, const int64_t *b,
+                 const unsigned long int M, const unsigned long int N,
+                 const unsigned long int P) {
   // We work on 4 rows of the matrix at once
-  int64_t block_size = 4;
-  int64_t block_size_p;
+  const unsigned long int block_size = 4;
+  unsigned long int block_size_p;
 
   // Set the vector configuration
   asm volatile("vsetvli %0, %1, e64, m4, ta, ma" : "=r"(block_size_p) : "r"(P));
 
   // Slice the matrix into a manageable number of columns p_
-  for (int64_t p = 0; p < P; p += block_size_p) {
+  for (unsigned long int p = 0; p < P; p += block_size_p) {
     // Set the vector length
-    int64_t p_ = MIN(P - p, block_size_p);
+    const unsigned long int p_ = MIN(P - p, block_size_p);
 
     // Find pointers to the submatrices
     const int64_t *b_ = b + p;
@@ -55,7 +61,7 @@ void imatmul_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
     asm volatile("vsetvli zero, %0, e64, m4, ta, ma" ::"r"(p_));
 
     // Iterate over the rows
-    for (int64_t m = 0; m < M; m += block_size) {
+    for (unsigned long int m = 0; m < M; m += block_size) {
       // Find pointer to the submatrices
       const int64_t *a_ = a + m * N;
       int64_t *c__ = c_ + m * P;
@@ -73,8 +79,8 @@ void imatmul_vec_4x4_slice_init() {
   asm volatile("vmv.v.i v12, 0");
 }
 
-void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
-                     int64_t P) {
+void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b,
+                     const unsigned long int N, const unsigned long int P) {
   // Temporary variables
   int64_t t0, t1, t2, t3;
 
@@ -86,59 +92,50 @@ void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
   b += P;
 
   // Prefetch one row of scalar values
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t0) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t1) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t2) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t3) : [a] "r"(a));
+  t0 = *a, a += N;
+  t1 = *a, a += N;
+  t2 = *a, a += N;
+  t3 = *a;
 
   // Compute the multiplication
-  int64_t n = 0;
+  unsigned long int n = 0;
 
   while (n < N) {
     // Calculate pointer to the matrix A
-    a = (const int64_t *)a_ + ++n;
+    a = a_ + ++n;
 
     asm volatile("vmacc.vx v0, %0, v16" ::"r"(t0));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t0) : [a] "r"(a));
-    a += N;
+    t0 = *a, a += N;
 
     // Load one row of B
     asm volatile("vle64.v v20, (%0);" ::"r"(b));
     b += P;
 
     asm volatile("vmacc.vx v4, %0, v16" ::"r"(t1));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t1) : [a] "r"(a));
-    a += N;
+    t1 = *a, a += N;
     asm volatile("vmacc.vx v8, %0, v16" ::"r"(t2));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t2) : [a] "r"(a));
-    a += N;
+    t2 = *a, a += N;
     asm volatile("vmacc.vx v12, %0, v16" ::"r"(t3));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t3) : [a] "r"(a));
+    t3 = *a;
 
-    if (n == N - 1)
+    a = a_ + ++n;
+
+    if (n == N)
       break;
 
-    a = (const int64_t *)a_ + ++n;
-
     asm volatile("vmacc.vx v0, %0, v20" ::"r"(t0));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t0) : [a] "r"(a));
-    a += N;
+    t0 = *a, a += N;
 
     // Load one row of B
     asm volatile("vle64.v v16, (%0);" ::"r"(b));
     b += P;
 
     asm volatile("vmacc.vx v4, %0, v20" ::"r"(t1));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t1) : [a] "r"(a));
-    a += N;
+    t1 = *a, a += N;
     asm volatile("vmacc.vx v8, %0, v20" ::"r"(t2));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t2) : [a] "r"(a));
-    a += N;
+    t2 = *a, a += N;
     asm volatile("vmacc.vx v12, %0, v20" ::"r"(t3));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t3) : [a] "r"(a));
+    t3 = *a;
   }
 
   // Last iteration: store results
@@ -159,19 +156,20 @@ void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
 // 8x8
 // ---------------
 
-void imatmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
-                 int64_t N, int64_t P) {
+void imatmul_8x8(int64_t *c, const int64_t *a, const int64_t *b,
+                 const unsigned long int M, const unsigned long int N,
+                 const unsigned long int P) {
   // We work on 4 rows of the matrix at once
-  int64_t block_size = 8;
-  int64_t block_size_p;
+  const unsigned long int block_size = 8;
+  unsigned long int block_size_p;
 
   // Set the vector configuration
   asm volatile("vsetvli %0, %1, e64, m2, ta, ma" : "=r"(block_size_p) : "r"(P));
 
   // Slice the matrix into a manageable number of columns p_
-  for (int64_t p = 0; p < P; p += block_size_p) {
+  for (unsigned long int p = 0; p < P; p += block_size_p) {
     // Set the vector length
-    int64_t p_ = MIN(P - p, block_size_p);
+    const unsigned long int p_ = MIN(P - p, block_size_p);
 
     // Find pointers to the submatrices
     const int64_t *b_ = b + p;
@@ -180,7 +178,7 @@ void imatmul_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t M,
     asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(p_));
 
     // Iterate over the rows
-    for (int64_t m = 0; m < M; m += block_size) {
+    for (unsigned long int m = 0; m < M; m += block_size) {
       // Find pointer to the submatrices
       const int64_t *a_ = a + m * N;
       int64_t *c__ = c_ + m * P;
@@ -202,8 +200,8 @@ void imatmul_vec_8x8_slice_init() {
   asm volatile("vmv.v.i v14, 0");
 }
 
-void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
-                     int64_t P) {
+void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b,
+                     const unsigned long int N, const unsigned long int P) {
   // Temporary variables
   int64_t t0, t1, t2, t3, t4, t5, t6, t7;
 
@@ -215,91 +213,70 @@ void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b, int64_t N,
   b += P;
 
   // Prefetch one row of scalar values
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t0) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t1) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t2) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t3) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t4) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t5) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t6) : [a] "r"(a));
-  a += N;
-  asm volatile("ld %[t], (%[a])" : [t] "=r"(t7) : [a] "r"(a));
+  t0 = *a, a += N;
+  t1 = *a, a += N;
+  t2 = *a, a += N;
+  t3 = *a, a += N;
+  t4 = *a, a += N;
+  t5 = *a, a += N;
+  t6 = *a, a += N;
+  t7 = *a;
 
   // Compute the multiplication
-  int64_t n = 0;
+  unsigned long int n = 0;
 
   while (n < N) {
     // Calculate pointer to the matrix A
-    a = (const int64_t *)a_ + ++n;
+    a = a_ + ++n;
 
     asm volatile("vmacc.vx v0, %0, v18" ::"r"(t0));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t0) : [a] "r"(a));
-    a += N;
+    t0 = *a, a += N;
 
     // Load one row of B
     asm volatile("vle64.v v20, (%0);" ::"r"(b));
     b += P;
 
     asm volatile("vmacc.vx v2, %0, v18" ::"r"(t1));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t1) : [a] "r"(a));
-    a += N;
+    t1 = *a, a += N;
     asm volatile("vmacc.vx v4, %0, v18" ::"r"(t2));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t2) : [a] "r"(a));
-    a += N;
+    t2 = *a, a += N;
     asm volatile("vmacc.vx v6, %0, v18" ::"r"(t3));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t3) : [a] "r"(a));
-    a += N;
+    t3 = *a, a += N;
     asm volatile("vmacc.vx v8, %0, v18" ::"r"(t4));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t4) : [a] "r"(a));
-    a += N;
+    t4 = *a, a += N;
     asm volatile("vmacc.vx v10, %0, v18" ::"r"(t5));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t5) : [a] "r"(a));
-    a += N;
+    t5 = *a, a += N;
     asm volatile("vmacc.vx v12, %0, v18" ::"r"(t6));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t6) : [a] "r"(a));
-    a += N;
+    t6 = *a, a += N;
     asm volatile("vmacc.vx v14, %0, v18" ::"r"(t7));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t7) : [a] "r"(a));
+    t7 = *a;
 
-    if (n == N - 1)
+    a = a_ + ++n;
+
+    if (n == N)
       break;
 
-    a = (const int64_t *)a_ + ++n;
-
     asm volatile("vmacc.vx v0, %0, v20" ::"r"(t0));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t0) : [a] "r"(a));
-    a += N;
+    t0 = *a, a += N;
 
     // Load one row of B
     asm volatile("vle64.v v18, (%0);" ::"r"(b));
     b += P;
 
     asm volatile("vmacc.vx v2, %0, v20" ::"r"(t1));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t1) : [a] "r"(a));
-    a += N;
+    t1 = *a, a += N;
     asm volatile("vmacc.vx v4, %0, v20" ::"r"(t2));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t2) : [a] "r"(a));
-    a += N;
+    t2 = *a, a += N;
     asm volatile("vmacc.vx v6, %0, v20" ::"r"(t3));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t3) : [a] "r"(a));
-    a += N;
+    t3 = *a, a += N;
     asm volatile("vmacc.vx v8, %0, v20" ::"r"(t4));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t4) : [a] "r"(a));
-    a += N;
+    t4 = *a, a += N;
     asm volatile("vmacc.vx v10, %0, v20" ::"r"(t5));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t5) : [a] "r"(a));
-    a += N;
+    t5 = *a, a += N;
     asm volatile("vmacc.vx v12, %0, v20" ::"r"(t6));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t6) : [a] "r"(a));
-    a += N;
+    t6 = *a, a += N;
     asm volatile("vmacc.vx v14, %0, v20" ::"r"(t7));
-    asm volatile("ld %[t], (%[a])" : [t] "=r"(t7) : [a] "r"(a));
+    t7 = *a;
   }
 
   // Last iteration: store results

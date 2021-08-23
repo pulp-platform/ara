@@ -545,12 +545,12 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   );
 
   axi_inval_filter #(
-    .MaxTxns    (4                   ),
-    .AddrWidth  (AxiAddrWidth        ),
-    .L1LineWidth(16                  ),
-    .aw_chan_t  (axi_core_aw_chan_t  ),
-    .req_t      (axi_core_wide_req_t ),
-    .resp_t     (axi_core_wide_resp_t)
+    .MaxTxns    (4                              ),
+    .AddrWidth  (AxiAddrWidth                   ),
+    .L1LineWidth(ariane_pkg::DCACHE_LINE_WIDTH/8),
+    .aw_chan_t  (axi_core_aw_chan_t             ),
+    .req_t      (axi_core_wide_req_t            ),
+    .resp_t     (axi_core_wide_resp_t           )
   ) i_axi_inval_filter (
     .clk_i        (clk_i             ),
     .rst_ni       (rst_ni            ),
