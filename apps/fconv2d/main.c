@@ -53,11 +53,12 @@ int similarity_check(double a, double b, double threshold) {
 }
 
 // Verify the matrices
-int verify_matrix(double *matrix, double *golden_matrix, int64_t R,
-                  int64_t C, double threshold) {
+int verify_matrix(double *matrix, double *golden_matrix, int64_t R, int64_t C,
+                  double threshold) {
   for (int r = 0; r < R; ++r)
     for (int c = 0; c < C; ++c)
-      if (!similarity_check(matrix[c + C * r], golden_matrix[c + C * r], threshold)) {
+      if (!similarity_check(matrix[c + C * r], golden_matrix[c + C * r],
+                            threshold)) {
         printf("Error: o[%d][%d] = %lf, instead of %lf\n", r, c,
                matrix[c + C * r], golden_matrix[c + C * r]);
         return 1;

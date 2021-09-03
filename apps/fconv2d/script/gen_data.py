@@ -25,9 +25,9 @@ import sys
 def rand_matrix(N, M, seed):
 	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
 
-def emit(name, array, alignment='3'):
+def emit(name, array, alignment='8'):
 	print(".global %s" % name)
-	print(".align " + alignment)
+	print(".balign " + alignment)
 	print("%s:" % name)
 	bs = array.tobytes()
 	for i in range(0, len(bs), 4):
