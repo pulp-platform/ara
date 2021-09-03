@@ -289,9 +289,15 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // the memory interface.
           aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, eff_axi_data_bwidth_log_d);
           // The final address can be found similarly...
-          aligned_end_addr_d   =
-            aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
-            eff_axi_data_bwidth_log_d) + ((eff_axi_data_bwidth_d) - 1);
+          if (axi_addrgen_d.len << int'(axi_addrgen_d.vew) > (256 << eff_axi_data_bwidth_log_d)) begin
+            aligned_end_addr_d =
+              aligned_addr(axi_addrgen_d.addr + (256 << eff_axi_data_bwidth_log_d) - 1,
+              eff_axi_data_bwidth_log_d) + ((eff_axi_data_bwidth_d) - 1);
+          end else begin
+            aligned_end_addr_d =
+                  aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
+                  eff_axi_data_bwidth_log_d) + ((eff_axi_data_bwidth_d) - 1);
+          end
           // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
           // same page as aligned_start_addr
           if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
@@ -316,18 +322,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             // AXI burst length
             automatic int unsigned burst_length;
 
-            // 1 - AXI bursts are at most 4KiB long
-            // 2 - AXI bursts are at most 256 beats long.
-            if (((1 << 12) >> eff_axi_data_bwidth_log_q) > 256)
-              burst_length = (1 << 12) >> eff_axi_data_bwidth_log_q;
-            else
+            // 1 - AXI bursts are at most 256 beats long.
               burst_length = 256;
-            // 3 - AXI bursts are aligned in 4 KiB ranges. If the AXI request
-            // starts at the middle of a 4 KiB range, it cannot have the maximal
-            // AXI burst length.
-            burst_length =
-              burst_length - (aligned_start_addr_q[11:0] >> eff_axi_data_bwidth_log_q);
-            // 4 - The AXI burst length cannot be longer than the number of beats required
+            // 2 - The AXI burst length cannot be longer than the number of beats required
             //     to access the memory regions between aligned_start_addr and
             //     aligned_end_addr
             if (burst_length > ((aligned_end_addr_q[11:0] - aligned_start_addr_q[11:0]) >>
@@ -372,10 +369,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             axi_addrgen_queue_push = 1'b1;
 
             // Account for the requested operands
-            axi_addrgen_d.len = axi_addrgen_q.len -
-            ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >> int'(axi_addrgen_q.vew));
-            if (axi_addrgen_q.len < ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >>
-                  int'(axi_addrgen_q.vew)))
+            axi_addrgen_d.len = axi_addrgen_q.len - ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >> int'(axi_addrgen_q.vew));
+            if (axi_addrgen_q.len < ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1) >> int'(axi_addrgen_q.vew)))
               axi_addrgen_d.len = 0;
             axi_addrgen_d.addr = aligned_end_addr_q + 1;
 
@@ -387,12 +382,19 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
             // Calculate the addresses for the next iteration
             // The start address is found by aligning the original request address by the width of
-            // the memory interface.
-            aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, eff_axi_data_bwidth_log_q);
-            // The final address can be found similarly...
-            aligned_end_addr_d   =
-              aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
-              eff_axi_data_bwidth_log_q) + ((eff_axi_data_bwidth_q) - 1);
+            // the memory interface. In our case, we have it already.
+            aligned_start_addr_d = axi_addrgen_d.addr;
+            // The final address can be found similarly.
+            // How many B we requested? No more than (256 << burst_size)
+            if (axi_addrgen_d.len << int'(axi_addrgen_q.vew) > (256 << eff_axi_data_bwidth_log_q)) begin
+              aligned_end_addr_d =
+                aligned_addr(aligned_start_addr_d + (256 << eff_axi_data_bwidth_log_q) - 1,
+                eff_axi_data_bwidth_log_q) + ((eff_axi_data_bwidth_q) - 1);
+            end else begin
+              aligned_end_addr_d =
+                aligned_addr(aligned_start_addr_d + (axi_addrgen_d.len << int'(axi_addrgen_q.vew)) - 1,
+                eff_axi_data_bwidth_log_q) + ((eff_axi_data_bwidth_q) - 1);
+            end
             // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
             // same page as aligned_start_addr
             if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])

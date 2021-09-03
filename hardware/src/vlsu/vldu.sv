@@ -317,7 +317,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // Consumed all beats from this burst
-      if ($unsigned(len_d) == $unsigned(axi_addrgen_req_i.len) + 1) begin
+      if ($unsigned(len_d) == axi_pkg::len_t'($unsigned(axi_addrgen_req_i.len) + 1)) begin
         // Reset AXI pointers
         len_d                   = '0;
         r_pnt_d                 = '0;
