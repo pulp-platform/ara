@@ -153,13 +153,13 @@ void TEST_CASE4() {
   VCMP_U64(16, v1, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13, -1, 15, -1, 17, -1, 19);
 }
 
-// Corner case: NrLanes divides vl, but the stride requires the operand requester to request
-// an additional 64-bit packet per lane, and not only an additional 32-bit element per lane.
-// Otherwise, it gets stuck
+// Corner case: NrLanes divides vl, but the stride requires the operand
+// requester to request an additional 64-bit packet per lane, and not only an
+// additional 32-bit element per lane. Otherwise, it gets stuck
 void TEST_CASE5() {
   VSET(32, e32, m1);
-  VLOAD_32(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
+  VLOAD_32(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+           19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
   VSET(12, e32, m1);
   VLOAD_32(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
   asm volatile("vslidedown.vi v1, v2, 7");
