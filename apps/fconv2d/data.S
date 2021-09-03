@@ -1,21 +1,21 @@
 .section .data,"aw",@progbits
 .global M
-.align 3
+.balign 8
 M:
     .word 0x00000070
     .word 0x00000000
 .global N
-.align 3
+.balign 8
 N:
     .word 0x00000070
     .word 0x00000000
 .global F
-.align 3
+.balign 8
 F:
     .word 0x00000007
     .word 0x00000000
 .global i
-.align NR_LANES*4
+.balign NR_LANES*4
 i:
     .word 0x00000000
     .word 0x40e36840
@@ -27866,7 +27866,7 @@ i:
     .word 0x00000000
     .word 0x40c06a80
 .global f
-.align NR_LANES*4
+.balign NR_LANES*4
 f:
     .word 0x00000000
     .word 0x40594000
@@ -27967,7 +27967,7 @@ f:
     .word 0x00000000
     .word 0x40560000
 .global o
-.align NR_LANES*4
+.balign NR_LANES*4
 o:
     .word 0x00000000
     .word 0x00000000
@@ -53058,7 +53058,7 @@ o:
     .word 0x00000000
     .word 0x00000000
 .global golden_o
-.align NR_LANES*4
+.balign NR_LANES*4
 golden_o:
     .word 0x04000000
     .word 0x41933bf8
@@ -78149,7 +78149,7 @@ golden_o:
     .word 0xe0000000
     .word 0x419670cf
 .global o_checksum
-.align 3
+.balign 8
 o_checksum:
     .word 0x72dae000
     .word 0x426d7509
