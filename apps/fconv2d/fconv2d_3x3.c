@@ -50,8 +50,12 @@ void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
   // Helper variables
   double *f_;
   f_ = f;
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("fld %1, (%0);" : "+&r"(f_), "=&f"(t2));
 
   // Iterate over the output rows
@@ -220,8 +224,12 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
   f_ = f;
   // Fetch the first column of the filter, and start calculating its
   // contribution on the four output rows (v0, v2, v4, v6)
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("fld %1, (%0);" : "+&r"(f_), "=&f"(t2));
 
   // Fetch 4 + F - 1 - 2 rows of the input matrix
@@ -258,8 +266,12 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
   f_ = f + 1;
   // Fetch the middle column of the filter, and start calculating its
   // contributions on the output rows To do so, slide down the input rows by one
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("fld %1, (%0);" : "+&r"(f_), "=&f"(t2));
 
   asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
@@ -287,8 +299,12 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
 
   f_ = f + 2;
   // Repeat for the last filter column, and then store the output rows
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("fld %1, (%0);" : "+&r"(f_), "=&f"(t2));
 
   asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
@@ -344,13 +360,17 @@ void fconv2d_vec_4xC_3x3_full(double *o, double *i, double *f, int64_t C,
   // of the load instructions
   asm volatile("vmv.v.v v8, v16");
   asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
   asm volatile("vfmul.vf v0, v8, %0" ::"f"(t0));
 
   asm volatile("vmv.v.v v10, v18");
   asm volatile("vfmul.vf v2, v10, %0" ::"f"(t0));
   asm volatile("vle64.v v14, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("vfmacc.vf v0, %0, v10" ::"f"(t1));
 
   asm volatile("vfmacc.vf v2, %0, v12" ::"f"(t1));
@@ -378,8 +398,12 @@ void fconv2d_vec_4xC_3x3_full(double *o, double *i, double *f, int64_t C,
   f_ = f + 1;
   // Fetch the middle column of the filter, and start calculating its
   // contributions on the output rows To do so, slide down the input rows by one
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("fld %1, (%0);" : "+&r"(f_), "=&f"(t2));
 
   asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
@@ -407,8 +431,12 @@ void fconv2d_vec_4xC_3x3_full(double *o, double *i, double *f, int64_t C,
 
   f_ = f + 2;
   // Repeat for the last filter column, and then store the output rows
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t0) : "r"(ldf));
-  asm volatile("fld %1, (%0); add %0, %0, %2" : "+&r"(f_), "=&f"(t1) : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("fld %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
   asm volatile("fld %1, (%0);" : "+&r"(f_), "=&f"(t2));
 
   asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
