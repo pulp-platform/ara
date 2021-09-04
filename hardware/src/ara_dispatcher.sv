@@ -2304,7 +2304,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           for (int i = 0; i < 8; i++)
             eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
         end
-        default: ; // EMUL < 1
+        default: begin // EMUL < 1
+          for (int i = 0; i < 1; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+        end
       endcase
     end
 
