@@ -73,7 +73,7 @@ done
 ################
 
 # Measure the runtime of the following kernels
-for kernel in iconv2d, fconv2d; do
+for kernel in iconv2d fconv2d; do
 
     # Log the performance results
     > ${kernel}_${nr_lanes}.benchmark
