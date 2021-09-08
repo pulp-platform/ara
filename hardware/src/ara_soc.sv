@@ -17,7 +17,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  int           unsigned AxiUserWidth = 1,
     parameter  int           unsigned AxiIdWidth   = 6,
     // Main memory
-    parameter  int           unsigned L2NumWords   = 2**20,
+    parameter  int           unsigned L2Latency    = 1,     // Memory cycle latency from valid address to valid read data
     // Dependant parameters. DO NOT CHANGE!
     localparam type                   axi_data_t   = logic [AxiDataWidth-1:0],
     localparam type                   axi_strb_t   = logic [AxiDataWidth/8-1:0],
@@ -28,6 +28,14 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     input  logic        clk_i,
     input  logic        rst_ni,
     output logic [63:0] exit_o,
+    // Main memory
+    output logic                      l2_req_o,
+    output logic                      l2_we_o,
+    output logic [AxiAddrWidth-1:0]   l2_addr_o,
+    output logic [AxiDataWidth/8-1:0] l2_be_o,
+    output logic [AxiDataWidth-1:0]   l2_wdata_o,
+    input  logic [AxiDataWidth-1:0]   l2_rdata_i,
+    input  logic                      l2_rvalid_i,
     // Scan chain
     input  logic        scan_enable_i,
     input  logic        scan_data_i,
@@ -211,7 +219,13 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   //  L2  //
   //////////
 
-  `include "common_cells/registers.svh"
+  logic                      l2_req;
+  logic                      l2_we;
+  logic [AxiAddrWidth-1:0]   l2_addr;
+  logic [AxiDataWidth/8-1:0] l2_be;
+  logic [AxiDataWidth-1:0]   l2_wdata;
+  logic [AxiDataWidth-1:0]   l2_rdata;
+  logic                      l2_rvalid;
 
   // The L2 memory does not support atomics
 
@@ -230,14 +244,6 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .mst_req_o (l2mem_wide_axi_req_wo_atomics ),
     .mst_resp_i(l2mem_wide_axi_resp_wo_atomics)
   );
-
-  logic                      l2_req;
-  logic                      l2_we;
-  logic [AxiAddrWidth-1:0]   l2_addr;
-  logic [AxiDataWidth/8-1:0] l2_be;
-  logic [AxiDataWidth-1:0]   l2_wdata;
-  logic [AxiDataWidth-1:0]   l2_rdata;
-  logic                      l2_rvalid;
 
   axi_to_mem #(
     .AddrWidth (AxiAddrWidth       ),
@@ -263,23 +269,14 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .busy_o      (/* Unused */                  )
   );
 
-  tc_sram #(
-    .NumWords (L2NumWords  ),
-    .NumPorts (1           ),
-    .DataWidth(AxiDataWidth)
-  ) i_dram (
-    .clk_i  (clk_i                                                                      ),
-    .rst_ni (rst_ni                                                                     ),
-    .req_i  (l2_req                                                                     ),
-    .we_i   (l2_we                                                                      ),
-    .addr_i (l2_addr[$clog2(L2NumWords)-1+$clog2(AxiDataWidth/8):$clog2(AxiDataWidth/8)]),
-    .wdata_i(l2_wdata                                                                   ),
-    .be_i   (l2_be                                                                      ),
-    .rdata_o(l2_rdata                                                                   )
-  );
-
-  // One-cycle latency
-  `FF(l2_rvalid, l2_req, 1'b0);
+  // Connect with the external main memory
+  assign l2_req_o   = l2_req;
+  assign l2_we_o    = l2_we;
+  assign l2_addr_o  = l2_addr;
+  assign l2_be_o    = l2_be;
+  assign l2_wdata_o = l2_wdata;
+  assign l2_rdata   = l2_rdata_i;
+  assign l2_rvalid  = l2_rvalid_i;
 
   ////////////
   //  UART  //

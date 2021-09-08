@@ -118,7 +118,7 @@ module ara_tb;
           if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength)
             // This requires the sections to be aligned to AxiWideByteOffset,
             // otherwise, they can be over-written.
-            dut.i_ara_soc.i_dram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
+            dut.i_dram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
           else
             $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
         end

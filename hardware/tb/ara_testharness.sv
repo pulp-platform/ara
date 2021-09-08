@@ -14,7 +14,10 @@ module ara_testharness #(
     parameter int unsigned AxiUserWidth = 1,
     parameter int unsigned AxiIdWidth   = 6,
     parameter int unsigned AxiAddrWidth = 64,
-    parameter int unsigned AxiDataWidth = 64*NrLanes/2
+    parameter int unsigned AxiDataWidth = 64*NrLanes/2,
+	// Main Memory parameters
+    parameter int unsigned L2NumWords   = 2**19,
+    parameter int unsigned L2Latency    = 1      // Memory cycle latency from valid address to valid
   ) (
     input  logic        clk_i,
     input  logic        rst_ni,
@@ -45,6 +48,15 @@ module ara_testharness #(
    *  Signals  *
    *************/
 
+  // Main Memory
+  logic [L2Latency-1:0]      l2_req;
+  logic                      l2_we;
+  logic [AxiAddrWidth-1:0]   l2_addr;
+  logic [AxiDataWidth/8-1:0] l2_be;
+  logic [AxiDataWidth-1:0]   l2_wdata;
+  logic [AxiDataWidth-1:0]   l2_rdata;
+  logic                      l2_rvalid;
+
   // UART
   logic        uart_penable;
   logic        uart_pwrite;
@@ -68,7 +80,8 @@ module ara_testharness #(
     .AxiAddrWidth(AxiAddrWidth ),
     .AxiDataWidth(AxiDataWidth ),
     .AxiIdWidth  (AxiIdWidth   ),
-    .AxiUserWidth(AxiUserWidth )
+    .AxiUserWidth(AxiUserWidth ),
+	.L2Latency   (L2Latency    )
   ) i_ara_soc (
     .clk_i         (clk_i       ),
     .rst_ni        (rst_ni      ),
@@ -76,6 +89,14 @@ module ara_testharness #(
     .scan_enable_i (1'b0        ),
     .scan_data_i   (1'b0        ),
     .scan_data_o   (/* Unused */),
+    // Main memory
+    .l2_req_o      (l2_req      ),
+    .l2_we_o       (l2_we       ),
+    .l2_addr_o     (l2_addr     ),
+    .l2_be_o       (l2_be       ),
+    .l2_wdata_o    (l2_wdata    ),
+    .l2_rdata_i    (l2_rdata    ),
+    .l2_rvalid_i   (l2_rvalid   ),
     // UART
     .uart_penable_o(uart_penable),
     .uart_pwrite_o (uart_pwrite ),
@@ -86,6 +107,34 @@ module ara_testharness #(
     .uart_pready_i (uart_pready ),
     .uart_pslverr_i(uart_pslverr)
   );
+
+  /*****************
+   *  Main Memory  *
+   *****************/
+
+  `include "common_cells/registers.svh"
+
+  tc_sram #(
+    .NumWords (L2NumWords  ),
+    .NumPorts (1           ),
+    .DataWidth(AxiDataWidth),
+    .Latency  (L2Latency   )
+  ) i_dram (
+    .clk_i  (clk_i                                                                      ),
+    .rst_ni (rst_ni                                                                     ),
+    .req_i  (l2_req                                                                     ),
+    .we_i   (l2_we                                                                      ),
+    .addr_i (l2_addr[$clog2(L2NumWords)-1+$clog2(AxiDataWidth/8):$clog2(AxiDataWidth/8)]),
+    .wdata_i(l2_wdata                                                                   ),
+    .be_i   (l2_be                                                                      ),
+    .rdata_o(l2_rdata                                                                   )
+  );
+
+  // Variable latency for pipelined SRAM
+  for (genvar k = 0; k < L2Latency-1; k++) begin
+    `FF(l2_req[k+1], l2_req[k], 1'b0);
+  end
+  `FF(l2_rvalid, l2_req[L2Latency-1], 1'b0);
 
   /**********
    *  UART  *
