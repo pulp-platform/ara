@@ -136,21 +136,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
           case (pe_req_i.op)
             VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
-            default: begin
-              state_d = ADDRGEN;
-
-              // Request early
-              addrgen_req = '{
-                addr    : pe_req_i.scalar_op,
-                len     : pe_req_i.vl,
-                stride  : pe_req_i.stride,
-                vew     : pe_req_i.vtype.vsew,
-                is_load : is_load(pe_req_i.op),
-                // Unit-strided loads/stores trigger incremental AXI bursts.
-                is_burst: (pe_req_i.op inside {VLE, VSE})
-              };
-              addrgen_req_valid = 1'b1;
-            end
+            default:    state_d = ADDRGEN;
           endcase
         end
       end
