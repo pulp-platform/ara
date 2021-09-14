@@ -71,7 +71,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   pe_req_t pe_req_q;
 
   fifo_v3 #(
-    .DEPTH(2                ),
+    .DEPTH(2       ),
     .dtype(pe_req_t)
   ) i_pe_req_queue (
     .clk_i     (clk_i                                                    ),

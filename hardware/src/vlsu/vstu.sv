@@ -195,9 +195,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte + 1;
 
       // How many bytes are we committing?
-      automatic vlen_t valid_bytes;
-      valid_bytes = vinsn_valid_bytes < vrf_valid_bytes ? vinsn_valid_bytes : vrf_valid_bytes;
-      valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes             : axi_valid_bytes;
+      automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
+      valid_bytes = issue_cnt_q < NrLanes * 8     ? vinsn_valid_bytes : vrf_valid_bytes;
+      valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes       : axi_valid_bytes;
 
       vrf_pnt_d = vrf_pnt_q + valid_bytes;
 
