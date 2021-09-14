@@ -25,18 +25,18 @@
 #include "runtime.h"
 
 #if defined(IMATMUL)
-#include "kernel/imatmul.h"
 #include "benchmark/imatmul.bmark"
+#include "kernel/imatmul.h"
 
 #elif defined(FMATMUL)
-#include "kernel/fmatmul.h"
 #include "benchmark/fmatmul.bmark"
+#include "kernel/fmatmul.h"
 
 #elif defined(ICONV2D)
-#include "kernel/iconv2d.h"
 #include "benchmark/iconv2d.bmark"
+#include "kernel/iconv2d.h"
 
 #elif defined(FCONV2D)
-#include "kernel/fconv2d.h"
 #include "benchmark/fconv2d.bmark"
+#include "kernel/fconv2d.h"
 #endif
