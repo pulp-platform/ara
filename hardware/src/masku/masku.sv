@@ -514,7 +514,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
           // Acknowledge the operands of this instruction.
           // At this stage, acknowledge only the first operand, "a", coming from the ALU/VMFpu.
-          masku_operand_a_ready_o = masku_operand_a_valid_i;
+          masku_operand_a_ready_o = '1;
 
           // Store the result in the operand queue
           for (int unsigned lane = 0; lane < NrLanes; lane++) begin
@@ -541,7 +541,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
               // Acknowledge the rest of the operands, which are accessed bit by bit.
-              masku_operand_b_ready_o = masku_operand_b_valid_i;
+              if (vinsn_issue.use_vd_op)
+                masku_operand_b_ready_o = '1;
 
               // Reset VRF pointer
               vrf_pnt_d = '0;
@@ -562,7 +563,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
             // Acknowledge the previous value of the destination vector register.
-            masku_operand_b_ready_o = masku_operand_b_valid_i;
+              if (vinsn_issue.use_vd_op)
+                masku_operand_b_ready_o = '1;
 
             // Increment result queue pointers and counters
             result_queue_cnt_d += 1;
