@@ -18,8 +18,8 @@
 #         Matheus Cavalcante, ETH Zurich
 
 # Number of vector lanes
-nr_lanes ?= 2
+nr_lanes ?= 1
 
 # Length of each vector register (in bits)
-# Constraints: VLEN >= 1024
+# Constraints: VLEN >= 512
 vlen ?= 4096

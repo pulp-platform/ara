@@ -21,5 +21,5 @@
 nr_lanes ?= 4
 
 # Length of each vector register (in bits)
-# Constraints: VLEN > 128
+# Constraints: VLEN >= 2048
 vlen ?= 4096
