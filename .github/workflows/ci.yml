@@ -502,7 +502,9 @@ jobs:
         tar xvf benchmarks-8_lanes.tar
         tar xvf benchmarks-16_lanes.tar
     - name: Install gnuplot
-      run: sudo apt-get install gnuplot
+      run: |
+        sudo apt-get update
+        sudo apt-get install gnuplot
     - name: Plot the rooflines
       run: gnuplot -c scripts/benchmark.gnuplot
     - name: Upload the imatmul roofline
