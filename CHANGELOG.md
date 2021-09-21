@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Widen CVA6's cache lines
 - Implement back-to-back accelerator instruction issue mechanism on CVA6
 - Use https protocol when cloning DTC from main Makefile
+- Use https protocol for newlib-cygwin in .gitmodules
 
 ## 2.1.0 - 2021-07-16
 
