@@ -256,7 +256,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           for (int b = 0; b < NrLanes*8; b++) begin
             // Input byte
             automatic int in_seq_byte = in_pnt_q + b;
-            automatic int in_byte  = shuffle_index(in_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+            automatic int in_byte  = shuffle_index(in_seq_byte, NrLanes, vinsn_issue.eew_vs2);
             // Output byte
             automatic int out_seq_byte = out_pnt_q + b;
             automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);

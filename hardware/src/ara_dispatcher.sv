@@ -120,25 +120,33 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   //  State  //
   /////////////
 
-  // The backend can either be in normal operation, or waiting for Ara to be idle before issuing new
-  // operations. This can happen, for example, once the vlmul has changed.
-  typedef enum logic {
+  // The backend can either be in normal operation, waiting for Ara to be idle before issuing new
+  // operations, or injecting a reshuffling uop.
+  // IDLE can happen, for example, once the vlmul has changed.
+  // RESHUFFLE can happen when an instruction writes a register with != EEW
+  typedef enum logic [1:0] {
     NORMAL_OPERATION,
-    WAIT_IDLE
+    WAIT_IDLE,
+    RESHUFFLE
   } state_e;
   state_e state_d, state_q;
 
   // We need to memorize the element width used to store each vector on the lanes, so that we are
   // able to deshuffle it when needed.
   rvv_pkg::vew_e [31:0] eew_d, eew_q;
+  // If the reg was not written, the content is unknown. No need to reshuffle
+  // when writing with != EEW
+  logic [31:0] eew_valid_d, eew_valid_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q <= NORMAL_OPERATION;
-      eew_q   <= '{default: rvv_pkg::EW8};
+      state_q        <= NORMAL_OPERATION;
+      eew_q          <= '{default: rvv_pkg::EW8};
+      eew_valid_q    <= '0;
     end else begin
-      state_q <= state_d;
-      eew_q   <= eew_d;
+      state_q        <= state_d;
+      eew_q          <= eew_d;
+      eew_valid_q    <= eew_valid_d;
     end
   end
 
@@ -173,6 +181,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     vtype_d      = vtype_q;
     state_d      = state_q;
     eew_d        = eew_q;
+    eew_valid_d  = eew_valid_q;
     lmul_vs2     = vtype_q.vlmul;
     lmul_vs1     = vtype_q.vlmul;
     illegal_insn = 1'b0;
@@ -499,14 +508,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b001110: begin
                   ara_req_d.op            = ara_pkg::VSLIDEUP;
                   ara_req_d.stride        = acc_req_i.rs1;
+                  ara_req_d.eew_vs2       = vtype_q.vsew;
                   // Encode vslideup/vslide1up on the use_scalar_op field
                   ara_req_d.use_scalar_op = 1'b0;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                 end
                 6'b001111: begin
                   ara_req_d.op            = ara_pkg::VSLIDEDOWN;
                   ara_req_d.stride        = acc_req_i.rs1;
+                  ara_req_d.eew_vs2       = vtype_q.vsew;
                   // Encode vslidedown/vslide1down on the use_scalar_op field
                   ara_req_d.use_scalar_op = 1'b0;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                 end
                 6'b010000: begin
                   ara_req_d.op = ara_pkg::VADC;
@@ -680,14 +695,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 6'b001110: begin
                   ara_req_d.op            = ara_pkg::VSLIDEUP;
                   ara_req_d.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+                  ara_req_d.eew_vs2       = vtype_q.vsew;
                   // Encode vslideup/vslide1up on the use_scalar_op field
                   ara_req_d.use_scalar_op = 1'b0;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                 end
                 6'b001111: begin
                   ara_req_d.op            = ara_pkg::VSLIDEDOWN;
                   ara_req_d.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+                  ara_req_d.eew_vs2       = vtype_q.vsew;
                   // Encode vslidedown/vslide1down on the use_scalar_op field
                   ara_req_d.use_scalar_op = 1'b0;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                 end
                 6'b010000: begin
                   ara_req_d.op = ara_pkg::VADC;
@@ -1138,12 +1159,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               unique case (insn.varith_type.func6)
                 // Slides
                 6'b001110: begin // vslide1up
-                  ara_req_d.op     = ara_pkg::VSLIDEUP;
-                  ara_req_d.stride = 1;
+                  ara_req_d.op      = ara_pkg::VSLIDEUP;
+                  ara_req_d.stride  = 1;
+                  ara_req_d.eew_vs2 = vtype_q.vsew;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                 end
                 6'b001111: begin // vslide1down
-                  ara_req_d.op     = ara_pkg::VSLIDEDOWN;
-                  ara_req_d.stride = 1;
+                  ara_req_d.op      = ara_pkg::VSLIDEDOWN;
+                  ara_req_d.stride  = 1;
+                  ara_req_d.eew_vs2 = vtype_q.vsew;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                 end
                 // Divide instructions
                 6'b100000: ara_req_d.op = ara_pkg::VDIVU;
@@ -1663,10 +1690,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001110: begin // vfslide1up
                     ara_req_d.op     = ara_pkg::VSLIDEUP;
                     ara_req_d.stride = 1;
+                  ara_req_d.eew_vs2  = vtype_q.vsew;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                   end
                   6'b001111: begin // vfslide1down
                     ara_req_d.op     = ara_pkg::VSLIDEDOWN;
                     ara_req_d.stride = 1;
+                  ara_req_d.eew_vs2  = vtype_q.vsew;
+                  // Request will need reshuffling
+                  ara_req_d.scale_vl      = 1'b1;
                   end
                   6'b010111: ara_req_d.op = ara_pkg::VMERGE;
                   6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
@@ -2337,28 +2370,82 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       ara_req_valid_d  = 1'b0;
     end
 
+    // When a write occurs and the EEW is different, re-shuffle the content of the register
+    // on the new EEW
+    // This operation is costly when occurs, so avoid it if the whole vector is overwritten
+    // or if the register is empty
+    if (ara_req_valid_d && ara_req_d.use_vd && !acc_resp_o.error &&
+        ara_req_d.vtype.vsew != eew_q[ara_req_d.vd] && eew_valid_q[ara_req_d.vd] &&
+        vl_q != VLENB >> ara_req_d.vtype.vsew) begin
+      // Stall the interface, and inject a reshuffling instruction
+      acc_req_ready_o  = 1'b0;
+      acc_resp_valid_o = 1'b0;
+      ara_req_valid_d  = 1'b0;
+
+      state_d = RESHUFFLE;
+    end
+
+    if (state_q == RESHUFFLE) begin
+      // Instruction is of one of the RVV types
+      automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+
+      // Stall the interface, wait for the backend to accept the injected uop
+      acc_req_ready_o  = 1'b0;
+      acc_resp_valid_o = 1'b0;
+
+      // These generate a reshuffle request to Ara's backend
+      ara_req_valid_d         = 1'b1;
+      ara_req_d.use_scalar_op = 1'b1;
+      ara_req_d.vs2           = insn.varith_type.rd;
+      ara_req_d.eew_vs2       = eew_q[insn.vmem_type.rd];
+      ara_req_d.use_vs2       = 1'b1;
+      ara_req_d.vd            = insn.varith_type.rd;
+      ara_req_d.use_vd        = 1'b1;
+      ara_req_d.op            = ara_pkg::VSLIDEDOWN;
+      ara_req_d.stride        = '0;
+      ara_req_d.use_scalar_op = 1'b0;
+      // Unmasked: reshuffle everything
+      ara_req_d.vm            = 1'b1;
+      // Shuffle the whole reg
+      ara_req_d.vl            = VLENB >> ara_req_d.vtype.vsew;
+      // Request will need reshuffling
+      ara_req_d.scale_vl      = 1'b1;
+
+      if (ara_req_ready_i) state_d = NORMAL_OPERATION;
+    end
+
     // Update the EEW
-    if (ara_req_valid_d && ara_req_d.use_vd) begin
+    if (ara_req_valid_d && ara_req_d.use_vd && state_d != RESHUFFLE) begin
       unique case (ara_req_d.emul)
         LMUL_1: begin
-          for (int i = 0; i < 1; i++)
-            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+          for (int i = 0; i < 1; i++) begin
+            eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
         end
         LMUL_2: begin
-          for (int i = 0; i < 2; i++)
+          for (int i = 0; i < 2; i++) begin
             eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
         end
         LMUL_4: begin
-          for (int i = 0; i < 4; i++)
+          for (int i = 0; i < 4; i++) begin
             eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
         end
         LMUL_8: begin
-          for (int i = 0; i < 8; i++)
+          for (int i = 0; i < 8; i++) begin
             eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
         end
         default: begin // EMUL < 1
-          for (int i = 0; i < 1; i++)
+          for (int i = 0; i < 1; i++) begin
             eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
         end
       endcase
     end
