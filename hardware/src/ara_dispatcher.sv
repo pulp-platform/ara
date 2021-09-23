@@ -922,6 +922,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     5'b00010: begin // VZEXT.VF8
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt8;
                       ara_req_d.eew_vs2        = eew_q[insn.varith_type.rs2];
+                      ara_req_d.cvt_resize     = CVT_WIDE;
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW64) ||
@@ -931,6 +932,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     5'b00011: begin // VSEXT.VF8
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt8;
                       ara_req_d.eew_vs2        = eew_q[insn.varith_type.rs2];
+                      ara_req_d.cvt_resize     = CVT_WIDE;
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW64) ||
@@ -940,6 +942,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     5'b00100: begin // VZEXT.VF4
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt4;
                       ara_req_d.eew_vs2        = prev_prev_ew(vtype_q.vsew);
+                      ara_req_d.cvt_resize     = CVT_WIDE;
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW32) ||
@@ -948,6 +951,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     5'b00101: begin // VSEXT.VF4
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt4;
                       ara_req_d.eew_vs2        = prev_prev_ew(vtype_q.vsew);
+                      ara_req_d.cvt_resize     = CVT_WIDE;
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW32) ||
@@ -956,6 +960,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     5'b00110: begin // VZEXT.VF2
                       ara_req_d.conversion_vs2 = OpQueueConversionZExt2;
                       ara_req_d.eew_vs2        = vtype_q.vsew.prev();
+                      ara_req_d.cvt_resize     = CVT_WIDE;
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) inside {LMUL_1_8})
@@ -964,6 +969,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     5'b00111: begin // VSEXT.VF2
                       ara_req_d.conversion_vs2 = OpQueueConversionSExt2;
                       ara_req_d.eew_vs2        = vtype_q.vsew.prev();
+                      ara_req_d.cvt_resize     = CVT_WIDE;
 
                       // Invalid conversion
                       if (int'(vtype_q.vsew) < int'(EW16) || int'(vtype_q.vlmul) inside {LMUL_1_8})
