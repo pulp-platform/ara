@@ -226,11 +226,20 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
       // Hazards between vector instructions
       logic [NrVInsn-1:0] hazard;
+
+      // Widening instructions produces two writes of every read
+      // In case of a WAW with a previous instruction,
+      // read once every two writes of the previous instruction
+      logic is_widening;
+      // One-bit counters
+      logic [NrVInsn-1:0] waw_hazard_counter;
     } requester_d, requester_q;
+
 
     // Is there a hazard during this cycle?
     logic stall;
-    assign stall = |(requester_q.hazard & ~vinsn_result_written_q);
+    assign stall = |(requester_q.hazard & ~(vinsn_result_written_q &
+                   (~{NrVInsn{requester_q.is_widening}} | requester_q.waw_hazard_counter)));
 
     // Did we get a grant?
     logic [NrBanks-1:0] operand_requester_gnt;
@@ -290,13 +299,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               // but the requester must refer to the old EEW (eew here)
               // This reasoning cannot be applied also to widening instructions, which modify vsew
               // treating it as the EEW of vd
-              len    : (operand_request_i[requester].scale_vl) ?
-                         ((operand_request_i[requester].vl <<
-                         operand_request_i[requester].vtype.vsew) >>
-                         operand_request_i[requester].eew) :
-                         operand_request_i[requester].vl,
-              vew    : operand_request_i[requester].eew,
-              hazard : operand_request_i[requester].hazard,
+              len         : (operand_request_i[requester].scale_vl) ?
+                              ((operand_request_i[requester].vl <<
+                              operand_request_i[requester].vtype.vsew) >>
+                              operand_request_i[requester].eew) :
+                              operand_request_i[requester].vl,
+              vew         : operand_request_i[requester].eew,
+              hazard      : operand_request_i[requester].hazard,
+              is_widening : operand_request_i[requester].cvt_resize == CVT_WIDE,
               default: '0
             };
 
@@ -311,6 +321,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         REQUESTING: begin
           // Update hazards
           requester_d.hazard = requester_q.hazard & vinsn_running_i;
+          // Update waw counters
+          for (int b = 0; b < NrVInsn; b++)
+            if (vinsn_result_written_d[b])
+              requester_d.waw_hazard_counter[b] = ~requester_q.waw_hazard_counter[b];
 
           if (operand_queue_ready_i[requester]) begin
             // Bank we are currently requesting
