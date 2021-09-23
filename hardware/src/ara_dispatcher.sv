@@ -137,16 +137,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // If the reg was not written, the content is unknown. No need to reshuffle
   // when writing with != EEW
   logic [31:0] eew_valid_d, eew_valid_q;
+  // Save eew_q[vd] before reshuffling
+  rvv_pkg::vew_e eew_buffer_d, eew_buffer_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       state_q        <= NORMAL_OPERATION;
       eew_q          <= '{default: rvv_pkg::EW8};
       eew_valid_q    <= '0;
+      eew_buffer_q   <= '{default: rvv_pkg::EW8};
     end else begin
       state_q        <= state_d;
       eew_q          <= eew_d;
       eew_valid_q    <= eew_valid_d;
+      eew_buffer_q   <= eew_buffer_d;
     end
   end
 
@@ -182,6 +186,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     state_d      = state_q;
     eew_d        = eew_q;
     eew_valid_d  = eew_valid_q;
+    eew_buffer_d = eew_buffer_q;
     lmul_vs2     = vtype_q.vlmul;
     lmul_vs1     = vtype_q.vlmul;
     illegal_insn = 1'b0;
@@ -2412,10 +2417,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     if (ara_req_valid_d && ara_req_d.use_vd && !acc_resp_o.error &&
         ara_req_d.vtype.vsew != eew_q[ara_req_d.vd] && eew_valid_q[ara_req_d.vd] &&
         vl_q != VLENB >> ara_req_d.vtype.vsew) begin
+      // Instruction is of one of the RVV types
+      automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+
       // Stall the interface, and inject a reshuffling instruction
       acc_req_ready_o  = 1'b0;
       acc_resp_valid_o = 1'b0;
       ara_req_valid_d  = 1'b0;
+
+      eew_buffer_d = eew_q[insn.vmem_type.rd];
 
       state_d = RESHUFFLE;
     end
@@ -2432,7 +2442,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       ara_req_valid_d         = 1'b1;
       ara_req_d.use_scalar_op = 1'b1;
       ara_req_d.vs2           = insn.varith_type.rd;
-      ara_req_d.eew_vs2       = eew_q[insn.vmem_type.rd];
+      ara_req_d.eew_vs2       = eew_buffer_q;
       ara_req_d.use_vs2       = 1'b1;
       ara_req_d.vd            = insn.varith_type.rd;
       ara_req_d.use_vd        = 1'b1;
