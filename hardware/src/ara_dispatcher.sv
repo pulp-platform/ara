@@ -2363,7 +2363,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Update the EEW
-    if (ara_req_valid_d && ara_req_d.use_vd && state_d != RESHUFFLE) begin
+    if (((ara_req_valid_d && ara_req_d.use_vd) || state_d == RESHUFFLE)
+       && state_q != RESHUFFLE) begin
       unique case (ara_req_d.emul)
         LMUL_1: begin
           for (int i = 0; i < 1; i++) begin
