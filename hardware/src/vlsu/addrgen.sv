@@ -49,6 +49,44 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::BURST_INCR;
   import axi_pkg::CACHE_MODIFIABLE;
 
+  ////////////////////
+  //  PE Req Queue  //
+  ////////////////////
+
+  // The address generation process interacts with another process, that
+  // generates the AXI requests. They interact through the following signals.
+  typedef struct packed {
+    axi_addr_t addr;
+    vlen_t len;
+    elen_t stride;
+    vew_e vew;
+    logic is_load;
+    logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
+  } addrgen_req_t;
+  addrgen_req_t addrgen_req;
+  logic         addrgen_req_valid;
+  logic         addrgen_req_ready;
+
+  logic pe_req_buf_full;
+  pe_req_t pe_req_q;
+
+  fifo_v3 #(
+    .DEPTH(2                ),
+    .dtype(pe_req_t)
+  ) i_pe_req_queue (
+    .clk_i     (clk_i                                                    ),
+    .rst_ni    (rst_ni                                                   ),
+    .flush_i   (1'b0                                                     ),
+    .testmode_i(1'b0                                                     ),
+    .data_i    (pe_req_i                                                 ),
+    .push_i    (addrgen_ack_o                                            ),
+    .full_o    (pe_req_buf_full                                          ),
+    .data_o    (pe_req_q                                                 ),
+    .pop_i     (addrgen_req_ready                                        ),
+    .empty_o   (/* Unused */                                             ),
+    .usage_o   (/* Unused */                                             )
+  );
+
   /////////////////////
   //  Address Queue  //
   /////////////////////
@@ -96,20 +134,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     ADDRGEN_SCATTER_GATHER
   } state_q, state_d;
 
-  // The address generation process interacts with another process, that
-  // generates the AXI requests. They interact through the following signals.
-  typedef struct packed {
-    axi_addr_t addr;
-    vlen_t len;
-    elen_t stride;
-    vew_e vew;
-    logic is_load;
-    logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
-  } addrgen_req_t;
-  addrgen_req_t addrgen_req;
-  logic         addrgen_req_valid;
-  logic         addrgen_req_ready;
-
   always_comb begin: addr_generation
     // Maintain state
     state_d = state_q;
@@ -129,54 +153,54 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     case (state_q)
       IDLE: begin
         // Received a new request
-        if (pe_req_valid_i &&
+        if (pe_req_valid_i && !pe_req_buf_full &&
             (is_load(pe_req_i.op) || is_store(pe_req_i.op)) && !vinsn_running_q[pe_req_i.id]) begin
           // Mark the instruction as running in this unit
           vinsn_running_d[pe_req_i.id] = 1'b1;
 
-          case (pe_req_i.op)
-            VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
-            default: begin
-              state_d = ADDRGEN;
+          // Acknowledge the instruction and buffer it
+          addrgen_ack_o   = 1'b1;
+          // Ara does not support misaligned AXI requests
+          if (|(pe_req_i.scalar_op & (elen_t'(1 << pe_req_i.vtype.vsew) - 1))) begin
+            state_d         = IDLE;
+            addrgen_error_o = 1'b1;
+          end else begin
+            case (pe_req_i.op)
+              VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
+              default: begin
+                state_d = ADDRGEN;
 
-              // Request early
-              addrgen_req = '{
-                addr    : pe_req_i.scalar_op,
-                len     : pe_req_i.vl,
-                stride  : pe_req_i.stride,
-                vew     : pe_req_i.vtype.vsew,
-                is_load : is_load(pe_req_i.op),
-                // Unit-strided loads/stores trigger incremental AXI bursts.
-                is_burst: (pe_req_i.op inside {VLE, VSE})
-              };
-              addrgen_req_valid = 1'b1;
-            end
-          endcase
+                // Request early
+                addrgen_req = '{
+                  addr    : pe_req_i.scalar_op,
+                  len     : pe_req_i.vl,
+                  stride  : pe_req_i.stride,
+                  vew     : pe_req_i.vtype.vsew,
+                  is_load : is_load(pe_req_i.op),
+                  // Unit-strided loads/stores trigger incremental AXI bursts.
+                  is_burst: (pe_req_i.op inside {VLE, VSE})
+                };
+                addrgen_req_valid = 1'b1;
+              end
+            endcase
+          end
         end
       end
       ADDRGEN: begin
-        // Ara does not support misaligned AXI requests
-        if (|(pe_req_i.scalar_op & (elen_t'(1 << pe_req_i.vtype.vsew) - 1))) begin
-          state_d         = IDLE;
-          addrgen_ack_o   = 1'b1;
-          addrgen_error_o = 1'b1;
-        end else begin
-          addrgen_req = '{
-            addr    : pe_req_i.scalar_op,
-            len     : pe_req_i.vl,
-            stride  : pe_req_i.stride,
-            vew     : pe_req_i.vtype.vsew,
-            is_load : is_load(pe_req_i.op),
-            // Unit-strided loads/stores trigger incremental AXI bursts.
-            is_burst: (pe_req_i.op inside {VLE, VSE})
-          };
-          addrgen_req_valid = 1'b1;
+        addrgen_req = '{
+          addr    : pe_req_q.scalar_op,
+          len     : pe_req_q.vl,
+          stride  : pe_req_q.stride,
+          vew     : pe_req_q.vtype.vsew,
+          is_load : is_load(pe_req_q.op),
+          // Unit-strided loads/stores trigger incremental AXI bursts.
+          is_burst: (pe_req_q.op inside {VLE, VSE})
+        };
+        addrgen_req_valid = 1'b1;
 
-          if (addrgen_req_ready) begin
-            addrgen_req_valid = '0;
-            addrgen_ack_o     = 1'b1;
-            state_d           = IDLE;
-          end
+        if (addrgen_req_ready) begin
+          addrgen_req_valid = '0;
+          state_d           = IDLE;
         end
       end
       ADDRGEN_SCATTER_GATHER : begin
