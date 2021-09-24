@@ -51,6 +51,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                    addrgen_operand_ready_o,
+    output logic                    addrgen_operand_ack_o,
     // Interface with the Mask unit
     input  strb_t     [NrLanes-1:0] mask_i,
     input  logic      [NrLanes-1:0] mask_valid_i,
@@ -133,6 +134,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .addrgen_operand_i          (addrgen_operand_i        ),
     .addrgen_operand_valid_i    (addrgen_operand_valid_i  ),
     .addrgen_operand_ready_o    (addrgen_operand_ready_o  ),
+    .addrgen_operand_ack_o      (addrgen_operand_ack_o    ),
     // Interface with the load/store units
     .axi_addrgen_req_o          (axi_addrgen_req          ),
     .axi_addrgen_req_valid_o    (axi_addrgen_req_valid    ),

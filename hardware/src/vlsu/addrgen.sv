@@ -41,10 +41,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes (for scatter/gather operations)
     input  elen_t            [NrLanes-1:0] addrgen_operand_i,
     input  logic             [NrLanes-1:0] addrgen_operand_valid_i,
-    output logic                           addrgen_operand_ready_o
+    output logic                           addrgen_operand_ready_o,
+    output logic                           addrgen_operand_ack_o
   );
 
   import cf_math_pkg::ceil_div;
+  import cf_math_pkg::idx_width;
   import axi_pkg::aligned_addr;
   import axi_pkg::BURST_INCR;
   import axi_pkg::CACHE_MODIFIABLE;
@@ -110,6 +112,17 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   logic         addrgen_req_valid;
   logic         addrgen_req_ready;
 
+  // Support for Scatther/Gather
+  axi_addr_t idx_final_addr;
+  logic [$bits(elen_t)*NrLanes-1:0] shuffled_word;
+  logic [$bits(elen_t)*NrLanes-1:0] deshuffled_word;
+  elen_t               reduced_word;
+  elen_t               index_address;
+  // Pointer to point to the correct
+  logic [NrLanes-1:0] word_lane_ptr_d, word_lane_ptr_q;
+  logic [$clog2($bits(elen_t)/8)-1:0] elm_ptr_d, elm_ptr_q;
+  logic [$clog2($bits(elen_t)/8)-1:0] last_elm_subw_d, last_elm_subw_q;
+
   always_comb begin: addr_generation
     // Maintain state
     state_d = state_q;
@@ -124,7 +137,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // Nothing to acknowledge
     addrgen_ack_o           = 1'b0;
     addrgen_error_o         = 1'b0;
-    addrgen_operand_ready_o = 1'b0;
 
     case (state_q)
       IDLE: begin
@@ -180,7 +192,27 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         end
       end
       ADDRGEN_SCATTER_GATHER : begin
-      // TODO
+        // Stall the interface until the operation is over
+        // Wait until we have a valid data
+        // Make a single request
+        if (|addrgen_operand_valid_i) begin
+          addrgen_req = '{
+            addr    : pe_req_i.scalar_op,
+            len     : pe_req_i.vl,
+            stride  : pe_req_i.stride,
+            vew     : pe_req_i.vtype.vsew,
+            is_load : is_load(pe_req_i.op),
+            // Unit-strided loads/stores trigger incremental AXI bursts.
+            is_burst: 1'b0
+          };
+          addrgen_req_valid = 1'b1;
+
+          if (addrgen_req_ready) begin
+            addrgen_req_valid = '0;
+            addrgen_ack_o     = 1'b1;
+            state_d           = IDLE;
+          end
+        end
       end
     endcase
   end
@@ -189,9 +221,15 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     if (!rst_ni) begin
       state_q         <= IDLE;
       vinsn_running_q <= '0;
+      word_lane_ptr_q <= '0;
+      elm_ptr_q       <= '0;
+      last_elm_subw_q <= '0;
     end else begin
       state_q         <= state_d;
       vinsn_running_q <= vinsn_running_d;
+      word_lane_ptr_q <= word_lane_ptr_d;
+      elm_ptr_q       <= elm_ptr_d;
+      last_elm_subw_q <= last_elm_subw_d;
     end
   end
 
@@ -252,6 +290,17 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     eff_axi_data_bwidth_d     = eff_axi_data_bwidth_q;
     eff_axi_data_bwidth_log_d = eff_axi_data_bwidth_log_q;
 
+    idx_final_addr = axi_addrgen_q.addr;
+    addrgen_operand_ack_o = 1'b0;
+    shuffled_word = '0;
+    deshuffled_word = '0;
+    index_address   = '0;
+    reduced_word    = '0;
+    addrgen_operand_ready_o = 1'b0;
+    word_lane_ptr_d = word_lane_ptr_q;
+    elm_ptr_d = elm_ptr_q;
+    last_elm_subw_d = last_elm_subw_q;
+
     // No addrgen request to acknowledge
     addrgen_req_ready = 1'b0;
 
@@ -302,6 +351,18 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // same page as aligned_start_addr
           if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
             aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
+
+          // Load element pointers
+          elm_ptr_d       = '0;
+          word_lane_ptr_d = '0;
+          case (axi_addrgen_d.vew)
+            EW8:  last_elm_subw_d = 7;
+            EW16: last_elm_subw_d = 3;
+            EW32: last_elm_subw_d = 1;
+            EW64: last_elm_subw_d = 0;
+            default:
+              last_elm_subw_d = 0;
+          endcase
         end
       end
       AXI_ADDRGEN_WAITING: begin
@@ -399,7 +460,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             // same page as aligned_start_addr
             if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
               aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
-          end else begin
+          end else if (state_q != ADDRGEN_SCATTER_GATHER) begin
 
             /////////////////////
             //  Strided access //
@@ -448,6 +509,116 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             if (axi_addrgen_d.len == 0) begin
               addrgen_req_ready   = 1'b1;
               axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+            end
+          end else begin
+
+            //////////////////////
+            //  Indexed access  //
+            //////////////////////
+
+            if (&addrgen_operand_valid_i) begin
+
+              shuffled_word = addrgen_operand_i;
+
+              // Deshuffle the whole NrLanes * 8 Byte word
+              for (int unsigned b = 0; b < 8*NrLanes; b++) begin
+                automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, axi_addrgen_q.vew);
+                deshuffled_word[8*b +: 8] = shuffled_word[8*b_shuffled +: 8];
+              end
+
+              // Extract only 1/NrLanes of the word
+              for (int unsigned lane = 0; lane < NrLanes; lane++)
+                if (lane == word_lane_ptr_q)
+                  reduced_word = deshuffled_word[word_lane_ptr_q*$bits(elen_t) +: $bits(elen_t)];
+
+              // Select the correct element, and zero extend it depending on vsew
+              case (axi_addrgen_q.vew)
+                EW8: begin
+                  for (int unsigned b = 0; b < 8; b++)
+                    if (b == elm_ptr_q)
+                      index_address[7:0] = reduced_word[b*8 +: 8];
+                  index_address[$bits(elen_t)-1 : 8]  = '0;
+                end
+                EW16: begin
+                  for (int unsigned h = 0; h < 4; h++)
+                    if (h == elm_ptr_q)
+                      index_address[15:0] = reduced_word[h*16 +: 16];
+                  index_address[$bits(elen_t)-1 : 16]  = '0;
+                end
+                EW32: begin
+                  for (int unsigned w = 0; w < 2; w++)
+                    if (w == elm_ptr_q)
+                      index_address[31:0] = reduced_word[w*32 +: 32];
+                  index_address[$bits(elen_t)-1 : 32]  = '0;
+                end
+                default: begin
+                  for (int unsigned b = 0; b < 8; b++)
+                    if (b == elm_ptr_q)
+                      index_address[7:0] = reduced_word[b*8 +: 8];
+                  index_address[$bits(elen_t)-1 : 8]  = '0;
+                end
+              endcase
+
+              // Compose the address
+              idx_final_addr = axi_addrgen_q.addr + index_address;
+
+              // AR Channel
+              if (axi_addrgen_q.is_load) begin
+                axi_ar_o = '{
+                  addr   : idx_final_addr,
+                  len    : 0,
+                  size   : axi_addrgen_q.vew,
+                  cache  : CACHE_MODIFIABLE,
+                  burst  : BURST_INCR,
+                  default: '0
+                };
+                axi_ar_valid_o = 1'b1;
+              end
+              // AW Channel
+              else begin
+                axi_aw_o = '{
+                  addr   : idx_final_addr,
+                  len    : 0,
+                  size   : axi_addrgen_q.vew,
+                  cache  : CACHE_MODIFIABLE,
+                  burst  : BURST_INCR,
+                  default: '0
+                };
+                axi_aw_valid_o = 1'b1;
+              end
+
+              // Bump lane pointer
+              if (elm_ptr_q == last_elm_subw_q) begin
+                elm_ptr_d       = '0;
+                word_lane_ptr_d += 1;
+              end else begin
+                // Bump element pointer
+                elm_ptr_d += 1;
+              end
+
+              // Account for the requested operands
+              axi_addrgen_d.len = axi_addrgen_q.len - 1;
+
+              // Send this request to the load/store units
+              axi_addrgen_queue = '{
+                addr   : idx_final_addr,
+                size   : axi_addrgen_q.vew,
+                len    : 0,
+                is_load: axi_addrgen_q.is_load
+              };
+              axi_addrgen_queue_push = 1'b1;
+
+              // Give the grant when the word is consumed
+              if (elm_ptr_q == last_elm_subw_q && word_lane_ptr_q == (NrLanes-1))
+                addrgen_operand_ready_o = 1'b1;
+
+              // Finished generating AXI requests
+              if (axi_addrgen_d.len == 0) begin
+                addrgen_req_ready       = 1'b1;
+                addrgen_operand_ready_o = 1'b1;
+                addrgen_operand_ack_o   = 1'b1;
+                axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+              end
             end
           end
         end

@@ -46,9 +46,12 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                           stu_operand_ready_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
-    output logic                                           sldu_addrgen_operand_valid_o,
+    output logic                                           sldu_operand_valid_o,
+    output logic                                           addrgen_operand_valid_o,
     input  logic                                           sldu_operand_ready_i,
     input  logic                                           addrgen_operand_ready_i,
+    input  logic                                           addrgen_ack_i,
+    input  logic                                           sldu_ack_i,
     // Interface with the Slide unit
     input  logic                                           sldu_result_req_i,
     input  vid_t                                           sldu_result_id_i,
@@ -127,6 +130,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                 [NrVInsn-1:0]         alu_vinsn_done;
   logic                                       mfpu_ready;
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
+  // Interface with the sldu/addrgen splitter
+  logic sldu_addrgen_op;
+  logic sldu_addrgen_op_valid;
 
   lane_sequencer #(.NrLanes(NrLanes)) i_lane_sequencer (
     .clk_i                  (clk_i                ),
@@ -148,7 +154,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .alu_ready_i            (alu_ready            ),
     .alu_vinsn_done_i       (alu_vinsn_done       ),
     .mfpu_ready_i           (mfpu_ready           ),
-    .mfpu_vinsn_done_i      (mfpu_vinsn_done      )
+    .mfpu_vinsn_done_i      (mfpu_vinsn_done      ),
+    // Interface with the sldu/addrgen splitter
+    .sldu_addrgen_op_o      (sldu_addrgen_op      ),
+    .sldu_addrgen_op_valid_o(sldu_addrgen_op_valid)
   );
 
   /////////////////////////
@@ -285,6 +294,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [2:0] mfpu_operand;
   logic  [2:0] mfpu_operand_valid;
   logic  [2:0] mfpu_operand_ready;
+  // sldu/addrgen valid splitter
+  logic sldu_addrgen_sel;
+  logic sldu_addrgen_operand_valid;
 
   operand_queues_stage #(
     .FPUSupport(FPUSupport)
@@ -314,7 +326,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_ready_i          (stu_operand_ready_i                               ),
     // Address Generation Unit
     .sldu_addrgen_operand_o       (sldu_addrgen_operand_o                            ),
-    .sldu_addrgen_operand_valid_o (sldu_addrgen_operand_valid_o                      ),
+    .sldu_addrgen_operand_valid_o (sldu_addrgen_operand_valid                        ),
     .sldu_operand_ready_i         (sldu_operand_ready_i                              ),
     .addrgen_operand_ready_i      (addrgen_operand_ready_i                           ),
     // Mask Unit
@@ -322,6 +334,27 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_valid_o         ({mask_operand_valid_o[2], mask_operand_valid_o[0]}),
     .mask_operand_ready_i         ({mask_operand_ready_i[2], mask_operand_ready_i[0]})
   );
+
+  fifo_v3 #(
+     .DEPTH(NrVInsn),
+     .dtype(logic  )
+   ) i_sldu_addrgen_splitter_fifo (
+     .clk_i     (clk_i                     ),
+     .rst_ni    (rst_ni                    ),
+     .flush_i   (1'b0                      ),
+     .testmode_i(1'b0                      ),
+     .data_i    (sldu_addrgen_op           ),
+     .push_i    (sldu_addrgen_op_valid     ),
+     .full_o    (/* Unused */              ),
+     .data_o    (sldu_addrgen_sel          ),
+     .pop_i     (addrgen_ack_i | sldu_ack_i),
+     .empty_o   (/* Unused */              ),
+     .usage_o   (/* Unused */              )
+   );
+
+  // Demux the valid
+  assign sldu_operand_valid_o    = sldu_addrgen_operand_valid & ~sldu_addrgen_sel;
+  assign addrgen_operand_valid_o = sldu_addrgen_operand_valid & sldu_addrgen_sel;
 
   ///////////////////////////////
   //  Vector Functional Units  //

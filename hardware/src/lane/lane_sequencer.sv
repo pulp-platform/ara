@@ -31,7 +31,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     input  logic                                          alu_ready_i,
     input  logic                 [NrVInsn-1:0]            alu_vinsn_done_i,
     input  logic                                          mfpu_ready_i,
-    input  logic                 [NrVInsn-1:0]            mfpu_vinsn_done_i
+    input  logic                 [NrVInsn-1:0]            mfpu_vinsn_done_i,
+    // Interface with the sldu/addrgen splitter
+    output logic                                          sldu_addrgen_op_o,
+    output logic                                          sldu_addrgen_op_valid_o
   );
 
   //////////////////////////////////////
@@ -124,6 +127,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     // Make no requests to the lane's VFUs
     vfu_operation_d       = '0;
     vfu_operation_valid_d = 1'b0;
+
+    // Splitter
+    sldu_addrgen_op_o       = 1'b0;
+    sldu_addrgen_op_valid_o = 1'b0;
 
     // Maintain the output until the functional unit acknowledges the operation
     if (vfu_operation_valid_o && !vfu_ready(vfu_operation_o.vfu, alu_ready_i, mfpu_ready_i)) begin
@@ -343,6 +350,26 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) *
                 NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
+
+            // This vector instruction is a load indexed
+            operand_request_i[SlideAddrGenA] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew_vs2,
+              conv   : pe_req_i.conversion_vs2,
+              scale_vl:pe_req_i.scale_vl,
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+              default: '0
+            };
+            operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes;
+            if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+              operand_request_i[SlideAddrGenA].vl += 1;
+            operand_request_push[SlideAddrGenA] = pe_req_i.op == VLXE;
+            // Generate a request for the valid valid-splitter queue
+            sldu_addrgen_op_o       = 1'b1;
+            sldu_addrgen_op_valid_o = pe_req_i.op == VLXE;
           end
           VFU_StoreUnit : begin
             operand_request_i[StA] = '{
@@ -378,6 +405,26 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req_i.vtype.vsew))) *
                 NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
+
+            // This vector instruction is a store indexed
+            operand_request_i[SlideAddrGenA] = '{
+              id     : pe_req_i.id,
+              vs     : pe_req_i.vs2,
+              eew    : pe_req_i.eew_vs2,
+              conv   : pe_req_i.conversion_vs2,
+              scale_vl:pe_req_i.scale_vl,
+              vstart : vfu_operation_d.vstart,
+              vtype  : pe_req_i.vtype,
+              hazard : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+              default: '0
+            };
+            operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes;
+            if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+              operand_request_i[SlideAddrGenA].vl += 1;
+            operand_request_push[SlideAddrGenA] = pe_req_i.op == VSXE;
+            // Generate a request for the valid valid-splitter queue
+            sldu_addrgen_op_o       = 1'b1;
+            sldu_addrgen_op_valid_o = pe_req_i.op == VSXE;
           end
           VFU_SlideUnit: begin
             operand_request_i[SlideAddrGenA] = '{
@@ -392,6 +439,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               default: '0
             };
             operand_request_push[SlideAddrGenA] = pe_req_i.use_vs2;
+            // Generate a request for the valid valid-splitter queue
+            sldu_addrgen_op_o                   = 1'b0;
+            sldu_addrgen_op_valid_o             = pe_req_i.use_vs2;
 
             case (pe_req_i.op)
               VSLIDEUP: begin

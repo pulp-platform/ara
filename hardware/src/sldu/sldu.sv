@@ -32,6 +32,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t    [NrLanes-1:0] sldu_result_wdata_o,
     output strb_t    [NrLanes-1:0] sldu_result_be_o,
     input  logic     [NrLanes-1:0] sldu_result_gnt_i,
+    output logic                   sldu_ack_o,
     // Interface with the Mask Unit
     input  strb_t    [NrLanes-1:0] mask_i,
     input  logic     [NrLanes-1:0] mask_valid_i,
@@ -195,6 +196,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     pe_resp              = '0;
     mask_ready_o         = 1'b0;
     sldu_operand_ready_o = 1'b0;
+    sldu_ack_o           = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -352,6 +354,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           if (issue_cnt_q <= byte_count) begin
             // Back to idle
             state_d = SLIDE_IDLE;
+
+            // Acknowledge the valid splitter
+            sldu_ack_o = 1'b1;
 
             // If this is a vslide1down, fill up the last position with the scalar operand
             if (vinsn_issue.op == VSLIDEDOWN && vinsn_issue.use_scalar_op) begin
