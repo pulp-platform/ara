@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Increase latency of the 16-bit multiplier from 0 to 1 to cut an in-lane timing-critical path
 - Widen CVA6's cache lines
 - Implement back-to-back accelerator instruction issue mechanism on CVA6
+- Use https protocol when cloning DTC from main Makefile
+- Use https protocol for newlib-cygwin in .gitmodules
 
 ## 2.1.0 - 2021-07-16
 
