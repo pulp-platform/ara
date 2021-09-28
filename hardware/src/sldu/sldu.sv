@@ -264,9 +264,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // Is this a valid byte?
             if (b < issue_cnt_q && in_seq_byte < NrLanes * 8 && out_seq_byte < NrLanes * 8) begin
               // At which lane, and what is the offset in that lane, are the input and output bytes?
-              automatic int src_lane        = in_byte[3 +: $clog2(NrLanes)];
+              automatic int src_lane = NrLanes == 1 ? 0 : in_byte[3 +: idx_width(NrLanes)];
               automatic int src_lane_offset = in_byte[2:0];
-              automatic int tgt_lane        = out_byte[3 +: $clog2(NrLanes)];
+              automatic int tgt_lane = NrLanes == 1 ? 0 : out_byte[3 +: idx_width(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] =
@@ -358,7 +358,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               // Copy the scalar operand to the last word
               automatic int out_seq_byte = issue_cnt_q;
               automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
-              automatic int tgt_lane = out_byte[3 +: $clog2(NrLanes)];
+              automatic int tgt_lane = NrLanes == 1 ? 0 : out_byte[3 +: idx_width(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
               unique case (vinsn_issue.vtype.vsew)
