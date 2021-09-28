@@ -1964,6 +1964,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               illegal_insn     = 1'b1;
               acc_resp_valid_o = 1'b1;
             end
+            LMUL_RSVD: begin
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
             default:;
           endcase
 
@@ -2126,9 +2130,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               illegal_insn     = 1'b1;
               acc_resp_valid_o = 1'b1;
             end
+            LMUL_RSVD: begin
                 illegal_insn     = 1'b1;
                 acc_resp_valid_o = 1'b1;
-              end
+            end
             default:;
           endcase
 
