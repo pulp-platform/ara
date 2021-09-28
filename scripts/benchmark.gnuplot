@@ -14,7 +14,7 @@ set grid x y
 
 # Set the range
 set xrange [1:256]
-set yrange [0.5:35]
+set yrange [0.25:35]
 
 # Set axis labels
 set xlabel 'Matrix size (#elements)'
@@ -31,7 +31,9 @@ set term png
 set out "imatmul.png"
 
 # Plot the rooflines
-plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
+plot roof_mem(x, 0.5,2) w l lw 2 lc 5 notitle, roof_cpu(x, 0.5,2) w l lw 2 lc 5 t  '1 Lane',  \
+     'imatmul_1.benchmark' w p lw 2 lc 5 pt 2 notitle,                                        \
+     roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
      'imatmul_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
      'imatmul_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
@@ -53,7 +55,9 @@ set term png
 set out "fmatmul.png"
 
 # Plot the rooflines
-plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
+plot roof_mem(x, 0.5,2) w l lw 2 lc 5 notitle, roof_cpu(x, 0.5,2) w l lw 2 lc 5 t  '1 Lane',  \
+     'fmatmul_1.benchmark' w p lw 2 lc 5 pt 2 notitle,                                        \
+     roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
      'fmatmul_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
      'fmatmul_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
