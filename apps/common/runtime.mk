@@ -58,7 +58,7 @@ RISCV_STRIP   ?= $(RISCV_PREFIX)llvm-strip
 RISCV_CC_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-gcc
 
 # Defines
-DEFINES += -DNR_LANES=$(nr_lanes)
+DEFINES += -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
 
 # Common flags
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argument # -Werror
