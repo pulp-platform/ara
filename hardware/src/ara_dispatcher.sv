@@ -40,6 +40,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_pending_i
   );
 
+  import cf_math_pkg::idx_width;
+
   `include "common_cells/registers.svh"
 
   assign core_st_pending_o = acc_req_i.store_pending;
@@ -1926,6 +1928,27 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // EEW is encoded in the instruction
           ara_req_d.emul = vlmul_e'(vtype_q.vlmul + (ara_req_d.vtype.vsew - vtype_q.vsew));
 
+          // Exception if EMUL > 8 or < 1/8
+		  unique case ({vtype_q.vlmul[2], ara_req_d.emul[2]})
+            // The new emul is lower than the previous lmul
+            2'b01: begin
+              // But the new eew is greater than vsew
+              if (ara_req_d.vtype.vsew - vtype_q.vsew > 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            // The new emul is greater than the previous lmul
+            2'b10: begin
+              // But the new eew is lower than vsew
+              if (ara_req_d.vtype.vsew - vtype_q.vsew < 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            default:;
+          endcase
+
           // Instructions with an integer LMUL have extra constraints on the registers they can
           // access.
           unique case (ara_req_d.emul)
@@ -2066,6 +2089,27 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // For memory operations: EMUL = LMUL * (EEW / SEW)
           // EEW is encoded in the instruction
           ara_req_d.emul = vlmul_e'(vtype_q.vlmul + (ara_req_d.vtype.vsew - vtype_q.vsew));
+
+          // Exception if EMUL > 8 or < 1/8
+		  unique case ({vtype_q.vlmul[2], ara_req_d.emul[2]})
+            // The new emul is lower than the previous lmul
+            2'b01: begin
+              // But the new eew is greater than vsew
+              if (ara_req_d.vtype.vsew - vtype_q.vsew > 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            // The new emul is greater than the previous lmul
+            2'b10: begin
+              // But the new eew is lower than vsew
+              if (ara_req_d.vtype.vsew - vtype_q.vsew < 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            default:;
+          endcase
 
           // Instructions with an integer LMUL have extra constraints on the registers they can
           // access.
