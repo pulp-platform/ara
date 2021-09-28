@@ -2355,7 +2355,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       endcase
     end
 
-    // Any valid non-config instruction is a NOP if vl == 0, with some exceptions
+    // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
+    // e.g. whole vector memory operations / whole vector register move
     if (acc_req_valid_i && vl_q == '0 && !is_config && !ignore_zero_vl_check && !acc_resp_o.error) begin
       // If we are acknowledging a memory operation, we must tell Ariane that the memory
       // operation was resolved (to decrement its pending load/store counter)
