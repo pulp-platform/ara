@@ -40,6 +40,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_pending_i
   );
 
+  import cf_math_pkg::idx_width;
+
   `include "common_cells/registers.svh"
 
   assign core_st_pending_o = acc_req_i.store_pending;
@@ -146,6 +148,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
   // Helper signals to discriminate between config/csr, load/store instructions and the others
   logic is_config, is_vload, is_vstore;
+  // Whole-register memory-ops / move should be executed even when vl == 0
+  logic ignore_zero_vl_check;
   // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
   // its counters of pending memory operations
   // Ara should tell Ariane when a memory operation is completed, so that it can modify
@@ -206,7 +210,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     };
     ara_req_valid_d = 1'b0;
 
-    is_config = 1'b0;
+    is_config            = 1'b0;
+    ignore_zero_vl_check = 1'b0;
 
     // Is Ara idle?
     if (state_q == WAIT_IDLE && ara_idle_i) state_d = NORMAL_OPERATION;
@@ -741,17 +746,31 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 6'b100101: ara_req_d.op = ara_pkg::VSLL;
                 6'b100111: begin // vmv<nr>r.v
+                  automatic int unsigned vlmax;
+                  // Execute also if vl == 0
+                  ignore_zero_vl_check = 1'b1;
                   // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
-                  automatic int unsigned vlmax = VLENB >> vtype_d.vsew;
+                  vlmax = VLENB;
                   unique case (insn.varith_type.rs1[17:15])
-                    3'd0 : vlmax <<= 0;
-                    3'd1 : vlmax <<= 1;
-                    3'd3 : vlmax <<= 2;
-                    3'd7 : vlmax <<= 3;
+                    3'd0 : begin
+                      vlmax <<= 0;
+                      ara_req_d.emul = LMUL_1;
+                    end
+                    3'd1 : begin
+                      vlmax <<= 1;
+                      ara_req_d.emul = LMUL_2;
+                    end
+                    3'd3 : begin
+                      vlmax <<= 2;
+                      ara_req_d.emul = LMUL_4;
+                    end
+                    3'd7 : begin
+                      vlmax <<= 3;
+                      ara_req_d.emul = LMUL_8;
+                    end
                     default: begin
                       // Trigger an error for the reserved simm values
-                      acc_resp_o.error = 1'b1;
-                      ara_req_valid_d  = 1'b0;
+                      illegal_insn = 1'b1;
                     end
                   endcase
                   // From here on, the only difference with a vmv.v.v is that the vector reg index
@@ -761,6 +780,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.use_vs1       = 1'b1;
                   ara_req_d.use_vs2       = 1'b0;
                   ara_req_d.vs1           = insn.varith_type.rs2;
+                  ara_req_d.vtype.vsew    = EW8;
+                  ara_req_d.scale_vl      = 1'b1;
                   ara_req_d.vl            = vlmax; // whole register move
                 end
                 6'b101000: ara_req_d.op = ara_pkg::VSRL;
@@ -1870,10 +1891,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Decode the lumop field
               case (insn.vmem_type.rs2)
                 5'b00000:;      // Unit-strided
-                5'b01000: begin // Unit-strided, whole registers
-                  // {mew, width} can be used as a hint for internal VRF organization
-                  ara_req_d.vtype.vsew = EW8;
-                end
+                5'b01000:;      // Unit-strided, whole registers
                 5'b01011: begin // Unit-strided, mask load, EEW=1
                   // We operate ceil(vl/8) bytes
                   ara_req_d.vl         = (vl_q >> 3) + |vl_q[2:0];
@@ -1906,35 +1924,87 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             default:;
           endcase
 
+          // For memory operations: EMUL = LMUL * (EEW / SEW)
+          // EEW is encoded in the instruction
+          ara_req_d.emul = vlmul_e'(vtype_q.vlmul + (ara_req_d.vtype.vsew - vtype_q.vsew));
+
+          // Exception if EMUL > 8 or < 1/8
+          unique case ({vtype_q.vlmul[2], ara_req_d.emul[2]})
+            // The new emul is lower than the previous lmul
+            2'b01: begin
+              // But the new eew is greater than vsew
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            // The new emul is greater than the previous lmul
+            2'b10: begin
+              // But the new eew is lower than vsew
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            default:;
+          endcase
+
           // Instructions with an integer LMUL have extra constraints on the registers they can
           // access.
           unique case (ara_req_d.emul)
             LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_valid_o = 1'b1;
-              end
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
             LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_valid_o = 1'b1;
-              end
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
             LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_valid_o = 1'b1;
-              end
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
+            LMUL_RSVD: begin
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
             default:;
           endcase
 
-          // Vector register register loads are encoded as loads of length VLENB, length multiplier
-          // LMUL_1 and element width EW8. They overwrite all this decoding.
+          // Vector whole register loads overwrite all the other decoding information.
           if (ara_req_d.op == VLE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew_vs1 = EW8;
-            ara_req_d.emul    = LMUL_1;
-            ara_req_d.vl      = VLENB;
-
+            // Execute also if vl == 0
+            ignore_zero_vl_check = 1'b1;
+            // The LMUL value is kept in the instruction itself
             illegal_insn     = 1'b0;
             acc_req_ready_o  = 1'b0;
             acc_resp_valid_o = 1'b0;
             ara_req_valid_d  = 1'b1;
+
+            // Maximum vector length. VLMAX = nf * VLEN / EW8.
+            ara_req_d.vtype.vsew = EW8;
+            unique case (insn.vmem_type.nf)
+              3'd0: begin
+                ara_req_d.vl = VLENB << 0;
+                ara_req_d.emul = LMUL_1;
+              end
+              3'd1: begin
+                ara_req_d.vl = VLENB << 1;
+                ara_req_d.emul = LMUL_2;
+              end
+              3'd3:  begin
+                ara_req_d.vl = VLENB << 2;
+                ara_req_d.emul = LMUL_4;
+              end
+              3'd7:  begin
+                ara_req_d.vl = VLENB << 3;
+                ara_req_d.emul = LMUL_8;
+              end
+              default: begin
+                // Trigger an error for the reserved simm values
+                illegal_insn     = 1'b1;
+              end
+            endcase
           end
 
           // Wait until the back-end answers to acknowledge those instructions
@@ -1959,6 +2029,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
           // Wait before acknowledging this instruction
           acc_req_ready_o = 1'b0;
+
+          // vl depends on the EEW in the instruction
+          ara_req_d.scale_vl = 1'b1;
 
           // These generate a request to Ara's backend
           ara_req_d.vs1       = insn.vmem_type.rd; // vs3 is encoded in the same position as rd
@@ -2017,30 +2090,83 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             default:;
           endcase
 
+          // For memory operations: EMUL = LMUL * (EEW / SEW)
+          // EEW is encoded in the instruction
+          ara_req_d.emul = vlmul_e'(vtype_q.vlmul + (ara_req_d.vtype.vsew - vtype_q.vsew));
+
+          // Exception if EMUL > 8 or < 1/8
+          unique case ({vtype_q.vlmul[2], ara_req_d.emul[2]})
+            // The new emul is lower than the previous lmul
+            2'b01: begin
+              // But the new eew is greater than vsew
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            // The new emul is greater than the previous lmul
+            2'b10: begin
+              // But the new eew is lower than vsew
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
+                illegal_insn     = 1'b1;
+                acc_resp_valid_o = 1'b1;
+              end
+            end
+            default:;
+          endcase
+
           // Instructions with an integer LMUL have extra constraints on the registers they can
           // access.
           unique case (ara_req_d.emul)
             LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_valid_o = 1'b1;
-              end
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
             LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_valid_o = 1'b1;
-              end
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
             LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
+              illegal_insn     = 1'b1;
+              acc_resp_valid_o = 1'b1;
+            end
+            LMUL_RSVD: begin
                 illegal_insn     = 1'b1;
                 acc_resp_valid_o = 1'b1;
-              end
+            end
             default:;
           endcase
 
-          // Vector register register stores are encoded as stores of length VLENB, length
+          // Vector whole register stores are encoded as stores of length VLENB, length
           // multiplier LMUL_1 and element width EW8. They overwrite all this decoding.
           if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
-            ara_req_d.eew_vs1 = EW8;
-            ara_req_d.emul    = LMUL_1;
-            ara_req_d.vl      = VLENB;
+            // Execute also if vl == 0
+            ignore_zero_vl_check = 1'b1;
+
+            // Maximum vector length. VLMAX = nf * VLEN / EW8.
+            ara_req_d.vtype.vsew = EW8;
+            unique case (insn.vmem_type.nf)
+              3'd0: begin
+                ara_req_d.vl = VLENB << 0;
+                ara_req_d.emul = LMUL_1;
+              end
+              3'd1: begin
+                ara_req_d.vl = VLENB << 1;
+                ara_req_d.emul = LMUL_2;
+              end
+              3'd3:  begin
+                ara_req_d.vl = VLENB << 2;
+                ara_req_d.emul = LMUL_4;
+              end
+              3'd7:  begin
+                ara_req_d.vl = VLENB << 3;
+                ara_req_d.emul = LMUL_8;
+              end
+              default: begin
+                // Trigger an error for the reserved simm values
+                illegal_insn     = 1'b1;
+              end
+            endcase
 
             illegal_insn     = 1'b0;
             acc_req_ready_o  = 1'b0;
@@ -2212,10 +2338,34 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Update the EEW
-    if (ara_req_valid_d && ara_req_d.use_vd) eew_d[ara_req_d.vd] = ara_req_d.vtype.vsew;
+    if (ara_req_valid_d && ara_req_d.use_vd) begin
+      unique case (ara_req_d.emul)
+        LMUL_1: begin
+          for (int i = 0; i < 1; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+        end
+        LMUL_2: begin
+          for (int i = 0; i < 2; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+        end
+        LMUL_4: begin
+          for (int i = 0; i < 4; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+        end
+        LMUL_8: begin
+          for (int i = 0; i < 8; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+        end
+        default: begin // EMUL < 1
+          for (int i = 0; i < 1; i++)
+            eew_d[ara_req_d.vd + i] = ara_req_d.vtype.vsew;
+        end
+      endcase
+    end
 
-    // Any valid non-config instruction is a NOP if vl == 0
-    if (acc_req_valid_i && vl_q == '0 && !is_config && !acc_resp_o.error) begin
+    // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
+    // e.g. whole vector memory operations / whole vector register move
+    if (acc_req_valid_i && vl_q == '0 && !is_config && !ignore_zero_vl_check && !acc_resp_o.error) begin
       // If we are acknowledging a memory operation, we must tell Ariane that the memory
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must

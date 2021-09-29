@@ -42,6 +42,7 @@ RISCV_GCC_OPTS_C ?= -O2
 RISCV_LLVM ?= clang -fuse-ld=lld
 RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax -nostdlib -nostartfiles
 RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax -nostdlib -nostartfiles
+RISCV_CC_DEFS_C ?= $(ARA_DEFINES)
 LLVM_V_VERSION ?= v0p10
 
 # Original objdump + spike variables
@@ -91,11 +92,11 @@ endef
 define compile_template_c
 
 $$($(1)_p_tests): $(1)-p-%: $(1)/%.c ../benchmarks/common/crt.S ../benchmarks/common/syscalls.c
-	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) $(2)$$(LLVM_V_VERSION) $(3) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 $$(RISCV_LD_OPTS) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
+	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) $$(RISCV_CC_DEFS_C) $(2)$$(LLVM_V_VERSION) $(3) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 $$(RISCV_LD_OPTS) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
 $(1)_tests += $$($(1)_p_tests)
 
 $$($(1)_v_tests): $(1)-v-%: $(1)/%.c ../benchmarks/common/crt.S ../benchmarks/common/syscalls.c
-	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) $(2)$$(LLVM_V_VERSION) $(3) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 $$(RISCV_LD_OPTS) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
+	$$(RISCV_LLVM) $$(RISCV_CC_OPTS_C) $$(RISCV_CC_DEFS_C) $(2)$$(LLVM_V_VERSION) $(3) -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -I../benchmarks/../env -I../benchmarks/common -I$(src_dir)/macros/scalar -I$(src_dir)/macros/vector -DPREALLOCATE=1 -D__FLOAT_SUPPORT__ -D__SPIKE__=1 $$(RISCV_LD_OPTS) -static -O2 -nostdlib -T../benchmarks/common/test.ld -o $$@ $$^
 $(1)_tests += $$($(1)_v_tests)
 
 $(1)_tests_dump = $$(addsuffix .dump, $$($(1)_tests))

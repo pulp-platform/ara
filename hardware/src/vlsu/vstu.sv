@@ -228,7 +228,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       // Account for the beat we sent
       len_d         = len_q + 1;
       // We wrote all the beats for this AW burst
-      if ($unsigned(len_d) == $unsigned(axi_addrgen_req_i.len) + 1) begin
+      if ($unsigned(len_d) == axi_pkg::len_t'($unsigned(axi_addrgen_req_i.len) + 1)) begin
         axi_w_o.last            = 1'b1;
         // Ask for another burst by the address generator
         axi_addrgen_req_ready_o = 1'b1;
@@ -262,7 +262,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       if (vinsn_queue_d.issue_cnt != 0)
         issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
-          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].eew_vs1);
+          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
     end
 
     ////////////////////////////
