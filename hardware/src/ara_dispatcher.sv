@@ -1933,7 +1933,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // The new emul is lower than the previous lmul
             2'b01: begin
               // But the new eew is greater than vsew
-              if (ara_req_d.vtype.vsew - vtype_q.vsew > 0) begin
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
                 illegal_insn     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
@@ -1941,7 +1941,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // The new emul is greater than the previous lmul
             2'b10: begin
               // But the new eew is lower than vsew
-              if (ara_req_d.vtype.vsew - vtype_q.vsew < 0) begin
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
                 illegal_insn     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
@@ -2099,7 +2099,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // The new emul is lower than the previous lmul
             2'b01: begin
               // But the new eew is greater than vsew
-              if (ara_req_d.vtype.vsew - vtype_q.vsew > 0) begin
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
                 illegal_insn     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
@@ -2107,7 +2107,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // The new emul is greater than the previous lmul
             2'b10: begin
               // But the new eew is lower than vsew
-              if (ara_req_d.vtype.vsew - vtype_q.vsew < 0) begin
+              if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
                 illegal_insn     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
