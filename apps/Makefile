@@ -115,5 +115,6 @@ clean: riscv_tests_spike_clean
 	rm -vf $(addsuffix /main.c.o,$(APPS))
 	rm -vf $(RUNTIME_GCC)
 	rm -vf $(RUNTIME_LLVM)
+	for app in $(APPS); do cd $${app} && rm -f ./*.c.o && rm -f ./*.S.o && cd .. ; done
 
 .INTERMEDIATE: $(addsuffix /main.c.o,$(APPS))
