@@ -104,6 +104,19 @@ preload=/some_path/some_binary make sim
 app=hello_world make simc
 ```
 
+We also provide the `simv` makefile target to run simulations with the Verilator model.
+
+```bash
+# Go to the hardware folder
+cd hardware
+# Apply the patches (only need to run this once)
+make apply-patches
+# Only compile the hardware without running the simulation.
+make verilate
+# Run the simulation with the *hello_world* binary loaded
+app=hello_world make simv
+```
+
 It is also possible to simulate the unit tests compiled in the `apps` folder. Given the number of unit tests, we use Verilator. Use the following command to install Verilator, verilate the design, and run the simulation:
 
 ```bash
@@ -118,6 +131,11 @@ make riscv_tests_simv
 ```
 
 Alternatively, you can also use the `riscv_tests` target at Ara's top-level Makefile to both compile the RISC-V tests and run their simulation.
+
+### Traces
+
+Add `trace=1` to the `verilate`, `simv`, and `riscv_tests_simv` commands to generate waveform traces in the `fst` format.
+You can use `gtkwave` to open such waveforms.
 
 ## Publication
 

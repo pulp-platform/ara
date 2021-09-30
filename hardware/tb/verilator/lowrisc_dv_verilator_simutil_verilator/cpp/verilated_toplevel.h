@@ -31,10 +31,10 @@
 #define VM_TRACE 0
 #endif
 
-// VM_TRACE_FMT_FST must be set by the user when calling Verilator with
+// VM_TRACE_FST must be set by the user when calling Verilator with
 // --trace-fst. VM_TRACE is set by Verilator itself.
 #if VM_TRACE == 1
-#ifdef VM_TRACE_FMT_FST
+#ifdef VM_TRACE_FST
 #include "verilated_fst_c.h"
 #define VM_TRACE_CLASS_NAME VerilatedFstC
 #else

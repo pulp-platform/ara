@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Vector whole-register load/store `vl1r`, `vs1r`
 - Vector load/store mask `vle1`, `vse1`
 - Whole-register instructions are executed also if `vtype.vl == 0`
+- Makefile option (`trace=1`) to generate waveform traces when running simulations with Verilator
 
 ### Changed
 
