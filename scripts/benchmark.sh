@@ -33,7 +33,7 @@ source ${tmpscript}
 #    for vsize in 4 8 16 32 64 128; do
 #        tempfile=`mktemp`
 #
-#        DEFINES="-D${kernel^^}=1" \
+#        ENV_DEFINES="-D${kernel^^}=1" \
 #               make -C apps/ bin/benchmarks
 #        make -C hardware/ simv app=benchmarks > $tempfile
 #
@@ -58,7 +58,7 @@ for kernel in imatmul fmatmul; do
 
         tempfile=`mktemp`
 
-        DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+        ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile
 
@@ -92,7 +92,7 @@ for kernel in iconv2d fconv2d; do
 
 			mkdir -p apps/benchmarks/data
 			${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
-            DEFINES="-D${kernel^^}=1" \
+            ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile
 
@@ -127,7 +127,7 @@ for kernel in fconv3d; do
 
 			mkdir -p apps/benchmarks/data
             ${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
-            DEFINES="-D${kernel^^}=1" \
+            ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile
 
