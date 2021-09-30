@@ -119,3 +119,28 @@ plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 
      'fconv2d_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
      'fconv2d_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+
+#############
+## FCONV3D ##
+#############
+
+# Title
+set title "fconv3d performance, 7x7 filter, (matrices of size #elements x #elements x #filter_size)"
+
+# Set axis labels
+set xlabel 'Matrix size (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "fconv3d.png"
+
+# Plot the rooflines
+plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
+     'fconv3d_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
+     'fconv3d_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
+     'fconv3d_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
+     'fconv3d_16.benchmark' w p lw 2 lc 7 pt 2 notitle

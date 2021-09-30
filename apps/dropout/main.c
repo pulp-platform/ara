@@ -140,11 +140,11 @@ int main() {
   int64_t runtime = get_timer();
 
   // Only count effective SPFLOP/cycle
-  float performance = (float) N / runtime;
-  float utilization = (float) 100 * performance / (2.0 * NR_LANES);
+  float performance = (float)N / runtime;
+  float utilization = (float)100 * performance / (2.0 * NR_LANES);
   printf("The execution took %d cycles.\n", runtime);
-  printf("The performance is %f SPFLOP/cycle (%f%% utilization).\n", performance,
-         utilization);
+  printf("The performance is %f SPFLOP/cycle (%f%% utilization).\n",
+         performance, utilization);
 #else
   // Call the main kernel
   dropout_vec(N, I, SCALE, SEL, o);

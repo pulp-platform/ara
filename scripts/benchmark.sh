@@ -87,10 +87,44 @@ for kernel in iconv2d fconv2d; do
             tempfile=`mktemp`
 
             # Generate the correct matrix and filter
+            rm -f apps/benchmarks/data/*.S.o apps/benchmarks/kernels/*.S.o apps/benchmarks/kernels/*.c.o
             ${PYTHON} apps/$kernel/script/gen_data.py > apps/benchmarks/data/data.S $msize $fsize
 
             DEFINES="-D${kernel^^}=1" \
-                   make -C apps/ bin/benchmarks
+                   make -C apps/ clean bin/benchmarks
+            make -C hardware/ simv app=benchmarks > $tempfile
+
+            # Extract the performance
+            cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+
+        done
+    done
+done
+
+################
+## CONV3D 7x7 ##
+################
+
+# Measure the runtime of the following kernels
+for kernel in fconv3d; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+
+    # Measure the following matrix and filter sizes
+    # The input image is also padded, and the max vl is 128
+    # MAXVL_M2_64b - F_MAX + 1 = 128 - 7 + 1 = 122 is the max number of elements
+    # Actually 120, since it must be divible by 4
+    for msize in 4 8 16 32 64 112; do
+        for fsize in 7; do
+            tempfile=`mktemp`
+
+            # Generate the correct matrix and filter
+            rm -f apps/benchmarks/data/*.S.o apps/benchmarks/kernels/*.S.o apps/benchmarks/kernels/*.c.o
+            ${PYTHON} apps/$kernel/script/gen_data.py > apps/benchmarks/data/data.S $msize $fsize
+
+            DEFINES="-D${kernel^^}=1" \
+                   make -C apps/ clean bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile
 
             # Extract the performance
@@ -111,4 +145,3 @@ done
 ##############
 ## ROIALIGN ##
 ##############
-
