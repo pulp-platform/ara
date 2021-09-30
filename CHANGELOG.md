@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - When the VRF is written and `EMUL > 1`, the `eew` of all the interested registers is updated
 - Memory operations can change EMUL when EEW != VSEW
 - The LSU now correctly handles bursts with a saturated length of 256 beats
+- AXI transactions on an opposite channel w.r.t. the channel currently in use are started only after the completion of the previous transactions
+- Fix the number of elements to be requested for a `vslidedown` instruction
 
 ### Added
 
@@ -37,6 +39,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Implement back-to-back accelerator instruction issue mechanism on CVA6
 - Use https protocol when cloning DTC from main Makefile
 - Use https protocol for newlib-cygwin in .gitmodules
+- Cut a timing-critical path from Addrgen to Sequencer (1 cycle more to start an AXI transaction)
+- Cut a timing-critical path in the `VSTU`, relative to the calculation of the pointer to the `VRF` word received from the lanes
 
 ## 2.1.0 - 2021-07-16
 

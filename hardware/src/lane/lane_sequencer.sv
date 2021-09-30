@@ -374,6 +374,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 NrLanes * 8 != pe_req_i.vl) operand_request_i[MaskM].vl += 1;
             operand_request_push[MaskM] = !pe_req_i.vm;
           end
+
           VFU_SlideUnit: begin
             operand_request_i[SlideAddrGenA] = '{
               id     : pe_req_i.id,
@@ -398,22 +399,38 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                   (pe_req_i.vl - pe_req_i.stride + NrLanes - 1) / NrLanes;
               end
               VSLIDEDOWN: begin
+                // Extra elements to ask, because of the stride
+                logic [$clog2(8*NrLanes)-1:0] extra_stride;
+                // Need one bit more than vl, since we will also add the stride contribution
+                logic [$size(pe_req_i.vl):0] vl_tot;
+
                 // We need to trim full words from the start of the vector that are not used
                 // as operands by the slide unit.
                 operand_request_i[SlideAddrGenA].vstart = pe_req_i.stride / NrLanes;
 
-                // Since this request goes outside of the lane, we might need to request an
-                // extra operand regardless of whether it is valid in this lane or not.
-                operand_request_i[SlideAddrGenA].vl = pe_req_i.vl / NrLanes;
-                if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
-                  operand_request_i[SlideAddrGenA].vl += 1;
+                // The stride move the initial address in boundaries of 8*NrLanes Byte.
+                // If the stride is not multiple of a full VRF word (8*NrLanes Byte),
+                // we must request it as well from the VRF
 
-                // If the vslidedown stride is not a full VRF word, we will need to request an extra
-                // word
+                // Find the number of extra elements to ask, related to the stride
+                unique case (pe_req_i.eew_vs2)
+                  EW8:  extra_stride =        pe_req_i.stride[$clog2(8*NrLanes)-1:0];
+                  EW16: extra_stride = {1'b0, pe_req_i.stride[$clog2(4*NrLanes)-1:0]};
+                  EW32: extra_stride = {2'b0, pe_req_i.stride[$clog2(2*NrLanes)-1:0]};
+                  EW64: extra_stride = {3'b0, pe_req_i.stride[$clog2(1*NrLanes)-1:0]};
+                  default:
+                    extra_stride = {3'b0, pe_req_i.stride[$clog2(1*NrLanes)-1:0]};
+                endcase
+
+                // Find the total number of elements to be asked
+                vl_tot = pe_req_i.vl;
                 if (!pe_req_i.use_scalar_op)
-                  if ((pe_req_i.stride &
-                    ((vlen_t'(1) << ($clog2(NrLanes) + int'(EW64 - pe_req_i.eew_vs2))) - 1)) != 0)
-                    operand_request_i[SlideAddrGenA].vl += 1;
+                  vl_tot += extra_stride;
+
+                // Ask the elements, and ask one more if we do not perfectly divide NrLanes
+                operand_request_i[SlideAddrGenA].vl = vl_tot / NrLanes;
+                if (operand_request_i[SlideAddrGenA].vl * NrLanes != vl_tot)
+                  operand_request_i[SlideAddrGenA].vl += 1;
               end
             endcase
 
