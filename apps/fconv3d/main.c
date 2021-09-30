@@ -28,13 +28,13 @@
 #endif
 
 // Define Matrix dimensions:
-// o = i ° f, with i=[MxN], f=[FxF], o=[MxN]
+// o = i ° f, with i=[(M+F-1)x(N+f-1)xCH], f=[FxFxCH], o=[MxN]
 // The filter is a square matrix, and F is odd
 
 // Matrices defined in data.S
 extern double i[] __attribute__((
-    aligned(4 * NR_LANES))); // [ (M+floor(F/2)) * (N+floor(F/2)) ]
-extern double f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
+    aligned(4 * NR_LANES))); // [ (M+floor(F/2)) * (N+floor(F/2)) * CH ]
+extern double f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F*CH ]
 extern double o[] __attribute__((aligned(4 * NR_LANES)));        // [ M*N ]
 extern double golden_o[] __attribute__((aligned(4 * NR_LANES))); // [ M*N ]
 // M, N, F defined in data.S
