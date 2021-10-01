@@ -12,7 +12,7 @@ module ara_testharness #(
     parameter int unsigned NrLanes      = 0,
     // AXI Parameters
     parameter int unsigned AxiUserWidth = 1,
-    parameter int unsigned AxiIdWidth   = 6,
+    parameter int unsigned AxiIdWidth   = 5,
     parameter int unsigned AxiAddrWidth = 64,
     parameter int unsigned AxiDataWidth = 64*NrLanes/2
   ) (

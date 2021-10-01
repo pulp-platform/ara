@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Use https protocol for newlib-cygwin in .gitmodules
 - Cut a timing-critical path from Addrgen to Sequencer (1 cycle more to start an AXI transaction)
 - Cut a timing-critical path in the `VSTU`, relative to the calculation of the pointer to the `VRF` word received from the lanes
+- Create `ara_system` wrapper containing Ara, Ariane, and an AXI mux, instantiated from within Ara's SoC
 
 ## 2.1.0 - 2021-07-16
 

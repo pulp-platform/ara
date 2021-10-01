@@ -57,6 +57,8 @@ sources:
     # Level 5
     - hardware/src/ara.sv
     # Level 6
+    - hardware/src/ara_system.sv
+    # Level 7
     - hardware/src/ara_soc.sv
 
     - target: ara_test
