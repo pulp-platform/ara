@@ -49,6 +49,27 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::BURST_INCR;
   import axi_pkg::CACHE_MODIFIABLE;
 
+  ////////////////////
+  //  PE Req Queue  //
+  ////////////////////
+
+  // The address generation process interacts with another process, that
+  // generates the AXI requests. They interact through the following signals.
+  typedef struct packed {
+    axi_addr_t addr;
+    vlen_t len;
+    elen_t stride;
+    vew_e vew;
+    logic is_load;
+    logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
+  } addrgen_req_t;
+  addrgen_req_t addrgen_req;
+  logic         addrgen_req_valid;
+  logic         addrgen_req_ready;
+
+  // Pipeline the PE requests
+  pe_req_t pe_req_d, pe_req_q;
+
   /////////////////////
   //  Address Queue  //
   /////////////////////
@@ -96,23 +117,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     ADDRGEN_SCATTER_GATHER
   } state_q, state_d;
 
-  // The address generation process interacts with another process, that
-  // generates the AXI requests. They interact through the following signals.
-  typedef struct packed {
-    axi_addr_t addr;
-    vlen_t len;
-    elen_t stride;
-    vew_e vew;
-    logic is_load;
-    logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
-  } addrgen_req_t;
-  addrgen_req_t addrgen_req;
-  logic         addrgen_req_valid;
-  logic         addrgen_req_ready;
-
   always_comb begin: addr_generation
     // Maintain state
-    state_d = state_q;
+    state_d  = state_q;
+    pe_req_d = pe_req_q;
 
     // Running vector instructions
     vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
@@ -134,6 +142,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // Mark the instruction as running in this unit
           vinsn_running_d[pe_req_i.id] = 1'b1;
 
+          // Store the PE request
+          pe_req_d = pe_req_i;
+
           case (pe_req_i.op)
             VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
             default:    state_d = ADDRGEN;
@@ -142,19 +153,19 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       end
       ADDRGEN: begin
         // Ara does not support misaligned AXI requests
-        if (|(pe_req_i.scalar_op & (elen_t'(1 << pe_req_i.vtype.vsew) - 1))) begin
+        if (|(pe_req_q.scalar_op & (elen_t'(1 << pe_req_q.vtype.vsew) - 1))) begin
           state_d         = IDLE;
           addrgen_ack_o   = 1'b1;
           addrgen_error_o = 1'b1;
         end else begin
           addrgen_req = '{
-            addr    : pe_req_i.scalar_op,
-            len     : pe_req_i.vl,
-            stride  : pe_req_i.stride,
-            vew     : pe_req_i.vtype.vsew,
-            is_load : is_load(pe_req_i.op),
+            addr    : pe_req_q.scalar_op,
+            len     : pe_req_q.vl,
+            stride  : pe_req_q.stride,
+            vew     : pe_req_q.vtype.vsew,
+            is_load : is_load(pe_req_q.op),
             // Unit-strided loads/stores trigger incremental AXI bursts.
-            is_burst: (pe_req_i.op inside {VLE, VSE})
+            is_burst: (pe_req_q.op inside {VLE, VSE})
           };
           addrgen_req_valid = 1'b1;
 
@@ -174,9 +185,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       state_q         <= IDLE;
+      pe_req_q        <= '0;
       vinsn_running_q <= '0;
     end else begin
       state_q         <= state_d;
+      pe_req_q        <= pe_req_d;
       vinsn_running_q <= vinsn_running_d;
     end
   end
