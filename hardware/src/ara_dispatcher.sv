@@ -145,7 +145,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       state_q        <= NORMAL_OPERATION;
       eew_q          <= '{default: rvv_pkg::EW8};
       eew_valid_q    <= '0;
-      eew_buffer_q   <= '{default: rvv_pkg::EW8};
+      eew_buffer_q   <= rvv_pkg::EW8;
     end else begin
       state_q        <= state_d;
       eew_q          <= eew_d;
