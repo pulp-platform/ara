@@ -21,6 +21,9 @@
 // The filter is a square matrix, and F is odd
 
 // Matrices defined in data.S
+
+#include "../kernel/iconv2d.h"
+
 extern int64_t i[] __attribute__((
     aligned(4 * NR_LANES))); // [ (M+floor(F/2)) * (N+floor(F/2)) ]
 extern int64_t f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
