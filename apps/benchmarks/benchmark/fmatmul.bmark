@@ -19,6 +19,9 @@
 
 // Define Matrix dimensions:
 // C = AB with A=[MxN], B=[NxP], C=[MxP]
+
+#include "../kernel/fmatmul.h"
+
 #define M 128
 #define N 128
 #define P 128

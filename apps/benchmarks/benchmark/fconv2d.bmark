@@ -21,6 +21,9 @@
 // The filter is a square matrix, and F is odd
 
 // Matrices defined in data.S
+
+#include "../kernel/fconv2d.h"
+
 extern double i[] __attribute__((
     aligned(4 * NR_LANES))); // [ (M+floor(F/2)) * (N+floor(F/2)) ]
 extern double f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
