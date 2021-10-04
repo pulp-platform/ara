@@ -60,7 +60,7 @@ for kernel in imatmul fmatmul; do
 
         ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
-        make -C hardware/ simv app=benchmarks > $tempfile
+        make -C hardware/ simv app=benchmarks > $tempfile || exit
 
         # Extract the performance
         cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
@@ -94,7 +94,7 @@ for kernel in iconv2d fconv2d; do
 			${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
             ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
-            make -C hardware/ simv app=benchmarks > $tempfile
+            make -C hardware/ simv app=benchmarks > $tempfile || exit
 
             # Extract the performance
             cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
@@ -129,7 +129,7 @@ for kernel in fconv3d; do
             ${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
             ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
-            make -C hardware/ simv app=benchmarks > $tempfile
+            make -C hardware/ simv app=benchmarks > $tempfile || exit
 
             # Extract the performance
             cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
