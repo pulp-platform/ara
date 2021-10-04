@@ -40,7 +40,7 @@ int main() {
   if (F == 3)
     fconv2d_3x3(o, i, f, M, N, F);
   else if (F == 7)
-    fconv2d_7x7(o, i, f, M, N, F);
+    fconv2d_7x7_opt(o, i, f, M, N, F);
   else {
     printf("Error: the filter size is different from 3 or 5 or 7.\n");
     return -1;
