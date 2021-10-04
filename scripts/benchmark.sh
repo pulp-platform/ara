@@ -86,12 +86,14 @@ for kernel in iconv2d fconv2d; do
         for fsize in 3; do
             tempfile=`mktemp`
 
-            # Generate the correct matrix and filter
+            # Clean, and then generate the correct matrix and filter
             rm -f apps/benchmarks/data/*.S.o apps/benchmarks/kernels/*.S.o apps/benchmarks/kernels/*.c.o
-            ${PYTHON} apps/$kernel/script/gen_data.py > apps/benchmarks/data/data.S $msize $fsize
+			make -C apps/ clean
 
+			mkdir -p apps/benchmarks/data
+			${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
             DEFINES="-D${kernel^^}=1" \
-                   make -C apps/ clean bin/benchmarks
+                   make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile
 
             # Extract the performance
@@ -119,12 +121,14 @@ for kernel in fconv3d; do
         for fsize in 7; do
             tempfile=`mktemp`
 
-            # Generate the correct matrix and filter
+            # Clean, and then generate the correct matrix and filter
             rm -f apps/benchmarks/data/*.S.o apps/benchmarks/kernels/*.S.o apps/benchmarks/kernels/*.c.o
-            ${PYTHON} apps/$kernel/script/gen_data.py > apps/benchmarks/data/data.S $msize $fsize
+			make -C apps/ clean
 
+			mkdir -p apps/benchmarks/data
+            ${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
             DEFINES="-D${kernel^^}=1" \
-                   make -C apps/ clean bin/benchmarks
+                   make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile
 
             # Extract the performance
