@@ -75,10 +75,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue;
-  logic    vinsn_issue_valid;
-  assign vinsn_issue       = vinsn_queue_q.vinsn[vinsn_queue_q.issue_pnt];
-  assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
+  pe_req_t vinsn_issue_q;
+  logic    vinsn_issue_valid_q;
+  `FF(vinsn_issue_q, vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt], '0)
+  `FF(vinsn_issue_valid_q, vinsn_queue_d.issue_cnt != '0, 1'b0)
 
   // Do we have a vector instruction with results being committed?
   pe_req_t vinsn_commit;
@@ -205,39 +205,39 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
     unique case (state_q)
       SLIDE_IDLE: begin
-        if (vinsn_issue_valid) begin
+        if (vinsn_issue_valid_q) begin
           state_d   = SLIDE_RUN;
           vrf_pnt_d = '0;
 
           // Initialize counters
-          issue_cnt_d = vinsn_issue.vl << int'(vinsn_issue.vtype.vsew);
+          issue_cnt_d = vinsn_issue_q.vl << int'(vinsn_issue_q.vtype.vsew);
 
-          unique case (vinsn_issue.op)
+          unique case (vinsn_issue_q.op)
             VSLIDEUP: begin
               // vslideup starts reading the source operand from its beginning
               in_pnt_d  = '0;
               // vslideup starts writing the destination vector at the slide offset
-              out_pnt_d = vinsn_issue.stride[idx_width(8*NrLanes)-1:0];
+              out_pnt_d = vinsn_issue_q.stride[idx_width(8*NrLanes)-1:0];
 
               // Trim vector elements which are not touched by the slide unit
-              issue_cnt_d -= vinsn_issue.stride;
+              issue_cnt_d -= vinsn_issue_q.stride;
 
               // Start writing at the middle of the destination vector
-              vrf_pnt_d = vinsn_issue.stride >> $clog2(8*NrLanes);
+              vrf_pnt_d = vinsn_issue_q.stride >> $clog2(8*NrLanes);
 
               // Go to SLIDE_RUN_VSLIDE1UP_FIRST_WORD if this is a vslide1up instruction
-              if (vinsn_issue.use_scalar_op)
+              if (vinsn_issue_q.use_scalar_op)
                 state_d = SLIDE_RUN_VSLIDE1UP_FIRST_WORD;
             end
             VSLIDEDOWN: begin
               // vslidedown starts reading the source operand from the slide offset
-              in_pnt_d  = vinsn_issue.stride[idx_width(8*NrLanes)-1:0];
+              in_pnt_d  = vinsn_issue_q.stride[idx_width(8*NrLanes)-1:0];
               // vslidedown starts writing the destination vector at its beginning
               out_pnt_d = '0;
 
               // Trim the last element of vslide1down, which does not come from the VRF
-              if (vinsn_issue.use_scalar_op)
-                issue_cnt_d -= 1 << int'(vinsn_issue.vtype.vsew);
+              if (vinsn_issue_q.use_scalar_op)
+                issue_cnt_d -= 1 << int'(vinsn_issue_q.vtype.vsew);
             end
           endcase
         end
@@ -245,7 +245,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
-        if (&sldu_operand_valid_i && !result_queue_full && (vinsn_issue.vm || (|mask_valid_i)))
+        if (&sldu_operand_valid_i && !result_queue_full && (vinsn_issue_q.vm || (|mask_valid_i)))
         begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
           automatic int in_byte_count = NrLanes * 8 - in_pnt_q;
@@ -256,10 +256,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           for (int b = 0; b < NrLanes*8; b++) begin
             // Input byte
             automatic int in_seq_byte = in_pnt_q + b;
-            automatic int in_byte  = shuffle_index(in_seq_byte, NrLanes, vinsn_issue.eew_vs2);
+            automatic int in_byte  = shuffle_index(in_seq_byte, NrLanes, vinsn_issue_q.eew_vs2);
             // Output byte
             automatic int out_seq_byte = out_pnt_q + b;
-            automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+            automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
             // Is this a valid byte?
             if (b < issue_cnt_q && in_seq_byte < NrLanes * 8 && out_seq_byte < NrLanes * 8) begin
@@ -272,15 +272,15 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] =
                 sldu_operand_i[src_lane][8*src_lane_offset +: 8];
               result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset] =
-                vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
+                vinsn_issue_q.vm || mask_i[tgt_lane][tgt_lane_offset];
             end
           end
 
           // Initialize id and addr fields of the result queue requests
           for (int lane = 0; lane < NrLanes; lane++) begin
-            result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue.id;
+            result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
             result_queue_d[result_queue_write_pnt_q][lane].addr =
-              vaddr(vinsn_issue.vd, NrLanes) + vrf_pnt_q;
+              vaddr(vinsn_issue_q.vd, NrLanes) + vrf_pnt_q;
           end
 
           // Bump pointers
@@ -292,30 +292,30 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           state_d = SLIDE_RUN;
           // If this is a vslide1up instruction, copy the scalar operand to the first word
           if (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD)
-            unique case (vinsn_issue.vtype.vsew)
+            unique case (vinsn_issue_q.vtype.vsew)
               EW8: begin
                 result_queue_d[result_queue_write_pnt_q][0].wdata[7:0] =
-                  vinsn_issue.scalar_op[7:0];
+                  vinsn_issue_q.scalar_op[7:0];
                 result_queue_d[result_queue_write_pnt_q][0].be[0:0] =
-                  vinsn_issue.vm || mask_i[0][0];
+                  vinsn_issue_q.vm || mask_i[0][0];
               end
               EW16: begin
                 result_queue_d[result_queue_write_pnt_q][0].wdata[15:0] =
-                  vinsn_issue.scalar_op[15:0];
+                  vinsn_issue_q.scalar_op[15:0];
                 result_queue_d[result_queue_write_pnt_q][0].be[1:0] =
-                  {2{vinsn_issue.vm || mask_i[0][0]}};
+                  {2{vinsn_issue_q.vm || mask_i[0][0]}};
               end
               EW32: begin
                 result_queue_d[result_queue_write_pnt_q][0].wdata[31:0] =
-                  vinsn_issue.scalar_op[31:0];
+                  vinsn_issue_q.scalar_op[31:0];
                 result_queue_d[result_queue_write_pnt_q][0].be[3:0] =
-                  {4{vinsn_issue.vm || mask_i[0][0]}};
+                  {4{vinsn_issue_q.vm || mask_i[0][0]}};
               end
               EW64: begin
                 result_queue_d[result_queue_write_pnt_q][0].wdata[63:0] =
-                  vinsn_issue.scalar_op[63:0];
+                  vinsn_issue_q.scalar_op[63:0];
                 result_queue_d[result_queue_write_pnt_q][0].be[7:0] =
-                  {8{vinsn_issue.vm || mask_i[0][0]}};
+                  {8{vinsn_issue_q.vm || mask_i[0][0]}};
               end
             endcase
 
@@ -325,8 +325,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             in_pnt_d             = '0;
             sldu_operand_ready_o = 1'b1;
             // We used all the bits of the mask
-            if (vinsn_issue.op == VSLIDEUP)
-              mask_ready_o = !vinsn_issue.vm;
+            if (vinsn_issue_q.op == VSLIDEUP)
+              mask_ready_o = !vinsn_issue_q.vm;
           end
 
           // Filled up a word to the VRF or finished the instruction
@@ -334,8 +334,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // Reset the pointer
             out_pnt_d = '0;
             // We used all the bits of the mask
-            if (vinsn_issue.op == VSLIDEDOWN)
-              mask_ready_o = !vinsn_issue.vm;
+            if (vinsn_issue_q.op == VSLIDEDOWN)
+              mask_ready_o = !vinsn_issue_q.vm;
 
             // Increment VRF address
             vrf_pnt_d = vrf_pnt_q + 1;
@@ -354,37 +354,37 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             state_d = SLIDE_IDLE;
 
             // If this is a vslide1down, fill up the last position with the scalar operand
-            if (vinsn_issue.op == VSLIDEDOWN && vinsn_issue.use_scalar_op) begin
+            if (vinsn_issue_q.op == VSLIDEDOWN && vinsn_issue_q.use_scalar_op) begin
               // Copy the scalar operand to the last word
               automatic int out_seq_byte = issue_cnt_q;
-              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
               automatic int tgt_lane = out_byte[3 +: $clog2(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
-              unique case (vinsn_issue.vtype.vsew)
+              unique case (vinsn_issue_q.vtype.vsew)
                 EW8: begin
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8]
-                    = vinsn_issue.scalar_op[7:0];
+                    = vinsn_issue_q.scalar_op[7:0];
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 1] =
-                    vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset];
+                    vinsn_issue_q.vm || mask_i[tgt_lane][tgt_lane_offset];
                 end
                 EW16: begin
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 16]
-                    = vinsn_issue.scalar_op[15:0];
+                    = vinsn_issue_q.scalar_op[15:0];
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 2] =
-                    {2{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                    {2{vinsn_issue_q.vm || mask_i[tgt_lane][tgt_lane_offset]}};
                 end
                 EW32: begin
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 32]
-                    = vinsn_issue.scalar_op[31:0];
+                    = vinsn_issue_q.scalar_op[31:0];
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 4] =
-                    {4{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                    {4{vinsn_issue_q.vm || mask_i[tgt_lane][tgt_lane_offset]}};
                 end
                 EW64: begin
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 64]
-                    = vinsn_issue.scalar_op[63:0];
+                    = vinsn_issue_q.scalar_op[63:0];
                   result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset +: 8] =
-                    {8{vinsn_issue.vm || mask_i[tgt_lane][tgt_lane_offset]}};
+                    {8{vinsn_issue_q.vm || mask_i[tgt_lane][tgt_lane_offset]}};
                 end
               endcase
             end
