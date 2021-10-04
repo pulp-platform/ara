@@ -50,7 +50,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes
     input  elen_t            [NrLanes-1:0] stu_operand_i,
     input  logic             [NrLanes-1:0] stu_operand_valid_i,
-    output logic                           stu_operand_ready_o,
+    output logic             [NrLanes-1:0] stu_operand_ready_o,
     // Interface with the Mask unit
     input  strb_t            [NrLanes-1:0] mask_i,
     input  logic             [NrLanes-1:0] mask_valid_i,
@@ -61,6 +61,31 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::beat_lower_byte;
   import axi_pkg::beat_upper_byte;
   import axi_pkg::BURST_INCR;
+
+  ///////////////////////
+  //  Spill registers  //
+  ///////////////////////
+
+  elen_t [NrLanes-1:0] stu_operand;
+  logic  [NrLanes-1:0] stu_operand_valid;
+  logic                stu_operand_ready;
+
+  for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_regs
+    fall_through_register #(
+      .T(elen_t)
+    ) i_register (
+      .clk_i     (clk_i                    ),
+      .rst_ni    (rst_ni                   ),
+      .clr_i     (1'b0                     ),
+      .testmode_i(1'b0                     ),
+      .data_i    (stu_operand_i[lane]      ),
+      .valid_i   (stu_operand_valid_i[lane]),
+      .ready_o   (stu_operand_ready_o[lane]),
+      .data_o    (stu_operand[lane]        ),
+      .valid_o   (stu_operand_valid[lane]  ),
+      .ready_i   (stu_operand_ready        )
+    );
+  end: gen_regs
 
   ////////////////////////////////
   //  Vector instruction queue  //
@@ -162,7 +187,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     axi_w_o                 = '0;
     axi_w_valid_o           = 1'b0;
     axi_b_ready_o           = 1'b0;
-    stu_operand_ready_o     = 1'b0;
+    stu_operand_ready       = 1'b0;
     mask_ready_o            = 1'b0;
     store_complete_o        = 1'b0;
 
@@ -178,7 +203,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // - We received all the operands from the lanes
     // - The address generator generated an AXI AW request for this write beat
     // - The AXI subsystem is ready to accept this W beat
-    if (vinsn_issue_valid && &stu_operand_valid_i && (vinsn_issue_q.vm || (|mask_valid_i)) &&
+    if (vinsn_issue_valid && &stu_operand_valid && (vinsn_issue_q.vm || (|mask_valid_i)) &&
         axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load && axi_w_ready_i) begin
       // Bytes valid in the current W beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
@@ -217,7 +242,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
             automatic int vrf_offset = vrf_byte[2:0];
 
             // Copy data
-            axi_w_o.data[8*axi_byte +: 8] = stu_operand_i[vrf_lane][8*vrf_offset +: 8];
+            axi_w_o.data[8*axi_byte +: 8] = stu_operand[vrf_lane][8*vrf_offset +: 8];
             axi_w_o.strb[axi_byte]        = vinsn_issue_q.vm || mask_i[vrf_lane][vrf_offset];
           end
         end
@@ -239,13 +264,13 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       // We consumed a whole word from the lanes
       if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == issue_cnt_q) begin
         // Reset the pointer in the VRF word
-        vrf_pnt_d           = '0;
+        vrf_pnt_d         = '0;
         // Acknowledge the operands with the lanes
-        stu_operand_ready_o = '1;
+        stu_operand_ready = '1;
         // Acknowledge the mask operand
-        mask_ready_o        = !vinsn_issue_q.vm;
+        mask_ready_o      = !vinsn_issue_q.vm;
         // Account for the results that were issued
-        issue_cnt_d         = issue_cnt_q - NrLanes * 8;
+        issue_cnt_d       = issue_cnt_q - NrLanes * 8;
         if (issue_cnt_q < NrLanes * 8)
           issue_cnt_d = '0;
       end

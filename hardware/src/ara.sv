@@ -155,7 +155,7 @@ module ara import ara_pkg::*; #(
   // Store unit
   elen_t  [NrLanes-1:0]      stu_operand;
   logic   [NrLanes-1:0]      stu_operand_valid;
-  logic                      stu_operand_ready;
+  logic   [NrLanes-1:0]      stu_operand_ready;
   // Slide unit/address generation operands
   elen_t  [NrLanes-1:0]      sldu_addrgen_operand;
   logic   [NrLanes-1:0]      sldu_addrgen_operand_valid;
@@ -228,7 +228,7 @@ module ara import ara_pkg::*; #(
       // Interface with the store unit
       .stu_operand_o               (stu_operand[lane]                ),
       .stu_operand_valid_o         (stu_operand_valid[lane]          ),
-      .stu_operand_ready_i         (stu_operand_ready                ),
+      .stu_operand_ready_i         (stu_operand_ready[lane]          ),
       // Interface with the slide/address generation unit
       .sldu_addrgen_operand_o      (sldu_addrgen_operand[lane]       ),
       .sldu_addrgen_operand_valid_o(sldu_addrgen_operand_valid[lane] ),

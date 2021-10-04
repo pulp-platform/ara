@@ -46,7 +46,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
     input  logic      [NrLanes-1:0] stu_operand_valid_i,
-    output logic                    stu_operand_ready_o,
+    output logic      [NrLanes-1:0] stu_operand_ready_o,
     // Address generation operands
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
