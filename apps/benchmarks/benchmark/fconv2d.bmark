@@ -30,9 +30,9 @@ extern double f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
 extern double o[] __attribute__((aligned(4 * NR_LANES)));        // [ M*N ]
 extern double golden_o[] __attribute__((aligned(4 * NR_LANES))); // [ M*N ]
 // M, N, F defined in data.S
-extern double M;
-extern double N;
-extern double F;
+extern uint64_t M;
+extern uint64_t N;
+extern uint64_t F;
 
 int main() {
   // Measure runtime with a hot cache
@@ -42,7 +42,7 @@ int main() {
   else if (F == 7)
     fconv2d_7x7_opt(o, i, f, M, N, F);
   else {
-    printf("Error: the filter size is different from 3 or 5 or 7.\n");
+    printf("Error: the filter size is different from 3 or 7.\n");
     return -1;
   }
   stop_timer();
