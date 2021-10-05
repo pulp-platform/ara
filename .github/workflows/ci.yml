@@ -171,6 +171,11 @@ jobs:
     needs: tc-llvm
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+    - name: Install Python requirements
+      run: pip install -r python-requirements.txt
     - name: Download Spike
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
@@ -445,6 +450,11 @@ jobs:
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+    - name: Install Python requirements
+      run: pip install -r python-requirements.txt
     - name: Download the LLVM toolchain
       uses: actions/download-artifact@v2
       with:
