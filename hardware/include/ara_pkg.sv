@@ -786,7 +786,8 @@ package ara_pkg;
   /////////////////////////
 
   // Which FU should process the mask unit request?
-  typedef enum logic {
+  localparam int unsigned NrMaskFUnits = 2;
+  typedef enum logic [cf_math_pkg::idx_width(NrMaskFUnits)-1:0]{
     MaskFUAlu, MaskFUMFpu
   } masku_fu_e;
 

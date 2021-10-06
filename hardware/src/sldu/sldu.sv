@@ -38,6 +38,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                   mask_ready_o
   );
 
+  `include "common_cells/registers.svh"
+
   import cf_math_pkg::idx_width;
 
   ////////////////////////////////
