@@ -434,6 +434,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     NrPMPEntries         : 0
   };
 
+`ifndef TARGET_GATESIM
   ara_system #(
     .NrLanes           (NrLanes              ),
     .FPUSupport        (FPUSupport           ),
@@ -462,8 +463,11 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .system_axi_r_t    (system_r_chan_t      ),
     .system_axi_w_t    (system_w_chan_t      ),
     .system_axi_req_t  (system_req_t         ),
-    .system_axi_resp_t (system_resp_t        )
-  ) i_system (
+    .system_axi_resp_t (system_resp_t        ))
+`else
+  ara_system
+`endif
+  i_system (
     .clk_i        (clk_i            ),
     .rst_ni       (rst_ni           ),
     .boot_addr_i  (DRAMBase         ), // start fetching from DRAM
