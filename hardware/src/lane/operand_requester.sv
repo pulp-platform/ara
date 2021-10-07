@@ -92,8 +92,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   strb_t  ldu_result_be;
   logic   ldu_result_req;
   logic   ldu_result_gnt;
-  logic   ldu_result_ready;
-  assign ldu_result_gnt_o = ldu_result_req_i && ldu_result_ready;
   stream_register #(.T(stream_register_payload_t)) i_ldu_stream_register (
     .clk_i     (clk_i                                                                    ),
     .rst_ni    (rst_ni                                                                   ),
@@ -101,7 +99,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     .testmode_i(1'b0                                                                     ),
     .data_i    ({ldu_result_id_i, ldu_result_addr_i, ldu_result_wdata_i, ldu_result_be_i}),
     .valid_i   (ldu_result_req_i                                                         ),
-    .ready_o   (ldu_result_ready                                                         ),
+    .ready_o   (ldu_result_gnt_o                                                         ),
     .data_o    ({ldu_result_id, ldu_result_addr, ldu_result_wdata, ldu_result_be}        ),
     .valid_o   (ldu_result_req                                                           ),
     .ready_i   (ldu_result_gnt                                                           )
@@ -114,8 +112,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   strb_t  sldu_result_be;
   logic   sldu_result_req;
   logic   sldu_result_gnt;
-  logic   sldu_result_ready;
-  assign sldu_result_gnt_o = sldu_result_req_i && sldu_result_ready;
   stream_register #(.T(stream_register_payload_t)) i_sldu_stream_register (
     .clk_i     (clk_i                                                                        ),
     .rst_ni    (rst_ni                                                                       ),
@@ -123,7 +119,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     .testmode_i(1'b0                                                                         ),
     .data_i    ({sldu_result_id_i, sldu_result_addr_i, sldu_result_wdata_i, sldu_result_be_i}),
     .valid_i   (sldu_result_req_i                                                            ),
-    .ready_o   (sldu_result_ready                                                            ),
+    .ready_o   (sldu_result_gnt_o                                                            ),
     .data_o    ({sldu_result_id, sldu_result_addr, sldu_result_wdata, sldu_result_be}        ),
     .valid_o   (sldu_result_req                                                              ),
     .ready_i   (sldu_result_gnt                                                              )
@@ -136,8 +132,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   strb_t  masku_result_be;
   logic   masku_result_req;
   logic   masku_result_gnt;
-  logic   masku_result_ready;
-  assign masku_result_gnt_o = masku_result_req_i && masku_result_ready;
   stream_register #(.T(stream_register_payload_t)) i_masku_stream_register (
     .clk_i     (clk_i                                                                            ),
     .rst_ni    (rst_ni                                                                           ),
@@ -145,7 +139,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     .testmode_i(1'b0                                                                             ),
     .data_i    ({masku_result_id_i, masku_result_addr_i, masku_result_wdata_i, masku_result_be_i}),
     .valid_i   (masku_result_req_i                                                               ),
-    .ready_o   (masku_result_ready                                                               ),
+    .ready_o   (masku_result_gnt_o                                                               ),
     .data_o    ({masku_result_id, masku_result_addr, masku_result_wdata, masku_result_be}        ),
     .valid_o   (masku_result_req                                                                 ),
     .ready_i   (masku_result_gnt                                                                 )

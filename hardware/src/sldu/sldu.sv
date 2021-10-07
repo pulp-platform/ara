@@ -413,7 +413,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Received a grant from the VRF.
       // Deactivate the request, but do not bump the pointers for now.
-      if (sldu_result_gnt_i[lane]) begin
+      if (sldu_result_req_o[lane] && sldu_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
       end

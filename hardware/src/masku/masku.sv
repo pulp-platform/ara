@@ -643,7 +643,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Received a grant from the VRF.
       // Deactivate the request, but do not bump the pointers for now.
-      if (masku_result_gnt_i[lane]) begin
+      if (masku_result_req_o[lane] && masku_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
       end
@@ -673,7 +673,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Finished committing the results of a vector instruction
     // When the masku acts as a master for the VRF, wait the grant from the operand requester
-    if (vinsn_commit_valid && commit_cnt_d == '0 && (!(vinsn_issue.op inside {[VMFEQ:VMSBC]}) || masku_result_gnt_i)) begin
+    if (vinsn_commit_valid && commit_cnt_d == '0 && (!(vinsn_issue.op inside {[VMFEQ:VMSBC]}) ||
+      &(masku_result_req_o & masku_result_gnt_i))) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
