@@ -86,6 +86,11 @@ int main() {
   printf("\n");
   printf("\n");
 
+  printf("Input Mtx size: %dx%d\n", M + F - 1, N + F - 1);
+  printf("Output Mtx size: %dx%d\n", M, N);
+  printf("Filter size: %dx%d\n", F, F);
+  printf("Channels: %d\n", CH);
+
   // Call the main kernel, and measure cycles
   start_timer();
   if (F == 7)
@@ -96,7 +101,7 @@ int main() {
 
   // Performance metrics
   int64_t runtime = get_timer();
-  float performance = 2.0 * 3.0 * F * F * M * N / runtime;
+  float performance = 2.0 * CH * F * F * M * N / runtime;
   float utilization = 100 * performance / (2.0 * NR_LANES);
 
   printf("The execution took %d cycles.\n", runtime);
