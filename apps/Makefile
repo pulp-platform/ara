@@ -49,12 +49,12 @@ linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/$
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 .PHONY: $(BINARIES)
 
-# Only some applications need to generate and then compile data.S
-# data.S is always re-generated if needed by the kernel
+# Only some applications need to generate and then compile the data file
+# Generate a dummy data file for applications that do not need it
 define app_gen_data_template
 .PHONY: $1/data.S
 $1/data.S:
-	cd $1 && if [ -d script ]; then OUT_MTX_SIZE=$$(OUT_MTX_SIZE) && F_SIZE=$$(F_SIZE) && source $$(COMMON_DIR)/script/datagen.sh; fi
+	cd $1 && if [ -d script ]; then source $$(COMMON_DIR)/script/datagen.sh $1 $$(OUT_MTX_SIZE) $$(F_SIZE); else touch data.S; fi
 endef
 $(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
 
@@ -124,6 +124,6 @@ clean: riscv_tests_spike_clean
 	rm -vf $(addsuffix /main.c.o,$(APPS))
 	rm -vf $(RUNTIME_GCC)
 	rm -vf $(RUNTIME_LLVM)
-	for app in $(APPS); do cd $${app} && rm -f ./*.c.o && rm -f ./*.S.o && cd .. ; done
+	for app in $(APPS); do cd $${app} && rm -f ./*.c.o && rm -f ./*.S* && cd .. ; done
 
 .INTERMEDIATE: $(addsuffix /main.c.o,$(APPS))
