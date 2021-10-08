@@ -6,19 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## Fixed
+### Fixed
 
  - Avoid corner-case in which the sequencer issues the same instruction multiple times when two units become non-ready at the same time
 
-## Added
+### Added
 
  - The sequencer can issue instructions to non-full units even if the other units are full
 
-## Changed
+### Changed
 
  - The main sequencer issues instructions every time the target unit has a non-full instruction queue
  - The main sequencer stalls if the instructions target a lane, and its operand requesters are not ready
  - New instructions enter the main sequencer with a token that marks them as new, and the related counter is updated upon arrival
+- Update `README` with instructions on how to compile convolutions
+- Refactor `benchmark` app
+- Double the testbench memory size
+- Update the `python-requirements` list
 
 ## 2.2.0 - 2021-11-02
 
@@ -32,6 +36,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The LSU now correctly handles bursts with a saturated length of 256 beats
 - AXI transactions on an opposite channel w.r.t. the channel currently in use are started only after the completion of the previous transactions
 - Fix the number of elements to be requested for a `vslidedown` instruction
+- Generate `data.S` files before compiling the programs
+- Clean intermediate app object files with `make clean`
+- Add a `fence` before stopping the cycle counter, to let the last vector store complete
 
 ### Added
 
@@ -46,6 +53,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Vector load/store mask `vle1`, `vse1`
 - Whole-register instructions are executed also if `vtype.vl == 0`
 - Makefile option (`trace=1`) to generate waveform traces when running simulations with Verilator
+- Add `fconv3d` kernel, optimized for 7x7 filters
+- Optimize `fconv2d` and `iconv2d` kernels for 3x3 filters
+- Add convolutions to the `benchmark` app, and print the related roofline plots
+- Add corner case test to `vslidedown` instruction
 
 ### Changed
 
