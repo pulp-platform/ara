@@ -49,11 +49,19 @@ linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/$
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 .PHONY: $(BINARIES)
 
-define app_compile_template
-bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
-	mkdir -p bin/
+# Only some applications need to generate and then compile data.S
+# data.S is always re-generated if needed by the kernel
+define app_gen_data_template
+.PHONY: $1/data.S
+$1/data.S:
 	cd $1 && if [ -d script ]; then OUT_MTX_SIZE=$$(OUT_MTX_SIZE) && F_SIZE=$$(F_SIZE) && source $$(COMMON_DIR)/script/datagen.sh; fi
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
+endef
+$(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
+
+define app_compile_template
+bin/$1: $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
+	mkdir -p bin/
+	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
