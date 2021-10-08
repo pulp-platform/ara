@@ -46,8 +46,8 @@
 
 #include "fconv2d.h"
 
-void fconv2d_7x7_opt(double *o, double *i, double *f, int64_t R, int64_t C,
-                     int64_t F) {
+void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
+                 int64_t F) {
 
   // Helper variables
   int64_t ldo = C << 3;
