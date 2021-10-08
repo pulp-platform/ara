@@ -46,8 +46,8 @@
 
 #include "iconv2d.h"
 
-void iconv2d_7x7_opt(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
-                     int64_t F) {
+void iconv2d_7x7(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
+                 int64_t F) {
 
   // Helper variables
   int64_t ldo = C << 3;

@@ -50,8 +50,8 @@
 
 #include "fconv3d.h"
 
-void fconv3d_3x7x7(double *o, double *i, double *f, int64_t M, int64_t N,
-                   int64_t C, int64_t F) {
+void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
+                    int64_t C, int64_t F) {
 
   // Helper variables
   int64_t ldo = N << 3;
