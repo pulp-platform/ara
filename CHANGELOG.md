@@ -6,25 +6,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## Fixed
+### Fixed
 
  - Avoid corner-case in which the sequencer issues the same instruction multiple times when two units become non-ready at the same time
  - Avoid losing hazard-related information in the pipeline between the main sequencer and the operand requesters
  - Fix anticipated grant bug from operand requester to LDU, SLDU, MASKU, because of the stream registers. Now, the three units wait for a final true grant before commiting
  - The mask unit does not require synchronized lanes anymore to commit an instruction
 
-## Added
+### Added
 
  - The sequencer can issue instructions to non-full units even if the other units are full
  - Vector indexed unordered/ordered load (`vluxei8`, `vluxei16`, `vluxei32`, `vluxei64`, `vloxei8`, `vloxei16`, `vloxei32`, `vloxei64`)
  - Vector indexed unordered/ordered stores (`vsuxei8`, `vsuxei16`, `vsuxei32`, `vsuxei64`, `vsoxei8`, `vsoxei16`, `vsoxei32`, `vsoxei64`)
  - Introduce the global hazard table in the main sequencer, to provide up-to-date information to the operand requesters about the status of the different dependant instructions
 
-## Changed
+### Changed
 
  - The main sequencer issues instructions every time the target unit has a non-full instruction queue
  - The main sequencer stalls if the instructions target a lane, and its operand requesters are not ready
  - New instructions enter the main sequencer with a token that marks them as new, and the related counter is updated upon arrival
+- Update `README` with instructions on how to compile convolutions
+- Refactor `benchmark` app
+- Double the testbench memory size
+- Update the `python-requirements` list
 
 ## 2.2.0 - 2021-11-02
 
@@ -38,6 +42,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The LSU now correctly handles bursts with a saturated length of 256 beats
 - AXI transactions on an opposite channel w.r.t. the channel currently in use are started only after the completion of the previous transactions
 - Fix the number of elements to be requested for a `vslidedown` instruction
+- Generate `data.S` files before compiling the programs
+- Clean intermediate app object files with `make clean`
+- Add a `fence` before stopping the cycle counter, to let the last vector store complete
 
 ### Added
 
@@ -52,6 +59,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Vector load/store mask `vle1`, `vse1`
 - Whole-register instructions are executed also if `vtype.vl == 0`
 - Makefile option (`trace=1`) to generate waveform traces when running simulations with Verilator
+- Add `fconv3d` kernel, optimized for 7x7 filters
+- Optimize `fconv2d` and `iconv2d` kernels for 3x3 filters
+- Add convolutions to the `benchmark` app, and print the related roofline plots
+- Add corner case test to `vslidedown` instruction
 
 ### Changed
 
