@@ -601,8 +601,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_o[lane]       = mask_queue_q[mask_queue_read_pnt_q][lane];
       // Received a grant from the VFUs.
       // The VLDU and the VSTU acknowledge all the operands at once.
+      // Only accept the acknowledgement from the lanes if the current instruction is executing there.
       // Deactivate the request, but do not bump the pointers for now.
-      if (lane_mask_ready_i[lane] || vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
+      if ((lane_mask_ready_i[lane] && vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu}) || vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
         mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
         mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
       end

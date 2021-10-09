@@ -91,23 +91,17 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic mask_lane_valid, mask_expected;
   assign mask_lane_valid = mask_valid_i & mask_expected;
 
-  // Ara's protocol is actually a req-gnt one
-  // The mask unit broadcasts its mask to the whole system,
-  // even if the mask targets the slide unit.
-  // The lanes should acknowledge ONLY their masks.
-  assign mask_ready_o = mask_ready_q & mask_lane_valid;
-
   spill_register #(
     .T(strb_t)
   ) i_mask_ready_spill_register (
-    .clk_i  (clk_i),
-    .rst_ni (rst_ni),
+    .clk_i  (clk_i          ),
+    .rst_ni (rst_ni         ),
     .valid_i(mask_lane_valid),
-    .ready_o(mask_ready_q),
-    .data_i (mask_i),
-    .valid_o(mask_valid_i_q),
-    .ready_i(mask_ready_o_d),
-    .data_o (mask_i_q)
+    .ready_o(mask_ready_o   ),
+    .data_i (mask_i         ),
+    .valid_o(mask_valid_i_q ),
+    .ready_i(mask_ready_o_d ),
+    .data_o (mask_i_q       )
   );
 
   /////////////////
