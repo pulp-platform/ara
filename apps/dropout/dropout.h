@@ -16,10 +16,6 @@
 
 // Author: Matteo Perotti
 
-#define ENABLE_VEC                                                             \
-  asm volatile(                                                                \
-      "csrs mstatus, %[bits];" ::[bits] "r"(0x00000600 & (0x00000600 >> 1)))
-
 void dropout_gold(const unsigned int n, const float *i, const float scale,
                   const int32_t *sel, float *o);
 void dropout_vec(const unsigned int n, const float *i, const float scale,
