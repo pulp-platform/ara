@@ -84,24 +84,20 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   /////////////////
 
   // Cut the mask_ready_o timing-critical path
-  strb_t mask_i_q;
-  logic  mask_valid_i_q, mask_ready_o_d, mask_ready_q;
-
-  // Register the mask only if the request targets the lane
-  logic mask_lane_valid, mask_expected;
-  assign mask_lane_valid = mask_valid_i & mask_expected;
+  strb_t mask;
+  logic  mask_valid, mask_ready;
 
   spill_register #(
     .T(strb_t)
   ) i_mask_ready_spill_register (
-    .clk_i  (clk_i          ),
-    .rst_ni (rst_ni         ),
-    .valid_i(mask_lane_valid),
-    .ready_o(mask_ready_o   ),
-    .data_i (mask_i         ),
-    .valid_o(mask_valid_i_q ),
-    .ready_i(mask_ready_o_d ),
-    .data_o (mask_i_q       )
+    .clk_i  (clk_i       ),
+    .rst_ni (rst_ni      ),
+    .valid_i(mask_valid_i),
+    .ready_o(mask_ready_o),
+    .data_i (mask_i      ),
+    .valid_o(mask_valid  ),
+    .ready_i(mask_ready  ),
+    .data_o (mask        )
   );
 
   /////////////////
@@ -365,10 +361,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_operand_o       (mask_operand_o[2 +: NrMaskFUnits]      ),
     .mask_operand_valid_o (mask_operand_valid_o[2 +: NrMaskFUnits]),
     .mask_operand_ready_i (mask_operand_ready_i[2 +: NrMaskFUnits]),
-    .mask_i               (mask_i_q                               ),
-    .mask_valid_i         (mask_valid_i_q                         ),
-    .mask_ready_o         (mask_ready_o_d                         ),
-    .mask_expected_o      (mask_expected                          )
+    .mask_i               (mask                                   ),
+    .mask_valid_i         (mask_valid                             ),
+    .mask_ready_o         (mask_ready                             )
   );
 
   //////////////////
