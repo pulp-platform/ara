@@ -39,7 +39,7 @@ int main() {
   // Measure runtime with a hot cache
   start_timer();
   if (F == 7)
-    fconv3d_3x7x7(o, i, f, M, N, CH, F);
+    fconv3d_CHx7x7(o, i, f, M, N, CH, F);
   else {
     printf("Error: the filter size is different from 7.\n");
     return -1;
@@ -48,7 +48,7 @@ int main() {
 
   int64_t runtime = get_timer();
   float performance = 2.0 * 3.0 * F * F * M * N / (runtime);
-  printf("[performance]: %d %f\n", M, performance);
+  printf("[performance]: %ld %f\n", M, performance);
 
   return 0;
 }
