@@ -16,33 +16,6 @@ tmpscript=`mktemp`
 sed "s/ ?= /=/g" config/${config}.mk > $tmpscript
 source ${tmpscript}
 
-##########
-## AXPY ##
-##########
-
-## Measure the runtime of the following kernels
-#for kernel in iaxpy, faxpy; do
-#
-#    # Log the performance results
-#    > ${kernel}_${nr_lanes}.benchmark
-#
-#    # Measure the following matrix and filter sizes
-#    # The input image is also padded, and the max vl is 128
-#    # MAXVL_M2_64b - F_MAX + 1 = 128 - 7 + 1 = 122 is the max number of elements
-#    # Actually 120, since it must be divible by 4
-#    for vsize in 4 8 16 32 64 128; do
-#        tempfile=`mktemp`
-#
-#        ENV_DEFINES="-D${kernel^^}=1" \
-#               make -C apps/ bin/benchmarks
-#        make -C hardware/ simv app=benchmarks > $tempfile
-#
-#        # Extract the performance
-#        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
-#
-#    done
-#done
-
 ############
 ## MATMUL ##
 ############
@@ -137,15 +110,3 @@ for kernel in fconv3d; do
         done
     done
 done
-
-##############
-## JACOBI2D ##
-##############
-
-#############
-## DROPOUT ##
-#############
-
-##############
-## ROIALIGN ##
-##############
