@@ -51,7 +51,6 @@ void iconv2d_7x7(int64_t *o, int64_t *i, int64_t *f, int64_t R, int64_t C,
 
   // Helper variables
   int64_t ldo = C << 3;
-  int64_t ldi = C << 3;
   int64_t ldi_pad = (C + F - 1) << 3;
 
   int64_t t6, t13, t20, t27, t34, t41, t48;

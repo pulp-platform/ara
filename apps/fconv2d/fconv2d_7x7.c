@@ -51,7 +51,6 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
 
   // Helper variables
   int64_t ldo = C << 3;
-  int64_t ldi = C << 3;
   int64_t ldi_pad = (C + F - 1) << 3;
 
   double f6, f13, f20, f27, f34, f41, f48;

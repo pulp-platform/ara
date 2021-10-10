@@ -55,14 +55,11 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
 
   // Helper variables
   int64_t ldo = N << 3;
-  int64_t ldi = N << 3;
-  int64_t ldic = (M * N) << 3;
-  int64_t ldfc = (F * F) << 3;
   int64_t ldi_pad = (N + F - 1) << 3;
 
   // Number of elements that separates two adjacent channels
-  uint64_t ich_len = (M + F - 1) * (N + F - 1);
-  uint64_t fch_len = F * F;
+  int64_t ich_len = (M + F - 1) * (N + F - 1);
+  int64_t fch_len = F * F;
 
   double *i_ = i;
   double *i__ = i;
@@ -80,7 +77,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
   // Buffer some of the filter coefficients not to lose efficiency after a
   // vector store (CVA6 cannot issue memory operations if there is a pending
   // store!)
-  uint64_t last_f_column = (C - 1) * fch_len + F - 1;
+  int64_t last_f_column = (C - 1) * fch_len + F - 1;
 
   fl0 = f[last_f_column + 0 * F];
   fl1 = f[last_f_column + 1 * F];
@@ -126,14 +123,14 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     // Main kernel, unrolled by 2
     // Unrolled because of double buffering
     // With HW renaming, this unroll is not needed
-    for (uint64_t k = 0; k < F / 2; ++k) {
+    for (int64_t k = 0; k < F / 2; ++k) {
       // Two base indexes because of the unrolling
       // Point to the first element of the current column (k) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
       // Point to the first element of the current column (k+1) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
 
       if ((k | ch) == 0)
         asm volatile("vfmul.vf v16, v0, %0" ::"f"(f[0 + base_idx_0]));
@@ -178,7 +175,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       asm volatile("vfmacc.vf v20, %0, v14" ::"f"(f[7 + base_idx_1]));
     }
 
-    uint64_t base_idx_0 = (F - 1) + (ch * fch_len);
+    int64_t base_idx_0 = (F - 1) + (ch * fch_len);
 
     // Don't slide during the last iteration
     asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f[0 + base_idx_0]));
@@ -222,14 +219,14 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
                  : "r"(ldi_pad));
 
     // Main kernel, unrolled by 2
-    for (uint64_t k = 0; k < F / 2; ++k) {
+    for (int k = 0; k < F / 2; ++k) {
       // Two base indexes because of the unrolling
       // Point to the first element of the current column (k) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
       // Point to the first element of the current column (k+1) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
 
       // Unroll 0
       asm volatile("vfmacc.vf v16, %0, v2" ::"f"(f[28 + base_idx_0]));
@@ -304,7 +301,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     if (ch != C - 1) {
       // Point to the first element of the current column (k) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_0 = (F - 1) + (ch * fch_len);
+      int64_t base_idx_0 = (F - 1) + (ch * fch_len);
 
       // Don't slide the elements here
       asm volatile("vfmacc.vf v16, %0, v2" ::"f"(f[28 + base_idx_0]));
@@ -417,10 +414,10 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
         // Two base indexes because of the unrolling
         // Look ahead to the first element of the current column (k+2) of the
         // current channel (ch) of the filter (f)
-        uint64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
+        int64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
         // Point to the first element of the current column (k+1) of the current
         // channel (ch) of the filter (f)
-        uint64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+        int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
 
         // Calculate F contributions of the input rows, on F different output
         // rows
@@ -463,7 +460,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       }
 
       if (ch != C - 1) {
-        uint64_t base_idx_0 = (ch + 1) * fch_len;
+        int64_t base_idx_0 = (ch + 1) * fch_len;
 
         asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f6_buf));
         f6_buf = f[42 + base_idx_0];
@@ -530,10 +527,10 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
         // Two base indexes because of the unrolling
         // Point to the first element of the current column (k) of the current
         // channel (ch) of the filter (f)
-        uint64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
+        int64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
         // Point to the first element of the current column (k+1) of the current
         // channel (ch) of the filter (f)
-        uint64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+        int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
 
         asm volatile("vfmacc.vf v16, %0, v2" ::"f"(f6_buf));
         asm volatile("vfmacc.vf v18, %0, v2" ::"f"(f5_buf));
@@ -572,7 +569,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       }
 
       if (ch != C - 1) {
-        uint64_t base_idx_0 = (ch + 1) * fch_len;
+        int64_t base_idx_0 = (ch + 1) * fch_len;
 
         asm volatile("vfmacc.vf v16, %0, v2" ::"f"(f6_buf));
         f6_buf = f[42 + base_idx_0];
@@ -623,7 +620,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
   // Row I-F -> (I-1)-3 //
   ////////////////////////
 
-  for (uint64_t ch = 0; ch < C; ++ch) {
+  for (int64_t ch = 0; ch < C; ++ch) {
 
     // Point to the first element of the channel ch
     i__ = i_ + ch * ich_len;
@@ -655,10 +652,10 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       // Two base indexes because of the unrolling
       // Point to the first element of the current column (k) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
       // Point to the first element of the current column (k+1) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
 
       asm volatile("vfslide1down.vf v2, v0, %0" ::"f"(*i_slide_ptr_0++));
       asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f[42 + base_idx_0]));
@@ -719,7 +716,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     }
 
     if (ch != C - 1) {
-      uint64_t base_idx_0 = (F - 1) + (ch * fch_len);
+      int64_t base_idx_0 = (F - 1) + (ch * fch_len);
 
       asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f[42 + base_idx_0]));
       asm volatile("vfmacc.vf v18, %0, v0" ::"f"(f[35 + base_idx_0]));
@@ -780,7 +777,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
   // Row (I-1)-3 -> (I-1) //
   //////////////////////////
 
-  for (uint64_t ch = 0; ch < C; ++ch) {
+  for (int64_t ch = 0; ch < C; ++ch) {
 
     // Point to the first element of the channel ch
     i__ = i_ + ch * ich_len;
@@ -805,10 +802,10 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       // Two base indexes because of the unrolling
       // Point to the first element of the current column (k) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
       // Point to the first element of the current column (k+1) of the current
       // channel (ch) of the filter (f)
-      uint64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
 
       asm volatile("vfslide1down.vf v0, v2, %0" ::"f"(*i_slide_ptr_0++));
       asm volatile("vfmacc.vf v24, %0, v2" ::"f"(f[42 + base_idx_0]));
@@ -832,7 +829,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     }
 
     if (ch != C - 1) {
-      uint64_t base_idx_0 = (F - 1) + (ch * fch_len);
+      int64_t base_idx_0 = (F - 1) + (ch * fch_len);
 
       asm volatile("vfmacc.vf v24, %0, v2" ::"f"(f[42 + base_idx_0]));
       asm volatile("vfmacc.vf v26, %0, v2" ::"f"(f[35 + base_idx_0]));
