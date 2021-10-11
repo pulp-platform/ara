@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "conv2d.h"
+#include "iconv2d.h"
 
 #ifndef SPIKE
 #include "printf.h"
@@ -68,20 +68,20 @@ void print_matrix(int64_t const *matrix, uint64_t num_rows,
 
 int main() {
   printf("\n");
-  printf("============\n");
-  printf("=  CONV2D  =\n");
-  printf("============\n");
+  printf("=============\n");
+  printf("=  ICONV2D  =\n");
+  printf("=============\n");
   printf("\n");
   printf("\n");
 
   // Call the main kernel, and measure cycles
   start_timer();
   if (F == 3)
-    conv2d_3x3(o, i, f, M, N, F);
+    iconv2d_3x3(o, i, f, M, N, F);
   else if (F == 5)
-    conv2d_5x5(o, i, f, M, N, F);
+    iconv2d_5x5(o, i, f, M, N, F);
   else if (F == 7)
-    conv2d_7x7(o, i, f, M, N, F);
+    iconv2d_7x7(o, i, f, M, N, F);
   else
     printf("Error: the filter size is different from 3 or 5 or 7.\n");
   stop_timer();
