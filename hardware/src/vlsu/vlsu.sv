@@ -130,6 +130,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_valid_i             (pe_req_valid_i           ),
     .addrgen_ack_o              (addrgen_ack_o            ),
     .addrgen_error_o            (addrgen_error_o          ),
+    .addrgen_error_vl_o         (/* Unused*/              ),
     // Interface with the lanes
     .addrgen_operand_i          (addrgen_operand_i        ),
     .addrgen_operand_valid_i    (addrgen_operand_valid_i  ),
