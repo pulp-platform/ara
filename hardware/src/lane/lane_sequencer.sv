@@ -413,14 +413,17 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 // we must request it as well from the VRF
 
                 // Find the number of extra elements to ask, related to the stride
-                unique case (pe_req_i.eew_vs2)
-                  EW8:  extra_stride =        pe_req_i.stride[$clog2(8*NrLanes)-1:0];
-                  EW16: extra_stride = {1'b0, pe_req_i.stride[$clog2(4*NrLanes)-1:0]};
-                  EW32: extra_stride = {2'b0, pe_req_i.stride[$clog2(2*NrLanes)-1:0]};
-                  EW64: extra_stride = {3'b0, pe_req_i.stride[$clog2(1*NrLanes)-1:0]};
-                  default:
-                    extra_stride = {3'b0, pe_req_i.stride[$clog2(1*NrLanes)-1:0]};
-                endcase
+                if (NrLanes != 1)
+                  unique case (pe_req_i.eew_vs2)
+                    EW8:  extra_stride =        pe_req_i.stride[idx_width(8*NrLanes)-1:0];
+                    EW16: extra_stride = {1'b0, pe_req_i.stride[idx_width(4*NrLanes)-1:0]};
+                    EW32: extra_stride = {2'b0, pe_req_i.stride[idx_width(2*NrLanes)-1:0]};
+                    EW64: extra_stride = {3'b0, pe_req_i.stride[idx_width(1*NrLanes)-1:0]};
+                    default:
+                      extra_stride = {3'b0, pe_req_i.stride[idx_width(1*NrLanes)-1:0]};
+                  endcase
+                else
+                  extra_stride = '0;
 
                 // Find the total number of elements to be asked
                 vl_tot = pe_req_i.vl;
