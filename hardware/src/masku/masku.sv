@@ -37,6 +37,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the VFUs
     output strb_t    [NrLanes-1:0]                     mask_o,
     output logic     [NrLanes-1:0]                     mask_valid_o,
+    output logic                                       mask_valid_lane_o,
     input  logic     [NrLanes-1:0]                     lane_mask_ready_i,
     input  logic                                       vldu_mask_ready_i,
     input  logic                                       vstu_mask_ready_i,
@@ -609,6 +610,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
       end
     end: send_operand
+
+    // Is this operand going to the lanes?
+    mask_valid_lane_o = vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit};
 
     // All lanes accepted the VRF request
     if (!(|mask_queue_valid_d[mask_queue_read_pnt_q]))
