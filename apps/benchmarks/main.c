@@ -40,6 +40,7 @@
 #include "benchmark/fconv3d.bmark"
 
 #else
-#error "Error, no kernel was specified. Please, run 'make bin/benchmarks ENV_DEFINES=-D${KERNEL}', where KERNEL contains the kernel to benchmark. For example: 'make bin/benchmarks ENV_DEFINES=-DIMATMUL'."
+#error                                                                         \
+    "Error, no kernel was specified. Please, run 'make bin/benchmarks ENV_DEFINES=-D${KERNEL}', where KERNEL contains the kernel to benchmark. For example: 'make bin/benchmarks ENV_DEFINES=-DIMATMUL'."
 
 #endif
