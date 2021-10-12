@@ -244,9 +244,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
 
         // How many bytes are we committing?
-        automatic vlen_t valid_bytes;
-        valid_bytes = vinsn_valid_bytes < vrf_valid_bytes ? vinsn_valid_bytes : vrf_valid_bytes;
-        valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes             : axi_valid_bytes;
+        automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
+        valid_bytes = issue_cnt_q < NrLanes * 8     ? vinsn_valid_bytes : vrf_valid_bytes;
+        valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes       : axi_valid_bytes;
 
         r_pnt_d   = r_pnt_q + valid_bytes;
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
@@ -255,7 +255,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
           // Is this byte a valid byte in the R beat?
           if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
-            // Map axy_byte to the corresponding byte in the VRF word (sequential)
+            // Map axi_byte to the corresponding byte in the VRF word (sequential)
             automatic int vrf_seq_byte = axi_byte - lower_byte - r_pnt_q + vrf_pnt_q;
             // And then shuffle it
             automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
