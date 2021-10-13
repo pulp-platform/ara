@@ -208,7 +208,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               emul          : ara_req_i.emul,
               fp_rm         : ara_req_i.fp_rm,
               wide_fp_imm   : ara_req_i.wide_fp_imm,
-              fp_cvt_resize : ara_req_i.fp_cvt_resize,
+              cvt_resize    : ara_req_i.cvt_resize,
               scale_vl      : ara_req_i.scale_vl,
               vl            : ara_req_i.vl,
               vstart        : ara_req_i.vstart,
@@ -222,8 +222,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
             };
 
             // We only issue instructions that take no operands if they have no hazards.
+            // Moreover, SLIDE instructions cannot be always chained
+            // ToDo: optimize the case for vslide1down, vslide1up (wait 2 cycles, then chain)
             if (!(|{ara_req_i.use_vs1, ara_req_i.use_vs2, ara_req_i.use_vd_op, !ara_req_i.vm}) &&
-                |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2, pe_req_d.hazard_vm, pe_req_d.hazard_vd})
+                |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2, pe_req_d.hazard_vm, pe_req_d.hazard_vd} ||
+                (pe_req_d.op == VSLIDEUP && |{pe_req_d.hazard_vd, pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}) ||
+                (pe_req_d.op == VSLIDEDOWN && |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}))
             begin
               ara_req_ready_o = 1'b0;
               pe_req_valid_d  = 1'b0;

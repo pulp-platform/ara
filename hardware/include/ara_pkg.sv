@@ -153,11 +153,12 @@ package ara_pkg;
   // required SIMD input format of the FPU module (fpnew)
 
   // The FPU needs to know if, during the conversion, there is also a width change
+  // Moreover, the operand requester treats widening instructions differently for handling WAW
   typedef enum logic [1:0] {
     CVT_SAME,
     CVT_WIDE,
     CVT_NARROW
-  } fp_resize_e;
+  } resize_e;
 
   // Floating-Point structs for re-encoding during widening FP operations
   typedef struct packed {
@@ -241,7 +242,7 @@ package ara_pkg;
     // Widen FP immediate (re-encoding)
     logic wide_fp_imm;
     // Resizing of FP conversions
-    fp_resize_e fp_cvt_resize;
+    resize_e cvt_resize;
 
     // Vector machine metadata
     vlen_t vl;
@@ -332,7 +333,7 @@ package ara_pkg;
     // Widen FP immediate (re-encoding)
     logic wide_fp_imm;
     // Resizing of FP conversions
-    fp_resize_e fp_cvt_resize;
+    resize_e cvt_resize;
 
     // Vector machine metadata
     vlen_t vl;
@@ -816,6 +817,8 @@ package ara_pkg;
 
     logic scale_vl; // Rescale vl taking into account the new and old EEW
 
+    resize_e cvt_resize;    // Resizing of FP conversions
+
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion
 
@@ -857,7 +860,7 @@ package ara_pkg;
 
     fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
     logic wide_fp_imm;            // Widen FP immediate (re-encoding)
-    fp_resize_e fp_cvt_resize;    // Resizing of FP conversions
+    resize_e cvt_resize;    // Resizing of FP conversions
 
     // Vector machine metadata
     vlen_t vl;
