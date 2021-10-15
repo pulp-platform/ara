@@ -38,6 +38,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the sequencer
     input  `STRUCT_PORT(pe_req_t)                          pe_req_i,
     input  logic                                           pe_req_valid_i,
+    input  logic     [NrVInsn-1:0]                         pe_vinsn_running_i,
     output logic                                           pe_req_ready_o,
     output `STRUCT_PORT(pe_resp_t)                         pe_resp_o,
     // Interface with the Store unit
@@ -124,6 +125,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i             ),
     .pe_req_valid_i         (pe_req_valid_i       ),
+    .pe_vinsn_running_i     (pe_vinsn_running_i   ),
     .pe_req_ready_o         (pe_req_ready_o       ),
     .pe_resp_o              (pe_resp_o            ),
     // Interface with the operand requesters

@@ -31,6 +31,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
+    input  logic     [NrVInsn-1:0]         pe_vinsn_running_i,
     output logic                           addrgen_error_o,
     output logic                           addrgen_ack_o,
     // Interface with the load/store units
@@ -123,7 +124,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     pe_req_d = pe_req_q;
 
     // Running vector instructions
-    vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
+    vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
 
     // No request, by default
     addrgen_req       = '0;

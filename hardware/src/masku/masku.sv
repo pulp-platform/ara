@@ -22,6 +22,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the main sequencer
     input  pe_req_t                                    pe_req_i,
     input  logic                                       pe_req_valid_i,
+    input  logic     [NrVInsn-1:0]                     pe_vinsn_running_i,
     output logic                                       pe_req_ready_o,
     output pe_resp_t                                   pe_resp_o,
     // Interface with the lanes
@@ -406,7 +407,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_cnt_d       = result_queue_cnt_q;
 
     // Vector instructions currently running
-    vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
+    vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
 
     // We are not ready, by default
     pe_resp                 = '0;
