@@ -285,7 +285,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app:        [hello_world, imatmul, fmatmul, conv2d]
+        app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
