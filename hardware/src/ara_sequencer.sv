@@ -109,6 +109,36 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     endcase
   endfunction : vfu
 
+  // This function determines all the targets VFUs of this operation and returns
+  // a vector. Asserted bits correspond to target VFUs. Unluckily, Verilator does
+  // not support assignment patterns with enum types on the indices
+  function automatic logic [NrVFUs-1:0] target_vfus(ara_op_e op);
+    target_vfus = '0;
+    unique case (op) inside
+      [VADD:VMERGE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu) target_vfus[i] = 1'b1;
+      [VMUL:VFCVTFF]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_MFpu) target_vfus[i] = 1'b1;
+      [VMSEQ:VMXNOR]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu || i == VFU_MaskUnit) target_vfus[i] = 1'b1;
+      [VMFEQ:VMFGE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_MFpu || i == VFU_MaskUnit) target_vfus[i] = 1'b1;
+      [VLE:VLXE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_LoadUnit) target_vfus[i] = 1'b1;
+      [VSE:VSXE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_StoreUnit) target_vfus[i] = 1'b1;
+      [VSLIDEUP:VSLIDEDOWN]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_SlideUnit) target_vfus[i] = 1'b1;
+    endcase
+  endfunction : target_vfus
+
   localparam int unsigned InsnQueueDepth [NrVFUs] = '{
     ValuInsnQueueDepth,
     MfpuInsnQueueDepth,
@@ -128,6 +158,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Each FU has its own ready signal
   logic [NrVFUs-1:0] vinsn_queue_ready;
   logic              accepted_insn;
+  logic [NrVFUs-1:0] target_vfus_vec;
   // Gold tickets and passes
   // Normally, instructions can be issued to the lane sequencer only if
   // the counters have not reached their maximum capacity.
@@ -390,6 +421,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Register the incoming instruction if it is valid
   assign accepted_insn = ara_req_valid_i & (ara_req_token_q != ara_req_i.token);
 
+  // Here to please Verilator
+  assign target_vfus_vec = target_vfus(ara_req_i.op);
+
   // One counter per VFU
   for (genvar i = 0; i < NrVFUs; i++) begin : gen_seq_fu_cnt
     localparam CNT_WIDTH = idx_width(MaxVInsnQueueDepth + 1);
@@ -410,18 +444,20 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     );
 
     // Each PE is ready only if it can accept a new instruction in the queue
-    assign vinsn_queue_ready[i] = (insn_queue_cnt_q[i] < InsnQueueDepth[i]) & (vfu(ara_req_i.op) == vfu_e'(i));
+    assign vinsn_queue_ready[i] = (insn_queue_cnt_q[i] < InsnQueueDepth[i]) & target_vfus_vec[i];
     // Count up on the right coutner
-    assign insn_queue_cnt_up[i] = accepted_insn & (vfu(ara_req_i.op) == vfu_e'(i));
+    assign insn_queue_cnt_up[i] = accepted_insn & target_vfus_vec[i];
     // Count down if an instruction was consumed by the PE
     assign insn_queue_cnt_down[i] = insn_queue_done[i];
     // Don't count if one instruction is issued and one is consumed
     assign insn_queue_cnt_en[i] = insn_queue_cnt_up[i] ^ insn_queue_cnt_down[i];
     // Assign the gold ticket to the new instructions that come when the cnt is already full
+    // Mask instructions receive only the ticket for the Mask Unit, the one that will finish later
     assign gold_ticket_d[i] = accepted_insn & (vfu(ara_req_i.op) == vfu_e'(i)) &
       (insn_queue_cnt_q[i] == InsnQueueDepth[i]);
     // The instructions with a gold ticket can pass the checks even if the cnt is full,
     // but not when (insn_queue_cnt_q[i] == InsnQueueDepth[i] + 1)
     assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]);
   end
+
 endmodule : ara_sequencer
