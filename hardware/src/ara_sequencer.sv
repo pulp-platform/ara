@@ -28,7 +28,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output pe_req_t                 pe_req_o,
     output logic                    pe_req_valid_o,
     output logic      [NrVInsn-1:0] pe_vinsn_running_o,
-    input  logic                    pe_req_ready_i,
+    input  logic      [NrLanes-1:0] pe_req_ready_i,
     input  pe_resp_t    [NrPEs-1:0] pe_resp_i,
     input  logic                    alu_vinsn_done_i,
     input  logic                    mfpu_vinsn_done_i,
@@ -172,11 +172,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic [NrVFUs-1:0] gold_ticket_d, gold_ticket_q;
   logic [NrVFUs-1:0] priority_pass;
 
-  // pe_req_ready_i comes from Lane[0]
+  // pe_req_ready_i comes from all the lanes
   // It is deasserted if the current request is stuck
-  // because the target operand requesters are not ready
-  logic operand_requester_ready;
-  assign operand_requester_ready = pe_req_ready_i;
+  // because the target operand requesters are not ready in that lane
+  logic [NrLanes-1:0] operand_requester_ready;
+  assign operand_requester_ready = pe_req_ready_i[NrLanes-1:0];
 
   // Update the token only upon new instructions
   assign ara_req_token_d = (ara_req_valid_i) ? ara_req_i.token : ara_req_token_q;
@@ -211,7 +211,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     case (state_q)
       IDLE: begin
         // Sent a request, but the operand requesters are not ready
-        if (pe_req_valid_o && !operand_requester_ready) begin
+        if (pe_req_valid_o && !(&operand_requester_ready)) begin
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;

@@ -141,7 +141,7 @@ module ara import ara_pkg::*; #(
     .pe_req_o              (pe_req            ),
     .pe_req_valid_o        (pe_req_valid      ),
     .pe_vinsn_running_o    (pe_vinsn_running  ),
-    .pe_req_ready_i        (pe_req_ready[0]   ),
+    .pe_req_ready_i        (pe_req_ready      ),
     .pe_resp_i             (pe_resp           ),
     .alu_vinsn_done_i      (alu_vinsn_done[0] ),
     .mfpu_vinsn_done_i     (mfpu_vinsn_done[0]),
