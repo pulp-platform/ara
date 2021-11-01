@@ -92,7 +92,7 @@ $(buildpath):
 # Bender
 bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
-	(cat $(ARA_DIR)/scripts/bender-init | bash -s -- 0.21.0)
+	curl --proto '=https' --tlsv1.2 https://fabianschuiki.github.io/bender/init -sSf | sh	-s -- 0.23.1
 	@echo "$$(./bender --version) available."
 
 # Patches
