@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Cut a timing-critical path from Addrgen to Sequencer (1 cycle more to start an AXI transaction)
 - Cut a timing-critical path in the `VSTU`, relative to the calculation of the pointer to the `VRF` word received from the lanes
 - Create `ara_system` wrapper containing Ara, Ariane, and an AXI mux, instantiated from within Ara's SoC
+- Retime address calculation of the `addrgen`
+- Push `MASKU` operand muxing from the lanes to the Mask Unit
+- Reduce CVA6's default cache size
+- Update Verilator to `v4.214`
+- Update bender to `v0.23.1`
 
 ## 2.1.0 - 2021-07-16
 
