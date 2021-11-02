@@ -45,9 +45,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
     input  logic                         mask_operand_ready_i,
     input  strb_t                        mask_i,
     input  logic                         mask_valid_i,
-    output logic                         mask_ready_o,
-    // Interface with the edge spill register
-    output logic                         mask_expected_o
+    output logic                         mask_ready_o
   );
 
   import cf_math_pkg::idx_width;
@@ -199,14 +197,25 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   //  Mask operands  //
   /////////////////////
 
-  assign mask_operand_o       = result_queue_q[result_queue_read_pnt_q].wdata;
-  assign mask_operand_valid_o =
-    result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
+  logic mask_operand_ready;
+  logic mask_operand_gnt;
 
-  // Signal to the spill register if the lane is expecting a mask operand or not
-  // If not, the spill register must not grant and store the generic request from the mask unit
-  // since the data is not for the lanes
-  assign mask_expected_o = ~vinsn_issue_q.vm & vinsn_issue_valid;
+  assign mask_operand_gnt = mask_operand_ready && result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
+
+  stream_register #(
+    .T(elen_t)
+  ) i_mask_operand_register (
+    .clk_i     (clk_i                                                                                        ),
+    .rst_ni    (rst_ni                                                                                       ),
+    .clr_i     (1'b0                                                                                         ),
+    .testmode_i(1'b0                                                                                         ),
+    .data_o    (mask_operand_o                                                                               ),
+    .valid_o   (mask_operand_valid_o                                                                         ),
+    .ready_i   (mask_operand_ready_i                                                                         ),
+    .data_i    (result_queue_q[result_queue_read_pnt_q].wdata                                                ),
+    .valid_i   (result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q]),
+    .ready_o   (mask_operand_ready                                                                           )
+  );
 
   //////////////////////////////
   //  Narrowing instructions  //
@@ -973,7 +982,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
 
     // Received a grant from the VRF, or the mask unit ate the result.
     // Deactivate the request.
-    if (mfpu_result_gnt_i || mask_operand_ready_i) begin
+    if (mfpu_result_gnt_i || mask_operand_gnt) begin
       // How many elements are we committing?
       automatic logic [3:0] commit_element_cnt =
         (1 << (int'(EW64) - int'(vinsn_commit.vtype.vsew)));

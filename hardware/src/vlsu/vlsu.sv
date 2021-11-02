@@ -38,6 +38,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the sequencer
     input  pe_req_t                 pe_req_i,
     input  logic                    pe_req_valid_i,
+    input  logic      [NrVInsn-1:0] pe_vinsn_running_i,
     output logic      [1:0]         pe_req_ready_o,         // Load (0) and Store (1) units
     output pe_resp_t  [1:0]         pe_resp_o,              // Load (0) and Store (1) units
     output logic                    addrgen_ack_o,
@@ -46,7 +47,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
     input  logic      [NrLanes-1:0] stu_operand_valid_i,
-    output logic                    stu_operand_ready_o,
+    output logic      [NrLanes-1:0] stu_operand_ready_o,
     // Address generation operands
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
@@ -127,6 +128,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the sequencer
     .pe_req_i                   (pe_req_i                 ),
     .pe_req_valid_i             (pe_req_valid_i           ),
+    .pe_vinsn_running_i         (pe_vinsn_running_i       ),
     .addrgen_ack_o              (addrgen_ack_o            ),
     .addrgen_error_o            (addrgen_error_o          ),
     // Interface with the lanes
@@ -162,6 +164,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                  ),
     .pe_req_valid_i         (pe_req_valid_i            ),
+    .pe_vinsn_running_i     (pe_vinsn_running_i        ),
     .pe_req_ready_o         (pe_req_ready_o[OffsetLoad]),
     .pe_resp_o              (pe_resp_o[OffsetLoad]     ),
     // Interface with the address generator
@@ -208,6 +211,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                   ),
     .pe_req_valid_i         (pe_req_valid_i             ),
+    .pe_vinsn_running_i     (pe_vinsn_running_i         ),
     .pe_req_ready_o         (pe_req_ready_o[OffsetStore]),
     .pe_resp_o              (pe_resp_o[OffsetStore]     ),
     // Interface with the address generator

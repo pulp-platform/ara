@@ -15,26 +15,27 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     // vector store unit, the slide unit, and the mask unit.
     localparam int unsigned NrPEs   = NrLanes + 4
   ) (
-    input  logic                  clk_i,
-    input  logic                  rst_ni,
+    input  logic                    clk_i,
+    input  logic                    rst_ni,
     // Interface with Ara's dispatcher
-    input  ara_req_t              ara_req_i,
-    input  logic                  ara_req_valid_i,
-    output logic                  ara_req_ready_o,
-    output ara_resp_t             ara_resp_o,
-    output logic                  ara_resp_valid_o,
-    output logic                  ara_idle_o,
+    input  ara_req_t                ara_req_i,
+    input  logic                    ara_req_valid_i,
+    output logic                    ara_req_ready_o,
+    output ara_resp_t               ara_resp_o,
+    output logic                    ara_resp_valid_o,
+    output logic                    ara_idle_o,
     // Interface with the processing elements
-    output pe_req_t               pe_req_o,
-    output logic                  pe_req_valid_o,
-    input  logic      [NrPEs-1:0] pe_req_ready_i,
-    input  pe_resp_t  [NrPEs-1:0] pe_resp_i,
+    output pe_req_t                 pe_req_o,
+    output logic                    pe_req_valid_o,
+    output logic      [NrVInsn-1:0] pe_vinsn_running_o,
+    input  logic      [NrPEs-1:0]   pe_req_ready_i,
+    input  pe_resp_t  [NrPEs-1:0]   pe_resp_i,
     // Only the slide unit can answer with a scalar response
-    input  elen_t                 pe_scalar_resp_i,
-    input  logic                  pe_scalar_resp_valid_i,
+    input  elen_t                   pe_scalar_resp_i,
+    input  logic                    pe_scalar_resp_valid_i,
     // Interface with the Address Generation
-    input  logic                  addrgen_ack_i,
-    input  logic                  addrgen_error_i
+    input  logic                    addrgen_ack_i,
+    input  logic                    addrgen_error_i
   );
 
   ///////////////////////////////////
@@ -72,6 +73,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
       pe_vinsn_running_q <= pe_vinsn_running_d;
     end
   end
+
+  assign pe_vinsn_running_o = vinsn_running_q;
 
   /////////////////
   //  Sequencer  //
@@ -112,10 +115,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     write_list_d       = write_list_q;
 
     // Maintain request
-    pe_req_d = '{
-      vinsn_running: vinsn_running_d,
-      default      : '0
-    };
+    pe_req_d       = '0;
     pe_req_valid_d = 1'b0;
 
     // No response
@@ -140,7 +140,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
         if (pe_req_valid_o && !(&pe_req_ready_i)) begin
           // Maintain output
           pe_req_d               = pe_req_o;
-          pe_req_d.vinsn_running = vinsn_running_d;
           pe_req_valid_d         = pe_req_valid_o;
 
           // Recalculate the hazard bits
@@ -213,7 +212,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
               vl            : ara_req_i.vl,
               vstart        : ara_req_i.vstart,
               vtype         : ara_req_i.vtype,
-              vinsn_running : vinsn_running_d,
               hazard_vd     : pe_req_d.hazard_vd,
               hazard_vm     : pe_req_d.hazard_vm,
               hazard_vs1    : pe_req_d.hazard_vs1,
@@ -276,9 +274,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
         ara_req_ready_o = 1'b0;
 
         // Maintain output
-        pe_req_d               = pe_req_o;
-        pe_req_d.vinsn_running = vinsn_running_d;
-        pe_req_valid_d         = pe_req_valid_o;
+        pe_req_d       = pe_req_o;
+        pe_req_valid_d = pe_req_valid_o;
 
         // Recalculate the hazard bits
         pe_req_d.hazard_vs1 &= vinsn_running_d;

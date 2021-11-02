@@ -30,6 +30,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
+    input  logic             [NrVInsn-1:0] pe_vinsn_running_i,
     output logic                           pe_req_ready_o,
     output pe_resp_t                       pe_resp_o,
     // Interface with the address generator
@@ -203,7 +204,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_cnt_d       = result_queue_cnt_q;
 
     // Vector instructions currently running
-    vinsn_running_d = vinsn_running_q & pe_req_i.vinsn_running;
+    vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
 
     // We are not ready, by default
     axi_addrgen_req_ready_o = 1'b0;
@@ -244,9 +245,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
 
         // How many bytes are we committing?
-        automatic vlen_t valid_bytes;
-        valid_bytes = vinsn_valid_bytes < vrf_valid_bytes ? vinsn_valid_bytes : vrf_valid_bytes;
-        valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes             : axi_valid_bytes;
+        automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
+        valid_bytes = issue_cnt_q < NrLanes * 8     ? vinsn_valid_bytes : vrf_valid_bytes;
+        valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes       : axi_valid_bytes;
 
         r_pnt_d   = r_pnt_q + valid_bytes;
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
@@ -255,7 +256,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
           // Is this byte a valid byte in the R beat?
           if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
-            // Map axy_byte to the corresponding byte in the VRF word (sequential)
+            // Map axi_byte to the corresponding byte in the VRF word (sequential)
             automatic int vrf_seq_byte = axi_byte - lower_byte - r_pnt_q + vrf_pnt_q;
             // And then shuffle it
             automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
@@ -354,7 +355,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Received a grant from the VRF.
       // Deactivate the request, but do not bump the pointers for now.
-      if (ldu_result_gnt_i[lane]) begin
+      if (ldu_result_req_o[lane] && ldu_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
       end

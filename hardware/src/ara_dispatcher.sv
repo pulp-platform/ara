@@ -172,6 +172,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // completion signal if a collision occurs
   logic load_zero_vl, store_zero_vl;
 
+  // Pipeline the VLSU's load and store complete signals, for timing reasons
+  logic load_complete_q;
+  logic store_complete_q;
+  `FF(load_complete_q, load_complete_i, 1'b0)
+  `FF(store_complete_q, store_complete_i, 1'b0)
+
   ///////////////
   //  Decoder  //
   ///////////////
@@ -200,8 +206,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     acc_resp_valid_o = 1'b0;
     acc_resp_o       = '{
       trans_id      : acc_req_i.trans_id,
-      load_complete : load_zero_vl | load_complete_i,
-      store_complete: store_zero_vl | store_complete_i,
+      load_complete : load_zero_vl | load_complete_q,
+      store_complete: store_zero_vl | store_complete_q,
       store_pending : store_pending_i,
       fflags_valid  : |fflags_ex_valid_i,
       default       : '0
@@ -2511,8 +2517,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must
       // delay the zero_vl acknowledge by 1 cycle
-      acc_req_ready_o  = ~((is_vload & load_complete_i) | (is_vstore & store_complete_i));
-      acc_resp_valid_o = ~((is_vload & load_complete_i) | (is_vstore & store_complete_i));
+      acc_req_ready_o  = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
+      acc_resp_valid_o = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
       ara_req_valid_d  = 1'b0;
       load_zero_vl     = is_vload;
       store_zero_vl    = is_vstore;

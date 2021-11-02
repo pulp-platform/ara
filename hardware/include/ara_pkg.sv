@@ -340,9 +340,6 @@ package ara_pkg;
     vlen_t vstart;
     rvv_pkg::vtype_t vtype;
 
-    // Running vector instructions
-    logic [NrVInsn-1:0] vinsn_running;
-
     // Hazards
     logic [NrVInsn-1:0] hazard_vs1;
     logic [NrVInsn-1:0] hazard_vs2;
@@ -786,7 +783,8 @@ package ara_pkg;
   /////////////////////////
 
   // Which FU should process the mask unit request?
-  typedef enum logic {
+  localparam int unsigned NrMaskFUnits = 2;
+  typedef enum logic [cf_math_pkg::idx_width(NrMaskFUnits)-1:0]{
     MaskFUAlu, MaskFUMFpu
   } masku_fu_e;
 

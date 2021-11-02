@@ -198,7 +198,12 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .mst_r_chan_t (system_axi_r_t   ),
     .mst_req_t    (system_axi_req_t ),
     .mst_resp_t   (system_axi_resp_t),
-    .NoSlvPorts   (2                )
+    .NoSlvPorts   (2                ),
+    .SpillAr      (1'b1             ),
+    .SpillR       (1'b1             ),
+    .SpillAw      (1'b1             ),
+    .SpillW       (1'b1             ),
+    .SpillB       (1'b1             )
   ) i_system_mux (
     .clk_i      (clk_i                                ),
     .rst_ni     (rst_ni                               ),

@@ -92,13 +92,14 @@ $(buildpath):
 # Bender
 bender:
 	@[ -x ./bender ] && echo "Bender already exists." || \
-	(cat $(ARA_DIR)/scripts/bender-init | bash -s -- 0.21.0)
+	curl --proto '=https' --tlsv1.2 https://fabianschuiki.github.io/bender/init -sSf | sh	-s -- 0.23.1
 	@echo "$$(./bender --version) available."
 
 # Patches
 .PHONY: apply-patches
 apply-patches: patches
 	cd deps/tech_cells_generic && git apply ../../patches/0001-tech-cells-generic-sram.patch
+	cd deps/cva6 && git apply ../../patches/0002-cva6-cache-size.patch
 
 # Library
 .PHONY: lib

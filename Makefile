@@ -24,7 +24,7 @@ GCC_INSTALL_DIR     ?= ${INSTALL_DIR}/riscv-gcc
 LLVM_INSTALL_DIR    ?= ${INSTALL_DIR}/riscv-llvm
 ISA_SIM_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim
 VERIL_INSTALL_DIR   ?= ${INSTALL_DIR}/verilator
-VERIL_VERSION       ?= v4.210
+VERIL_VERSION       ?= v4.214
 
 CMAKE ?= cmake
 
