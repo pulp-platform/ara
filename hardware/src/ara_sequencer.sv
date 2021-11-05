@@ -476,11 +476,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     assign insn_queue_cnt_en[i] = insn_queue_cnt_up[i] ^ insn_queue_cnt_down[i];
     // Assign the gold ticket to the new instructions that come when the cnt is already full
     // Mask instructions receive only the ticket for the Mask Unit, the one that will finish later
-    assign gold_ticket_d[i] = accepted_insn & (vfu(ara_req_i.op) == vfu_e'(i)) &
-      (insn_queue_cnt_q[i] == InsnQueueDepth[i]);
+    assign gold_ticket_d[i] = accepted_insn ? (vfu(ara_req_i.op) == vfu_e'(i)) &
+      (insn_queue_cnt_q[i] == InsnQueueDepth[i]) : gold_ticket_q[i];
     // The instructions with a gold ticket can pass the checks even if the cnt is full,
     // but not when (insn_queue_cnt_q[i] == InsnQueueDepth[i] + 1)
-    assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]);
+	// Moreover, just arrived instructions cannot use the golden ticket of a previous instruction
+    assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]) &
+      (ara_req_token_q == ara_req_i.token);
   end
 
 endmodule : ara_sequencer
