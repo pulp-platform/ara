@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## Fixed
+
+ - Avoid corner-case in which the sequencer issues the same instruction multiple times when two units become non-ready at the same time
+
+## Added
+
+ - The sequencer can issue instructions to non-full units even if the other units are full
+
+## Changed
+
+ - The main sequencer issues instructions every time the target unit has a non-full instruction queue
+ - The main sequencer stalls if the instructions target a lane, and its operand requesters are not ready
+ - New instructions enter the main sequencer with a token that marks them as new, and the related counter is updated upon arrival
+
 ## 2.2.0 - 2021-11-02
 
 ### Fixed
