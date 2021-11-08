@@ -60,7 +60,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   ////////////////////////////////
 
   // We store a certain number of in-flight vector instructions
-  localparam VInsnQueueDepth = 4;
+  localparam VInsnQueueDepth = VlduInsnQueueDepth;
 
   struct packed {
     pe_req_t [VInsnQueueDepth-1:0] vinsn;

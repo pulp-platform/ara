@@ -7,7 +7,7 @@
 // Ara's sequencer controls the ordering and the dependencies between the
 // parallel vector instructions in execution.
 
-module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
+module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     // RVV Parameters
     parameter  int unsigned NrLanes = 1,          // Number of parallel vector lanes
     // Dependant parameters. DO NOT CHANGE!
@@ -28,8 +28,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     output pe_req_t                 pe_req_o,
     output logic                    pe_req_valid_o,
     output logic      [NrVInsn-1:0] pe_vinsn_running_o,
-    input  logic      [NrPEs-1:0]   pe_req_ready_i,
-    input  pe_resp_t  [NrPEs-1:0]   pe_resp_i,
+    input  logic                    pe_req_ready_i,
+    input  pe_resp_t    [NrPEs-1:0] pe_resp_i,
+    input  logic                    alu_vinsn_done_i,
+    input  logic                    mfpu_vinsn_done_i,
     // Only the slide unit can answer with a scalar response
     input  elen_t                   pe_scalar_resp_i,
     input  logic                    pe_scalar_resp_valid_i,
@@ -107,6 +109,47 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   endfunction : vfu
 
+  localparam int unsigned InsnQueueDepth [NrVFUs] = '{
+    ValuInsnQueueDepth,
+    MfpuInsnQueueDepth,
+    SlduInsnQueueDepth,
+    MaskuInsnQueueDepth,
+    VlduInsnQueueDepth,
+    VstuInsnQueueDepth
+  };
+
+  logic ara_req_token_d, ara_req_token_q;
+
+  // Counters keep track of how many instructions each unit is running.
+  // They have the same size only to keep the code easy.
+  logic [NrVFUs-1:0] [idx_width(MaxVInsnQueueDepth + 1)-1:0] insn_queue_cnt_q;
+  logic [NrVFUs-1:0] insn_queue_done;
+  logic [NrVFUs-1:0] insn_queue_cnt_en, insn_queue_cnt_down, insn_queue_cnt_up;
+  // Each FU has its own ready signal
+  logic [NrVFUs-1:0] vinsn_queue_ready;
+  logic              accepted_insn;
+  // Gold tickets and passes
+  // Normally, instructions can be issued to the lane sequencer only if
+  // the counters have not reached their maximum capacity.
+  // When an instruction enters the main sequencer, it can happen that the
+  // counter is already at maximum capacity The instruction is
+  // registered anyway taking the counter beyond the maximum capacity.
+  // In this case, the instruction will get a gold ticket, to witness that
+  // it was already registered with the counter, so that the instruction can
+  // pass the checks when the counter returns within its limits, even if
+  // it is at its maximum capacity (the instruction was already counted!)
+  logic [NrVFUs-1:0] gold_ticket_d, gold_ticket_q;
+  logic [NrVFUs-1:0] priority_pass;
+
+  // pe_req_ready_i comes from Lane[0]
+  // It is deasserted if the current request is stuck
+  // because the target operand requesters are not ready
+  logic operand_requester_ready;
+  assign operand_requester_ready = pe_req_ready_i;
+
+  // Update the token only upon new instructions
+  assign ara_req_token_d = (ara_req_valid_i) ? ara_req_i.token : ara_req_token_q;
+
   always_comb begin: p_sequencer
     // Default assignments
     state_d            = state_q;
@@ -136,8 +179,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
     case (state_q)
       IDLE: begin
-        // Sent a request, but the VFUs are not ready
-        if (pe_req_valid_o && !(&pe_req_ready_i)) begin
+        // Sent a request, but the operand requesters are not ready
+        if (pe_req_valid_o && !operand_requester_ready) begin
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;
@@ -152,8 +195,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_ready_o = 1'b0;
         // Received a new request
         end else if (ara_req_valid_i) begin
-          // PEs are ready, and we can handle another running vector instruction
-          if (&pe_req_ready_i && !vinsn_running_full) begin
+          // The target PE is ready, and we can handle another running vector instruction
+        // Let instructions with priority pass be issued
+          if ((|vinsn_queue_ready || |priority_pass) && !vinsn_running_full) begin
             ///////////////
             //  Hazards  //
             ///////////////
@@ -312,6 +356,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
       pe_req_o       <= '0;
       pe_req_valid_o <= 1'b0;
+
+      ara_req_token_q <= 1'b1;
+      gold_ticket_q   <= 1'b0;
     end else begin
       state_q <= state_d;
 
@@ -320,7 +367,61 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
       pe_req_o       <= pe_req_d;
       pe_req_valid_o <= pe_req_valid_d;
+
+      ara_req_token_q <= ara_req_token_d;
+      gold_ticket_q   <= gold_ticket_d;
     end
   end
 
+  //////////////
+  // Counters //
+  //////////////
+
+  // Instructions are registered upon entry by the FUs insn queue counters.
+
+  // ALU and MFPU has different signal sources
+  assign insn_queue_done[VFU_Alu]       = alu_vinsn_done_i;
+  assign insn_queue_done[VFU_MFpu]      = mfpu_vinsn_done_i;
+  assign insn_queue_done[VFU_LoadUnit]  = |pe_resp_i[NrLanes+OffsetLoad].vinsn_done;
+  assign insn_queue_done[VFU_StoreUnit] = |pe_resp_i[NrLanes+OffsetStore].vinsn_done;
+  assign insn_queue_done[VFU_MaskUnit]  = |pe_resp_i[NrLanes+OffsetMask].vinsn_done;
+  assign insn_queue_done[VFU_SlideUnit] = |pe_resp_i[NrLanes+OffsetSlide].vinsn_done;
+
+  // Register the incoming instruction if it is valid
+  assign accepted_insn = ara_req_valid_i & (ara_req_token_q != ara_req_i.token);
+
+  // One counter per VFU
+  for (genvar i = 0; i < NrVFUs; i++) begin : gen_seq_fu_cnt
+    localparam CNT_WIDTH = idx_width(MaxVInsnQueueDepth + 1);
+
+    counter #(
+        .WIDTH           (CNT_WIDTH),
+        .STICKY_OVERFLOW (0)
+    ) i_insn_queue_cnt (
+        .clk_i           (clk_i                 ),
+        .rst_ni          (rst_ni                ),
+        .clear_i         (1'b0                  ),
+        .en_i            (insn_queue_cnt_en[i]  ),
+        .load_i          (1'b0                  ),
+        .down_i          (insn_queue_cnt_down[i]),
+        .d_i             ('0                    ),
+        .q_o             (insn_queue_cnt_q[i]   ),
+        .overflow_o      (/* Unconnected */     )
+    );
+
+    // Each PE is ready only if it can accept a new instruction in the queue
+    assign vinsn_queue_ready[i] = (insn_queue_cnt_q[i] < InsnQueueDepth[i]) & (vfu(ara_req_i.op) == vfu_e'(i));
+    // Count up on the right coutner
+    assign insn_queue_cnt_up[i] = accepted_insn & (vfu(ara_req_i.op) == vfu_e'(i));
+    // Count down if an instruction was consumed by the PE
+    assign insn_queue_cnt_down[i] = insn_queue_done[i];
+    // Don't count if one instruction is issued and one is consumed
+    assign insn_queue_cnt_en[i] = insn_queue_cnt_up[i] ^ insn_queue_cnt_down[i];
+    // Assign the gold ticket to the new instructions that come when the cnt is already full
+    assign gold_ticket_d[i] = accepted_insn & (vfu(ara_req_i.op) == vfu_e'(i)) &
+      (insn_queue_cnt_q[i] == InsnQueueDepth[i]);
+    // The instructions with a gold ticket can pass the checks even if the cnt is full,
+    // but not when (insn_queue_cnt_q[i] == InsnQueueDepth[i] + 1)
+    assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]);
+  end
 endmodule : ara_sequencer

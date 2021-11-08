@@ -124,6 +124,8 @@ module ara import ara_pkg::*; #(
   // Interface with the address generator
   logic                   addrgen_ack;
   logic                   addrgen_error;
+  logic     [NrLanes-1:0] alu_vinsn_done;
+  logic     [NrLanes-1:0] mfpu_vinsn_done;
 
   ara_sequencer #(.NrLanes(NrLanes)) i_sequencer (
     .clk_i                 (clk_i           ),
@@ -136,11 +138,13 @@ module ara import ara_pkg::*; #(
     .ara_resp_valid_o      (ara_resp_valid  ),
     .ara_idle_o            (ara_idle        ),
     // Interface with the PEs
-    .pe_req_o              (pe_req          ),
-    .pe_req_valid_o        (pe_req_valid    ),
+    .pe_req_o              (pe_req         ),
+    .pe_req_valid_o        (pe_req_valid   ),
     .pe_vinsn_running_o    (pe_vinsn_running),
-    .pe_req_ready_i        (pe_req_ready    ),
-    .pe_resp_i             (pe_resp         ),
+    .pe_req_ready_i        (pe_req_ready[0]),
+    .pe_resp_i             (pe_resp        ),
+    .alu_vinsn_done_i      (alu_vinsn_done[0] ),
+    .mfpu_vinsn_done_i     (mfpu_vinsn_done[0]),
     // Interface with the slide unit
     .pe_scalar_resp_i      ('0              ),
     .pe_scalar_resp_valid_i(1'b0            ),
@@ -214,6 +218,8 @@ module ara import ara_pkg::*; #(
       .pe_vinsn_running_i          (pe_vinsn_running                  ),
       .pe_req_ready_o              (pe_req_ready[lane]                ),
       .pe_resp_o                   (pe_resp[lane]                     ),
+      .alu_vinsn_done_o            (alu_vinsn_done[lane]              ),
+      .mfpu_vinsn_done_o           (mfpu_vinsn_done[lane]             ),
       // Interface with the slide unit
       .sldu_result_req_i           (sldu_result_req[lane]             ),
       .sldu_result_addr_i          (sldu_result_addr[lane]            ),

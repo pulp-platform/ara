@@ -26,6 +26,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     output logic                 [NrOperandQueues-1:0]    operand_request_valid_o,
     input  logic                 [NrOperandQueues-1:0]    operand_request_ready_i,
     output logic                 [NrVInsn-1:0]            vinsn_running_o,
+    output logic                                          alu_vinsn_done_o,
+    output logic                                          mfpu_vinsn_done_o,
     // Interface with the lane's VFUs
     output vfu_operation_t                                vfu_operation_o,
     output logic                                          vfu_operation_valid_o,
@@ -139,6 +141,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
     // Loops that finished execution
     vinsn_done_d         = alu_vinsn_done_i | mfpu_vinsn_done_i;
+    alu_vinsn_done_o     = |alu_vinsn_done_i;
+    mfpu_vinsn_done_o    = |mfpu_vinsn_done_i;
     pe_resp_o.vinsn_done = vinsn_done_q;
 
     // Make no requests to the operand requester
@@ -149,13 +153,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     vfu_operation_d       = '0;
     vfu_operation_valid_d = 1'b0;
 
-    // Maintain the output until the functional unit acknowledges the operation
-    if (vfu_operation_valid_o && !vfu_ready(vfu_operation_o.vfu, alu_ready_i, mfpu_ready_i)) begin
-      vfu_operation_d       = vfu_operation_o;
-      vfu_operation_valid_d = 1'b1;
-      // We are not ready for another request.
-      pe_req_ready          = 1'b0;
-    end else begin
       // If the operand requesters are busy, abort the request and wait for another cycle.
       if (pe_req_valid) begin
         unique case (pe_req.vfu)
@@ -624,7 +621,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           default:;
         endcase
       end
-    end
   end: sequencer
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_sequencer_ff
