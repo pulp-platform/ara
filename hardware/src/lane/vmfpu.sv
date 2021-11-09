@@ -55,7 +55,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   ////////////////////////////////
 
   // We store a certain number of in-flight vector instructions
-  localparam VInsnQueueDepth = 4;
+  localparam VInsnQueueDepth = MfpuInsnQueueDepth;
 
   struct packed {
     vfu_operation_t [VInsnQueueDepth-1:0] vinsn;

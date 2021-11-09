@@ -233,6 +233,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     is_config            = 1'b0;
     ignore_zero_vl_check = 1'b0;
 
+    // The token must change at every new instruction
+    ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
+
     // Special states
     case (state_q)
       // Is Ara idle?

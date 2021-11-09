@@ -41,6 +41,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrVInsn-1:0]                         pe_vinsn_running_i,
     output logic                                           pe_req_ready_o,
     output `STRUCT_PORT(pe_resp_t)                         pe_resp_o,
+    output logic                                           alu_vinsn_done_o,
+    output logic                                           mfpu_vinsn_done_o,
     // Interface with the Store unit
     output elen_t                                          stu_operand_o,
     output logic                                           stu_operand_valid_o,
@@ -133,6 +135,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_request_valid_o(operand_request_valid),
     .operand_request_ready_i(operand_request_ready),
     .vinsn_running_o        (vinsn_running        ),
+    .alu_vinsn_done_o       (alu_vinsn_done_o     ),
+    .mfpu_vinsn_done_o      (mfpu_vinsn_done_o    ),
     // Interface with the VFUs
     .vfu_operation_o        (vfu_operation        ),
     .vfu_operation_valid_o  (vfu_operation_valid  ),

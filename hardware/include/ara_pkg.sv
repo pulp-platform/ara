@@ -71,6 +71,17 @@ package ara_pkg;
   localparam int unsigned LatFNonComp     = 'd1;
   localparam int unsigned LatFConv        = 'd2;
 
+  // Define the maximum instruction queue depth
+  localparam MaxVInsnQueueDepth = 4;
+  // FUs instruction queue depth.
+  localparam int unsigned MfpuInsnQueueDepth = 4;
+  localparam int unsigned ValuInsnQueueDepth = 4;
+  localparam int unsigned VlduInsnQueueDepth = 4;
+  localparam int unsigned VstuInsnQueueDepth = 4;
+  localparam int unsigned SlduInsnQueueDepth = 2;
+  // Ara supports MaskuInsnQueueDepth = 1 only.
+  localparam int unsigned MaskuInsnQueueDepth = 1;
+
   ///////////////////
   //  Definitions  //
   ///////////////////
@@ -248,6 +259,10 @@ package ara_pkg;
     vlen_t vl;
     vlen_t vstart;
     rvv_pkg::vtype_t vtype;
+
+    // Request token, for registration in the sequencer
+    logic token;
+
   } ara_req_t;
 
   typedef struct packed {

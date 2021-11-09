@@ -7,7 +7,7 @@
 // Ara's sequencer controls the ordering and the dependencies between the
 // parallel vector instructions in execution.
 
-module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
+module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     // RVV Parameters
     parameter  int unsigned NrLanes = 1,          // Number of parallel vector lanes
     // Dependant parameters. DO NOT CHANGE!
@@ -28,8 +28,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     output pe_req_t                 pe_req_o,
     output logic                    pe_req_valid_o,
     output logic      [NrVInsn-1:0] pe_vinsn_running_o,
-    input  logic      [NrPEs-1:0]   pe_req_ready_i,
-    input  pe_resp_t  [NrPEs-1:0]   pe_resp_i,
+    input  logic        [NrPEs-1:0] pe_req_ready_i,
+    input  pe_resp_t    [NrPEs-1:0] pe_resp_i,
+    input  logic                    alu_vinsn_done_i,
+    input  logic                    mfpu_vinsn_done_i,
     // Only the slide unit can answer with a scalar response
     input  elen_t                   pe_scalar_resp_i,
     input  logic                    pe_scalar_resp_valid_i,
@@ -49,6 +51,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
   vid_t               vinsn_id_n;
   logic               vinsn_running_full;
+
+  // NrLanes bits that indicate if the sequencer must stall because of a lane desynchronization.
+  logic [NrVInsn-1:0] stall_lanes_desynch_vec;
+  logic               stall_lanes_desynch;
+  // Transpose the matrix, as vertical slices are not allowed in System Verilog
+  logic [NrVInsn-1:0][NrPEs-1:0] pe_vinsn_running_q_trns;
 
   // Ara is idle if no instruction is currently running on it.
   assign ara_idle_o = !(|vinsn_running_q);
@@ -75,6 +83,23 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   assign pe_vinsn_running_o = vinsn_running_q;
+
+  // Transpose the matrix
+  for (genvar r = 0; r < NrVInsn; r++) begin : gen_trans_mtx_r
+    for (genvar c = 0; c < NrPEs; c++) begin : gen_trans_mtx_c
+      assign pe_vinsn_running_q_trns[r][c] = pe_vinsn_running_q[c][r];
+    end
+  end
+
+  // Stall the sequencer if the lanes get de-synchronized
+  // and lane 0 is no more the last lane to finish the operation.
+  // This is because the instruction counters for ALU and MFPU refers
+  // to lane 0. If lane 0 finishes before the other lanes, the counter
+  // is not reflecting the real lane situations anymore.
+  for (genvar i = 0; i < NrVInsn; i++) begin : gen_stall_lane_desynch
+    assign stall_lanes_desynch_vec[i] = ~pe_vinsn_running_q[0][i] & |pe_vinsn_running_q_trns[i][NrLanes-1:1];
+  end
+  assign stall_lanes_desynch = |stall_lanes_desynch_vec;
 
   /////////////////
   //  Sequencer  //
@@ -107,6 +132,78 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   endfunction : vfu
 
+  // This function determines all the targets VFUs of this operation and returns
+  // a vector. Asserted bits correspond to target VFUs. Unluckily, Verilator does
+  // not support assignment patterns with enum types on the indices
+  function automatic logic [NrVFUs-1:0] target_vfus(ara_op_e op);
+    target_vfus = '0;
+    unique case (op) inside
+      [VADD:VMERGE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu) target_vfus[i] = 1'b1;
+      [VMUL:VFCVTFF]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_MFpu) target_vfus[i] = 1'b1;
+      [VMSEQ:VMXNOR]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu || i == VFU_MaskUnit) target_vfus[i] = 1'b1;
+      [VMFEQ:VMFGE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_MFpu || i == VFU_MaskUnit) target_vfus[i] = 1'b1;
+      [VLE:VLXE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_LoadUnit) target_vfus[i] = 1'b1;
+      [VSE:VSXE]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_StoreUnit) target_vfus[i] = 1'b1;
+      [VSLIDEUP:VSLIDEDOWN]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_SlideUnit) target_vfus[i] = 1'b1;
+    endcase
+  endfunction : target_vfus
+
+  localparam int unsigned InsnQueueDepth [NrVFUs] = '{
+    ValuInsnQueueDepth,
+    MfpuInsnQueueDepth,
+    SlduInsnQueueDepth,
+    MaskuInsnQueueDepth,
+    VlduInsnQueueDepth,
+    VstuInsnQueueDepth
+  };
+
+  logic ara_req_token_d, ara_req_token_q;
+
+  // Counters keep track of how many instructions each unit is running.
+  // They have the same size only to keep the code easy.
+  logic [NrVFUs-1:0] [idx_width(MaxVInsnQueueDepth + 1)-1:0] insn_queue_cnt_q;
+  logic [NrVFUs-1:0] insn_queue_done;
+  logic [NrVFUs-1:0] insn_queue_cnt_en, insn_queue_cnt_down, insn_queue_cnt_up;
+  // Each FU has its own ready signal
+  logic [NrVFUs-1:0] vinsn_queue_ready;
+  logic              accepted_insn;
+  logic [NrVFUs-1:0] target_vfus_vec;
+  // Gold tickets and passes
+  // Normally, instructions can be issued to the lane sequencer only if
+  // the counters have not reached their maximum capacity.
+  // When an instruction enters the main sequencer, it can happen that the
+  // counter is already at maximum capacity The instruction is
+  // registered anyway taking the counter beyond the maximum capacity.
+  // In this case, the instruction will get a gold ticket, to witness that
+  // it was already registered with the counter, so that the instruction can
+  // pass the checks when the counter returns within its limits, even if
+  // it is at its maximum capacity (the instruction was already counted!)
+  logic [NrVFUs-1:0] gold_ticket_d, gold_ticket_q;
+  logic [NrVFUs-1:0] priority_pass;
+
+  // pe_req_ready_i comes from all the lanes
+  // It is deasserted if the current request is stuck
+  // because the target operand requesters are not ready in that lane
+  logic [NrLanes-1:0] operand_requester_ready;
+  assign operand_requester_ready = pe_req_ready_i[NrLanes-1:0];
+
+  // Update the token only upon new instructions
+  assign ara_req_token_d = (ara_req_valid_i) ? ara_req_i.token : ara_req_token_q;
+
   always_comb begin: p_sequencer
     // Default assignments
     state_d            = state_q;
@@ -136,8 +233,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
     case (state_q)
       IDLE: begin
-        // Sent a request, but the VFUs are not ready
-        if (pe_req_valid_o && !(&pe_req_ready_i)) begin
+        // Sent a request, but the operand requesters are not ready
+        if (pe_req_valid_o && !(&operand_requester_ready)) begin
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;
@@ -152,8 +249,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           ara_req_ready_o = 1'b0;
         // Received a new request
         end else if (ara_req_valid_i) begin
-          // PEs are ready, and we can handle another running vector instruction
-          if (&pe_req_ready_i && !vinsn_running_full) begin
+          // The target PE is ready, and we can handle another running vector instruction
+          // Let instructions with priority pass be issued
+          if ((|vinsn_queue_ready || |priority_pass) && !stall_lanes_desynch && !vinsn_running_full) begin
             ///////////////
             //  Hazards  //
             ///////////////
@@ -312,6 +410,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
       pe_req_o       <= '0;
       pe_req_valid_o <= 1'b0;
+
+      ara_req_token_q <= 1'b1;
+      gold_ticket_q   <= 1'b0;
     end else begin
       state_q <= state_d;
 
@@ -320,7 +421,68 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; #(
 
       pe_req_o       <= pe_req_d;
       pe_req_valid_o <= pe_req_valid_d;
+
+      ara_req_token_q <= ara_req_token_d;
+      gold_ticket_q   <= gold_ticket_d;
     end
+  end
+
+  //////////////
+  // Counters //
+  //////////////
+
+  // Instructions are registered upon entry by the FUs insn queue counters.
+
+  // ALU and MFPU has different signal sources
+  assign insn_queue_done[VFU_Alu]       = alu_vinsn_done_i;
+  assign insn_queue_done[VFU_MFpu]      = mfpu_vinsn_done_i;
+  assign insn_queue_done[VFU_LoadUnit]  = |pe_resp_i[NrLanes+OffsetLoad].vinsn_done;
+  assign insn_queue_done[VFU_StoreUnit] = |pe_resp_i[NrLanes+OffsetStore].vinsn_done;
+  assign insn_queue_done[VFU_MaskUnit]  = |pe_resp_i[NrLanes+OffsetMask].vinsn_done;
+  assign insn_queue_done[VFU_SlideUnit] = |pe_resp_i[NrLanes+OffsetSlide].vinsn_done;
+
+  // Register the incoming instruction if it is valid
+  assign accepted_insn = ara_req_valid_i & (ara_req_token_q != ara_req_i.token);
+
+  // Here to please Verilator
+  assign target_vfus_vec = target_vfus(ara_req_i.op);
+
+  // One counter per VFU
+  for (genvar i = 0; i < NrVFUs; i++) begin : gen_seq_fu_cnt
+    localparam CNT_WIDTH = idx_width(MaxVInsnQueueDepth + 1);
+
+    counter #(
+        .WIDTH           (CNT_WIDTH),
+        .STICKY_OVERFLOW (0)
+    ) i_insn_queue_cnt (
+        .clk_i           (clk_i                 ),
+        .rst_ni          (rst_ni                ),
+        .clear_i         (1'b0                  ),
+        .en_i            (insn_queue_cnt_en[i]  ),
+        .load_i          (1'b0                  ),
+        .down_i          (insn_queue_cnt_down[i]),
+        .d_i             ('0                    ),
+        .q_o             (insn_queue_cnt_q[i]   ),
+        .overflow_o      (/* Unconnected */     )
+    );
+
+    // Each PE is ready only if it can accept a new instruction in the queue
+    assign vinsn_queue_ready[i] = (insn_queue_cnt_q[i] < InsnQueueDepth[i]) & target_vfus_vec[i];
+    // Count up on the right coutner
+    assign insn_queue_cnt_up[i] = accepted_insn & target_vfus_vec[i];
+    // Count down if an instruction was consumed by the PE
+    assign insn_queue_cnt_down[i] = insn_queue_done[i];
+    // Don't count if one instruction is issued and one is consumed
+    assign insn_queue_cnt_en[i] = insn_queue_cnt_up[i] ^ insn_queue_cnt_down[i];
+    // Assign the gold ticket to the new instructions that come when the cnt is already full
+    // Mask instructions receive only the ticket for the Mask Unit, the one that will finish later
+    assign gold_ticket_d[i] = accepted_insn ? (vfu(ara_req_i.op) == vfu_e'(i)) &
+      (insn_queue_cnt_q[i] == InsnQueueDepth[i]) : gold_ticket_q[i];
+    // The instructions with a gold ticket can pass the checks even if the cnt is full,
+    // but not when (insn_queue_cnt_q[i] == InsnQueueDepth[i] + 1)
+	// Moreover, just arrived instructions cannot use the golden ticket of a previous instruction
+    assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]) &
+      (ara_req_token_q == ara_req_i.token);
   end
 
 endmodule : ara_sequencer

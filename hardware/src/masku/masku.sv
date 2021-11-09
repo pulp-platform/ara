@@ -94,7 +94,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // unit is only capable of handling one vector instruction at a time.
   // Optimizing this unit is left as future work.
 
-  localparam VInsnQueueDepth = 1;
+  localparam VInsnQueueDepth = MaskuInsnQueueDepth;
 
   struct packed {
     pe_req_t [VInsnQueueDepth-1:0] vinsn;
