@@ -76,8 +76,12 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   //  AXI  //
   ///////////
 
+  // Peripheral AXI port data width
+  localparam AxiPeriphDataWidth = 64;
+  localparam AxiPeriphStrbWidth = AxiPeriphDataWidth / 8;
+
   // Ariane's AXI port data width
-  localparam AxiNarrowDataWidth = 64;
+  localparam AxiNarrowDataWidth = ariane_pkg::DCACHE_LINE_WIDTH;
   localparam AxiNarrowStrbWidth = AxiNarrowDataWidth / 8;
   // Ara's AXI port data width
   localparam AxiWideDataWidth   = AxiDataWidth;
@@ -87,6 +91,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   localparam AxiCoreIdWidth = AxiSocIdWidth - 1;
 
   // Internal types
+  typedef logic [AxiPeriphDataWidth-1:0] axi_periph_data_t;
+  typedef logic [AxiPeriphStrbWidth-1:0] axi_periph_strb_t;
   typedef logic [AxiNarrowDataWidth-1:0] axi_narrow_data_t;
   typedef logic [AxiNarrowStrbWidth-1:0] axi_narrow_strb_t;
   typedef logic [AxiSocIdWidth-1:0] axi_soc_id_t;
@@ -99,8 +105,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     axi_user_t)
   `AXI_TYPEDEF_ALL(soc_narrow, axi_addr_t, axi_soc_id_t, axi_narrow_data_t, axi_narrow_strb_t,
     axi_user_t)
+  `AXI_TYPEDEF_ALL(soc_periph, axi_addr_t, axi_soc_id_t, axi_periph_data_t, axi_periph_strb_t,
+    axi_user_t)
   `AXI_TYPEDEF_ALL(soc_wide, axi_addr_t, axi_soc_id_t, axi_data_t, axi_strb_t, axi_user_t)
-  `AXI_LITE_TYPEDEF_ALL(soc_narrow_lite, axi_addr_t, axi_narrow_data_t, axi_narrow_strb_t)
+  `AXI_LITE_TYPEDEF_ALL(soc_periph_lite, axi_addr_t, axi_periph_data_t, axi_periph_strb_t)
 
   // Buses
   system_req_t  system_axi_req;
@@ -108,8 +116,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   soc_wide_req_t    [NrAXISlaves-1:0] periph_wide_axi_req;
   soc_wide_resp_t   [NrAXISlaves-1:0] periph_wide_axi_resp;
-  soc_narrow_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
-  soc_narrow_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
+  soc_periph_req_t  [NrAXISlaves-1:0] periph_narrow_axi_req;
+  soc_periph_resp_t [NrAXISlaves-1:0] periph_narrow_axi_resp;
 
   ////////////////
   //  Crossbar  //
@@ -244,8 +252,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   axi2apb_64_32 #(
     .AXI4_ADDRESS_WIDTH(AxiAddrWidth      ),
-    .AXI4_RDATA_WIDTH  (AxiNarrowDataWidth),
-    .AXI4_WDATA_WIDTH  (AxiNarrowDataWidth),
+    .AXI4_RDATA_WIDTH  (AxiPeriphDataWidth),
+    .AXI4_WDATA_WIDTH  (AxiPeriphDataWidth),
     .AXI4_ID_WIDTH     (AxiSocIdWidth     ),
     .AXI4_USER_WIDTH   (AxiUserWidth      ),
     .BUFF_DEPTH_SLAVE  (2                 ),
@@ -310,19 +318,19 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   axi_dw_converter #(
     .AxiSlvPortDataWidth(AxiWideDataWidth     ),
-    .AxiMstPortDataWidth(AxiNarrowDataWidth   ),
+    .AxiMstPortDataWidth(AxiPeriphDataWidth   ),
     .AxiAddrWidth       (AxiAddrWidth         ),
     .AxiIdWidth         (AxiSocIdWidth        ),
     .AxiMaxReads        (2                    ),
     .ar_chan_t          (soc_wide_ar_chan_t   ),
-    .mst_r_chan_t       (soc_narrow_r_chan_t  ),
+    .mst_r_chan_t       (soc_periph_r_chan_t  ),
     .slv_r_chan_t       (soc_wide_r_chan_t    ),
-    .aw_chan_t          (soc_narrow_aw_chan_t ),
+    .aw_chan_t          (soc_periph_aw_chan_t ),
     .b_chan_t           (soc_wide_b_chan_t    ),
-    .mst_w_chan_t       (soc_narrow_w_chan_t  ),
+    .mst_w_chan_t       (soc_periph_w_chan_t  ),
     .slv_w_chan_t       (soc_wide_w_chan_t    ),
-    .axi_mst_req_t      (soc_narrow_req_t     ),
-    .axi_mst_resp_t     (soc_narrow_resp_t    ),
+    .axi_mst_req_t      (soc_periph_req_t     ),
+    .axi_mst_resp_t     (soc_periph_resp_t    ),
     .axi_slv_req_t      (soc_wide_req_t       ),
     .axi_slv_resp_t     (soc_wide_resp_t      )
   ) i_axi_slave_uart_dwc (
@@ -338,21 +346,21 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   //  Control registers  //
   /////////////////////////
 
-  soc_narrow_lite_req_t  axi_lite_ctrl_registers_req;
-  soc_narrow_lite_resp_t axi_lite_ctrl_registers_resp;
+  soc_periph_lite_req_t  axi_lite_ctrl_registers_req;
+  soc_periph_lite_resp_t axi_lite_ctrl_registers_resp;
 
   axi_to_axi_lite #(
     .AxiAddrWidth   (AxiAddrWidth          ),
-    .AxiDataWidth   (AxiNarrowDataWidth    ),
+    .AxiDataWidth   (AxiPeriphDataWidth    ),
     .AxiIdWidth     (AxiSocIdWidth         ),
     .AxiUserWidth   (AxiUserWidth          ),
     .AxiMaxReadTxns (1                     ),
     .AxiMaxWriteTxns(1                     ),
     .FallThrough    (1'b0                  ),
-    .full_req_t     (soc_narrow_req_t      ),
-    .full_resp_t    (soc_narrow_resp_t     ),
-    .lite_req_t     (soc_narrow_lite_req_t ),
-    .lite_resp_t    (soc_narrow_lite_resp_t)
+    .full_req_t     (soc_periph_req_t      ),
+    .full_resp_t    (soc_periph_resp_t     ),
+    .lite_req_t     (soc_periph_lite_req_t ),
+    .lite_resp_t    (soc_periph_lite_resp_t)
   ) i_axi_to_axi_lite (
     .clk_i     (clk_i                        ),
     .rst_ni    (rst_ni                       ),
@@ -366,10 +374,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   ctrl_registers #(
     .DRAMBaseAddr   (DRAMBase              ),
     .DRAMLength     (DRAMLength            ),
-    .DataWidth      (AxiNarrowDataWidth    ),
+    .DataWidth      (AxiPeriphDataWidth    ),
     .AddrWidth      (AxiAddrWidth          ),
-    .axi_lite_req_t (soc_narrow_lite_req_t ),
-    .axi_lite_resp_t(soc_narrow_lite_resp_t)
+    .axi_lite_req_t (soc_periph_lite_req_t ),
+    .axi_lite_resp_t(soc_periph_lite_resp_t)
   ) i_ctrl_registers (
     .clk_i                (clk_i                       ),
     .rst_ni               (rst_ni                      ),
@@ -382,19 +390,19 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   axi_dw_converter #(
     .AxiSlvPortDataWidth(AxiWideDataWidth    ),
-    .AxiMstPortDataWidth(AxiNarrowDataWidth  ),
+    .AxiMstPortDataWidth(AxiPeriphDataWidth  ),
     .AxiAddrWidth       (AxiAddrWidth        ),
     .AxiIdWidth         (AxiSocIdWidth       ),
     .AxiMaxReads        (2                   ),
     .ar_chan_t          (soc_wide_ar_chan_t  ),
-    .mst_r_chan_t       (soc_narrow_r_chan_t ),
+    .mst_r_chan_t       (soc_periph_r_chan_t ),
     .slv_r_chan_t       (soc_wide_r_chan_t   ),
-    .aw_chan_t          (soc_narrow_aw_chan_t),
-    .b_chan_t           (soc_narrow_b_chan_t ),
-    .mst_w_chan_t       (soc_narrow_w_chan_t ),
+    .aw_chan_t          (soc_periph_aw_chan_t),
+    .b_chan_t           (soc_periph_b_chan_t ),
+    .mst_w_chan_t       (soc_periph_w_chan_t ),
     .slv_w_chan_t       (soc_wide_w_chan_t   ),
-    .axi_mst_req_t      (soc_narrow_req_t    ),
-    .axi_mst_resp_t     (soc_narrow_resp_t   ),
+    .axi_mst_req_t      (soc_periph_req_t    ),
+    .axi_mst_resp_t     (soc_periph_resp_t   ),
     .axi_slv_req_t      (soc_wide_req_t      ),
     .axi_slv_resp_t     (soc_wide_resp_t     )
   ) i_axi_slave_ctrl_dwc (
