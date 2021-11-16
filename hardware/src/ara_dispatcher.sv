@@ -2048,11 +2048,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_valid_d     = 1'b1;
 
             // Decode the element width
+            // Indexed memory operations follow a different rule
             unique case ({insn.vmem_type.mew, insn.vmem_type.width})
-              4'b0000: ara_req_d.vtype.vsew = EW8;
-              4'b0101: ara_req_d.vtype.vsew = EW16;
-              4'b0110: ara_req_d.vtype.vsew = EW32;
-              4'b0111: ara_req_d.vtype.vsew = EW64;
+              4'b0000: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW8;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW8;
+                  end
+              end
+              4'b0101: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW16;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW16;
+                  end
+              end
+              4'b0110: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW32;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW32;
+                  end
+              end
+              4'b0111: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW64;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW64;
+                  end
+              end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
                 acc_req_ready_o  = 1'b1;
                 acc_resp_o.error = 1'b1;
@@ -2220,11 +2249,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             ara_req_valid_d     = 1'b1;
 
             // Decode the element width
+            // Indexed memory operations follow a different rule
             unique case ({insn.vmem_type.mew, insn.vmem_type.width})
-              4'b0000: ara_req_d.vtype.vsew = EW8;
-              4'b0101: ara_req_d.vtype.vsew = EW16;
-              4'b0110: ara_req_d.vtype.vsew = EW32;
-              4'b0111: ara_req_d.vtype.vsew = EW64;
+              4'b0000: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW8;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW8;
+                  end
+              end
+              4'b0101: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW16;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW16;
+                  end
+              end
+              4'b0110: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW32;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW32;
+                  end
+              end
+              4'b0111: begin
+                  if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
+                    ara_req_d.vtype.vsew = EW64;
+                  end else begin
+                    ara_req_d.vtype.vsew = vtype_q.vsew;
+                    ara_req_d.eew_vs2    = EW64;
+                  end
+              end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
                 acc_req_ready_o  = 1'b1;
                 acc_resp_o.error = 1'b1;

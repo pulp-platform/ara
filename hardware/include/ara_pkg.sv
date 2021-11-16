@@ -155,7 +155,7 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  localparam int unsigned NumConversions = 10;
+  localparam int unsigned NumConversions = 11;
 
   typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
@@ -832,6 +832,12 @@ package ara_pkg;
     vaddr = vid * (VLENB / NrLanes / 8);
   endfunction: vaddr
 
+  // Differenciate between SLDU and ADDRGEN operands from opqueue
+  typedef enum logic {
+    SLDU    = 1'b0,
+    ADDRGEN = 1'b1
+  } target_fu_e;
+
   // This is the interface between the lane's sequencer and the operand request stage, which
   // makes consecutive requests to the vector elements inside the VRF.
   typedef struct packed {
@@ -845,6 +851,8 @@ package ara_pkg;
 
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion
+
+    target_fu_e target_fu;     // Target FU of the opqueue (if it is not clear)
 
     // Vector machine metadata
     rvv_pkg::vtype_t vtype;
@@ -860,6 +868,7 @@ package ara_pkg;
     vlen_t vl;                 // Vector length
     opqueue_conversion_e conv; // Type conversion
     logic [1:0] ntr_red;       // Neutral bits for reductions
+    target_fu_e target_fu;     // Target FU of the opqueue (if it is not clear)
   } operand_queue_cmd_t;
 
   // This is the interface between the lane's sequencer and the lane's VFUs.
