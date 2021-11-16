@@ -112,7 +112,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
         // Arithmetic instructions
-        VADD, VADC, VMADC: unique case (vew_i)
+        VADD, VADC, VMADC, VREDSUM: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b] +
                 logic'(op_i inside {VADC, VMADC} && mask_i[1*b] && !vm_i);

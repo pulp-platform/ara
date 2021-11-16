@@ -102,6 +102,8 @@ package ara_pkg;
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
     VMERGE,
+    // Integer Reductions
+    VREDSUM, VREDAND, VREDOR, VREDXOR, VREDMINU, VREDMIN, VREDMAXU, VREDMAX, VWREDSUMU, VWREDSUM,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Div
@@ -136,6 +138,12 @@ package ara_pkg;
     is_store = op inside {[VSE:VSXE]};
   endfunction : is_store
 
+  typedef enum logic [1:0] {
+    NO_RED,
+    ALU_RED,
+    MFPU_RED
+  } sldu_mux_e;
+
   ////////////////////////
   //  Width conversion  //
   ////////////////////////
@@ -147,7 +155,7 @@ package ara_pkg;
   // an element of width SEW for the functional units. The operand queues support the following
   // type conversions:
 
-  localparam int unsigned NumConversions = 9;
+  localparam int unsigned NumConversions = 10;
 
   typedef enum logic [$clog2(NumConversions)-1:0] {
     OpQueueConversionNone,
@@ -158,6 +166,7 @@ package ara_pkg;
     OpQueueConversionZExt8,
     OpQueueConversionSExt8,
     OpQueueConversionWideFP2,
+    OpQueueReductionZExt,
     OpQueueAdjustFPCvt
   } opqueue_conversion_e;
   // OpQueueAdjustFPCvt is introduced to support widening FP conversions, to comply with the
@@ -295,7 +304,7 @@ package ara_pkg;
   // scale also are with index given by NrLanes plus the following offset.
   //
   // The load and the store unit must be at the beginning of this enumeration.
-  typedef enum {
+  typedef enum logic [1:0] {
     OffsetLoad, OffsetStore, OffsetMask, OffsetSlide
   } vfu_offset_e;
 

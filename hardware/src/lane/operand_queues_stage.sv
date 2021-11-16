@@ -8,7 +8,8 @@
 
 module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     // Support for floating-point data types
-    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble,
+    parameter int  unsigned LaneIdx    = 0
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,
@@ -54,7 +55,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .FPUSupport    (FPUSupport),
     .SupportIntExt2(1'b1      ),
     .SupportIntExt4(1'b1      ),
-    .SupportIntExt8(1'b1      )
+    .SupportIntExt8(1'b1      ),
+    .LaneIdx       (LaneIdx   )
   ) i_operand_queue_alu_a (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -75,7 +77,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .FPUSupport    (FPUSupport),
     .SupportIntExt2(1'b1      ),
     .SupportIntExt4(1'b1      ),
-    .SupportIntExt8(1'b1      )
+    .SupportIntExt8(1'b1      ),
+    .LaneIdx       (LaneIdx   )
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
