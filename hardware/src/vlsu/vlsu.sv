@@ -43,6 +43,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output pe_resp_t  [1:0]         pe_resp_o,              // Load (0) and Store (1) units
     output logic                    addrgen_ack_o,
     output logic                    addrgen_error_o,
+    output vlen_t                   addrgen_error_vl_o,
     // Interface with the lanes
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
@@ -50,6 +51,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic      [NrLanes-1:0] stu_operand_ready_o,
     // Address generation operands
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
+    input  target_fu_e[NrLanes-1:0] addrgen_operand_target_fu_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                    addrgen_operand_ready_o,
     // Interface with the Mask unit
@@ -131,8 +133,10 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i         (pe_vinsn_running_i       ),
     .addrgen_ack_o              (addrgen_ack_o            ),
     .addrgen_error_o            (addrgen_error_o          ),
+    .addrgen_error_vl_o         (addrgen_error_vl_o       ),
     // Interface with the lanes
     .addrgen_operand_i          (addrgen_operand_i        ),
+    .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
     .addrgen_operand_valid_i    (addrgen_operand_valid_i  ),
     .addrgen_operand_ready_o    (addrgen_operand_ready_o  ),
     // Interface with the load/store units

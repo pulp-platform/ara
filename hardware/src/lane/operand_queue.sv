@@ -33,6 +33,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output logic                              operand_queue_ready_o,
     // Interface with the functional units
     output elen_t                             operand_o,
+    output target_fu_e                        operand_target_fu_o,
     output logic                              operand_valid_o,
     input  logic               [NrSlaves-1:0] operand_ready_i
   );
@@ -251,6 +252,9 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Send the operand
     operand_o       = conv_operand;
     operand_valid_o = ibuf_operand_valid;
+    // Encode the target functional unit when it is not clear
+    // Default encoding: SLDU == 1'b0, ADDRGEN == 1'b1
+    operand_target_fu_o = cmd.target_fu;
 
     // Account for sent operands
     if (operand_valid_o && |operand_ready_i) begin

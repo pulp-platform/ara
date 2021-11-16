@@ -49,6 +49,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                           stu_operand_ready_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
+    output target_fu_e                                     sldu_addrgen_operand_target_fu_o,
     output logic                                           sldu_addrgen_operand_valid_o,
     input  logic                                           sldu_operand_ready_i,
     input  logic                                           addrgen_operand_ready_i,
@@ -309,6 +310,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_ready_i          (stu_operand_ready_i         ),
     // Address Generation Unit
     .sldu_addrgen_operand_o       (sldu_addrgen_operand_o      ),
+    .sldu_addrgen_operand_target_fu_o (sldu_addrgen_operand_target_fu_o),
     .sldu_addrgen_operand_valid_o (sldu_addrgen_operand_valid_o),
     .sldu_operand_ready_i         (sldu_operand_ready_i        ),
     .addrgen_operand_ready_i      (addrgen_operand_ready_i     ),

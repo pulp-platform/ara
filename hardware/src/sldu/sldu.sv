@@ -25,6 +25,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     output pe_resp_t               pe_resp_o,
     // Interface with the lanes
     input  elen_t    [NrLanes-1:0] sldu_operand_i,
+    input  target_fu_e [NrLanes-1:0] sldu_operand_target_fu_i,
     input  logic     [NrLanes-1:0] sldu_operand_valid_i,
     output logic                   sldu_operand_ready_o,
     output logic     [NrLanes-1:0] sldu_result_req_o,
@@ -248,7 +249,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
-        if (&sldu_operand_valid_i && !result_queue_full && (vinsn_issue_q.vm || (|mask_valid_i)))
+        if (&sldu_operand_valid_i && (sldu_operand_target_fu_i[0] == SLDU) && !result_queue_full && (vinsn_issue_q.vm || (|mask_valid_i)))
         begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
           automatic int in_byte_count = NrLanes * 8 - in_pnt_q;

@@ -124,6 +124,7 @@ module ara import ara_pkg::*; #(
   // Interface with the address generator
   logic                   addrgen_ack;
   logic                   addrgen_error;
+  vlen_t                  addrgen_error_vl;
   logic     [NrLanes-1:0] alu_vinsn_done;
   logic     [NrLanes-1:0] mfpu_vinsn_done;
 
@@ -150,7 +151,8 @@ module ara import ara_pkg::*; #(
     .pe_scalar_resp_valid_i(1'b0              ),
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack       ),
-    .addrgen_error_i       (addrgen_error     )
+    .addrgen_error_i       (addrgen_error     ),
+    .addrgen_error_vl_i    (addrgen_error_vl  )
   );
 
   /////////////
@@ -164,6 +166,7 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]                     stu_operand_ready;
   // Slide unit/address generation operands
   elen_t     [NrLanes-1:0]                     sldu_addrgen_operand;
+  target_fu_e[NrLanes-1:0]                     sldu_addrgen_operand_target_fu;
   logic      [NrLanes-1:0]                     sldu_addrgen_operand_valid;
   logic                                        sldu_operand_ready;
   logic                                        addrgen_operand_ready;
@@ -240,6 +243,7 @@ module ara import ara_pkg::*; #(
       .stu_operand_ready_i         (stu_operand_ready[lane]           ),
       // Interface with the slide/address generation unit
       .sldu_addrgen_operand_o      (sldu_addrgen_operand[lane]        ),
+      .sldu_addrgen_operand_target_fu_o(sldu_addrgen_operand_target_fu[lane]),
       .sldu_addrgen_operand_valid_o(sldu_addrgen_operand_valid[lane]  ),
       .addrgen_operand_ready_i     (addrgen_operand_ready             ),
       .sldu_operand_ready_i        (sldu_operand_ready                ),
@@ -299,6 +303,7 @@ module ara import ara_pkg::*; #(
     .pe_resp_o              (pe_resp[NrLanes+OffsetStore : NrLanes+OffsetLoad]     ),
     .addrgen_ack_o          (addrgen_ack                                           ),
     .addrgen_error_o        (addrgen_error                                         ),
+    .addrgen_error_vl_o     (addrgen_error_vl                                      ),
     // Interface with the Mask unit
     .mask_i                 (mask                                                  ),
     .mask_valid_i           (mask_valid                                            ),
@@ -311,6 +316,7 @@ module ara import ara_pkg::*; #(
     .stu_operand_ready_o    (stu_operand_ready                                     ),
     // Address Generation
     .addrgen_operand_i      (sldu_addrgen_operand                                  ),
+    .addrgen_operand_target_fu_i (sldu_addrgen_operand_target_fu                   ),
     .addrgen_operand_valid_i(sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o(addrgen_operand_ready                                 ),
     // Load unit
@@ -343,6 +349,7 @@ module ara import ara_pkg::*; #(
     .pe_resp_o           (pe_resp[NrLanes+OffsetSlide]     ),
     // Interface with the lanes
     .sldu_operand_i      (sldu_addrgen_operand             ),
+    .sldu_operand_target_fu_i (sldu_addrgen_operand_target_fu),
     .sldu_operand_valid_i(sldu_addrgen_operand_valid       ),
     .sldu_operand_ready_o(sldu_operand_ready               ),
     .sldu_result_req_o   (sldu_result_req                  ),
