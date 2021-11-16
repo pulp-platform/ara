@@ -34,6 +34,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrVInsn-1:0]         pe_vinsn_running_i,
     output logic                           addrgen_error_o,
     output logic                           addrgen_ack_o,
+    output vlen_t                          addrgen_error_vl_o,
     // Interface with the load/store units
     output addrgen_axi_req_t               axi_addrgen_req_o,
     output logic                           axi_addrgen_req_valid_o,
@@ -50,6 +51,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::aligned_addr;
   import axi_pkg::BURST_INCR;
   import axi_pkg::CACHE_MODIFIABLE;
+
+  // Check if the address is aligned to a particular width
+  function automatic logic is_addr_error(axi_addr_t addr, vew_e vew);
+    is_addr_error = |(addr & (elen_t'(1 << vew) - 1));
+  endfunction // is_addr_error
 
   ////////////////////
   //  PE Req Queue  //
@@ -101,6 +107,43 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   assign axi_addrgen_req_valid_o = !axi_addrgen_queue_empty;
 
   //////////////////////////
+  //  Indexed Memory Ops  //
+  //////////////////////////
+
+  // Support for indexed memory operations (scatter/gather)
+  logic [$bits(elen_t)*NrLanes-1:0] shuffled_word;
+  logic [$bits(elen_t)*NrLanes-1:0] deshuffled_word;
+  elen_t                            reduced_word;
+  axi_addr_t                        idx_final_addr_d, idx_final_addr_q;
+  elen_t                            idx_addr;
+  logic                             idx_op_error_d, idx_op_error_q;
+  vlen_t                            addrgen_error_vl_d;
+
+  // Pointer to point to the correct
+  logic [$clog2(NrLanes)-1:0] word_lane_ptr_d, word_lane_ptr_q;
+  logic [$clog2($bits(elen_t)/8)-1:0] elm_ptr_d, elm_ptr_q;
+  logic [$clog2($bits(elen_t)/8)-1:0] last_elm_subw_d, last_elm_subw_q;
+  vlen_t                              idx_op_cnt_d, idx_op_cnt_q;
+
+  // Spill reg signals
+  logic      idx_addr_valid_d, idx_addr_valid_q;
+  logic      idx_addr_ready_d, idx_addr_ready_q;
+
+  // Break the path from the VRF to the AXI request
+  spill_register #(
+    .T(elen_t)
+  ) i_addrgen_idx_op_spill_reg (
+    .clk_i  (clk_i           ),
+    .rst_ni (rst_ni          ),
+    .valid_i(idx_addr_valid_d),
+    .ready_o(idx_addr_ready_q),
+    .data_i (idx_final_addr_d),
+    .valid_o(idx_addr_valid_q),
+    .ready_i(idx_addr_ready_d),
+    .data_o (idx_final_addr_q)
+  );
+
+  //////////////////////////
   //  Address generation  //
   //////////////////////////
 
@@ -110,25 +153,15 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   // The Address Generator can be in one of the following three states.
   // IDLE: Waiting for a vector load/store instruction.
   // ADDRGEN: Generates a series of AXI requests from a vector instruction.
-  // ADDRGEN_SCATTER_GATHER: Generates a series of AXI requests from a
+  // ADDRGEN_IDX_OP: Generates a series of AXI requests from a
   //    vector instruction, but reading a vector of offsets from Ara's lanes.
   //    This is used for scatter and gather operations.
   enum logic [1:0] {
     IDLE,
     ADDRGEN,
-    ADDRGEN_SCATTER_GATHER
+    ADDRGEN_IDX_OP,
+    ADDRGEN_IDX_OP_END
   } state_q, state_d;
-
-  // Support for Scatther/Gather
-  axi_addr_t idx_final_addr;
-  logic [$bits(elen_t)*NrLanes-1:0] shuffled_word;
-  logic [$bits(elen_t)*NrLanes-1:0] deshuffled_word;
-  elen_t               reduced_word;
-  elen_t               index_address;
-  // Pointer to point to the correct lane
-  logic [NrLanes-1:0] word_lane_ptr_d, word_lane_ptr_q;
-  logic [$clog2($bits(elen_t)/8)-1:0] elm_ptr_d, elm_ptr_q;
-  logic [$clog2($bits(elen_t)/8)-1:0] last_elm_subw_d, last_elm_subw_q;
 
   always_comb begin: addr_generation
     // Maintain state
@@ -146,6 +179,29 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     addrgen_ack_o           = 1'b0;
     addrgen_error_o         = 1'b0;
 
+    // No valid words for the spill register
+    idx_addr_valid_d        = 1'b0;
+    addrgen_operand_ready_o = 1'b0;
+    elm_ptr_d               = elm_ptr_q;
+    idx_op_cnt_d            = idx_op_cnt_q;
+    word_lane_ptr_d         = word_lane_ptr_q;
+    idx_final_addr_d        = idx_final_addr_q;
+    last_elm_subw_d         = last_elm_subw_q;
+
+    // Support for indexed operations
+    shuffled_word = addrgen_operand_i;
+    // Deshuffle the whole NrLanes * 8 Byte word
+    for (int unsigned b = 0; b < 8*NrLanes; b++) begin
+      automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, pe_req_q.eew_vs2);
+      deshuffled_word[8*b +: 8] = shuffled_word[8*b_shuffled +: 8];
+    end
+
+    // Extract only 1/NrLanes of the word
+    for (int unsigned lane = 0; lane < NrLanes; lane++)
+      if (lane == word_lane_ptr_q)
+        reduced_word = deshuffled_word[word_lane_ptr_q*$bits(elen_t) +: $bits(elen_t)];
+    idx_addr = reduced_word;
+
     case (state_q)
       IDLE: begin
         // Received a new request
@@ -158,14 +214,29 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           pe_req_d = pe_req_i;
 
           case (pe_req_i.op)
-            VLXE, VSXE: state_d = ADDRGEN_SCATTER_GATHER;
-            default:    state_d = ADDRGEN;
+            VLXE, VSXE: begin
+              state_d = ADDRGEN_IDX_OP;
+
+              // Load element pointers
+              case (pe_req_i.eew_vs2)
+                EW8:  last_elm_subw_d = 7;
+                EW16: last_elm_subw_d = 3;
+                EW32: last_elm_subw_d = 1;
+                EW64: last_elm_subw_d = 0;
+                default:
+                  last_elm_subw_d = 0;
+              endcase
+
+              // Load element counter
+              idx_op_cnt_d = pe_req_i.vl;
+            end
+            default: state_d = ADDRGEN;
           endcase
         end
       end
       ADDRGEN: begin
         // Ara does not support misaligned AXI requests
-        if (|(pe_req_q.scalar_op & (elen_t'(1 << pe_req_q.vtype.vsew) - 1))) begin
+        if (is_addr_error(pe_req_q.scalar_op, pe_req_q.vtype.vsew)) begin
           state_d         = IDLE;
           addrgen_ack_o   = 1'b1;
           addrgen_error_o = 1'b1;
@@ -188,26 +259,102 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           end
         end
       end
-      ADDRGEN_SCATTER_GATHER : begin
+      ADDRGEN_IDX_OP: begin
         // Stall the interface until the operation is over to catch possible exceptions
-        // Wait until we have a valid data
-        // Make a single request
-        if (|addrgen_operand_valid_i && addrgen_operand_i) begin
-          addrgen_req = '{
-            addr    : pe_req_q.scalar_op,
-            len     : pe_req_q.vl,
-            stride  : pe_req_q.stride,
-            vew     : pe_req_q.vtype.vsew,
-            is_load : is_load(pe_req_q.op),
-            is_burst: 1'b0
-          };
-          addrgen_req_valid = 1'b1;
 
-          if (addrgen_req_ready) begin
-            addrgen_req_valid = '0;
-            addrgen_ack_o     = 1'b1;
-            state_d           = IDLE;
+        // Every address can generate an exception
+        addrgen_req = '{
+          addr    : pe_req_q.scalar_op,
+          len     : pe_req_q.vl,
+          stride  : pe_req_q.stride,
+          vew     : pe_req_q.vtype.vsew,
+          is_load : is_load(pe_req_q.op),
+          // Unit-strided loads/stores trigger incremental AXI bursts.
+          is_burst: 1'b0
+        };
+        addrgen_req_valid = 1'b1;
+
+        // Handle handshake and data between VRF and spill register
+        // We accept all the incoming data, without any checks
+        // since Ara stalls on an indexed memory operation
+        if (&addrgen_operand_valid_i & addrgen_operand_target_fu_i[0] == ADDRGEN) begin
+
+          // Valid data for the spill register
+          idx_addr_valid_d = 1'b1;
+
+          // Select the correct element, and zero extend it depending on vsew
+          case (pe_req_q.eew_vs2)
+            EW8: begin
+              for (int unsigned b = 0; b < 8; b++)
+                if (b == elm_ptr_q)
+                  idx_addr = reduced_word[b*8 +: 8];
+            end
+            EW16: begin
+              for (int unsigned h = 0; h < 4; h++)
+                if (h == elm_ptr_q)
+                  idx_addr = reduced_word[h*16 +: 16];
+            end
+            EW32: begin
+              for (int unsigned w = 0; w < 2; w++)
+                if (w == elm_ptr_q)
+                  idx_addr = reduced_word[w*32 +: 32];
+            end
+            EW64: begin
+              for (int unsigned d = 0; d < 1; d++)
+                if (d == elm_ptr_q)
+                  idx_addr = reduced_word[d*64 +: 64];
+            end
+            default: begin
+              for (int unsigned b = 0; b < 8; b++)
+                if (b == elm_ptr_q)
+                  idx_addr = reduced_word[b*8 +: 8];
+            end
+          endcase
+
+          // Compose the address
+          idx_final_addr_d = pe_req_q.scalar_op + idx_addr;
+
+          // When the data is accepted
+          if (idx_addr_ready_q) begin
+            // Consumed one element
+            idx_op_cnt_d = idx_op_cnt_q - 1;
+            // Have we finished a full NrLanes*64b word?
+            if (elm_ptr_q == last_elm_subw_q) begin
+              // Bump lane pointer
+              elm_ptr_d       = '0;
+              word_lane_ptr_d += 1;
+              if (word_lane_ptr_q == NrLanes - 1)
+              // Ready for the next full word
+              addrgen_operand_ready_o = 1'b1;
+            end else begin
+              // Bump element pointer
+              elm_ptr_d += 1;
+            end
           end
+
+          if (idx_op_cnt_d == '0) begin
+            // Give a ready to the lanes if this was not done before
+            addrgen_operand_ready_o = 1'b1;
+          end
+        end
+
+        if (idx_op_error_d || addrgen_req_ready) begin
+          state_d = ADDRGEN_IDX_OP_END;
+        end
+      end
+
+      // This state exists not to create combinatorial paths on the interface
+      ADDRGEN_IDX_OP_END : begin
+        // Acknowledge the indexed memory operation
+        addrgen_ack_o     = 1'b1;
+        addrgen_req_valid = '0;
+        state_d           = IDLE;
+        // Reset pointers
+        elm_ptr_d       = '0;
+        word_lane_ptr_d = '0;
+        // Raise an error if necessary
+        if (idx_op_error_q) begin
+          addrgen_error_o = 1'b1;
         end
       end
     endcase
@@ -215,19 +362,25 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q         <= IDLE;
-      pe_req_q        <= '0;
-      vinsn_running_q <= '0;
-      word_lane_ptr_q <= '0;
-      elm_ptr_q       <= '0;
-      last_elm_subw_q <= '0;
+      state_q            <= IDLE;
+      pe_req_q           <= '0;
+      vinsn_running_q    <= '0;
+      word_lane_ptr_q    <= '0;
+      elm_ptr_q          <= '0;
+      idx_op_cnt_q       <= '0;
+      last_elm_subw_q    <= '0;
+      idx_op_error_q     <= '0;
+      addrgen_error_vl_o <= '0;
     end else begin
-      state_q         <= state_d;
-      pe_req_q        <= pe_req_d;
-      vinsn_running_q <= vinsn_running_d;
-      word_lane_ptr_q <= word_lane_ptr_d;
-      elm_ptr_q       <= elm_ptr_d;
-      last_elm_subw_q <= last_elm_subw_d;
+      state_q            <= state_d;
+      pe_req_q           <= pe_req_d;
+      vinsn_running_q    <= vinsn_running_d;
+      word_lane_ptr_q    <= word_lane_ptr_d;
+      elm_ptr_q          <= elm_ptr_d;
+      idx_op_cnt_q       <= idx_op_cnt_d;
+      last_elm_subw_q    <= last_elm_subw_d;
+      idx_op_error_q     <= idx_op_error_d;
+      addrgen_error_vl_o <= addrgen_error_vl_d;
     end
   end
 
@@ -289,15 +442,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     eff_axi_dw_d     = eff_axi_dw_q;
     eff_axi_dw_log_d = eff_axi_dw_log_q;
 
-    idx_final_addr = axi_addrgen_q.addr;
-    shuffled_word = '0;
-    deshuffled_word = '0;
-    index_address   = '0;
-    reduced_word    = '0;
-    addrgen_operand_ready_o = 1'b0;
-    word_lane_ptr_d = word_lane_ptr_q;
-    elm_ptr_d = elm_ptr_q;
-    last_elm_subw_d = last_elm_subw_q;
+    idx_addr_ready_d        = 1'b0;
+    addrgen_error_vl_d      = '0;
+
+    // No error by default
+    idx_op_error_d = 1'b0;
 
     // No addrgen request to acknowledge
     addrgen_req_ready = 1'b0;
@@ -349,19 +498,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // same page as aligned_start_addr
           if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
             aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
-
-          // Support for Indexed Memory Operations
-          // Load element pointers
-          elm_ptr_d       = '0;
-          word_lane_ptr_d = '0;
-          case (axi_addrgen_d.vew)
-            EW8:  last_elm_subw_d = 7;
-            EW16: last_elm_subw_d = 3;
-            EW32: last_elm_subw_d = 1;
-            EW64: last_elm_subw_d = 0;
-            default:
-              last_elm_subw_d = 0;
-          endcase
         end
       end
       AXI_ADDRGEN_MISALIGNED: begin
@@ -490,7 +626,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // same page as aligned_start_addr
               if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12])
                 aligned_end_addr_d = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
-            end else if (state_q != ADDRGEN_SCATTER_GATHER) begin
+            end else if (state_q != ADDRGEN_IDX_OP) begin
 
               /////////////////////
               //  Strided access //
@@ -546,56 +682,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               //  Indexed access  //
               //////////////////////
 
-              if (&addrgen_operand_valid_i & addrgen_operand_target_fu_i[0] == ADDRGEN) begin
-
-                shuffled_word = addrgen_operand_i;
-
-                // Deshuffle the whole NrLanes * 8 Byte word
-                for (int unsigned b = 0; b < 8*NrLanes; b++) begin
-                  automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, axi_addrgen_q.vew);
-                  deshuffled_word[8*b +: 8] = shuffled_word[8*b_shuffled +: 8];
-                end
-
-                // Extract only 1/NrLanes of the word
-                for (int unsigned lane = 0; lane < NrLanes; lane++)
-                  if (lane == word_lane_ptr_q)
-                    reduced_word = deshuffled_word[word_lane_ptr_q*$bits(elen_t) +: $bits(elen_t)];
-
-                // Select the correct element, and zero extend it depending on vsew
-                case (axi_addrgen_q.vew)
-                  EW8: begin
-                    for (int unsigned b = 0; b < 8; b++)
-                      if (b == elm_ptr_q)
-                        index_address[7:0] = reduced_word[b*8 +: 8];
-                    index_address[$bits(elen_t)-1 : 8]  = '0;
-                  end
-                  EW16: begin
-                    for (int unsigned h = 0; h < 4; h++)
-                      if (h == elm_ptr_q)
-                        index_address[15:0] = reduced_word[h*16 +: 16];
-                    index_address[$bits(elen_t)-1 : 16]  = '0;
-                  end
-                  EW32: begin
-                    for (int unsigned w = 0; w < 2; w++)
-                      if (w == elm_ptr_q)
-                        index_address[31:0] = reduced_word[w*32 +: 32];
-                    index_address[$bits(elen_t)-1 : 32]  = '0;
-                  end
-                  default: begin
-                    for (int unsigned b = 0; b < 8; b++)
-                      if (b == elm_ptr_q)
-                        index_address[7:0] = reduced_word[b*8 +: 8];
-                    index_address[$bits(elen_t)-1 : 8]  = '0;
-                  end
-                endcase
-
-                // Compose the address
-                idx_final_addr = axi_addrgen_q.addr + index_address;
+              if (idx_addr_valid_q) begin
+                // We consumed a word
+                idx_addr_ready_d = 1'b1;
 
                 // AR Channel
                 if (axi_addrgen_q.is_load) begin
                   axi_ar_o = '{
-                    addr   : idx_final_addr,
+                    addr   : idx_final_addr_q,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -607,7 +701,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 // AW Channel
                 else begin
                   axi_aw_o = '{
-                    addr   : idx_final_addr,
+                    addr   : idx_final_addr_q,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -617,35 +711,31 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   axi_aw_valid_o = 1'b1;
                 end
 
-                // Bump lane pointer
-                if (elm_ptr_q == last_elm_subw_q) begin
-                  elm_ptr_d       = '0;
-                  word_lane_ptr_d += 1;
-                end else begin
-                  // Bump element pointer
-                  elm_ptr_d += 1;
-                end
-
-                // Account for the requested operands
-                axi_addrgen_d.len = axi_addrgen_q.len - 1;
-
                 // Send this request to the load/store units
                 axi_addrgen_queue = '{
-                  addr   : idx_final_addr,
+                  addr   : idx_final_addr_q,
                   size   : axi_addrgen_q.vew,
                   len    : 0,
                   is_load: axi_addrgen_q.is_load
                 };
                 axi_addrgen_queue_push = 1'b1;
 
-                // Give the grant when the word is consumed
-                if (elm_ptr_q == last_elm_subw_q && word_lane_ptr_q == (NrLanes-1))
-                  addrgen_operand_ready_o = 1'b1;
+                // Account for the requested operands
+                axi_addrgen_d.len = axi_addrgen_q.len - 1;
+
+                // Check if the address does generate an exception
+                if (is_addr_error(idx_final_addr_q, axi_addrgen_q.vew)) begin
+                  // Generate an error
+                  idx_op_error_d          = 1'b1;
+                  // Forward next vstart info to the dispatcher
+                  addrgen_error_vl_d      = addrgen_req.len - axi_addrgen_q.len - 1;
+                  addrgen_req_ready       = 1'b1;
+                  axi_addrgen_state_d     = AXI_ADDRGEN_IDLE;
+                end
 
                 // Finished generating AXI requests
                 if (axi_addrgen_d.len == 0) begin
-                  addrgen_req_ready       = 1'b1;
-                  addrgen_operand_ready_o = 1'b1;
+                  addrgen_req_ready   = 1'b1;
                   axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
                 end
               end

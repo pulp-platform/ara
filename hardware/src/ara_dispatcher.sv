@@ -2220,6 +2220,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               acc_resp_o.error = ara_resp_i.error;
               acc_resp_valid_o = 1'b1;
               ara_req_valid_d  = 1'b0;
+              // In case of error, modify vstart
+              if (ara_resp_i.error)
+                vstart_d = ara_resp_i.error_vl;
             end
           end
 
@@ -2416,6 +2419,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               acc_resp_o.error = ara_resp_i.error;
               acc_resp_valid_o = 1'b1;
               ara_req_valid_d  = 1'b0;
+              // If there is an error, change vstart
+              if (ara_resp_i.error)
+                vstart_d = ara_resp_i.error_vl;
             end
           end
 
