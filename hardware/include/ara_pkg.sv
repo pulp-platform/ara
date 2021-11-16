@@ -282,6 +282,9 @@ package ara_pkg;
 
     // Instruction triggered an error
     logic error;
+
+    // New value for vstart
+    vlen_t error_vl;
   } ara_resp_t;
 
   ////////////////////

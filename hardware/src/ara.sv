@@ -124,6 +124,7 @@ module ara import ara_pkg::*; #(
   // Interface with the address generator
   logic                   addrgen_ack;
   logic                   addrgen_error;
+  vlen_t                  addrgen_error_vl;
   logic     [NrLanes-1:0] alu_vinsn_done;
   logic     [NrLanes-1:0] mfpu_vinsn_done;
 
@@ -150,7 +151,8 @@ module ara import ara_pkg::*; #(
     .pe_scalar_resp_valid_i(1'b0              ),
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack       ),
-    .addrgen_error_i       (addrgen_error     )
+    .addrgen_error_i       (addrgen_error     ),
+    .addrgen_error_vl_i    (addrgen_error_vl  )
   );
 
   /////////////
@@ -306,6 +308,7 @@ module ara import ara_pkg::*; #(
     .pe_resp_o              (pe_resp[NrLanes+OffsetStore : NrLanes+OffsetLoad]     ),
     .addrgen_ack_o          (addrgen_ack                                           ),
     .addrgen_error_o        (addrgen_error                                         ),
+    .addrgen_error_vl_o     (addrgen_error_vl                                      ),
     // Interface with the Mask unit
     .mask_i                 (mask                                                  ),
     .mask_valid_i           (mask_valid                                            ),
