@@ -259,7 +259,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
             vtype      : pe_req.vtype,
-            vl         : vfu_operation_d.vl,
+            // In case of reduction, just fetch element 0 in AluB
+            vl         : pe_req_i.op == VREDSUM ? 1 : vfu_operation_d.vl,
             vstart     : vfu_operation_d.vstart,
             hazard     : pe_req.hazard_vs2 | pe_req.hazard_vd,
             default    : '0
