@@ -127,11 +127,24 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic  [idx_width(StrbWidth)-1:0] select_d, select_q;
 
   always_comb begin: type_conversion
+    // Helper variables for reductions
+    logic ntrh, ntrl;
     // Shuffle the input operand
     automatic logic [idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
 
     // Default: no conversion
     conv_operand = ibuf_operand;
+
+    // Calculate the neutral values for reductions
+    // Examples with EW8:
+    // VREDSUM, VREDOR, VREDXOR, VREDMAXU, VWREDSUMU, VWRESUM: 0x00
+    // VREDAND, VREDMINU:                                      0xff
+    // VREDMIN:                                                0x7f
+    // VREDMAX:                                                0x80
+    // Neutral low bits
+    ntrl = cmd.ntr_red[0];
+    // Neutral high bit
+    ntrh = cmd.ntr_red[1];
 
     unique case (cmd.conv)
       // Sign extension
@@ -195,12 +208,21 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       OpQueueReductionZExt: begin
         if (LaneIdx == 0) begin
           unique case (cmd.eew)
-            EW8 : conv_operand = {56'b0, ibuf_operand[7:0]};
-            EW16: conv_operand = {48'b0, ibuf_operand[15:0]};
-            EW32: conv_operand = {32'b0, ibuf_operand[31:0]};
+            EW8 : conv_operand = {{7{ntrh, { 7{ntrl}}}}, ibuf_operand[7:0]};
+            EW16: conv_operand = {{3{ntrh, {15{ntrl}}}}, ibuf_operand[15:0]};
+            EW32: conv_operand = {{1{ntrh, {31{ntrl}}}}, ibuf_operand[31:0]};
             default:;
           endcase
-        end else conv_operand = '0;
+        end else begin
+          unique case (cmd.eew)
+            // Lane != 0, just send harmless values
+            EW8 : conv_operand = {8{ntrh, { 7{ntrl}}}};
+            EW16: conv_operand = {4{ntrh, {15{ntrl}}}};
+            EW32: conv_operand = {2{ntrh, {31{ntrl}}}};
+            default: // EW64
+              conv_operand = {1{ntrh, {63{ntrl}}}};
+          endcase
+        end
       end
 
       // Floating-Point re-encoding
