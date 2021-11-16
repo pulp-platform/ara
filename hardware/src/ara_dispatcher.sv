@@ -930,7 +930,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 unique case (insn.varith_type.func6)
                   6'b000000: begin
                     ara_req_d.op             = ara_pkg::VREDSUM;
-                    ara_req_d.conversion_vs2 = OpQueueReductionZExt;
+                    ara_req_d.conversion_vs1 = OpQueueReductionZExt;
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMANDNOT;
@@ -1234,7 +1234,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Reductions
                   6'b000000: begin
                     ara_req_d.op             = ara_pkg::VREDSUM;
-                    ara_req_d.conversion_vs2 = OpQueueReductionZExt;
+                    ara_req_d.conversion_vs1 = OpQueueReductionZExt;
                   end
                   // Slides
                   6'b001110: begin // vslide1up
