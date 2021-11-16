@@ -232,6 +232,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           endcase
         end
       end
+
       // Zero extension + Reordering for FP conversions
       OpQueueAdjustFPCvt: begin
         unique case (cmd.eew)

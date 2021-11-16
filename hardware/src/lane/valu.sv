@@ -277,24 +277,26 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   logic [7:0] safe_red_byte;
   strb_t red_mask;
   elen_t alu_operand_a;
-  elen_t alu_operand_b;
-  assign reduction_op_a = alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i;
-  assign safe_red_byte = vinsn_issue_q.op == VREDSUM ? 8'h00 : 8'hff;
-  always_comb for (int b = 0; b < 8; b++) alu_operand_1_masked[b*8 +: 8] = red_mask[b] ? alu_operand_i[1][b*8 +: 8] : alu_operand_i[1][b*8 +: 8] & safe_red_byte;
-  assign alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION) ? reduction_op_a : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_1_masked);
   // During the first cycle, the reduction adds a scalar value kept into a
   // vector register to the first group of vector elements. Then, one of the operand is always
   // the accumulator.
   // For lane[0], the scalar value is actually a value. For the other lanes the value is a neutral one.
-  assign alu_operand_b = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION || alu_state_q == INTRA_LANE_REDUCTION && !first_op_q) ? result_queue_q[result_queue_write_pnt_q].wdata : alu_operand_i[0];
+  elen_t alu_operand_b;
+  always_comb begin
+    safe_red_byte  = vinsn_issue_q.op == VREDSUM ? 8'h00 : 8'hff;
 
-//  always_comb for (int b = 0; b < 8; b++) alu_operand_0_masked[b*8 +: 8] = red_mask[b] ? alu_operand_i[0][b*8 +: 8] : alu_operand_i[0][b*8 +: 8] & safe_red_byte;
-//  assign alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION) ? reduction_op_a : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_0_masked);
-//  // During the first cycle, the reduction adds a scalar value kept into a
-//  // vector register to the first group of vector elements. Then, one of the operand is always
-//  // the accumulator.
-//  // For lane[0], the scalar value is actually a value. For the other lanes the value is a neutral one.
-//  assign alu_operand_b = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION || alu_state_q == INTRA_LANE_REDUCTION && !first_op_q) ? result_queue_q[result_queue_write_pnt_q].wdata : alu_operand_i[1];
+    for (int b = 0; b < 8; b++)
+      alu_operand_1_masked[b*8 +: 8] = red_mask[b] ? alu_operand_i[1][b*8 +: 8] : alu_operand_i[1][b*8 +: 8] & safe_red_byte;
+
+    reduction_op_a = alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i;
+
+    alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION || alu_state_q == INTRA_LANE_REDUCTION && !first_op_q)
+                   ? result_queue_q[result_queue_write_pnt_q].wdata
+                   : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]);
+    alu_operand_b  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION)
+                   ? reduction_op_a
+                   : alu_operand_1_masked;
+  end
 
   ///////////////////////
   //  SIMD Vector ALU  //
