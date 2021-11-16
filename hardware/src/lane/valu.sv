@@ -225,7 +225,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // sliding unit (inter-lane and SIMD reduction).
   function automatic logic is_reduction(ara_op_e op);
     is_reduction = 1'b0;
-    if (op inside {VREDSUM})
+    if (op inside {[VREDSUM:VWREDSUM]})
       is_reduction = 1'b1;
   endfunction: is_reduction
 
@@ -283,7 +283,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // For lane[0], the scalar value is actually a value. For the other lanes the value is a neutral one.
   elen_t alu_operand_b;
   always_comb begin
-    safe_red_byte  = vinsn_issue_q.op == VREDSUM ? 8'h00 : 8'hff;
+    safe_red_byte  = vinsn_issue_q.op inside {[VREDSUM:VWREDSUM]} ? 8'h00 : 8'hff;
 
     for (int b = 0; b < 8; b++)
       alu_operand_1_masked[b*8 +: 8] = red_mask[b] ? alu_operand_i[1][b*8 +: 8] : alu_operand_i[1][b*8 +: 8] & safe_red_byte;
