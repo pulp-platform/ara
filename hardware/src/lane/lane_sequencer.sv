@@ -217,7 +217,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
       // Mute request if the instruction runs in the lane and the vl is zero.
       // During a reduction, all the lanes must cooperate anyway.
-      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu}) && vfu_operation_d.op != VREDSUM) begin
+      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM]})) begin
         vfu_operation_valid_d = 1'b0;
         // We are already done with this instruction
         vinsn_done_d[pe_req.id] |= 1'b1;
@@ -247,7 +247,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vtype      : pe_req.vtype,
             // In case of reduction, AluA opqueue will keep the scalar element
 	        // If this lane does not need to perform the computation, do not fetch the scalar either
-            vl         : (pe_req.op == VREDSUM) ? (vfu_operation_d.vl != '0) : vfu_operation_d.vl,
+            vl         : (pe_req.op inside {[VREDSUM:VWREDSUM]}) ? (vfu_operation_d.vl != '0) : vfu_operation_d.vl,
             vstart     : vfu_operation_d.vstart,
             hazard     : pe_req.hazard_vs1 | pe_req.hazard_vd,
             default    : '0
