@@ -262,7 +262,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   logic first_op_d, first_op_q;
 
   // Signal to indicate the state of the ALU
-  typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION, WAIT_STATE, SIMD_REDUCTION, PASS_THRU_REDUCTION} alu_state_e;
+  typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION, WAIT_STATE, SIMD_REDUCTION} alu_state_e;
   alu_state_e alu_state_d, alu_state_q;
 
   // Filter the next valid from the slide unit
@@ -273,24 +273,21 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   assign filter_sldu_alu_valid_d = sldu_alu_ready_d;
 
   // Input multiplexers.
-  elen_t reduction_op_a, simd_red_operand, alu_operand_1_masked;
+  elen_t simd_red_operand;
   strb_t red_mask;
-  elen_t alu_operand_a;
   // During the first cycle, the reduction adds a scalar value kept into a
   // vector register to the first group of vector elements. Then, one of the operand is always
   // the accumulator.
   // For lane[0], the scalar value is actually a value. For the other lanes the value is a neutral one.
+  elen_t alu_operand_a;
   elen_t alu_operand_b;
-  always_comb begin
-    reduction_op_a = alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i;
 
-    alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION || alu_state_q == INTRA_LANE_REDUCTION && !first_op_q)
-                   ? result_queue_q[result_queue_write_pnt_q].wdata
-                   : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]);
-    alu_operand_b  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION)
-                   ? reduction_op_a
-                   : alu_operand_i[1];
-  end
+  assign alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION || alu_state_q == INTRA_LANE_REDUCTION && !first_op_q)
+                        ? result_queue_q[result_queue_write_pnt_q].wdata
+                        : vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0];
+  assign alu_operand_b  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION)
+                        ? alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i
+                        : alu_operand_i[1];
 
   ///////////////////////
   //  SIMD Vector ALU  //
@@ -657,7 +654,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     if (!vinsn_queue_full && vfu_operation_valid_i &&
       (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VMXNOR]})) begin
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt]    = vfu_operation_i;
+      // Do not wait for masks if, during a reduction, this lane is just a pass-through
+      // The only valid instructions here with vl == '0 are reductions
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.vm | (vfu_operation_i.vl == '0);
 
       // The next will be the first operation of this instruction
       // This information is useful for reduction operation
@@ -667,11 +667,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       // Initialize counters and alu state if this is the instruction queue was empty
       if (vinsn_queue_d.issue_cnt == '0) begin
         alu_state_d = is_reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
-        // If the lane is not computing within the reduction, it will just pass the incoming values on
-		if (vfu_operation_i.vl == '0) begin
-          alu_state_d = INTER_LANES_REDUCTION;
-          result_queue_d[result_queue_write_pnt_q].wdata = '0;
-        end
+
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
         // Allow the first valid
         red_hs_synch_d = 1'b1;

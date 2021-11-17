@@ -510,6 +510,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       default:;
                     endcase
                   end
+                  // Reductions encode in cvt_resize the neutral value bits
+                  // CVT_WIDE is 2'b00 (hack to save wires)
                   6'b110000: begin
                     ara_req_d.op = ara_pkg::VWREDSUMU;
                     ara_req_d.emul           = next_lmul(vtype_q.vlmul);
@@ -944,37 +946,47 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
+                  // Encode, for each reduction, the bits of the neutral
+                  // value of each operation
                   6'b000000: begin
                     ara_req_d.op             = ara_pkg::VREDSUM;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b00);
                   end
                   6'b000001: begin
                     ara_req_d.op             = ara_pkg::VREDAND;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b11);
                   end
                   6'b000010: begin
                     ara_req_d.op             = ara_pkg::VREDOR;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b00);
                   end
                   6'b000011: begin
                     ara_req_d.op             = ara_pkg::VREDXOR;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b00);
                   end
                   6'b000100: begin
                     ara_req_d.op             = ara_pkg::VREDMINU;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b11);
                   end
                   6'b000101: begin
                     ara_req_d.op             = ara_pkg::VREDMIN;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b01);
                   end
                   6'b000110: begin
                     ara_req_d.op             = ara_pkg::VREDMAXU;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b00);
                   end
                   6'b000111: begin
                     ara_req_d.op             = ara_pkg::VREDMAX;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                    ara_req_d.cvt_resize     = resize_e'(2'b10);
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMANDNOT;
