@@ -274,7 +274,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Input multiplexers.
   elen_t reduction_op_a, simd_red_operand, alu_operand_1_masked;
-  logic [7:0] safe_red_byte;
   strb_t red_mask;
   elen_t alu_operand_a;
   // During the first cycle, the reduction adds a scalar value kept into a
@@ -283,11 +282,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // For lane[0], the scalar value is actually a value. For the other lanes the value is a neutral one.
   elen_t alu_operand_b;
   always_comb begin
-    safe_red_byte  = vinsn_issue_q.op inside {[VREDSUM:VWREDSUM]} ? 8'h00 : 8'hff;
-
-    for (int b = 0; b < 8; b++)
-      alu_operand_1_masked[b*8 +: 8] = red_mask[b] ? alu_operand_i[1][b*8 +: 8] : alu_operand_i[1][b*8 +: 8] & safe_red_byte;
-
     reduction_op_a = alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i;
 
     alu_operand_a  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION || alu_state_q == INTRA_LANE_REDUCTION && !first_op_q)
@@ -295,7 +289,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
                    : (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]);
     alu_operand_b  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION)
                    ? reduction_op_a
-                   : alu_operand_1_masked;
+                   : alu_operand_i[1];
   end
 
   ///////////////////////
@@ -480,7 +474,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
               mask_ready_o = ~vinsn_issue_q.vm;
 
               // Reduction instruction, accumulate the result
-              result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
+              for (int b = 0; b < 8; b++) begin
+                result_queue_d[result_queue_write_pnt_q].wdata[8*b +: 8] =
+                    red_mask[b]            ?
+                    valu_result[8*b +: 8]  :
+                    alu_operand_a[8*b +: 8];
+              end
               result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes);
               result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
               result_queue_d[result_queue_write_pnt_q].be    = be(1, vinsn_issue_q.vtype.vsew);
@@ -671,7 +670,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
         // If the lane is not computing within the reduction, it will just pass the incoming values on
 		if (vfu_operation_i.vl == '0) begin
           alu_state_d = INTER_LANES_REDUCTION;
-          result_queue_d[result_queue_write_pnt_q].wdata = elen_t'(safe_red_byte);
+          result_queue_d[result_queue_write_pnt_q].wdata = '0;
         end
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
         // Allow the first valid
