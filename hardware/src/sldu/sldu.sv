@@ -363,10 +363,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // Reset the pointer and ask for a new operand
             in_pnt_d             = '0;
             sldu_operand_ready_o = '1;
-            // Left-rotate the logarithmic counrter. We two lanes, we have only 1 bit.
-            if (NrLanes > 2)
-              red_stride_cnt_d = {red_stride_cnt_q[idx_width(NrLanes)-2:0],
-                                  red_stride_cnt_q[idx_width(NrLanes)-1]};
+            // Left-rotate the logarithmic counter. Hacky way to write it, but it's to
+            // deal with the 2-lanes design without complaints from Verilator...
+            red_stride_cnt_d = {red_stride_cnt_q, red_stride_cnt_q[idx_width(NrLanes)-1]}[idx_width(NrLanes)-1:0];
             // We used all the bits of the mask
             if (vinsn_issue_q.op == VSLIDEUP)
               mask_ready_o = !vinsn_issue_q.vm;
