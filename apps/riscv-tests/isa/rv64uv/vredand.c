@@ -23,9 +23,9 @@ void TEST_CASE1(void) {
   VCMP_U16(2, v3, 0x0100);
 
   VSET(12, e32, m1);
-  VLOAD_32(v1, 0xffffffff, 0x100ff001, 0xf0f0f0f0, 0xffffffff,
-               0x100ff001, 0xf0f0f0f0, 0xffffffff, 0x100ff001,
-               0xf0f0f0f0, 0xffffffff, 0x100ff001, 0xf0f0f0f0);
+  VLOAD_32(v1, 0xffffffff, 0x100ff001, 0xf0f0f0f0, 0xffffffff, 0x100ff001,
+           0xf0f0f0f0, 0xffffffff, 0x100ff001, 0xf0f0f0f0, 0xffffffff,
+           0x100ff001, 0xf0f0f0f0);
   VLOAD_32(v2, 0x00f010f0);
   asm volatile("vredand.vs v3, v1, v2");
   VCMP_U32(3, v3, 0x00001000);
@@ -62,9 +62,9 @@ void TEST_CASE2(void) {
 
   VSET(12, e32, m1);
   VLOAD_8(v0, 0xfe, 0xff);
-  VLOAD_32(v1, 0x00000000, 0x100ff001, 0xf0f0f0f0, 0xffffffff,
-               0x100ff001, 0xf0f0f0f0, 0xffffffff, 0x100ff001,
-               0xf0f0f0f0, 0xffffffff, 0x100ff001, 0xf0f0f0f0);
+  VLOAD_32(v1, 0x00000000, 0x100ff001, 0xf0f0f0f0, 0xffffffff, 0x100ff001,
+           0xf0f0f0f0, 0xffffffff, 0x100ff001, 0xf0f0f0f0, 0xffffffff,
+           0x100ff001, 0xf0f0f0f0);
   VLOAD_32(v2, 0x00f010f0);
   VLOAD_32(v3, 1);
   asm volatile("vredand.vs v3, v1, v2, v0.t");
