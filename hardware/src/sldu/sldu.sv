@@ -157,7 +157,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   // Inter-lane reductions are performed with a logarithmic tree, and the result is
   // accumulated in the last Lane. Then, in the end, the result is passed to the first
   // lane for SIMD reduction
-  logic [idx_width(NrLanes/2):0] red_stride_cnt_d, red_stride_cnt_q;
+  logic [idx_width(NrLanes)-1:0] red_stride_cnt_d, red_stride_cnt_q;
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
@@ -294,7 +294,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           for (int b = 0; b < NrLanes*8; b++) begin
             // Input byte
             automatic int in_seq_byte = in_pnt_q + b;
-            // A reduction always operates on
+            // A reduction always operates on the target vsew
             automatic int in_byte  = shuffle_index(in_seq_byte, NrLanes, (vinsn_issue_q.vfu == VFU_Alu) ? vinsn_issue_q.vtype.vsew : vinsn_issue_q.eew_vs2);
             // Output byte
             automatic int out_seq_byte = out_pnt_q + b;
@@ -322,7 +322,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               vaddr(vinsn_issue_q.vd, NrLanes) + vrf_pnt_q;
           end
 
-          // Bump pointers (reductions alwyas work on the same word)
+          // Bump pointers (reductions always finish in one shot)
           in_pnt_d    = vinsn_issue_q.vfu == VFU_Alu ? NrLanes * 8                  : in_pnt_q  + byte_count;
           out_pnt_d   = vinsn_issue_q.vfu == VFU_Alu ? NrLanes * 8                  : out_pnt_q + byte_count;
           issue_cnt_d = vinsn_issue_q.vfu == VFU_Alu ? issue_cnt_q - (NrLanes * 8)  : issue_cnt_q - byte_count;
@@ -362,9 +362,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           if (in_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
             // Reset the pointer and ask for a new operand
             in_pnt_d             = '0;
-            sldu_operand_ready_o = 4'b1111;
-            // Left-rotate the logarithmic coutner
-	        red_stride_cnt_d     = {red_stride_cnt_d[idx_width(NrLanes/2)-1:0], red_stride_cnt_d[idx_width(NrLanes/2)]};
+            sldu_operand_ready_o = '1;
+            // Left-rotate the logarithmic counrter. We two lanes, we have only 1 bit.
+            if (NrLanes > 2)
+              red_stride_cnt_d = {red_stride_cnt_q[idx_width(NrLanes)-2:0],
+                                  red_stride_cnt_q[idx_width(NrLanes)-1]};
             // We used all the bits of the mask
             if (vinsn_issue_q.op == VSLIDEUP)
               mask_ready_o = !vinsn_issue_q.vm;
