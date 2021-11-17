@@ -10,25 +10,25 @@
 void TEST_CASE1(void) {
   VSET(16, e8, m1);
   VLOAD_8(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-  VLOAD_8(v2, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+  VLOAD_8(v2, 1);
   asm volatile("vredsum.vs v3, v1, v2");
   VCMP_U8(1, v3, 73);
 
   VSET(16, e16, m1);
   VLOAD_16(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-  VLOAD_16(v2, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+  VLOAD_16(v2, 1);
   asm volatile("vredsum.vs v3, v1, v2");
   VCMP_U16(2, v3, 73);
 
   VSET(16, e32, m1);
   VLOAD_32(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-  VLOAD_32(v2, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+  VLOAD_32(v2, 1);
   asm volatile("vredsum.vs v3, v1, v2");
   VCMP_U32(3, v3, 73);
 
   VSET(16, e64, m1);
   VLOAD_64(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
-  VLOAD_64(v2, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+  VLOAD_64(v2, 1);
   asm volatile("vredsum.vs v3, v1, v2");
   VCMP_U64(4, v3, 73);
 }
