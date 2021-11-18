@@ -7,9 +7,8 @@
 // This is Ara's vector execution stage. This contains the functional units
 // of each lane, namely the ALU and the Multiplier/FPU.
 
-module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
+module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int           unsigned NrLanes    = 0,
-    parameter  int           unsigned LaneIdx    = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
     // Type used to address vector register file elements
@@ -20,6 +19,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
+    input  logic [idx_width(NrLanes)-1:0]     lane_id_i,
     // Interface with CVA6
     output logic           [4:0]              fflags_ex_o,
     output logic                              fflags_ex_valid_o,
@@ -84,11 +84,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
 
   valu #(
     .NrLanes(NrLanes),
-    .LaneIdx(LaneIdx),
     .vaddr_t(vaddr_t)
   ) i_valu (
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
+    .lane_id_i            (lane_id_i                      ),
     // Interface with the lane sequencer
     .vfu_operation_i      (vfu_operation_i                ),
     .vfu_operation_valid_i(vfu_operation_valid_i          ),
