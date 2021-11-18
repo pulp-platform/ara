@@ -159,6 +159,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   // accumulated in the last Lane. Then, in the end, the result is passed to the first
   // lane for SIMD reduction
   logic [idx_width(NrLanes)-1:0] red_stride_cnt_d, red_stride_cnt_q;
+  logic [idx_width(NrLanes):0] red_stride_cnt_d_wide;
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
@@ -366,7 +367,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             sldu_operand_ready_o = '1;
             // Left-rotate the logarithmic counter. Hacky way to write it, but it's to
             // deal with the 2-lanes design without complaints from Verilator...
-            red_stride_cnt_d = {red_stride_cnt_q, red_stride_cnt_q[idx_width(NrLanes)-1]}[idx_width(NrLanes)-1:0];
+            // wide signal to please the tool
+            red_stride_cnt_d_wide = {red_stride_cnt_q, red_stride_cnt_q[idx_width(NrLanes)-1]};
+            red_stride_cnt_d      = red_stride_cnt_d_wide[idx_width(NrLanes)-1:0];
             // We used all the bits of the mask
             if (vinsn_issue_q.op == VSLIDEUP)
               mask_ready_o = !vinsn_issue_q.vm;
