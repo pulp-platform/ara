@@ -263,9 +263,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
             vtype      : pe_req.vtype,
-            // If reductions and vl == 0, we must replace with neutral values
-            // So, vl must be 1 at least
-            vl         : (vfu_operation_d.vl == '0) ? 1 : vfu_operation_d.vl,
+            // If reductions and vl == 0, we must replace the operands with neutral
+            // values in the opqueues. So, vl must be 1 at least
+            vl         : (pe_req.op inside {[VREDSUM:VWREDSUM]} && vfu_operation_d.vl == '0)
+                         ? 1 : vfu_operation_d.vl,
             vstart     : vfu_operation_d.vstart,
             hazard     : pe_req.hazard_vs2 | pe_req.hazard_vd,
             default    : '0
