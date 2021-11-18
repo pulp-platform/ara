@@ -11,7 +11,6 @@
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes         = 1, // Number of lanes
-    parameter  int           unsigned LaneIdx         = 0,                                   // Lane index. From 0 to NrLanes-1
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // Dependant parameters. DO NOT CHANGE!
@@ -293,11 +292,12 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic sldu_addrgen_operand_opqueues_valid;
 
   operand_queues_stage #(
-    .FPUSupport(FPUSupport),
-    .LaneIdx(LaneIdx)
+    .NrLanes   (NrLanes   ),
+    .FPUSupport(FPUSupport)
   ) i_operand_queues (
     .clk_i                            (clk_i                              ),
     .rst_ni                           (rst_ni                             ),
+    .lane_id_i                        (lane_id_i                          ),
     // Interface with the Vector Register File
     .operand_i                        (vrf_operand                        ),
     .operand_valid_i                  (vrf_operand_valid                  ),
@@ -343,12 +343,12 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   vector_fus_stage #(
     .NrLanes   (NrLanes   ),
-    .LaneIdx   (LaneIdx   ),
     .FPUSupport(FPUSupport),
     .vaddr_t   (vaddr_t   )
   ) i_vfus (
     .clk_i                (clk_i                                  ),
     .rst_ni               (rst_ni                                 ),
+    .lane_id_i            (lane_id_i                              ),
     // Interface with CVA6
     .fflags_ex_o          (fflags_ex_o                            ),
     .fflags_ex_valid_o    (fflags_ex_valid_o                      ),

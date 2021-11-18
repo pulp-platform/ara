@@ -207,7 +207,6 @@ module ara import ara_pkg::*; #(
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
       .NrLanes   (NrLanes   ),
-      .LaneIdx   (lane      ),
       .FPUSupport(FPUSupport)
     ) i_lane (
       .clk_i                           (clk_i                               ),
