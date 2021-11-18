@@ -11,20 +11,21 @@
 module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int           unsigned BufferDepth    = 2,
     parameter  int           unsigned NrSlaves       = 1,
+    parameter  int           unsigned NrLanes        = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble,
     // Supported conversions
     parameter  logic                  SupportIntExt2 = 1'b0,
     parameter  logic                  SupportIntExt4 = 1'b0,
     parameter  logic                  SupportIntExt8 = 1'b0,
-    // Lane index
-    parameter  int           unsigned LaneIdx        = 0,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth      = $bits(elen_t),
     localparam int           unsigned StrbWidth      = DataWidth/8
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
+    // Lane ID
+    input  logic [idx_width(NrLanes)-1:0]     lane_id_i,
     // Interface with the Operand Requester
     input  operand_queue_cmd_t                operand_queue_cmd_i,
     input  logic                              operand_queue_cmd_valid_i,
@@ -38,6 +39,17 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output logic                              operand_valid_o,
     input  logic               [NrSlaves-1:0] operand_ready_i
   );
+
+  /////////////
+  // Lane ID //
+  /////////////
+
+  // Lane 0 has different logic than Lanes != 0
+  // A parameter would be perfect to save HW, but our hierarchical
+  // synth/pnr flow needs that all lanes are the same
+  // False path this for better timing results
+  logic lane_id_0;
+  assign lane_id_0 = lane_id_i == '0;
 
   //////////////////////
   //  Command Buffer  //
@@ -205,7 +217,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       end
 
       OpQueueReductionZExt: begin
-        if (LaneIdx == 0) begin
+        if (lane_id_0) begin
           unique case (cmd.eew)
             EW8 : conv_operand = {{7{ntrh, { 7{ntrl}}}}, ibuf_operand[7:0]};
             EW16: conv_operand = {{3{ntrh, {15{ntrl}}}}, ibuf_operand[15:0]};
