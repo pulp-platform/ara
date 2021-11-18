@@ -495,7 +495,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0) begin
-        commit_cnt_d = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN}
+        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {VSLIDEUP, VSLIDEDOWN}
                      ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew)
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
 
