@@ -305,6 +305,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   logic  filter_sldu_alu_valid_d, filter_sldu_alu_valid_q;
   logic  sldu_alu_ready_d;
   assign filter_sldu_alu_valid_d = sldu_alu_ready_d;
+  // This signal is used to cut a in2reg bad path
+  // This works since the signal is never checked
+  // twice in two consecutive cycles
+  logic  alu_red_ready_q;
 
   // Input multiplexers.
   elen_t simd_red_operand;
@@ -532,7 +536,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           if (reduction_rx_cnt_q == '0) begin
             // This unit has finished processing data for this reduction instruction, send the partial result to the sliding unit
             alu_red_valid_o = 1'b1;
-            if (alu_red_ready_i) begin
+            // We can simply delay the ready since we will immediately change state,
+            // so, no risk to re-sample alu_red_ready_i with side effects
+            if (alu_red_ready_q) begin
               alu_state_d = WAIT_STATE;
                 if (!lane_id_0) begin
                 // Bump issue counter and pointers
@@ -730,6 +736,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       simd_red_cnt_max_q      <= '0;
       filter_sldu_alu_valid_q <= 1'b0;
       sldu_alu_ready_o        <= 1'b0;
+      alu_red_ready_q         <= 1'b0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       commit_cnt_q            <= commit_cnt_d;
@@ -743,6 +750,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       simd_red_cnt_max_q      <= simd_red_cnt_max_d;
       filter_sldu_alu_valid_q <= filter_sldu_alu_valid_d;
       sldu_alu_ready_o        <= sldu_alu_ready_d;
+      alu_red_ready_q         <= alu_red_ready_i;
     end
   end
 
