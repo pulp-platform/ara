@@ -421,7 +421,6 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   assign sldu_alu_gnt                 = sldu_operand_ready_i & (sldu_mux_sel_q == ALU_RED);
 
   assign sldu_alu_valid = sldu_red_valid_i & (sldu_mux_sel_q == ALU_RED);
-  // Warning: this is an in2out path! It can be timing-critical
   assign sldu_result_gnt_o = sldu_mux_sel_q == NO_RED ? sldu_result_gnt_opqueues : sldu_alu_ready;
 
   //////////////////
