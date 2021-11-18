@@ -281,7 +281,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                       operand_request_i[requester].eew) :
                       operand_request_i[requester].vl,
               conv: operand_request_i[requester].conv,
-              ntr_red: operand_request_i[requester].cvt_resize
+              ntr_red: operand_request_i[requester].cvt_resize,
               target_fu: operand_request_i[requester].target_fu
             };
             operand_queue_cmd_valid_o[requester] = 1'b1;
@@ -364,7 +364,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                           operand_request_i[requester].eew) :
                           operand_request_i[requester].vl,
                   conv: operand_request_i[requester].conv,
-                  ntr_red : operand_request_i[requester].cvt_resize
+                  ntr_red : operand_request_i[requester].cvt_resize,
                   target_fu: operand_request_i[requester].target_fu
                 };
                 operand_queue_cmd_valid_o[requester] = 1'b1;
