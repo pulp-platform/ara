@@ -593,6 +593,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           end else if (sldu_transactions_cnt_q == '0) begin
             // If not lane 0, wait for the completion of the reduction
             alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+            // The next will be the first operation of this instruction
+            // This information is useful for reduction operation
+            first_op_d         = 1'b1;
+            reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+            sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+            // Allow the first valid
+            red_hs_synch_d = 1'b1;
+            // Give the done to the main sequencer
             commit_cnt_d = '0;
           end
           if (sldu_alu_valid_i && sldu_alu_ready_d) begin
@@ -627,6 +635,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                 issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
 
               alu_state_d = is_reduction(vinsn_issue_d.op) && (vinsn_queue_d.issue_cnt != 0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+              // The next will be the first operation of this instruction
+              // This information is useful for reduction operation
+              first_op_d         = 1'b1;
+              reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+              sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+              // Allow the first valid
+              red_hs_synch_d = 1'b1;
+              // Give the done to the main sequencer
               commit_cnt_d = '0;
 
               // Bump pointers and counters of the result queue
@@ -671,7 +687,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       result_queue_cnt_d -= 1;
 
       // Decrement the counter of remaining vector elements waiting to be written
-      commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
+      // Don't do it in case of a reduction
+      if (!is_reduction(vinsn_commit.op))
+        commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
       if (commit_cnt_q < (1 << (int'(EW64) - vinsn_commit.vtype.vsew))) commit_cnt_d = '0;
     end
 
@@ -701,14 +719,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // The only valid instructions here with vl == '0 are reductions
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.vm | (vfu_operation_i.vl == '0);
 
-      // The next will be the first operation of this instruction
-      // This information is useful for reduction operation
-      first_op_d         = 1'b1;
-      reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-
       // Initialize counters and alu state if this is the instruction queue was empty
       if (vinsn_queue_d.issue_cnt == '0) begin
         alu_state_d = is_reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+        // The next will be the first operation of this instruction
+        // This information is useful for reduction operation
+        first_op_d         = 1'b1;
+        reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
 
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
         // Allow the first valid
