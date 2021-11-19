@@ -184,6 +184,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic [NrVFUs-1:0] insn_queue_cnt_en, insn_queue_cnt_down, insn_queue_cnt_up;
   // Each FU has its own ready signal
   logic [NrVFUs-1:0] vinsn_queue_ready;
+  logic              vinsn_ready;
   logic              accepted_insn;
   logic [NrVFUs-1:0] target_vfus_vec;
   // Gold tickets and passes
@@ -255,7 +256,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         end else if (ara_req_valid_i) begin
           // The target PE is ready, and we can handle another running vector instruction
           // Let instructions with priority pass be issued
-          if ((|vinsn_queue_ready || |priority_pass) && !stall_lanes_desynch && !vinsn_running_full) begin
+          if ((vinsn_ready || |priority_pass) && !stall_lanes_desynch && !vinsn_running_full) begin
             ///////////////
             //  Hazards  //
             ///////////////
@@ -489,5 +490,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]) &
       (ara_req_token_q == ara_req_i.token);
   end
+
+  // The target FUs must be all ready
+  assign vinsn_ready = ~(|(vinsn_queue_ready ^ target_vfus_vec));
 
 endmodule : ara_sequencer
