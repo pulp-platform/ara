@@ -275,9 +275,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               // Writes
               out_pnt_d = {'0, red_stride_cnt_q, 3'b0};
 
-              // Initialize counters. Pretend to move NrLanes 64-bit elements for (clog2(NrLanes) + 1) times.
+              // Initialize issue cnt. Pretend to move NrLanes 64-bit elements for (clog2(NrLanes) + 1) times.
               issue_cnt_d  = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
-              commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
             end
           endcase
         end
