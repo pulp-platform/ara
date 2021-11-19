@@ -231,6 +231,23 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   //  Reductions  //
   //////////////////
 
+  // Cut the path between the SLDU and the ALU. This increase latency
+  // but does has negligible impact on long vectors
+  elen_t sldu_operand_q;
+  logic  sldu_alu_valid_q, sldu_alu_ready_d;
+  spill_register #(
+    .T(elen_t)
+  ) i_alu_reduction_spill_register (
+    .clk_i  (clk_i           ),
+    .rst_ni (rst_ni          ),
+    .valid_i(sldu_alu_valid_i),
+    .ready_o(sldu_alu_ready_o),
+    .data_i (sldu_operand_i  ),
+    .valid_o(sldu_alu_valid_q),
+    .ready_i(sldu_alu_ready_d),
+    .data_o (sldu_operand_q  )
+  );
+
   // This function returns 1'b1 if `op` is a reduction instruction, i.e.,
   // it must accumulate the result (intra-lane reduction) before sending it to the
   // sliding unit (inter-lane and SIMD reduction).
@@ -299,12 +316,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION, WAIT_STATE, SIMD_REDUCTION} alu_state_e;
   alu_state_e alu_state_d, alu_state_q;
 
-  // Filter the next valid from the slide unit
-  // This signal is used to give the ready to the sldu 1 cycle later, so we must not sample the
-  // valid signal twice
-  logic  filter_sldu_alu_valid_d, filter_sldu_alu_valid_q;
-  logic  sldu_alu_ready_d;
-  assign filter_sldu_alu_valid_d = sldu_alu_ready_d;
   // This signal is used to cut a in2reg bad path
   // This works since the signal is never checked
   // twice in two consecutive cycles
@@ -324,7 +335,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                         ? result_queue_q[result_queue_write_pnt_q].wdata
                         : vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0];
   assign alu_operand_b  = (alu_state_q == INTER_LANES_REDUCTION || alu_state_q == SIMD_REDUCTION)
-                        ? alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_i
+                        ? alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_q
                         : alu_operand_i[1];
 
   ///////////////////////
@@ -556,7 +567,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             // This unit should still process data for the inter-lane reduction.
             // Ready to accept incoming operands from the slide unit.
             alu_red_valid_o = red_hs_synch_q;
-            if (sldu_alu_valid_i && !filter_sldu_alu_valid_q) begin
+            if (sldu_alu_valid_q) begin
               // Issue the operation
               valu_valid = 1'b1;
               sldu_alu_ready_d = 1'b1;
@@ -565,21 +576,21 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             end
           end
           // Count the successful transaction with the SLDU
-          if (sldu_alu_valid_i && sldu_alu_ready_d) begin
+          if (sldu_alu_valid_q && sldu_alu_ready_d) begin
             sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
           end
           if (alu_red_valid_o && alu_red_ready_i) red_hs_synch_d = 1'b0;
-          if (sldu_alu_valid_i && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
+          if (sldu_alu_valid_q && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
         end
         WAIT_STATE: begin
           // Acknowledge the sliding unit even if it is not forwarding anything useful
-          sldu_alu_ready_d = sldu_alu_valid_i & ~filter_sldu_alu_valid_q;
+          sldu_alu_ready_d = sldu_alu_valid_q;
           alu_red_valid_o  = red_hs_synch_q;
           // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
           if (lane_id_0) begin
-            if (sldu_alu_valid_i && !filter_sldu_alu_valid_q) begin
+            if (sldu_alu_valid_q) begin
               if (sldu_transactions_cnt_q == 1) begin
-                result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_i;
+                result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
                 unique case (vinsn_issue_q.vtype.vsew)
                   EW8:  simd_red_cnt_max_d = 2'd3;
                   EW16: simd_red_cnt_max_d = 2'd2;
@@ -603,11 +614,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             // Give the done to the main sequencer
             commit_cnt_d = '0;
           end
-          if (sldu_alu_valid_i && sldu_alu_ready_d) begin
+          if (sldu_alu_valid_q && sldu_alu_ready_d) begin
             sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
           end
           if (alu_red_valid_o && alu_red_ready_i) red_hs_synch_d = 1'b0;
-          if (sldu_alu_valid_i && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
+          if (sldu_alu_valid_q && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
         end
         SIMD_REDUCTION: begin
           if (lane_id_0) begin
@@ -753,8 +764,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       sldu_transactions_cnt_q <= '0;
       red_hs_synch_q          <= 1'b0;
       simd_red_cnt_max_q      <= '0;
-      filter_sldu_alu_valid_q <= 1'b0;
-      sldu_alu_ready_o        <= 1'b0;
       alu_red_ready_q         <= 1'b0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
@@ -767,8 +776,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       sldu_transactions_cnt_q <= sldu_transactions_cnt_d;
       red_hs_synch_q          <= red_hs_synch_d;
       simd_red_cnt_max_q      <= simd_red_cnt_max_d;
-      filter_sldu_alu_valid_q <= filter_sldu_alu_valid_d;
-      sldu_alu_ready_o        <= sldu_alu_ready_d;
       alu_red_ready_q         <= alu_red_ready_i;
     end
   end
