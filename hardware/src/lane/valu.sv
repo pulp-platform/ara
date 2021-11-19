@@ -650,10 +650,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
     if (alu_state_q == NO_REDUCTION || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max_q)) begin
       alu_result_req_o   = result_queue_valid_q[result_queue_read_pnt_q] & ((alu_state_q == SIMD_REDUCTION) || !result_queue_q[result_queue_read_pnt_q].mask);
-      alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
-      alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
-      alu_result_be_o    = result_queue_q[result_queue_read_pnt_q].be;
+    end else begin
+      alu_result_req_o = 1'b0;
     end
+    alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
+    alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
+    alu_result_be_o    = result_queue_q[result_queue_read_pnt_q].be;
 
     // Received a grant from the VRF.
     // Deactivate the request.

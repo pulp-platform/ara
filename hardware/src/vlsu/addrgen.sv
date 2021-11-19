@@ -182,6 +182,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // No valid words for the spill register
     idx_addr_valid_d        = 1'b0;
     addrgen_operand_ready_o = 1'b0;
+    reduced_word            = '0;
     elm_ptr_d               = elm_ptr_q;
     idx_op_cnt_d            = idx_op_cnt_q;
     word_lane_ptr_d         = word_lane_ptr_q;
