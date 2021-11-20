@@ -245,6 +245,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs1,
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
+            red_no_wide: pe_req.red_no_wide,
             vtype      : pe_req.vtype,
             // In case of reduction, AluA opqueue will keep the scalar element
             vl         : (pe_req.op inside {[VREDSUM:VWREDSUM]}) ? 1 : vfu_operation_d.vl,
@@ -262,6 +263,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs2,
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
+            red_no_wide: pe_req.red_no_wide,
             vtype      : pe_req.vtype,
             // If reductions and vl == 0, we must replace the operands with neutral
             // values in the opqueues. So, vl must be 1 at least

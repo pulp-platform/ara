@@ -302,7 +302,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                               operand_request_i[requester].vl,
               vew         : operand_request_i[requester].eew,
               hazard      : operand_request_i[requester].hazard,
-              is_widening : operand_request_i[requester].cvt_resize == CVT_WIDE,
+              // Some reductions encode metadata in cvt_resize, even if they are not widening operations
+              is_widening : ~operand_request_i[requester].red_no_wide &
+                             operand_request_i[requester].cvt_resize == CVT_WIDE,
               default: '0
             };
 

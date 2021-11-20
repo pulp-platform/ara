@@ -265,6 +265,8 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
+    // cvt_resize is re-encoded
+    logic red_no_wide;
 
     // Vector machine metadata
     vlen_t vl;
@@ -363,6 +365,8 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
+    // cvt_resize is re-encoded
+    logic red_no_wide;
 
     // Vector machine metadata
     vlen_t vl;
@@ -851,6 +855,7 @@ package ara_pkg;
     logic scale_vl; // Rescale vl taking into account the new and old EEW
 
     resize_e cvt_resize;    // Resizing of FP conversions
+    logic red_no_wide; // cvt_resize is re-encoded
 
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion

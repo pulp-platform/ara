@@ -311,6 +311,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               fp_rm         : ara_req_i.fp_rm,
               wide_fp_imm   : ara_req_i.wide_fp_imm,
               cvt_resize    : ara_req_i.cvt_resize,
+              red_no_wide   : ara_req_i.red_no_wide,
               scale_vl      : ara_req_i.scale_vl,
               vl            : ara_req_i.vl,
               vstart        : ara_req_i.vstart,
