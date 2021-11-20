@@ -1,0 +1,49 @@
+diff --git a/src/tlb.sv b/src/tlb.sv
+index 5a0aeac..5c0b47b 100644
+--- a/src/tlb.sv
++++ b/src/tlb.sv
+@@ -117,19 +117,20 @@ module tlb import ariane_pkg::*; #(
+             vaddr_vpn2_match[i] = (vaddr_to_be_flushed_i[30+riscv::VPN2:30] == tags_q[i].vpn2);
+
+             if (flush_i) begin
++                tags_n[i] = 1'b0;
+                 // invalidate logic
+                 // flush everything if ASID is 0 and vaddr is 0 ("SFENCE.VMA x0 x0" case)
+-        				if (asid_to_be_flushed_is0 && vaddr_to_be_flushed_is0 )
+-                    tags_n[i].valid = 1'b0;
+-                // flush vaddr in all addressing space ("SFENCE.VMA vaddr x0" case), it should happen only for leaf pages
+-                else if (asid_to_be_flushed_is0 && ((vaddr_vpn0_match[i] && vaddr_vpn1_match[i] && vaddr_vpn2_match[i]) || (vaddr_vpn2_match[i] && tags_q[i].is_1G) || (vaddr_vpn1_match[i] && vaddr_vpn2_match[i] && tags_q[i].is_2M) ) && (~vaddr_to_be_flushed_is0))
+-                    tags_n[i].valid = 1'b0;
+-                // the entry is flushed if it's not global and asid and vaddr both matches with the entry to be flushed ("SFENCE.VMA vaddr asid" case)
+-				        else if ((!content_q[i].g) && ((vaddr_vpn0_match[i] && vaddr_vpn1_match[i] && vaddr_vpn2_match[i]) || (vaddr_vpn2_match[i] && tags_q[i].is_1G) || (vaddr_vpn1_match[i] && vaddr_vpn2_match[i] && tags_q[i].is_2M)) && (asid_to_be_flushed_i == tags_q[i].asid) && (!vaddr_to_be_flushed_is0) && (!asid_to_be_flushed_is0))
+-				          	tags_n[i].valid = 1'b0;
+-                // the entry is flushed if it's not global, and the asid matches and vaddr is 0. ("SFENCE.VMA 0 asid" case)
+-				        else if ((!content_q[i].g) && (vaddr_to_be_flushed_is0) && (asid_to_be_flushed_i == tags_q[i].asid) && (!asid_to_be_flushed_is0))
+-				        	  tags_n[i].valid = 1'b0;
++                // if (asid_to_be_flushed_is0 && vaddr_to_be_flushed_is0 )
++                //     tags_n[i].valid = 1'b0;
++                // // flush vaddr in all addressing space ("SFENCE.VMA vaddr x0" case), it should happen only for leaf pages
++                // else if (asid_to_be_flushed_is0 && ((vaddr_vpn0_match[i] && vaddr_vpn1_match[i] && vaddr_vpn2_match[i]) || (vaddr_vpn2_match[i] && tags_q[i].is_1G) || (vaddr_vpn1_match[i] && vaddr_vpn2_match[i] && tags_q[i].is_2M) ) && (~vaddr_to_be_flushed_is0))
++                //     tags_n[i].valid = 1'b0;
++                // // the entry is flushed if it's not global and asid and vaddr both matches with the entry to be flushed ("SFENCE.VMA vaddr asid" case)
++				//         else if ((!content_q[i].g) && ((vaddr_vpn0_match[i] && vaddr_vpn1_match[i] && vaddr_vpn2_match[i]) || (vaddr_vpn2_match[i] && tags_q[i].is_1G) || (vaddr_vpn1_match[i] && vaddr_vpn2_match[i] && tags_q[i].is_2M)) && (asid_to_be_flushed_i == tags_q[i].asid) && (!vaddr_to_be_flushed_is0) && (!asid_to_be_flushed_is0))
++				//           	tags_n[i].valid = 1'b0;
++                // // the entry is flushed if it's not global, and the asid matches and vaddr is 0. ("SFENCE.VMA 0 asid" case)
++				//         else if ((!content_q[i].g) && (vaddr_to_be_flushed_is0) && (asid_to_be_flushed_i == tags_q[i].asid) && (!asid_to_be_flushed_is0))
++				//         	  tags_n[i].valid = 1'b0;
+             // normal replacement
+             end else if (update_i.valid & replace_en[i]) begin
+                 // update tag array
+diff --git a/tb/ariane_soc_pkg.sv b/tb/ariane_soc_pkg.sv
+index 5036162..c52ba6e 100644
+--- a/tb/ariane_soc_pkg.sv
++++ b/tb/ariane_soc_pkg.sv
+@@ -89,7 +89,7 @@ package ariane_soc;
+     SwapEndianess:          1'b0,
+     // debug
+     DmBaseAddress:          DebugBase,
+-    NrPMPEntries:           8
++    NrPMPEntries:           0
+   };
+
+ endpackage
