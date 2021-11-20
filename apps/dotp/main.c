@@ -23,31 +23,31 @@
 #include "runtime.h"
 
 // Keep vector 512 B long, to fit a vreg when LMUL == 8
-#define SIZE_8B  4096
+#define SIZE_8B 4096
 #define SIZE_16B 2048
 #define SIZE_32B 1024
 #define SIZE_64B 512
 
 #define CHECK 0
 
-void dotp_64b(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result);
-void dotp_64b_scalar(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result);
-void dotp_32b(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result);
-void dotp_32b_scalar(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result);
-void dotp_16b(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result);
-void dotp_16b_scalar(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result);
-void dotp_8b(uint64_t avl, int8_t* v0, int8_t* v1, int8_t* result);
-void dotp_8b_scalar(uint64_t avl, int8_t* v0, int8_t* v1, int8_t* result);
+void dotp_64b(uint64_t avl, int64_t *v0, int64_t *v1, int64_t *result);
+void dotp_64b_scalar(uint64_t avl, int64_t *v0, int64_t *v1, int64_t *result);
+void dotp_32b(uint64_t avl, int32_t *v0, int32_t *v1, int32_t *result);
+void dotp_32b_scalar(uint64_t avl, int32_t *v0, int32_t *v1, int32_t *result);
+void dotp_16b(uint64_t avl, int16_t *v0, int16_t *v1, int16_t *result);
+void dotp_16b_scalar(uint64_t avl, int16_t *v0, int16_t *v1, int16_t *result);
+void dotp_8b(uint64_t avl, int8_t *v0, int8_t *v1, int8_t *result);
+void dotp_8b_scalar(uint64_t avl, int8_t *v0, int8_t *v1, int8_t *result);
 
 // Vectors for benchmarks
-int64_t v64a [SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int64_t v64b [SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int32_t v32a [SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int32_t v32b [SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int16_t v16a [SIZE_16B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int16_t v16b [SIZE_16B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int8_t  v8a  [SIZE_8B]  __attribute__((aligned(32 * NR_LANES), section(".l2")));
-int8_t  v8b  [SIZE_8B]  __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int64_t v64a[SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int64_t v64b[SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int32_t v32a[SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int32_t v32b[SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int16_t v16a[SIZE_16B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int16_t v16b[SIZE_16B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int8_t v8a[SIZE_8B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int8_t v8b[SIZE_8B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 int64_t v_result64, s_result64;
 int32_t v_result32, s_result32;
@@ -78,7 +78,8 @@ int main() {
     printf("Scalar runtime: %ld\n", runtime_s);
 
     if (CHECK) {
-      if (v_result64 != s_result64) return -1;
+      if (v_result64 != s_result64)
+        return -1;
     }
   }
 
@@ -94,7 +95,8 @@ int main() {
     printf("Scalar runtime: %ld\n", runtime_s);
 
     if (CHECK) {
-      if (v_result32 != s_result32) return -1;
+      if (v_result32 != s_result32)
+        return -1;
     }
   }
 
@@ -110,7 +112,8 @@ int main() {
     printf("Scalar runtime: %ld\n", runtime_s);
 
     if (CHECK) {
-      if (v_result16 != s_result16) return -1;
+      if (v_result16 != s_result16)
+        return -1;
     }
   }
 
@@ -126,7 +129,8 @@ int main() {
     printf("Scalar runtime: %ld\n", runtime_s);
 
     if (CHECK) {
-      if (v_result8 != s_result8) return -1;
+      if (v_result8 != s_result8)
+        return -1;
     }
   }
 
@@ -135,7 +139,7 @@ int main() {
   return 0;
 }
 
-void dotp_64b(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result) {
+void dotp_64b(uint64_t avl, int64_t *v0, int64_t *v1, int64_t *result) {
   uint64_t vl;
   volatile uint64_t tmp;
 
@@ -158,12 +162,13 @@ void dotp_64b(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result) {
   asm volatile("vmul.vv v24, v8, v0");
   asm volatile("vredsum.vs v16, v24, v16");
   asm volatile("vsetvli %0, %1, e64, m8, ta, ma" : "=r"(tmp) : "r"(1));
-  // Store the reduced value to have a memory barrier and read the actual runtime
+  // Store the reduced value to have a memory barrier and read the actual
+  // runtime
   asm volatile("vse64.v v16, (%0);" ::"r"(result));
   stop_timer();
 }
 
-void dotp_64b_scalar(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result) {
+void dotp_64b_scalar(uint64_t avl, int64_t *v0, int64_t *v1, int64_t *result) {
   int64_t acc0, acc1, acc2, acc3, acc4, acc5, acc6, acc7;
 
   acc0 = 0;
@@ -177,14 +182,14 @@ void dotp_64b_scalar(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result) {
   // Start timer
   start_timer();
   for (uint64_t i = 0; i < avl; i += 8) {
-     acc0 += v0[i + 0] * v1[i + 0];
-     acc1 += v0[i + 1] * v1[i + 1];
-     acc2 += v0[i + 2] * v1[i + 2];
-     acc3 += v0[i + 3] * v1[i + 3];
-     acc4 += v0[i + 4] * v1[i + 4];
-     acc5 += v0[i + 5] * v1[i + 5];
-     acc6 += v0[i + 6] * v1[i + 6];
-     acc7 += v0[i + 7] * v1[i + 7];
+    acc0 += v0[i + 0] * v1[i + 0];
+    acc1 += v0[i + 1] * v1[i + 1];
+    acc2 += v0[i + 2] * v1[i + 2];
+    acc3 += v0[i + 3] * v1[i + 3];
+    acc4 += v0[i + 4] * v1[i + 4];
+    acc5 += v0[i + 5] * v1[i + 5];
+    acc6 += v0[i + 6] * v1[i + 6];
+    acc7 += v0[i + 7] * v1[i + 7];
   }
 
   acc0 += acc1;
@@ -202,7 +207,7 @@ void dotp_64b_scalar(uint64_t avl, int64_t* v0, int64_t* v1, int64_t* result) {
   *result = acc0;
 }
 
-void dotp_32b(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result) {
+void dotp_32b(uint64_t avl, int32_t *v0, int32_t *v1, int32_t *result) {
   uint64_t vl;
   volatile uint64_t tmp;
 
@@ -224,12 +229,13 @@ void dotp_32b(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result) {
   asm volatile("vmul.vv v24, v8, v0");
   asm volatile("vredsum.vs v16, v24, v16");
   asm volatile("vsetvli %0, %1, e32, m8, ta, ma" : "=r"(tmp) : "r"(1));
-  // Store the reduced value to have a memory barrier and read the actual runtime
+  // Store the reduced value to have a memory barrier and read the actual
+  // runtime
   asm volatile("vse32.v v16, (%0);" ::"r"(result));
   stop_timer();
 }
 
-void dotp_32b_scalar(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result) {
+void dotp_32b_scalar(uint64_t avl, int32_t *v0, int32_t *v1, int32_t *result) {
   int32_t acc0, acc1, acc2, acc3, acc4, acc5, acc6, acc7;
 
   acc0 = 0;
@@ -243,14 +249,14 @@ void dotp_32b_scalar(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result) {
   // Start timer
   start_timer();
   for (uint32_t i = 0; i < avl; i += 8) {
-     acc0 += v0[i + 0] * v1[i + 0];
-     acc1 += v0[i + 1] * v1[i + 1];
-     acc2 += v0[i + 2] * v1[i + 2];
-     acc3 += v0[i + 3] * v1[i + 3];
-     acc4 += v0[i + 4] * v1[i + 4];
-     acc5 += v0[i + 5] * v1[i + 5];
-     acc6 += v0[i + 6] * v1[i + 6];
-     acc7 += v0[i + 7] * v1[i + 7];
+    acc0 += v0[i + 0] * v1[i + 0];
+    acc1 += v0[i + 1] * v1[i + 1];
+    acc2 += v0[i + 2] * v1[i + 2];
+    acc3 += v0[i + 3] * v1[i + 3];
+    acc4 += v0[i + 4] * v1[i + 4];
+    acc5 += v0[i + 5] * v1[i + 5];
+    acc6 += v0[i + 6] * v1[i + 6];
+    acc7 += v0[i + 7] * v1[i + 7];
   }
 
   acc0 += acc1;
@@ -268,7 +274,7 @@ void dotp_32b_scalar(uint64_t avl, int32_t* v0, int32_t* v1, int32_t* result) {
   *result = acc0;
 }
 
-void dotp_16b(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result) {
+void dotp_16b(uint64_t avl, int16_t *v0, int16_t *v1, int16_t *result) {
   uint64_t vl;
   volatile uint64_t tmp;
 
@@ -290,12 +296,13 @@ void dotp_16b(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result) {
   asm volatile("vmul.vv v24, v8, v0");
   asm volatile("vredsum.vs v16, v24, v16");
   asm volatile("vsetvli %0, %1, e16, m8, ta, ma" : "=r"(tmp) : "r"(1));
-  // Store the reduced value to have a memory barrier and read the actual runtime
+  // Store the reduced value to have a memory barrier and read the actual
+  // runtime
   asm volatile("vse16.v v16, (%0);" ::"r"(result));
   stop_timer();
 }
 
-void dotp_16b_scalar(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result) {
+void dotp_16b_scalar(uint64_t avl, int16_t *v0, int16_t *v1, int16_t *result) {
   int16_t acc0, acc1, acc2, acc3, acc4, acc5, acc6, acc7;
 
   acc0 = 0;
@@ -309,14 +316,14 @@ void dotp_16b_scalar(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result) {
   // Start timer
   start_timer();
   for (uint16_t i = 0; i < avl; i += 8) {
-     acc0 += v0[i + 0] * v1[i + 0];
-     acc1 += v0[i + 1] * v1[i + 1];
-     acc2 += v0[i + 2] * v1[i + 2];
-     acc3 += v0[i + 3] * v1[i + 3];
-     acc4 += v0[i + 4] * v1[i + 4];
-     acc5 += v0[i + 5] * v1[i + 5];
-     acc6 += v0[i + 6] * v1[i + 6];
-     acc7 += v0[i + 7] * v1[i + 7];
+    acc0 += v0[i + 0] * v1[i + 0];
+    acc1 += v0[i + 1] * v1[i + 1];
+    acc2 += v0[i + 2] * v1[i + 2];
+    acc3 += v0[i + 3] * v1[i + 3];
+    acc4 += v0[i + 4] * v1[i + 4];
+    acc5 += v0[i + 5] * v1[i + 5];
+    acc6 += v0[i + 6] * v1[i + 6];
+    acc7 += v0[i + 7] * v1[i + 7];
   }
 
   acc0 += acc1;
@@ -334,7 +341,7 @@ void dotp_16b_scalar(uint64_t avl, int16_t* v0, int16_t* v1, int16_t* result) {
   *result = acc0;
 }
 
-void dotp_8b(uint64_t avl, int8_t* v0, int8_t* v1, int8_t* result) {
+void dotp_8b(uint64_t avl, int8_t *v0, int8_t *v1, int8_t *result) {
   uint64_t vl;
   volatile uint64_t tmp;
 
@@ -356,12 +363,13 @@ void dotp_8b(uint64_t avl, int8_t* v0, int8_t* v1, int8_t* result) {
   asm volatile("vmul.vv v24, v8, v0");
   asm volatile("vredsum.vs v8, v24, v8");
   asm volatile("vsetvli %0, %1, e8, m8, ta, ma" : "=r"(tmp) : "r"(1));
-  // Store the reduced value to have a memory barrier and read the actual runtime
+  // Store the reduced value to have a memory barrier and read the actual
+  // runtime
   asm volatile("vse8.v v8, (%0);" ::"r"(result));
   stop_timer();
 }
 
-void dotp_8b_scalar(uint64_t avl, int8_t* v0, int8_t* v1, int8_t* result) {
+void dotp_8b_scalar(uint64_t avl, int8_t *v0, int8_t *v1, int8_t *result) {
   int8_t acc0, acc1, acc2, acc3, acc4, acc5, acc6, acc7;
 
   acc0 = 0;
@@ -375,14 +383,14 @@ void dotp_8b_scalar(uint64_t avl, int8_t* v0, int8_t* v1, int8_t* result) {
   // Start timer
   start_timer();
   for (uint8_t i = 0; i < avl; i += 8) {
-     acc0 += v0[i + 0] * v1[i + 0];
-     acc1 += v0[i + 1] * v1[i + 1];
-     acc2 += v0[i + 2] * v1[i + 2];
-     acc3 += v0[i + 3] * v1[i + 3];
-     acc4 += v0[i + 4] * v1[i + 4];
-     acc5 += v0[i + 5] * v1[i + 5];
-     acc6 += v0[i + 6] * v1[i + 6];
-     acc7 += v0[i + 7] * v1[i + 7];
+    acc0 += v0[i + 0] * v1[i + 0];
+    acc1 += v0[i + 1] * v1[i + 1];
+    acc2 += v0[i + 2] * v1[i + 2];
+    acc3 += v0[i + 3] * v1[i + 3];
+    acc4 += v0[i + 4] * v1[i + 4];
+    acc5 += v0[i + 5] * v1[i + 5];
+    acc6 += v0[i + 6] * v1[i + 6];
+    acc7 += v0[i + 7] * v1[i + 7];
   }
 
   acc0 += acc1;
