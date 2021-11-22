@@ -1,0 +1,9 @@
+Update on last backend runs:
+
+4 lanes design, VLEN = 4096, +reductions+indexed_memory_operations
+
+Area macro floorplan: 0.83 mm x 1.059 mm
+Frequency SS: 925 MHz
+Frequency TT: 1.36 GHz
+Power with VCD back-annotation, fmatmul 128x128: 220 mW @1GHz
+Peak efficiency, fmatmul kernel, frequency TT: 35.7 DP-FLOPS/W
