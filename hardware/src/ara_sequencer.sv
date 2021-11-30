@@ -384,10 +384,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
         // Wait for the address translation
         if ((is_load(pe_req_d.op) || is_store(pe_req_d.op)) && addrgen_ack_i) begin
-          state_d          = IDLE;
-          ara_req_ready_o  = 1'b1;
-          ara_resp_valid_o = 1'b1;
-          ara_resp_o.error = addrgen_error_i;
+          state_d             = IDLE;
+          ara_req_ready_o     = 1'b1;
+          ara_resp_valid_o    = 1'b1;
+          ara_resp_o.error    = addrgen_error_i;
           ara_resp_o.error_vl = addrgen_error_vl_i;
         end
 

@@ -116,34 +116,34 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_ar_t    (axi_ar_t    ),
     .axi_aw_t    (axi_aw_t    )
   ) i_addrgen (
-    .clk_i                      (clk_i                    ),
-    .rst_ni                     (rst_ni                   ),
+    .clk_i                      (clk_i                      ),
+    .rst_ni                     (rst_ni                     ),
     // AXI Memory Interface
-    .axi_aw_o                   (axi_req.aw               ),
-    .axi_aw_valid_o             (axi_req.aw_valid         ),
-    .axi_aw_ready_i             (axi_resp.aw_ready        ),
-    .axi_ar_o                   (axi_req.ar               ),
-    .axi_ar_valid_o             (axi_req.ar_valid         ),
-    .axi_ar_ready_i             (axi_resp.ar_ready        ),
+    .axi_aw_o                   (axi_req.aw                 ),
+    .axi_aw_valid_o             (axi_req.aw_valid           ),
+    .axi_aw_ready_i             (axi_resp.aw_ready          ),
+    .axi_ar_o                   (axi_req.ar                 ),
+    .axi_ar_valid_o             (axi_req.ar_valid           ),
+    .axi_ar_ready_i             (axi_resp.ar_ready          ),
     // Interface with dispatcher
-    .core_st_pending_i          (core_st_pending_i        ),
+    .core_st_pending_i          (core_st_pending_i          ),
     // Interface with the sequencer
-    .pe_req_i                   (pe_req_i                 ),
-    .pe_req_valid_i             (pe_req_valid_i           ),
-    .pe_vinsn_running_i         (pe_vinsn_running_i       ),
-    .addrgen_ack_o              (addrgen_ack_o            ),
-    .addrgen_error_o            (addrgen_error_o          ),
-    .addrgen_error_vl_o         (addrgen_error_vl_o       ),
+    .pe_req_i                   (pe_req_i                   ),
+    .pe_req_valid_i             (pe_req_valid_i             ),
+    .pe_vinsn_running_i         (pe_vinsn_running_i         ),
+    .addrgen_ack_o              (addrgen_ack_o              ),
+    .addrgen_error_o            (addrgen_error_o            ),
+    .addrgen_error_vl_o         (addrgen_error_vl_o         ),
     // Interface with the lanes
-    .addrgen_operand_i          (addrgen_operand_i        ),
+    .addrgen_operand_i          (addrgen_operand_i          ),
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
-    .addrgen_operand_valid_i    (addrgen_operand_valid_i  ),
-    .addrgen_operand_ready_o    (addrgen_operand_ready_o  ),
+    .addrgen_operand_valid_i    (addrgen_operand_valid_i    ),
+    .addrgen_operand_ready_o    (addrgen_operand_ready_o    ),
     // Interface with the load/store units
-    .axi_addrgen_req_o          (axi_addrgen_req          ),
-    .axi_addrgen_req_valid_o    (axi_addrgen_req_valid    ),
-    .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready),
-    .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready)
+    .axi_addrgen_req_o          (axi_addrgen_req            ),
+    .axi_addrgen_req_valid_o    (axi_addrgen_req_valid      ),
+    .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready  ),
+    .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready  )
   );
 
   ////////////////////////

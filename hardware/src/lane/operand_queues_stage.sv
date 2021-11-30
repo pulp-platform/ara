@@ -8,7 +8,7 @@
 
 module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     // Support for floating-point data types
-    parameter fpu_support_e FPUSupport       = FPUSupportHalfSingleDouble
+    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,

@@ -441,8 +441,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     eff_axi_dw_d     = eff_axi_dw_q;
     eff_axi_dw_log_d = eff_axi_dw_log_q;
 
-    idx_addr_ready_d        = 1'b0;
-    addrgen_error_vl_d      = '0;
+    idx_addr_ready_d    = 1'b0;
+    addrgen_error_vl_d  = '0;
 
     // No error by default
     idx_op_error_d = 1'b0;
