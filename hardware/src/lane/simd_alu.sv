@@ -24,6 +24,13 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     input  vxrm_t      vxrm_i,
     output elen_t      result_o
   );
+  
+  // Temp logic rounding mode CSR (vxrm_i) needs to be integrated as input to alu
+  vxrm_t       vxrm_i;
+  logic        r;
+  // logic        vxsat;
+
+  assign vxrm_i = 0;
 
   ///////////////////
   //  Definitions  //
@@ -56,7 +63,6 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
 
   assign vxrm = vxrm_i;
   assign vxsat_o = vxsat;
-
   ///////////////////
   //  Comparisons  //
   ///////////////////
