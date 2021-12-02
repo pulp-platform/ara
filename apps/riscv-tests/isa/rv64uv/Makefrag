@@ -5,7 +5,11 @@
 # Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 #         Basile Bougenot <bbougenot@student.ethz.ch>
 
-rv64uv_sc_tests = vadd \
+rv64uv_sc_tests = vaadd \
+                  vaaddu\
+                  vsadd \
+                  vsaddu \
+                  vadd \
                   vsub \
                   vrsub \
                   vwaddu \
