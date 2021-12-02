@@ -19,6 +19,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     input  logic                         clk_i,
     input  logic                         rst_ni,
     input  logic[idx_width(NrLanes)-1:0] lane_id_i,
+    // Interface with Dispatcher
+    output logic                         vxsat_flag_o,
     // Interface with the lane sequencer
     input  vfu_operation_t               vfu_operation_i,
     input  logic                         vfu_operation_valid_i,
@@ -348,6 +350,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   elen_t valu_result;
   logic  valu_valid;
+  alu_vxsat_t alu_vxsat;
 
   simd_alu i_simd_alu (
     .operand_a_i       (alu_operand_a                                                   ),
@@ -358,8 +361,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     .narrowing_select_i(narrowing_select_q                                              ),
     .op_i              (vinsn_issue_q.op                                                ),
     .vew_i             (vinsn_issue_q.vtype.vsew                                        ),
+    .vxsat_o           (alu_vxsat                                                       ),
     .result_o          (valu_result                                                     )
   );
+
+  // Vector saturation flag validation signal
 
   ///////////////
   //  Control  //
@@ -413,7 +419,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     ////////////////////////////////////////
     //  Write data into the result queue  //
     ////////////////////////////////////////
-
     if (vinsn_issue_valid || alu_state_q != NO_REDUCTION) begin
       case (alu_state_q)
         NO_REDUCTION: begin
@@ -446,6 +451,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
               if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
                 result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
+              
+                // Did Alu saturated when computing any elemnts?
+              vxsat_flag_o = alu_vxsat & result_queue_d[result_queue_write_pnt_q].be;
 
               // Is this a narrowing instruction?
               if (narrowing(vinsn_issue_q.op)) begin

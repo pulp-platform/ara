@@ -102,7 +102,7 @@ module ara_tb;
     if (binary != "") begin
       // Read ELF
       read_elf(binary);
-      $display("Loading %s", binary);
+      $display("Loading ELF file %s", binary);
       while (get_section(address, length)) begin
         // Read sections
         automatic int nwords = (length + AxiWideBeWidth - 1)/AxiWideBeWidth;
@@ -123,6 +123,9 @@ module ara_tb;
             $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
         end
       end
+    end else begin
+        $error("Expecting a firmware to run, non was provided!");
+        $finish;
     end
   end : dram_init
 

@@ -91,7 +91,6 @@ package ara_pkg;
 
   typedef logic [$clog2(MAXVL+1)-1:0] vlen_t;
   typedef logic [$clog2(NrVInsn)-1:0] vid_t;
-
   typedef logic [ELEN-1:0] elen_t;
 
   //////////////////
@@ -101,6 +100,8 @@ package ara_pkg;
   typedef enum logic [6:0] {
     // Arithmetic and logic instructions
     VADD, VSUB, VADC, VSBC, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
+    // Fixed point
+    VSADDU, VSADD, VSSUBU, VSSUB, VAADDU, VAADD, VASUBU, VASUB,
     // Shifts,
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
@@ -818,6 +819,20 @@ package ara_pkg;
       end
     endcase
   endfunction : deshuffle_index
+
+  /////////////////////////
+  //  Fixed-Point        //
+  /////////////////////////
+
+  typedef logic                       vxsat_t;
+  typedef logic [1:0]                 vxrm_t;
+
+  typedef union packed {
+    logic [0:0][7:0] w64;
+    logic [1:0][3:0] w32;
+    logic [3:0][1:0] w16;
+    logic [7:0][0:0] w8;
+  } alu_vxsat_t;
 
   /////////////////////////
   //  MASKU definitions  //

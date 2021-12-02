@@ -33,6 +33,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes
     input  logic              [NrLanes-1:0][4:0] fflags_ex_i,
     input  logic              [NrLanes-1:0]      fflags_ex_valid_i,
+    input  logic              [NrLanes-1:0]      vxsat_flag_i,
     // Interface with the Vector Store Unit
     output logic                                 core_st_pending_o,
     input  logic                                 load_complete_i,
@@ -53,11 +54,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t  vstart_d, vstart_q;
   vlen_t  vl_d, vl_q;
   vtype_t vtype_d, vtype_q;
+  vxsat_t vxsat_d, vxsat_q;
+  vxrm_t  vxrm_d, vxrm_q;
 
   `FF(vstart_q, vstart_d, '0)
   `FF(vl_q, vl_d, '0)
   `FF(vtype_q, vtype_d, '{vill: 1'b1, default: '0})
-
+  `FF(vxsat_q, vxsat_d, '0)
+  `FF(vxrm_q, vxrm_d, '0)
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
   function automatic riscv::xlen_t xlen_vtype(vtype_t vtype);
     xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vsew,
@@ -200,6 +204,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     lmul_vs2     = vtype_q.vlmul;
     lmul_vs1     = vtype_q.vlmul;
     illegal_insn = 1'b0;
+    vxsat_d      = vxsat_q;
 
     is_vload      = 1'b0;
     is_vstore     = 1'b0;
@@ -244,6 +249,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // The token must change at every new instruction
     ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
 
+    // Saturation in any lane will raise vxsat flag
+    vxsat_d = |vxsat_flag_i;
     // Special states
     case (state_q)
       // Is Ara idle?
@@ -487,6 +494,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op      = ara_pkg::VMERGE;
                     ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
                   end
+                  6'b100000: ara_req_d.op = ara_pkg::VSADDU;
+                  6'b100001: ara_req_d.op = ara_pkg::VSADD;
+                  6'b100010: ara_req_d.op = ara_pkg::VSSUBU;
+                  6'b100011: ara_req_d.op = ara_pkg::VSSUB;
                   6'b100101: ara_req_d.op = ara_pkg::VSLL;
                   6'b101000: ara_req_d.op = ara_pkg::VSRL;
                   6'b101001: ara_req_d.op = ara_pkg::VSRA;
@@ -697,6 +708,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op      = ara_pkg::VMERGE;
                     ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.x does not use vs2
                   end
+                  6'b100000: ara_req_d.op = ara_pkg::VSADDU;
+                  6'b100001: ara_req_d.op = ara_pkg::VSADD;
+                  6'b100010: ara_req_d.op = ara_pkg::VSSUBU;
+                  6'b100011: ara_req_d.op = ara_pkg::VSSUB;
                   6'b100101: ara_req_d.op = ara_pkg::VSLL;
                   6'b101000: ara_req_d.op = ara_pkg::VSRL;
                   6'b101001: ara_req_d.op = ara_pkg::VSRA;
@@ -849,6 +864,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op      = ara_pkg::VMERGE;
                     ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.i does not use vs2
                   end
+                  6'b100000: ara_req_d.op = ara_pkg::VSADDU;
+                  6'b100001: ara_req_d.op = ara_pkg::VSADD;
                   6'b100101: ara_req_d.op = ara_pkg::VSLL;
                   6'b100111: begin // vmv<nr>r.v
                     automatic int unsigned vlmax;
@@ -1043,6 +1060,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_valid_d   = 1'b0;
                     end
                   end
+                  6'b001000: ara_req_d.op = ara_pkg::VAADDU;
+                  6'b001001: ara_req_d.op = ara_pkg::VAADD;
+                  6'b001010: ara_req_d.op = ara_pkg::VASUBU;
+                  6'b001011: ara_req_d.op = ara_pkg::VASUB;
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMANDNOT;
                     ara_req_d.use_vd_op = 1'b1;
@@ -1344,6 +1365,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
+                  6'b001000: ara_req_d.op = ara_pkg::VAADDU;
+                  6'b001001: ara_req_d.op = ara_pkg::VAADD;
+                  6'b001010: ara_req_d.op = ara_pkg::VASUBU;
+                  6'b001011: ara_req_d.op = ara_pkg::VASUB;
                   // Slides
                   6'b001110: begin // vslide1up
                     ara_req_d.op      = ara_pkg::VSLIDEUP;
@@ -2609,6 +2634,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     vstart_d          = acc_req_i.rs1;
                     acc_resp_o.result = vstart_q;
                   end
+                  riscv::CSR_VXRM: begin
+                    vxrm_d            = acc_req_i.rs1[1:0];
+                    acc_resp_o.result = vlen_t'(vxrm_q);
+                  end
+                  riscv::CSR_VXSAT: begin
+                    vxsat_d           = acc_req_i.rs1[0];
+                    acc_resp_o.result = vlen_t'(vxsat_q);
+                  end
                   default: acc_resp_o.error = 1'b1;
                 endcase
               end
@@ -2633,6 +2666,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     // Only reads are allowed
                     if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
                     else acc_resp_o.error                                 = 1'b1;
+                  end
+                  riscv::CSR_VXRM: begin
+                    vxrm_d            = vxrm_q | vlen_t'(acc_req_i.rs1[1:0]);
+                    acc_resp_o.result = vlen_t'(vxrm_q);
+                  end
+                  riscv::CSR_VXSAT: begin
+                    vxsat_d           = vxsat_q | vlen_t'(acc_req_i.rs1[0]);
+                    acc_resp_o.result = vlen_t'(vxsat_q);
                   end
                   default: acc_resp_o.error = 1'b1;
                 endcase
@@ -2669,6 +2710,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   riscv::CSR_VSTART: begin
                     vstart_d          = vlen_t'(acc_req_i.insn.itype.rs1);
                     acc_resp_o.result = vstart_q;
+                  end
+                  riscv::CSR_VXRM: begin
+                    vxrm_d            = vxrm_t'(acc_req_i.insn.itype.rs1[1:0]);
+                    acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   default: acc_resp_o.error = 1'b1;
                 endcase
