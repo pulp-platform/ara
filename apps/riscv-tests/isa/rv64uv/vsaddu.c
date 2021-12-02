@@ -7,6 +7,7 @@
 
 #include "vector_macros.h"
 
+
 void TEST_CASE1(void) {
   uint64_t vxsat;
   VSET(4, e8, m1);
