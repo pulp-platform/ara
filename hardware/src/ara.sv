@@ -81,34 +81,36 @@ module ara import ara_pkg::*; #(
   // Interface with the lanes
   logic      [NrLanes-1:0][4:0] fflags_ex;
   logic      [NrLanes-1:0]      fflags_ex_valid;
+  logic      [NrLanes-1:0]      vxsat_flag;
 
   ara_dispatcher #(
     .NrLanes(NrLanes)
   ) i_dispatcher (
-    .clk_i            (clk_i           ),
-    .rst_ni           (rst_ni          ),
+    .clk_i             (clk_i           ),
+    .rst_ni            (rst_ni          ),
     // Interface with Ariane
-    .acc_req_i        (acc_req_i       ),
-    .acc_req_valid_i  (acc_req_valid_i ),
-    .acc_req_ready_o  (acc_req_ready_o ),
-    .acc_resp_o       (acc_resp_o      ),
-    .acc_resp_valid_o (acc_resp_valid_o),
-    .acc_resp_ready_i (acc_resp_ready_i),
+    .acc_req_i         (acc_req_i       ),
+    .acc_req_valid_i   (acc_req_valid_i ),
+    .acc_req_ready_o   (acc_req_ready_o ),
+    .acc_resp_o        (acc_resp_o      ),
+    .acc_resp_valid_o  (acc_resp_valid_o),
+    .acc_resp_ready_i  (acc_resp_ready_i),
     // Interface with the sequencer
-    .ara_req_o        (ara_req         ),
-    .ara_req_valid_o  (ara_req_valid   ),
-    .ara_req_ready_i  (ara_req_ready   ),
-    .ara_resp_i       (ara_resp        ),
-    .ara_resp_valid_i (ara_resp_valid  ),
-    .ara_idle_i       (ara_idle        ),
+    .ara_req_o         (ara_req         ),
+    .ara_req_valid_o   (ara_req_valid   ),
+    .ara_req_ready_i   (ara_req_ready   ),
+    .ara_resp_i        (ara_resp        ),
+    .ara_resp_valid_i  (ara_resp_valid  ),
+    .ara_idle_i        (ara_idle        ),
     // Interface with the lanes
-    .fflags_ex_i      (fflags_ex       ),
-    .fflags_ex_valid_i(fflags_ex_valid ),
+    .vxsat_flag_i      (vxsat_flag      ),
+    .fflags_ex_i       (fflags_ex       ),
+    .fflags_ex_valid_i (fflags_ex_valid ),
     // Interface with the Vector Store Unit
-    .core_st_pending_o(core_st_pending ),
-    .load_complete_i  (load_complete   ),
-    .store_complete_i (store_complete  ),
-    .store_pending_i  (store_pending   )
+    .core_st_pending_o (core_st_pending ),
+    .load_complete_i   (load_complete   ),
+    .store_complete_i  (store_complete  ),
+    .store_pending_i   (store_pending   )
   );
 
   /////////////////
@@ -234,6 +236,7 @@ module ara import ara_pkg::*; #(
       .scan_data_o                     (/* Unused */                        ),
       .lane_id_i                       (lane[idx_width(NrLanes)-1:0]        ),
       // Interface with the dispatcher
+      .vxsat_flag_o                    (vxsat_flag[lane]                    ),
       .fflags_ex_o                     (fflags_ex[lane]                     ),
       .fflags_ex_valid_o               (fflags_ex_valid[lane]               ),
       // Interface with the sequencer

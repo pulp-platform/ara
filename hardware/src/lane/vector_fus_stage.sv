@@ -20,6 +20,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     input  logic                              clk_i,
     input  logic                              rst_ni,
     input  logic [idx_width(NrLanes)-1:0]     lane_id_i,
+    // Interface with Dispatcher
+    output logic                              vxsat_flag_o,
     // Interface with CVA6
     output logic           [4:0]              fflags_ex_o,
     output logic                              fflags_ex_valid_o,
@@ -93,6 +95,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
     .lane_id_i            (lane_id_i                      ),
+    // Interface with Dispatcher
+    .vxsat_flag_o         (vxsat_flag_o                   ),
     // Interface with the lane sequencer
     .vfu_operation_i      (vfu_operation_i                ),
     .vfu_operation_valid_i(vfu_operation_valid_i          ),
