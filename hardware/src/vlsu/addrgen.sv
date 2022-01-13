@@ -389,6 +389,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   //  Support for misaligned stores  //
   /////////////////////////////////////
 
+  // AXI Request Generation signals, declared here for convenience
+  addrgen_req_t axi_addrgen_d, axi_addrgen_q;
+
   // Narrower AXI Data Byte-Width used for misaligned stores
   logic [$clog2(AxiDataWidth/8)-1:0]            narrow_axi_data_bwidth;
   // Helper signal to calculate the narrow_axi_data_bwidth
@@ -419,7 +422,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   //  AXI Request Generation  //
   //////////////////////////////
 
-  addrgen_req_t axi_addrgen_d, axi_addrgen_q;
   enum logic [1:0] {
     AXI_ADDRGEN_IDLE, AXI_ADDRGEN_MISALIGNED, AXI_ADDRGEN_WAITING, AXI_ADDRGEN_REQUESTING
   } axi_addrgen_state_d, axi_addrgen_state_q;
