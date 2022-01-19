@@ -10,12 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
  - Avoid corner-case in which the sequencer issues the same instruction multiple times when two units become non-ready at the same time
  - The lane sequencer now calculates the correct number of elements to be requested by the `MASKU` operand requesters
+ - When the instruction queue of the SLDU is not empty, read from it to update the commit counter, and not from the incoming request
+ - If an instruction targets more FUs, all of them must be ready to let the instruction be dispatched by the sequencer
 
 ## Added
 
  - The sequencer can issue instructions to non-full units even if the other units are full
  - Vector indexed unordered/ordered load (`vluxei8`, `vluxei16`, `vluxei32`, `vluxei64`, `vloxei8`, `vloxei16`, `vloxei32`, `vloxei64`)
  - Vector indexed unordered/ordered stores (`vsuxei8`, `vsuxei16`, `vsuxei32`, `vsuxei64`, `vsoxei8`, `vsoxei16`, `vsoxei32`, `vsoxei64`)
+ - Vector integer reductions (`vredsum`, `vredmaxu`, `vredmax`, `vredminu`, `vredmin`, `vredand`, `vredor`, `vredxor`, `vwredsumu`, `vwredsum`)
 
 ## Changed
 
