@@ -116,43 +116,47 @@ module ara import ara_pkg::*; #(
   /////////////////
 
   // Interface with the PEs
-  pe_req_t                pe_req;
-  logic                   pe_req_valid;
-  logic     [NrPEs-1:0]   pe_req_ready;
-  logic     [NrVInsn-1:0] pe_vinsn_running;
-  pe_resp_t [NrPEs-1:0]   pe_resp;
+  pe_req_t                         pe_req;
+  logic                            pe_req_valid;
+  logic              [NrPEs-1:0]   pe_req_ready;
+  logic              [NrVInsn-1:0] pe_vinsn_running;
+  pe_resp_t          [NrPEs-1:0]   pe_resp;
   // Interface with the address generator
-  logic                   addrgen_ack;
-  logic                   addrgen_error;
-  vlen_t                  addrgen_error_vl;
-  logic     [NrLanes-1:0] alu_vinsn_done;
-  logic     [NrLanes-1:0] mfpu_vinsn_done;
+  logic                            addrgen_ack;
+  logic                            addrgen_error;
+  vlen_t                           addrgen_error_vl;
+  logic              [NrLanes-1:0] alu_vinsn_done;
+  logic              [NrLanes-1:0] mfpu_vinsn_done;
+  // Interface with the operand requesters
+  logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table;
 
   ara_sequencer #(.NrLanes(NrLanes)) i_sequencer (
-    .clk_i                 (clk_i             ),
-    .rst_ni                (rst_ni            ),
+    .clk_i                 (clk_i              ),
+    .rst_ni                (rst_ni             ),
     // Interface with the dispatcher
-    .ara_req_i             (ara_req           ),
-    .ara_req_valid_i       (ara_req_valid     ),
-    .ara_req_ready_o       (ara_req_ready     ),
-    .ara_resp_o            (ara_resp          ),
-    .ara_resp_valid_o      (ara_resp_valid    ),
-    .ara_idle_o            (ara_idle          ),
+    .ara_req_i             (ara_req            ),
+    .ara_req_valid_i       (ara_req_valid      ),
+    .ara_req_ready_o       (ara_req_ready      ),
+    .ara_resp_o            (ara_resp           ),
+    .ara_resp_valid_o      (ara_resp_valid     ),
+    .ara_idle_o            (ara_idle           ),
     // Interface with the PEs
-    .pe_req_o              (pe_req            ),
-    .pe_req_valid_o        (pe_req_valid      ),
-    .pe_vinsn_running_o    (pe_vinsn_running  ),
-    .pe_req_ready_i        (pe_req_ready      ),
-    .pe_resp_i             (pe_resp           ),
-    .alu_vinsn_done_i      (alu_vinsn_done[0] ),
-    .mfpu_vinsn_done_i     (mfpu_vinsn_done[0]),
+    .pe_req_o              (pe_req             ),
+    .pe_req_valid_o        (pe_req_valid       ),
+    .pe_vinsn_running_o    (pe_vinsn_running   ),
+    .pe_req_ready_i        (pe_req_ready       ),
+    .pe_resp_i             (pe_resp            ),
+    .alu_vinsn_done_i      (alu_vinsn_done[0]  ),
+    .mfpu_vinsn_done_i     (mfpu_vinsn_done[0] ),
+    // Interface with the operand requesters
+    .global_hazard_table_o (global_hazard_table),
     // Interface with the slide unit
-    .pe_scalar_resp_i      ('0                ),
-    .pe_scalar_resp_valid_i(1'b0              ),
+    .pe_scalar_resp_i      ('0                 ),
+    .pe_scalar_resp_valid_i(1'b0               ),
     // Interface with the address generator
-    .addrgen_ack_i         (addrgen_ack       ),
-    .addrgen_error_i       (addrgen_error     ),
-    .addrgen_error_vl_i    (addrgen_error_vl  )
+    .addrgen_ack_i         (addrgen_ack        ),
+    .addrgen_error_i       (addrgen_error      ),
+    .addrgen_error_vl_i    (addrgen_error_vl   )
   );
 
   /////////////
@@ -226,6 +230,7 @@ module ara import ara_pkg::*; #(
       .pe_resp_o                       (pe_resp[lane]                       ),
       .alu_vinsn_done_o                (alu_vinsn_done[lane]                ),
       .mfpu_vinsn_done_o               (mfpu_vinsn_done[lane]               ),
+      .global_hazard_table_i           (global_hazard_table                 ),
       // Interface with the slide unit
       .sldu_result_req_i               (sldu_result_req[lane]               ),
       .sldu_result_addr_i              (sldu_result_addr[lane]              ),

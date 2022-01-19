@@ -15,30 +15,32 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // vector store unit, the slide unit, and the mask unit.
     localparam int unsigned NrPEs   = NrLanes + 4
   ) (
-    input  logic                    clk_i,
-    input  logic                    rst_ni,
+    input  logic                            clk_i,
+    input  logic                            rst_ni,
     // Interface with Ara's dispatcher
-    input  ara_req_t                ara_req_i,
-    input  logic                    ara_req_valid_i,
-    output logic                    ara_req_ready_o,
-    output ara_resp_t               ara_resp_o,
-    output logic                    ara_resp_valid_o,
-    output logic                    ara_idle_o,
+    input  ara_req_t                        ara_req_i,
+    input  logic                            ara_req_valid_i,
+    output logic                            ara_req_ready_o,
+    output ara_resp_t                       ara_resp_o,
+    output logic                            ara_resp_valid_o,
+    output logic                            ara_idle_o,
     // Interface with the processing elements
-    output pe_req_t                 pe_req_o,
-    output logic                    pe_req_valid_o,
-    output logic      [NrVInsn-1:0] pe_vinsn_running_o,
-    input  logic        [NrPEs-1:0] pe_req_ready_i,
-    input  pe_resp_t    [NrPEs-1:0] pe_resp_i,
-    input  logic                    alu_vinsn_done_i,
-    input  logic                    mfpu_vinsn_done_i,
+    output pe_req_t                         pe_req_o,
+    output logic                            pe_req_valid_o,
+    output logic              [NrVInsn-1:0] pe_vinsn_running_o,
+    input  logic                [NrPEs-1:0] pe_req_ready_i,
+    input  pe_resp_t            [NrPEs-1:0] pe_resp_i,
+    input  logic                            alu_vinsn_done_i,
+    input  logic                            mfpu_vinsn_done_i,
+    // Interface with the operand requesters
+    output logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table_o,
     // Only the slide unit can answer with a scalar response
-    input  elen_t                   pe_scalar_resp_i,
-    input  logic                    pe_scalar_resp_valid_i,
+    input  elen_t                           pe_scalar_resp_i,
+    input  logic                            pe_scalar_resp_valid_i,
     // Interface with the Address Generation
-    input  logic                    addrgen_ack_i,
-    input  logic                    addrgen_error_i,
-    input  vlen_t                   addrgen_error_vl_i
+    input  logic                            addrgen_ack_i,
+    input  logic                            addrgen_error_i,
+    input  vlen_t                           addrgen_error_vl_i
   );
 
   ///////////////////////////////////
@@ -101,6 +103,31 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     assign stall_lanes_desynch_vec[i] = ~pe_vinsn_running_q[0][i] & |pe_vinsn_running_q_trns[i][NrLanes-1:1];
   end
   assign stall_lanes_desynch = |stall_lanes_desynch_vec;
+
+  /////////////////////////
+  // Global Hazard table //
+  /////////////////////////
+
+  // Global table of the dependencies between instructions
+  //
+  // The row at index N is the hazard vector belonging to instruction N
+  // It indicates all the instruction on which instruction N depends
+  //
+  // For example, with the following table, instruction 3 depends on
+  // instruction 0 and instruction 2
+  //
+  // +--------+--------+--------+--------+--------+
+  // |   -    | Insn 0 | Insn 1 | Insn 2 | Insn 3 |
+  // +--------+--------+--------+--------+--------+
+  // | Insn 0 |      0 |      0 |      0 |      0 |
+  // | Insn 1 |      1 |      0 |      0 |      0 |
+  // | Insn 2 |      0 |      0 |      0 |      0 |
+  // | Insn 3 |      1 |      0 |      1 |      0 |
+  // +--------+--------+--------+--------+--------+
+  //
+  // This information is forwarded to the operand requesters of each lane
+
+  logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table_d;
 
   /////////////////
   //  Sequencer  //
@@ -211,10 +238,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
   always_comb begin: p_sequencer
     // Default assignments
-    state_d            = state_q;
-    pe_vinsn_running_d = pe_vinsn_running_q;
-    read_list_d        = read_list_q;
-    write_list_d       = write_list_q;
+    state_d               = state_q;
+    pe_vinsn_running_d    = pe_vinsn_running_q;
+    read_list_d           = read_list_q;
+    write_list_d          = write_list_q;
+    global_hazard_table_d = global_hazard_table_o;
 
     // Maintain request
     pe_req_d       = '0;
@@ -243,12 +271,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;
-
-          // Recalculate the hazard bits
-          pe_req_d.hazard_vs1 &= vinsn_running_d;
-          pe_req_d.hazard_vs2 &= vinsn_running_d;
-          pe_req_d.hazard_vd &= vinsn_running_d;
-          pe_req_d.hazard_vm &= vinsn_running_d;
 
           // We are not ready
           ara_req_ready_o = 1'b0;
@@ -322,6 +344,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               default       : '0
             };
 
+            // Populate the global hazard table
+            global_hazard_table_d[vinsn_id_n] = pe_req_d.hazard_vd  | pe_req_d.hazard_vm |
+                                                pe_req_d.hazard_vs1 | pe_req_d.hazard_vs2;
+
             // We only issue instructions that take no operands if they have no hazards.
             // Moreover, SLIDE instructions cannot be always chained
             // ToDo: optimize the case for vslide1down, vslide1up (wait 2 cycles, then chain)
@@ -380,12 +406,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         pe_req_d       = pe_req_o;
         pe_req_valid_d = pe_req_valid_o;
 
-        // Recalculate the hazard bits
-        pe_req_d.hazard_vs1 &= vinsn_running_d;
-        pe_req_d.hazard_vs2 &= vinsn_running_d;
-        pe_req_d.hazard_vd &= vinsn_running_d;
-        pe_req_d.hazard_vm &= vinsn_running_d;
-
         // Wait for the address translation
         if ((is_load(pe_req_d.op) || is_store(pe_req_d.op)) && addrgen_ack_i) begin
           state_d             = IDLE;
@@ -405,6 +425,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         end
       end
     endcase
+
+    // Update the global hazard table
+    for (int id = 0; id < NrVInsn; id++) global_hazard_table_d[id] &= vinsn_running_d;
   end : p_sequencer
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_sequencer_ff
@@ -419,6 +442,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
       ara_req_token_q <= 1'b1;
       gold_ticket_q   <= 1'b0;
+
+      global_hazard_table_o <= '0;
     end else begin
       state_q <= state_d;
 
@@ -430,6 +455,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
       ara_req_token_q <= ara_req_token_d;
       gold_ticket_q   <= gold_ticket_d;
+
+      global_hazard_table_o <= global_hazard_table_d;
     end
   end
 
