@@ -137,6 +137,7 @@ module ara import ara_pkg::*; #(
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
   logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table;
+
   // Ready for lane 0 (scalar operand fwd)
   logic pe_scalar_resp_ready;
 
