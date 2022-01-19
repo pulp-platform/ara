@@ -17,11 +17,12 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,
+    // Interface with the main sequencer
+    input  logic            [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table_i,
     // Interface with the lane sequencer
     input  operand_request_cmd_t [NrOperandQueues-1:0] operand_request_i,
     input  logic                 [NrOperandQueues-1:0] operand_request_valid_i,
     output logic                 [NrOperandQueues-1:0] operand_request_ready_o,
-    input  logic                 [NrVInsn-1:0]         vinsn_running_i,
     // Interface with the VRF
     output logic                 [NrBanks-1:0]         vrf_req_o,
     output vaddr_t               [NrBanks-1:0]         vrf_addr_o,
@@ -211,6 +212,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
     // Metadata required to request all elements of this vector operand
     struct packed {
+      // ID of the instruction for this requester
+      vid_t id;
       // Address of the next element to be read
       vaddr_t addr;
       // How many elements remain to be read
@@ -287,6 +290,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
             // Store the request
             requester_d = '{
+              id     : operand_request_i[requester].id,
               addr   : vaddr(operand_request_i[requester].vs, NrLanes) +
               (operand_request_i[requester].vstart >>
                 (int'(EW64) - int'(operand_request_i[requester].eew))),
@@ -314,8 +318,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         end
 
         REQUESTING: begin
-          // Update hazards
-          requester_d.hazard = requester_q.hazard & vinsn_running_i;
           // Update waw counters
           for (int b = 0; b < NrVInsn; b++)
             if (vinsn_result_written_d[b])
@@ -369,6 +371,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Store the request
                 requester_d = '{
+                  id   : operand_request_i[requester].id,
                   addr : vaddr(operand_request_i[requester].vs, NrLanes) +
                   (operand_request_i[requester].vstart >>
                     (int'(EW64) - int'(operand_request_i[requester].eew))),
@@ -386,6 +389,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
           end
         end
       endcase
+      // Always keep the hazard bits up to date with the global hazard table
+      requester_d.hazard &= global_hazard_table_i[requester_d.id];
     end : operand_requester
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
