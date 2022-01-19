@@ -1751,16 +1751,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         end
                       endcase
                     end
-                    6'b100011: begin // VFUNARY1
+                    6'b010011: begin // VFUNARY1
                     // These instructions do not use vs1
                     ara_req_d.use_vs1 = 1'b0;
 
                     unique case (insn.varith_type.rs1)
+                      5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
                       5'b10000: ara_req_d.op = ara_pkg::VFCLASS;
                       default : illegal_insn = 1'b1;
                     endcase
 
                     end
+                    6'b100000: ara_req_d.op = ara_pkg::VFDIV;
                     6'b100100: ara_req_d.op = ara_pkg::VFMUL;
                     6'b101000: begin
                       ara_req_d.op             = ara_pkg::VFMADD;
@@ -2014,6 +2016,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     6'b011101: ara_req_d.op = ara_pkg::VMFGT;
                     6'b011111: ara_req_d.op = ara_pkg::VMFGE;
                     6'b100100: ara_req_d.op = ara_pkg::VFMUL;
+                    6'b100000: ara_req_d.op = ara_pkg::VFDIV;
+                    6'b100001: ara_req_d.op = ara_pkg::VFRDIV;
                     6'b100111: begin
                       ara_req_d.op             = ara_pkg::VFRSUB;
                       ara_req_d.swap_vs2_vd_op = 1'b1;
