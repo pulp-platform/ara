@@ -63,10 +63,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   //  Operand Request Command Queues  //
   //////////////////////////////////////
 
-  // We cannot use a simple FIFO because the operand request commands include
-  // bits that indicate whether there is a hazard between different vector
-  // instructions. Such hazards must be continuously cleared based on the
-  // value of the currently running loops from the main sequencer.
+  // Replace me with a FIFO
   operand_request_cmd_t [NrOperandQueues-1:0] operand_request_i;
   logic                 [NrOperandQueues-1:0] operand_request_push;
 
