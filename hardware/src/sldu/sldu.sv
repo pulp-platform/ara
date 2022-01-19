@@ -550,25 +550,25 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      vinsn_running_q <= '0;
-      issue_cnt_q     <= '0;
-      commit_cnt_q    <= '0;
-      in_pnt_q        <= '0;
-      out_pnt_q       <= '0;
-      vrf_pnt_q       <= '0;
-      state_q         <= SLIDE_IDLE;
-      pe_resp_o       <= '0;
-      red_stride_cnt_q<= 1;
+      vinsn_running_q  <= '0;
+      issue_cnt_q      <= '0;
+      commit_cnt_q     <= '0;
+      in_pnt_q         <= '0;
+      out_pnt_q        <= '0;
+      vrf_pnt_q        <= '0;
+      state_q          <= SLIDE_IDLE;
+      pe_resp_o        <= '0;
+      red_stride_cnt_q <= 1;
     end else begin
-      vinsn_running_q <= vinsn_running_d;
-      issue_cnt_q     <= issue_cnt_d;
-      commit_cnt_q    <= commit_cnt_d;
-      in_pnt_q        <= in_pnt_d;
-      out_pnt_q       <= out_pnt_d;
-      vrf_pnt_q       <= vrf_pnt_d;
-      state_q         <= state_d;
-      pe_resp_o       <= pe_resp;
-      red_stride_cnt_q<= red_stride_cnt_d;
+      vinsn_running_q  <= vinsn_running_d;
+      issue_cnt_q      <= issue_cnt_d;
+      commit_cnt_q     <= commit_cnt_d;
+      in_pnt_q         <= in_pnt_d;
+      out_pnt_q        <= out_pnt_d;
+      vrf_pnt_q        <= vrf_pnt_d;
+      state_q          <= state_d;
+      pe_resp_o        <= pe_resp;
+      red_stride_cnt_q <= red_stride_cnt_d;
     end
   end
 

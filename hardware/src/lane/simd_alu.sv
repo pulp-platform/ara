@@ -98,7 +98,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
       unique case (op_i)
         // Logical operations
         VAND, VREDAND: res = operand_a_i & operand_b_i;
-        VOR, VREDOR: res = operand_a_i | operand_b_i;
+        VOR, VREDOR  : res = operand_a_i | operand_b_i;
         VXOR, VREDXOR: res = operand_a_i ^ operand_b_i;
 
         // Mask logical operations

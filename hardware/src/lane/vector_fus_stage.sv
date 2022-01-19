@@ -106,10 +106,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .alu_result_be_o      (alu_result_be_o                ),
     .alu_result_gnt_i     (alu_result_gnt_i               ),
     // Interface with the Slide Unit
-    .alu_red_valid_o      (sldu_alu_req_valid_o ),
-    .sldu_operand_i       (sldu_operand_i       ),
-    .sldu_alu_valid_i     (sldu_alu_valid_i     ),
-    .sldu_alu_ready_o     (sldu_alu_ready_o     ),
+    .alu_red_valid_o      (sldu_alu_req_valid_o           ),
+    .sldu_operand_i       (sldu_operand_i                 ),
+    .sldu_alu_valid_i     (sldu_alu_valid_i               ),
+    .sldu_alu_ready_o     (sldu_alu_ready_o               ),
     // Interface with the Slide Unit
     .alu_red_ready_i      (sldu_alu_gnt_i),
     // Interface with the Mask unit

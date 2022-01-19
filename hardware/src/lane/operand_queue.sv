@@ -48,9 +48,6 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Lane 0 has different logic than Lanes != 0
   // A parameter would be perfect to save HW, but our hierarchical
   // synth/pnr flow needs that all lanes are the same
-  // False path this for better timing results
-  logic lane_id_0;
-  assign lane_id_0 = lane_id_i == '0;
 
   //////////////////////
   //  Command Buffer  //
@@ -218,7 +215,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       end
 
       OpQueueReductionZExt: begin
-        if (lane_id_0) begin
+        if (lane_id_i == '0) begin
           unique case (cmd.eew)
             EW8 : conv_operand = {{7{ntrh, { 7{ntrl}}}}, ibuf_operand[7:0]};
             EW16: conv_operand = {{3{ntrh, {15{ntrl}}}}, ibuf_operand[15:0]};

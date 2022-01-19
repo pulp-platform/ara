@@ -188,61 +188,61 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes(NrLanes          ),
     .vaddr_t(vaddr_t          )
   ) i_operand_requester (
-    .clk_i                    (clk_i                  ),
-    .rst_ni                   (rst_ni                 ),
+    .clk_i                    (clk_i                   ),
+    .rst_ni                   (rst_ni                  ),
     // Interface with the lane sequencer
-    .operand_request_i        (operand_request        ),
-    .operand_request_valid_i  (operand_request_valid  ),
-    .operand_request_ready_o  (operand_request_ready  ),
-    .vinsn_running_i          (vinsn_running          ),
+    .operand_request_i        (operand_request         ),
+    .operand_request_valid_i  (operand_request_valid   ),
+    .operand_request_ready_o  (operand_request_ready   ),
+    .vinsn_running_i          (vinsn_running           ),
     // Interface with the VRF
-    .vrf_req_o                (vrf_req                ),
-    .vrf_addr_o               (vrf_addr               ),
-    .vrf_wen_o                (vrf_wen                ),
-    .vrf_wdata_o              (vrf_wdata              ),
-    .vrf_be_o                 (vrf_be                 ),
-    .vrf_tgt_opqueue_o        (vrf_tgt_opqueue        ),
+    .vrf_req_o                (vrf_req                 ),
+    .vrf_addr_o               (vrf_addr                ),
+    .vrf_wen_o                (vrf_wen                 ),
+    .vrf_wdata_o              (vrf_wdata               ),
+    .vrf_be_o                 (vrf_be                  ),
+    .vrf_tgt_opqueue_o        (vrf_tgt_opqueue         ),
     // Interface with the operand queues
-    .operand_issued_o         (operand_issued         ),
-    .operand_queue_ready_i    (operand_queue_ready    ),
-    .operand_queue_cmd_o      (operand_queue_cmd      ),
-    .operand_queue_cmd_valid_o(operand_queue_cmd_valid),
+    .operand_issued_o         (operand_issued          ),
+    .operand_queue_ready_i    (operand_queue_ready     ),
+    .operand_queue_cmd_o      (operand_queue_cmd       ),
+    .operand_queue_cmd_valid_o(operand_queue_cmd_valid ),
     // Interface with the VFUs
     // ALU
-    .alu_result_req_i         (alu_result_req         ),
-    .alu_result_id_i          (alu_result_id          ),
-    .alu_result_addr_i        (alu_result_addr        ),
-    .alu_result_wdata_i       (alu_result_wdata       ),
-    .alu_result_be_i          (alu_result_be          ),
-    .alu_result_gnt_o         (alu_result_gnt         ),
+    .alu_result_req_i         (alu_result_req          ),
+    .alu_result_id_i          (alu_result_id           ),
+    .alu_result_addr_i        (alu_result_addr         ),
+    .alu_result_wdata_i       (alu_result_wdata        ),
+    .alu_result_be_i          (alu_result_be           ),
+    .alu_result_gnt_o         (alu_result_gnt          ),
     // MFPU
-    .mfpu_result_req_i        (mfpu_result_req        ),
-    .mfpu_result_id_i         (mfpu_result_id         ),
-    .mfpu_result_addr_i       (mfpu_result_addr       ),
-    .mfpu_result_wdata_i      (mfpu_result_wdata      ),
-    .mfpu_result_be_i         (mfpu_result_be         ),
-    .mfpu_result_gnt_o        (mfpu_result_gnt        ),
+    .mfpu_result_req_i        (mfpu_result_req         ),
+    .mfpu_result_id_i         (mfpu_result_id          ),
+    .mfpu_result_addr_i       (mfpu_result_addr        ),
+    .mfpu_result_wdata_i      (mfpu_result_wdata       ),
+    .mfpu_result_be_i         (mfpu_result_be          ),
+    .mfpu_result_gnt_o        (mfpu_result_gnt         ),
     // Mask Unit
-    .masku_result_req_i       (masku_result_req_i     ),
-    .masku_result_id_i        (masku_result_id_i      ),
-    .masku_result_addr_i      (masku_result_addr_i    ),
-    .masku_result_wdata_i     (masku_result_wdata_i   ),
-    .masku_result_be_i        (masku_result_be_i      ),
-    .masku_result_gnt_o       (masku_result_gnt_o     ),
+    .masku_result_req_i       (masku_result_req_i      ),
+    .masku_result_id_i        (masku_result_id_i       ),
+    .masku_result_addr_i      (masku_result_addr_i     ),
+    .masku_result_wdata_i     (masku_result_wdata_i    ),
+    .masku_result_be_i        (masku_result_be_i       ),
+    .masku_result_gnt_o       (masku_result_gnt_o      ),
     // Slide Unit
-    .sldu_result_req_i        (sldu_result_req_i      ),
-    .sldu_result_id_i         (sldu_result_id_i       ),
-    .sldu_result_addr_i       (sldu_result_addr_i     ),
-    .sldu_result_wdata_i      (sldu_result_wdata_i    ),
-    .sldu_result_be_i         (sldu_result_be_i       ),
+    .sldu_result_req_i        (sldu_result_req_i       ),
+    .sldu_result_id_i         (sldu_result_id_i        ),
+    .sldu_result_addr_i       (sldu_result_addr_i      ),
+    .sldu_result_wdata_i      (sldu_result_wdata_i     ),
+    .sldu_result_be_i         (sldu_result_be_i        ),
     .sldu_result_gnt_o        (sldu_result_gnt_opqueues),
     // Load Unit
-    .ldu_result_req_i         (ldu_result_req_i       ),
-    .ldu_result_id_i          (ldu_result_id_i        ),
-    .ldu_result_addr_i        (ldu_result_addr_i      ),
-    .ldu_result_wdata_i       (ldu_result_wdata_i     ),
-    .ldu_result_be_i          (ldu_result_be_i        ),
-    .ldu_result_gnt_o         (ldu_result_gnt_o       )
+    .ldu_result_req_i         (ldu_result_req_i        ),
+    .ldu_result_id_i          (ldu_result_id_i         ),
+    .ldu_result_addr_i        (ldu_result_addr_i       ),
+    .ldu_result_wdata_i       (ldu_result_wdata_i      ),
+    .ldu_result_be_i          (ldu_result_be_i         ),
+    .ldu_result_gnt_o         (ldu_result_gnt_o        )
   );
 
   ////////////////////////////
@@ -420,7 +420,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   assign sldu_operand_opqueues_ready  = sldu_operand_ready_i & (sldu_mux_sel_q == NO_RED);
   assign sldu_alu_gnt                 = sldu_operand_ready_i & (sldu_mux_sel_q == ALU_RED);
 
-  assign sldu_alu_valid = sldu_red_valid_i & (sldu_mux_sel_q == ALU_RED);
+  assign sldu_alu_valid    = sldu_red_valid_i & (sldu_mux_sel_q == ALU_RED);
   assign sldu_result_gnt_o = sldu_mux_sel_q == NO_RED ? sldu_result_gnt_opqueues : sldu_alu_ready;
 
   //////////////////
