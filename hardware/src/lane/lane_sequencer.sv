@@ -25,7 +25,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     output operand_request_cmd_t [NrOperandQueues-1:0]    operand_request_o,
     output logic                 [NrOperandQueues-1:0]    operand_request_valid_o,
     input  logic                 [NrOperandQueues-1:0]    operand_request_ready_i,
-    output logic                 [NrVInsn-1:0]            vinsn_running_o,
     output logic                                          alu_vinsn_done_o,
     output logic                                          mfpu_vinsn_done_o,
     // Interface with the lane's VFUs
@@ -64,10 +63,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   //  Operand Request Command Queues  //
   //////////////////////////////////////
 
-  // We cannot use a simple FIFO because the operand request commands include
-  // bits that indicate whether there is a hazard between different vector
-  // instructions. Such hazards must be continuously cleared based on the
-  // value of the currently running loops from the main sequencer.
+  // Replace me with a FIFO
   operand_request_cmd_t [NrOperandQueues-1:0] operand_request_i;
   logic                 [NrOperandQueues-1:0] operand_request_push;
 
@@ -91,9 +87,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         operand_request_d[queue]       = operand_request_i[queue];
         operand_request_valid_d[queue] = 1'b1;
       end
-
-      // Re-evaluate the hazards
-      operand_request_d[queue].hazard &= pe_vinsn_running_i;
     end
   end
 
@@ -114,8 +107,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   // Running instructions
   logic [NrVInsn-1:0] vinsn_done_d, vinsn_done_q;
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
-
-  assign vinsn_running_o = vinsn_running_q;
 
   // VFU operation
   vfu_operation_t vfu_operation_d;
