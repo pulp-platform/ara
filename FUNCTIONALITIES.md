@@ -53,6 +53,11 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector widening floating-point/integer type-convert instructions: `vfwcvt.xu.f`, `vfwcvt.x.f`, `vfwcvt.rtz.xu.f`, `vfwcvt.rtz.x.f`, `vfwcvt.f.xu`, `vfwcvt.f.x`, `vfwcvt.f.f`
 - Vector narrowing floating-point/integer type-convert instructions: `vfncvt.xu.f`, `vfncvt.x.f`, `vfncvt.rtz.xu.f`, `vfncvt.rtz.x.f`, `vfncvt.f.xu`, `vfncvt.f.x`, `vfncvt.f.f`
 
+## Vector Reduction Operations
+
+- Vector single-width integer reduction instructions: `vredsum`, `vredmaxu`, `vredmax`, `vredminu`, `vredmin`, `vredand`, `vredor`, `vredxor`
+- Vector widening integer reductions: `vwredsumu`, `vwredsum`
+
 ## Vector mask instructions
 
 - Vector mask-register logical instructions: `vmand`, `vmnand`, `vmandnot`, `vmxor`, `vmor`, `vmnor`, `vmornot`, `vmxnor`
