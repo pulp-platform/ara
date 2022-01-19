@@ -35,6 +35,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                     stu_operand_ready_i,
     // Slide Unit/Address Generation unit
     output elen_t                                    sldu_addrgen_operand_o,
+    output target_fu_e                               sldu_addrgen_operand_target_fu_o,
     output logic                                     sldu_addrgen_operand_valid_o,
     input  logic                                     addrgen_operand_ready_i,
     input  logic                                     sldu_operand_ready_i,
@@ -64,6 +65,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[AluA]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[AluA]    ),
     .operand_o                (alu_operand_o[0]               ),
+    .operand_target_fu_o      (/* Unused */                   ),
     .operand_valid_o          (alu_operand_valid_o[0]         ),
     .operand_ready_i          (alu_operand_ready_i[0]         )
   );
@@ -84,6 +86,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[AluB]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[AluB]    ),
     .operand_o                (alu_operand_o[1]               ),
+    .operand_target_fu_o      (/* Unused */                   ),
     .operand_valid_o          (alu_operand_valid_o[1]         ),
     .operand_ready_i          (alu_operand_ready_i[1]         )
   );
@@ -106,6 +109,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[MulFPUA]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[MulFPUA]    ),
     .operand_o                (mfpu_operand_o[0]                 ),
+    .operand_target_fu_o      (/* Unused */                      ),
     .operand_valid_o          (mfpu_operand_valid_o[0]           ),
     .operand_ready_i          (mfpu_operand_ready_i[0]           )
   );
@@ -124,6 +128,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[MulFPUB]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[MulFPUB]    ),
     .operand_o                (mfpu_operand_o[1]                 ),
+    .operand_target_fu_o      (/* Unused */                      ),
     .operand_valid_o          (mfpu_operand_valid_o[1]           ),
     .operand_ready_i          (mfpu_operand_ready_i[1]           )
   );
@@ -142,6 +147,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[MulFPUC]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[MulFPUC]    ),
     .operand_o                (mfpu_operand_o[2]                 ),
+    .operand_target_fu_o      (/* Unused */                      ),
     .operand_valid_o          (mfpu_operand_valid_o[2]           ),
     .operand_ready_i          (mfpu_operand_ready_i[2]           )
   );
@@ -163,6 +169,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[StA]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[StA]    ),
     .operand_o                (stu_operand_o                 ),
+    .operand_target_fu_o      (/* Unused */                  ),
     .operand_valid_o          (stu_operand_valid_o           ),
     .operand_ready_i          (stu_operand_ready_i           )
   );
@@ -184,6 +191,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[SlideAddrGenA]               ),
     .operand_queue_ready_o    (operand_queue_ready_o[SlideAddrGenA]          ),
     .operand_o                (sldu_addrgen_operand_o                        ),
+    .operand_target_fu_o      (sldu_addrgen_operand_target_fu_o              ),
     .operand_valid_o          (sldu_addrgen_operand_valid_o                  ),
     .operand_ready_i          (addrgen_operand_ready_i | sldu_operand_ready_i)
   );
@@ -205,6 +213,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[MaskB]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[MaskB]    ),
     .operand_o                (mask_operand_o[1]               ),
+    .operand_target_fu_o      (/* Unused */                    ),
     .operand_valid_o          (mask_operand_valid_o[1]         ),
     .operand_ready_i          (mask_operand_ready_i[1]         )
   );
@@ -221,6 +230,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
     .operand_issued_i         (operand_issued_i[MaskM]         ),
     .operand_queue_ready_o    (operand_queue_ready_o[MaskM]    ),
     .operand_o                (mask_operand_o[0]               ),
+    .operand_target_fu_o      (/* Unused */                    ),
     .operand_valid_o          (mask_operand_valid_o[0]         ),
     .operand_ready_i          (mask_operand_ready_i[0]         )
   );

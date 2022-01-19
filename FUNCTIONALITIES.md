@@ -13,6 +13,8 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector unit-strided stores: `vse<eew>`, `vs1r.v`
 - Vector strided loads: `vlse<eew>`
 - Vector strided stores: `vsse<eew>`
+- Vector indexed loads: `vluxei<eew>`, `vloxei<eew>`
+- Vector indexed stores: `vsuxei<eew>`, `vsoxei<eew>`
 
 ## Vector Integer Arithmetic Instructions
 

@@ -49,6 +49,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                           stu_operand_ready_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
+    output target_fu_e                                     sldu_addrgen_operand_target_fu_o,
     output logic                                           sldu_addrgen_operand_valid_o,
     input  logic                                           sldu_operand_ready_i,
     input  logic                                           addrgen_operand_ready_i,
@@ -284,38 +285,39 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   operand_queues_stage #(
     .FPUSupport(FPUSupport)
   ) i_operand_queues (
-    .clk_i                        (clk_i                       ),
-    .rst_ni                       (rst_ni                      ),
+    .clk_i                            (clk_i                           ),
+    .rst_ni                           (rst_ni                          ),
     // Interface with the Vector Register File
-    .operand_i                    (vrf_operand                 ),
-    .operand_valid_i              (vrf_operand_valid           ),
+    .operand_i                        (vrf_operand                     ),
+    .operand_valid_i                  (vrf_operand_valid               ),
     // Interface with the operand requester
-    .operand_issued_i             (operand_issued              ),
-    .operand_queue_ready_o        (operand_queue_ready         ),
-    .operand_queue_cmd_i          (operand_queue_cmd           ),
-    .operand_queue_cmd_valid_i    (operand_queue_cmd_valid     ),
+    .operand_issued_i                 (operand_issued                  ),
+    .operand_queue_ready_o            (operand_queue_ready             ),
+    .operand_queue_cmd_i              (operand_queue_cmd               ),
+    .operand_queue_cmd_valid_i        (operand_queue_cmd_valid         ),
     // Interface with the VFUs
     // ALU
-    .alu_operand_o                (alu_operand                 ),
-    .alu_operand_valid_o          (alu_operand_valid           ),
-    .alu_operand_ready_i          (alu_operand_ready           ),
+    .alu_operand_o                    (alu_operand                     ),
+    .alu_operand_valid_o              (alu_operand_valid               ),
+    .alu_operand_ready_i              (alu_operand_ready               ),
     // Multiplier/FPU
-    .mfpu_operand_o               (mfpu_operand                ),
-    .mfpu_operand_valid_o         (mfpu_operand_valid          ),
-    .mfpu_operand_ready_i         (mfpu_operand_ready          ),
+    .mfpu_operand_o                   (mfpu_operand                    ),
+    .mfpu_operand_valid_o             (mfpu_operand_valid              ),
+    .mfpu_operand_ready_i             (mfpu_operand_ready              ),
     // Store Unit
-    .stu_operand_o                (stu_operand_o               ),
-    .stu_operand_valid_o          (stu_operand_valid_o         ),
-    .stu_operand_ready_i          (stu_operand_ready_i         ),
+    .stu_operand_o                    (stu_operand_o                   ),
+    .stu_operand_valid_o              (stu_operand_valid_o             ),
+    .stu_operand_ready_i              (stu_operand_ready_i             ),
     // Address Generation Unit
-    .sldu_addrgen_operand_o       (sldu_addrgen_operand_o      ),
-    .sldu_addrgen_operand_valid_o (sldu_addrgen_operand_valid_o),
-    .sldu_operand_ready_i         (sldu_operand_ready_i        ),
-    .addrgen_operand_ready_i      (addrgen_operand_ready_i     ),
+    .sldu_addrgen_operand_o           (sldu_addrgen_operand_o          ),
+    .sldu_addrgen_operand_target_fu_o (sldu_addrgen_operand_target_fu_o),
+    .sldu_addrgen_operand_valid_o     (sldu_addrgen_operand_valid_o    ),
+    .sldu_operand_ready_i             (sldu_operand_ready_i            ),
+    .addrgen_operand_ready_i          (addrgen_operand_ready_i         ),
     // Mask Unit
-    .mask_operand_o               (mask_operand_o[1:0]         ),
-    .mask_operand_valid_o         (mask_operand_valid_o[1:0]   ),
-    .mask_operand_ready_i         (mask_operand_ready_i[1:0]   )
+    .mask_operand_o                   (mask_operand_o[1:0]             ),
+    .mask_operand_valid_o             (mask_operand_valid_o[1:0]       ),
+    .mask_operand_ready_i             (mask_operand_ready_i[1:0]       )
   );
 
   ///////////////////////////////

@@ -367,7 +367,28 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req.vtype.vsew))) *
               NrLanes * 8 != pe_req.vl) operand_request_i[MaskM].vl += 1;
           operand_request_push[MaskM] = !pe_req.vm;
+
+          // Load indexed
+          operand_request_i[SlideAddrGenA] = '{
+            id       : pe_req_i.id,
+            vs       : pe_req_i.vs2,
+            eew      : pe_req_i.eew_vs2,
+            conv     : pe_req_i.conversion_vs2,
+            target_fu: ADDRGEN,
+            vl       : pe_req_i.vl / NrLanes,
+            scale_vl : pe_req_i.scale_vl,
+            vstart   : vfu_operation_d.vstart,
+            vtype    : pe_req_i.vtype,
+            hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            default  : '0
+          };
+          // Since this request goes outside of the lane, we might need to request an
+          // extra operand regardless of whether it is valid in this lane or not.
+          if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+            operand_request_i[SlideAddrGenA].vl += 1;
+          operand_request_push[SlideAddrGenA] = pe_req_i.op == VLXE;
         end
+
         VFU_StoreUnit : begin
           operand_request_i[StA] = '{
             id      : pe_req.id,
@@ -402,19 +423,40 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           if ((operand_request_i[MaskM].vl << (int'(EW64) - int'(pe_req.vtype.vsew))) *
               NrLanes * 8 != pe_req.vl) operand_request_i[MaskM].vl += 1;
           operand_request_push[MaskM] = !pe_req.vm;
+
+          // Store indexed
+          operand_request_i[SlideAddrGenA] = '{
+            id       : pe_req_i.id,
+            vs       : pe_req_i.vs2,
+            eew      : pe_req_i.eew_vs2,
+            conv     : pe_req_i.conversion_vs2,
+            target_fu: ADDRGEN,
+            vl       : pe_req_i.vl / NrLanes,
+            scale_vl : pe_req_i.scale_vl,
+            vstart   : vfu_operation_d.vstart,
+            vtype    : pe_req_i.vtype,
+            hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            default  : '0
+          };
+          // Since this request goes outside of the lane, we might need to request an
+          // extra operand regardless of whether it is valid in this lane or not.
+          if (operand_request_i[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+            operand_request_i[SlideAddrGenA].vl += 1;
+          operand_request_push[SlideAddrGenA] = pe_req_i.op == VSXE;
         end
 
         VFU_SlideUnit: begin
           operand_request_i[SlideAddrGenA] = '{
-            id      : pe_req.id,
-            vs      : pe_req.vs2,
-            eew     : pe_req.eew_vs2,
-            conv    : pe_req.conversion_vs2,
-            scale_vl: pe_req.scale_vl,
-            vtype   : pe_req.vtype,
-            vstart  : vfu_operation_d.vstart,
-            hazard  : pe_req.hazard_vs2 | pe_req.hazard_vd,
-            default : '0
+            id       : pe_req.id,
+            vs       : pe_req.vs2,
+            eew      : pe_req.eew_vs2,
+            conv     : pe_req.conversion_vs2,
+            target_fu: SLDU,
+            scale_vl : pe_req.scale_vl,
+            vtype    : pe_req.vtype,
+            vstart   : vfu_operation_d.vstart,
+            hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
+            default  : '0
           };
           operand_request_push[SlideAddrGenA] = pe_req.use_vs2;
 
