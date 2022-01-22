@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Fixed
 
  - Avoid corner-case in which the sequencer issues the same instruction multiple times when two units become non-ready at the same time
+ - Avoid losing hazard-related information in the pipeline between the main sequencer and the operand requesters
+ - Fix anticipated grant bug from operand requester to LDU, SLDU, MASKU, because of the stream registers. Now, the three units wait for a final true grant before commiting
+ - The mask unit does not require synchronized lanes anymore to commit an instruction
 
 ## Added
 
  - The sequencer can issue instructions to non-full units even if the other units are full
  - Vector indexed unordered/ordered load (`vluxei8`, `vluxei16`, `vluxei32`, `vluxei64`, `vloxei8`, `vloxei16`, `vloxei32`, `vloxei64`)
  - Vector indexed unordered/ordered stores (`vsuxei8`, `vsuxei16`, `vsuxei32`, `vsuxei64`, `vsoxei8`, `vsoxei16`, `vsoxei32`, `vsoxei64`)
+ - Introduce the global hazard table in the main sequencer, to provide up-to-date information to the operand requesters about the status of the different dependant instructions
 
 ## Changed
 
