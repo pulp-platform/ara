@@ -63,6 +63,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          sldu_result_be_i,
     output logic                                           sldu_result_gnt_o,
     input  logic                                           sldu_red_valid_i,
+    output logic                                           sldu_result_final_gnt_o,
     // Interface with the Load unit
     input  logic                                           ldu_result_req_i,
     input  vid_t                                           ldu_result_id_i,
@@ -70,6 +71,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                          ldu_result_wdata_i,
     input  strb_t                                          ldu_result_be_i,
     output logic                                           ldu_result_gnt_o,
+    output logic                                           ldu_result_final_gnt_o,
     // Interface with the Mask unit
     output `STRUCT_VECT(elen_t, [NrMaskFUnits+2-1:0])      mask_operand_o,
     output logic                [NrMaskFUnits+2-1:0]       mask_operand_valid_o,
@@ -80,6 +82,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                          masku_result_wdata_i,
     input  strb_t                                          masku_result_be_i,
     output logic                                           masku_result_gnt_o,
+    output logic                                           masku_result_final_gnt_o,
     // Interface between the Mask unit and the VFUs
     input  strb_t                                          mask_i,
     input  logic                                           mask_valid_i,
@@ -187,14 +190,14 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes(NrLanes          ),
     .vaddr_t(vaddr_t          )
   ) i_operand_requester (
-    .clk_i                    (clk_i                  ),
-    .rst_ni                   (rst_ni                 ),
+    .clk_i                    (clk_i                   ),
+    .rst_ni                   (rst_ni                  ),
     // Interface with the main sequencer
-    .global_hazard_table_i    (global_hazard_table_i  ),
+    .global_hazard_table_i    (global_hazard_table_i   ),
     // Interface with the lane sequencer
-    .operand_request_i        (operand_request        ),
-    .operand_request_valid_i  (operand_request_valid  ),
-    .operand_request_ready_o  (operand_request_ready  ),
+    .operand_request_i        (operand_request         ),
+    .operand_request_valid_i  (operand_request_valid   ),
+    .operand_request_ready_o  (operand_request_ready   ),
     // Interface with the VRF
     .vrf_req_o                (vrf_req                 ),
     .vrf_addr_o               (vrf_addr                ),
@@ -229,6 +232,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .masku_result_wdata_i     (masku_result_wdata_i    ),
     .masku_result_be_i        (masku_result_be_i       ),
     .masku_result_gnt_o       (masku_result_gnt_o      ),
+    .masku_result_final_gnt_o (masku_result_final_gnt_o),
     // Slide Unit
     .sldu_result_req_i        (sldu_result_req_i       ),
     .sldu_result_id_i         (sldu_result_id_i        ),
@@ -236,13 +240,15 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .sldu_result_wdata_i      (sldu_result_wdata_i     ),
     .sldu_result_be_i         (sldu_result_be_i        ),
     .sldu_result_gnt_o        (sldu_result_gnt_opqueues),
+    .sldu_result_final_gnt_o  (sldu_result_final_gnt_o ),
     // Load Unit
     .ldu_result_req_i         (ldu_result_req_i        ),
     .ldu_result_id_i          (ldu_result_id_i         ),
     .ldu_result_addr_i        (ldu_result_addr_i       ),
     .ldu_result_wdata_i       (ldu_result_wdata_i      ),
     .ldu_result_be_i          (ldu_result_be_i         ),
-    .ldu_result_gnt_o         (ldu_result_gnt_o        )
+    .ldu_result_gnt_o         (ldu_result_gnt_o        ),
+    .ldu_result_final_gnt_o   (ldu_result_final_gnt_o  )
   );
 
   ////////////////////////////

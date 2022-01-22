@@ -44,6 +44,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t            [NrLanes-1:0] ldu_result_wdata_o,
     output strb_t            [NrLanes-1:0] ldu_result_be_o,
     input  logic             [NrLanes-1:0] ldu_result_gnt_i,
+    input  logic             [NrLanes-1:0] ldu_result_final_gnt_i,
     // Interface with the Mask unit
     input  strb_t            [NrLanes-1:0] mask_i,
     input  logic             [NrLanes-1:0] mask_valid_i,
@@ -137,6 +138,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_read_pnt_d, result_queue_read_pnt_q;
   // We need to count how many valid elements are there in this result queue.
   logic     [idx_width(ResultQueueDepth):0]     result_queue_cnt_d, result_queue_cnt_q;
+  // Vector to register the final grants from the operand requesters, which indicate
+  // that the result was actually written in the VRF (while the normal grant just says
+  // that the result was accepted by the operand requester stage
+  logic     [NrLanes-1:0]                       result_final_gnt_d, result_final_gnt_q;
 
   // Is the result queue full?
   logic result_queue_full;
@@ -202,6 +207,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_read_pnt_d  = result_queue_read_pnt_q;
     result_queue_write_pnt_d = result_queue_write_pnt_q;
     result_queue_cnt_d       = result_queue_cnt_q;
+
+    result_final_gnt_d = result_final_gnt_q;
 
     // Vector instructions currently running
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
@@ -353,16 +360,23 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       ldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
       ldu_result_be_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].be;
 
+      // Update the final gnt vector
+      result_final_gnt_d[lane] |= ldu_result_final_gnt_i[lane];
+
       // Received a grant from the VRF.
       // Deactivate the request, but do not bump the pointers for now.
       if (ldu_result_req_o[lane] && ldu_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
+        // Reset the final gnt vector since we are now waiting for another final gnt
+        result_final_gnt_d[lane] = 1'b0;
       end
     end: result_write
 
     // All lanes accepted the VRF request
-    if (!(|result_queue_valid_d[result_queue_read_pnt_q]))
+    // Wait for all the final grants, to be sure that all the results were written back
+    if (!(|result_queue_valid_d[result_queue_read_pnt_q]) &&
+      (&result_final_gnt_d || commit_cnt_q > (NrLanes * 8)))
       // There is something waiting to be written
       if (!result_queue_empty) begin
         // Increment the read pointer
@@ -425,21 +439,23 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      vinsn_running_q <= '0;
-      issue_cnt_q     <= '0;
-      commit_cnt_q    <= '0;
-      len_q           <= '0;
-      r_pnt_q         <= '0;
-      vrf_pnt_q       <= '0;
-      pe_resp_o       <= '0;
+      vinsn_running_q    <= '0;
+      issue_cnt_q        <= '0;
+      commit_cnt_q       <= '0;
+      len_q              <= '0;
+      r_pnt_q            <= '0;
+      vrf_pnt_q          <= '0;
+      pe_resp_o          <= '0;
+      result_final_gnt_q <= '0;
     end else begin
-      vinsn_running_q <= vinsn_running_d;
-      issue_cnt_q     <= issue_cnt_d;
-      commit_cnt_q    <= commit_cnt_d;
-      len_q           <= len_d;
-      r_pnt_q         <= r_pnt_d;
-      vrf_pnt_q       <= vrf_pnt_d;
-      pe_resp_o       <= pe_resp;
+      vinsn_running_q    <= vinsn_running_d;
+      issue_cnt_q        <= issue_cnt_d;
+      commit_cnt_q       <= commit_cnt_d;
+      len_q              <= len_d;
+      r_pnt_q            <= r_pnt_d;
+      vrf_pnt_q          <= vrf_pnt_d;
+      pe_resp_o          <= pe_resp;
+      result_final_gnt_q <= result_final_gnt_d;
     end
   end
 

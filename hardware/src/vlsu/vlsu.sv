@@ -65,7 +65,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output vaddr_t    [NrLanes-1:0] ldu_result_addr_o,
     output elen_t     [NrLanes-1:0] ldu_result_wdata_o,
     output strb_t     [NrLanes-1:0] ldu_result_be_o,
-    input  logic      [NrLanes-1:0] ldu_result_gnt_i
+    input  logic      [NrLanes-1:0] ldu_result_gnt_i,
+    input  logic      [NrLanes-1:0] ldu_result_final_gnt_i
   );
 
   ///////////////////
@@ -185,7 +186,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_id_o        (ldu_result_id_o           ),
     .ldu_result_wdata_o     (ldu_result_wdata_o        ),
     .ldu_result_be_o        (ldu_result_be_o           ),
-    .ldu_result_gnt_i       (ldu_result_gnt_i          )
+    .ldu_result_gnt_i       (ldu_result_gnt_i          ),
+    .ldu_result_final_gnt_i (ldu_result_final_gnt_i    )
   );
 
   /////////////////////////

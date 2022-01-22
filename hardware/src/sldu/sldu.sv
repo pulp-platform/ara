@@ -37,6 +37,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     // Support for reductions
     output sldu_mux_e              sldu_mux_sel_o,
     output logic     [NrLanes-1:0] sldu_red_valid_o,
+    input  logic     [NrLanes-1:0] sldu_result_final_gnt_i,
     // Interface with the Mask Unit
     input  strb_t    [NrLanes-1:0] mask_i,
     input  logic     [NrLanes-1:0] mask_valid_i,
@@ -127,6 +128,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_read_pnt_d, result_queue_read_pnt_q;
   // We need to count how many valid elements are there in this result queue.
   logic     [idx_width(ResultQueueDepth):0]     result_queue_cnt_d, result_queue_cnt_q;
+  // Vector to register the final grants from the operand requesters, which indicate
+  // that the result was actually written in the VRF (while the normal grant just says
+  // that the result was accepted by the operand requester stage
+  logic     [NrLanes-1:0]                       result_final_gnt_d, result_final_gnt_q;
 
   // Is the result queue full?
   logic result_queue_full;
@@ -211,6 +216,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_read_pnt_d  = result_queue_read_pnt_q;
     result_queue_write_pnt_d = result_queue_write_pnt_q;
     result_queue_cnt_d       = result_queue_cnt_q;
+
+    result_final_gnt_d = result_final_gnt_q;
 
     // Vector instructions currently running
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
@@ -457,16 +464,23 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       sldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
       sldu_result_be_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].be;
 
+      // Update the final gnt vector
+      result_final_gnt_d[lane] |= sldu_result_final_gnt_i[lane];
+
       // Received a grant from the VRF (slide) or from the FUs (reduction).
       // Deactivate the request, but do not bump the pointers for now.
       if (((vinsn_commit.vfu == VFU_Alu && sldu_red_valid_o) || sldu_result_req_o[lane]) && sldu_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
+        // Reset the final gnt vector since we are now waiting for another final gnt
+        result_final_gnt_d[lane] = 1'b0;
       end
     end: result_write
 
     // All lanes accepted the VRF request
-    if (!(|result_queue_valid_d[result_queue_read_pnt_q]))
+    // If this was the last request, wait for all the final grants!
+    if (!(|result_queue_valid_d[result_queue_read_pnt_q]) &&
+      (&result_final_gnt_d || commit_cnt_q > (NrLanes * 8)))
       // There is something waiting to be written
       if (!result_queue_empty) begin
         // Increment the read pointer
@@ -550,25 +564,27 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      vinsn_running_q  <= '0;
-      issue_cnt_q      <= '0;
-      commit_cnt_q     <= '0;
-      in_pnt_q         <= '0;
-      out_pnt_q        <= '0;
-      vrf_pnt_q        <= '0;
-      state_q          <= SLIDE_IDLE;
-      pe_resp_o        <= '0;
-      red_stride_cnt_q <= 1;
+      vinsn_running_q    <= '0;
+      issue_cnt_q        <= '0;
+      commit_cnt_q       <= '0;
+      in_pnt_q           <= '0;
+      out_pnt_q          <= '0;
+      vrf_pnt_q          <= '0;
+      state_q            <= SLIDE_IDLE;
+      pe_resp_o          <= '0;
+      result_final_gnt_q <= '0;
+      red_stride_cnt_q   <= 1;
     end else begin
-      vinsn_running_q  <= vinsn_running_d;
-      issue_cnt_q      <= issue_cnt_d;
-      commit_cnt_q     <= commit_cnt_d;
-      in_pnt_q         <= in_pnt_d;
-      out_pnt_q        <= out_pnt_d;
-      vrf_pnt_q        <= vrf_pnt_d;
-      state_q          <= state_d;
-      pe_resp_o        <= pe_resp;
-      red_stride_cnt_q <= red_stride_cnt_d;
+      vinsn_running_q    <= vinsn_running_d;
+      issue_cnt_q        <= issue_cnt_d;
+      commit_cnt_q       <= commit_cnt_d;
+      in_pnt_q           <= in_pnt_d;
+      out_pnt_q          <= out_pnt_d;
+      vrf_pnt_q          <= vrf_pnt_d;
+      state_q            <= state_d;
+      pe_resp_o          <= pe_resp;
+      result_final_gnt_q <= result_final_gnt_d;
+      red_stride_cnt_q   <= red_stride_cnt_d;
     end
   end
 
