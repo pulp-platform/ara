@@ -57,6 +57,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                      masku_result_wdata_i,
     input  strb_t                                      masku_result_be_i,
     output logic                                       masku_result_gnt_o,
+    output logic                                       masku_result_final_gnt_o,
     // Slide unit
     input  logic                                       sldu_result_req_i,
     input  vid_t                                       sldu_result_id_i,
@@ -64,13 +65,15 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                      sldu_result_wdata_i,
     input  strb_t                                      sldu_result_be_i,
     output logic                                       sldu_result_gnt_o,
+    output logic                                       sldu_result_final_gnt_o,
     // Load unit
     input  logic                                       ldu_result_req_i,
     input  vid_t                                       ldu_result_id_i,
     input  vaddr_t                                     ldu_result_addr_i,
     input  elen_t                                      ldu_result_wdata_i,
     input  strb_t                                      ldu_result_be_i,
-    output logic                                       ldu_result_gnt_o
+    output logic                                       ldu_result_gnt_o,
+    output logic                                       ldu_result_final_gnt_o
   );
 
   import cf_math_pkg::idx_width;
@@ -145,6 +148,20 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     .valid_o   (masku_result_req                                                                 ),
     .ready_i   (masku_result_gnt                                                                 )
   );
+
+  // The very last grant must happen when the instruction actually write in the VRF
+  // Otherwise the dependency is freed in advance
+  always_ff @(posedge clk_i or negedge rst_ni) begin : p_final_gnts
+    if (!rst_ni) begin
+      ldu_result_final_gnt_o   <= 1'b0;
+      sldu_result_final_gnt_o  <= 1'b0;
+      masku_result_final_gnt_o <= 1'b0;
+    end else begin
+      ldu_result_final_gnt_o   <= ldu_result_gnt;
+      sldu_result_final_gnt_o  <= sldu_result_gnt;
+      masku_result_final_gnt_o <= masku_result_gnt;
+    end
+  end
 
   ///////////////////////
   //  Stall mechanism  //
