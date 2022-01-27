@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## Fixed
 
  - Avoid corner-case in which the sequencer issues the same instruction multiple times when two units become non-ready at the same time
+ - The lane sequencer now calculates the correct number of elements to be requested by the `MASKU` operand requesters
 
 ## Added
 
