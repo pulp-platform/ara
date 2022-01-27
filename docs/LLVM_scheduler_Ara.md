@@ -8,11 +8,15 @@ in assembly.
 This is a work in progress.
 
 Getting familiar with the topic:
+
 https://llvm.org/devmtg/2014-10/Slides/Estes-MISchedulerTutorial.pdf
+
 https://llvm.org/devmtg/2016-09/slides/Absar-SchedulingInOrder.pdf
 
 LLVM scheduling definitions for RVV instructions:
+
 https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/RISCV/RISCVScheduleV.td
 
 Example with Rocket:
+
 https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/RISCV/RISCVSchedRocket.td
