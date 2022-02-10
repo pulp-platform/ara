@@ -53,6 +53,29 @@
 void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
                     int64_t C, int64_t F) {
 
+  unsigned long int block_size_n;
+
+  // Set the vector configuration
+  asm volatile("vsetvli %0, %1, e64, m2, ta, ma" : "=r"(block_size_n) : "r"(N));
+
+  // Slice the matrix into a manageable number of columns n_
+  for (unsigned long int n = 0; n < N; n += block_size_n) {
+    // Set the vector length
+    const unsigned long int n_ = MIN(N - n, block_size_n);
+
+    // Find pointers to the submatrices
+    const double *i_ = i + n;
+    double *o_ = o + n;
+
+    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_));
+
+    fconv3d_CHx7x7_block(o_, i_, f, M, N, n_, C, F);
+  }
+}
+
+void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
+                    int64_t n_, int64_t C, int64_t F) {
+
   // Helper variables
   int64_t ldo = N << 3;
   int64_t ldi_pad = (N + F - 1) << 3;
@@ -87,9 +110,6 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
   fl5 = f[last_f_column + 5 * F];
   fl6 = f[last_f_column + 6 * F];
 
-  // Nompute on N elements
-  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(N));
-
   ////////////////
   // Row 0 -> 3 //
   ////////////////
@@ -101,10 +121,10 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     i__ = i_ + ch * ich_len;
 
     // Point to the scalar elements to insert during a slide
-    i_slide_ptr_0 = i__ + N + 0 * (N + F - 1);
-    i_slide_ptr_1 = i__ + N + 1 * (N + F - 1);
-    i_slide_ptr_2 = i__ + N + 2 * (N + F - 1);
-    i_slide_ptr_3 = i__ + N + 3 * (N + F - 1);
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
+    i_slide_ptr_3 = i__ + n_ + 3 * (N + F - 1);
 
     // Load four input rows belonging to channel ch
     asm volatile("vle64.v v0, (%0); add %0, %0, %1"
@@ -204,9 +224,9 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     i__ = i_ + ch * ich_len;
 
     // Start calculating the next pointers to the elements to be slided in
-    i_slide_ptr_0 = i__ + N + 0 * (N + F - 1);
-    i_slide_ptr_1 = i__ + N + 1 * (N + F - 1);
-    i_slide_ptr_2 = i__ + N + 2 * (N + F - 1);
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
 
     asm volatile("vle64.v v2, (%0); add %0, %0, %1"
                  : "+&r"(i__)
@@ -395,7 +415,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       i__ = i_ + ch * ich_len;
 
       // Start calculating the next pointers to the elements to be slided in
-      i_slide_ptr_0 = i__ + N;
+      i_slide_ptr_0 = i__ + n_;
 
       asm volatile("vle64.v v0, (%0); add %0, %0, %1"
                    : "+&r"(i__)
@@ -517,7 +537,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
       i__ = i_ + ch * ich_len;
 
       // Start calculating the next pointers to the elements to be slided in
-      i_slide_ptr_1 = i__ + N;
+      i_slide_ptr_1 = i__ + n_;
 
       asm volatile("vle64.v v2, (%0); add %0, %0, %1"
                    : "+&r"(i__)
@@ -627,10 +647,10 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
 
     // Point to the scalar elements to insert during a slide
     // i_slide_ptr_0 has already been computed
-    i_slide_ptr_0 = i__ + N + 0 * (N + F - 1);
-    i_slide_ptr_1 = i__ + N + 1 * (N + F - 1);
-    i_slide_ptr_2 = i__ + N + 2 * (N + F - 1);
-    i_slide_ptr_3 = i__ + N + 3 * (N + F - 1);
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
+    i_slide_ptr_3 = i__ + n_ + 3 * (N + F - 1);
 
     // Load other three input rows (one was already loaded)
     asm volatile("vle64.v v0, (%0); add %0, %0, %1"
@@ -783,9 +803,9 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
     i__ = i_ + ch * ich_len;
 
     // Start calculating the next pointers to the elements to be slided in
-    i_slide_ptr_0 = i__ + N + 0 * (N + F - 1);
-    i_slide_ptr_1 = i__ + N + 1 * (N + F - 1);
-    i_slide_ptr_2 = i__ + N + 2 * (N + F - 1);
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
 
     asm volatile("vle64.v v2, (%0); add %0, %0, %1"
                  : "+&r"(i__)

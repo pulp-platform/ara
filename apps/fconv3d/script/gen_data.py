@@ -38,8 +38,8 @@ def emit(name, array, alignment='8'):
 # Define the filter size and the matrix dimension (max, for now, is 128 64-bit elements)
 if len(sys.argv) > 1:
 	matrix_width = int(sys.argv[1])
-	assert(matrix_width <= 128), "The width of the image cannot be greater than 128 64-bit \
-	                                  elements. If this is not enough, modify the algorithm."
+#	assert(matrix_width <= 128), "The width of the image cannot be greater than 128 64-bit \
+#	                                  elements. If this is not enough, modify the algorithm."
 	filter_size = int(sys.argv[2])
 	# Filter size must be odd
 	assert(filter_size % 2 == 1), "The filter size must be an odd integer number"
