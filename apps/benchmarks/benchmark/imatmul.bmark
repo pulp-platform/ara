@@ -16,31 +16,34 @@
 
 // Author: Matheus Cavalcante, ETH Zurich
 //         Samuel Riedel, ETH Zurich
-//         Matteo Perotti, ETH Zurich
 
-#include <stdint.h>
-#include <string.h>
+// Define Matrix dimensions:
+// C = AB with A=[MxN], B=[NxP], C=[MxP]
 
-#include "printf.h"
-#include "runtime.h"
+#include "../kernel/imatmul.h"
 
-#if defined(IMATMUL)
-#include "benchmark/imatmul.bmark"
+#define M 128
+#define N 128
+#define P 128
 
-#elif defined(FMATMUL)
-#include "benchmark/fmatmul.bmark"
+int64_t a[M * N] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int64_t b[N * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+int64_t c[M * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
-#elif defined(ICONV2D)
-#include "benchmark/iconv2d.bmark"
-
-#elif defined(FCONV2D)
-#include "benchmark/fconv2d.bmark"
-
-#elif defined(FCONV3D)
-#include "benchmark/fconv3d.bmark"
-
-#else
-#error                                                                         \
-    "Error, no kernel was specified. Please, run 'make bin/benchmarks ENV_DEFINES=-D${KERNEL}', where KERNEL contains the kernel to benchmark. For example: 'make bin/benchmarks ENV_DEFINES=-DIMATMUL'."
-
+// Define the size of the matrix, and the kernel to call
+#ifndef SIZE
+#define SIZE 16
 #endif
+
+int main() {
+  // Measure runtime with a hot cache
+  start_timer();
+  imatmul(c, a, b, SIZE, SIZE, SIZE);
+  stop_timer();
+
+  int64_t runtime = get_timer();
+  float performance = 2.0 * SIZE * SIZE * SIZE / runtime;
+  printf("[performance]: %d %f\n", SIZE, performance);
+
+  return 0;
+}
