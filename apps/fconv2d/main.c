@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "conv2d.h"
+#include "fconv2d.h"
 
 #ifndef SPIKE
 #include "printf.h"
@@ -32,35 +32,46 @@
 // The filter is a square matrix, and F is odd
 
 // Matrices defined in data.S
-extern int64_t i[] __attribute__((
+extern double i[] __attribute__((
     aligned(4 * NR_LANES))); // [ (M+floor(F/2)) * (N+floor(F/2)) ]
-extern int64_t f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
-extern int64_t o[] __attribute__((aligned(4 * NR_LANES)));        // [ M*N ]
-extern int64_t golden_o[] __attribute__((aligned(4 * NR_LANES))); // [ M*N ]
+extern double f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
+extern double o[] __attribute__((aligned(4 * NR_LANES)));        // [ M*N ]
+extern double golden_o[] __attribute__((aligned(4 * NR_LANES))); // [ M*N ]
 // M, N, F defined in data.S
 extern int64_t M;
 extern int64_t N;
 extern int64_t F;
 
+// Return 0 if the two FP numbers differ by more than a threshold
+int similarity_check(double a, double b, double threshold) {
+  double diff = a - b;
+  if (FABS(diff) > threshold) {
+    printf("fabs(diff): %lf, threshold: %lf\n", diff, threshold);
+    return 0;
+  } else
+    return 1;
+}
+
 // Verify the matrices
-int verify_matrix(int64_t *matrix, int64_t *golden_matrix, int64_t R,
-                  int64_t C) {
+int verify_matrix(double *matrix, double *golden_matrix, int64_t R, int64_t C,
+                  double threshold) {
   for (int r = 0; r < R; ++r)
     for (int c = 0; c < C; ++c)
-      if (matrix[c + C * r] != golden_matrix[c + C * r]) {
-        printf("Error: o[%d][%d] = %ld, instead of %ld\n", r, c,
+      if (!similarity_check(matrix[c + C * r], golden_matrix[c + C * r],
+                            threshold)) {
+        printf("Error: o[%d][%d] = %lf, instead of %lf\n", r, c,
                matrix[c + C * r], golden_matrix[c + C * r]);
         return 1;
       }
   return 0;
 }
 
-void print_matrix(int64_t const *matrix, uint64_t num_rows,
+void print_matrix(double const *matrix, uint64_t num_rows,
                   uint64_t num_columns) {
   printf("0x%8X\n", (uint64_t)matrix);
   for (uint64_t i = 0; i < num_rows; ++i) {
     for (uint64_t j = 0; j < num_columns; ++j) {
-      printf("%10d ", matrix[i * num_columns + j]);
+      printf("%10f ", matrix[i * num_columns + j]);
     }
     printf("\n");
   }
@@ -68,31 +79,34 @@ void print_matrix(int64_t const *matrix, uint64_t num_rows,
 
 int main() {
   printf("\n");
-  printf("============\n");
-  printf("=  CONV2D  =\n");
-  printf("============\n");
+  printf("=============\n");
+  printf("=  FCONV2D  =\n");
+  printf("=============\n");
   printf("\n");
   printf("\n");
 
   // Call the main kernel, and measure cycles
   start_timer();
   if (F == 3)
-    conv2d_3x3(o, i, f, M, N, F);
-  else if (F == 5)
-    conv2d_5x5(o, i, f, M, N, F);
+    fconv2d_3x3(o, i, f, M, N, F);
   else if (F == 7)
-    conv2d_7x7(o, i, f, M, N, F);
+    fconv2d_7x7(o, i, f, M, N, F);
   else
     printf("Error: the filter size is different from 3 or 5 or 7.\n");
   stop_timer();
 
   // Performance metrics
   int64_t runtime = get_timer();
+  float performance = 2.0 * F * F * M * N / runtime;
+  float utilization = 100 * performance / (2.0 * NR_LANES);
+
   printf("The execution took %d cycles.\n", runtime);
+  printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n",
+         performance, utilization);
 
   // Verify correctness
   printf("Verifying result...\n");
-  int error = verify_matrix(o, golden_o, M, N);
+  int error = verify_matrix(o, golden_o, M, N, THRESHOLD);
   if (error != 0) {
     printf("Fail.\n");
   } else {
