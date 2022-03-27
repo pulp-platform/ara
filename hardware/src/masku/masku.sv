@@ -35,6 +35,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t    [NrLanes-1:0]                     masku_result_wdata_o,
     output strb_t    [NrLanes-1:0]                     masku_result_be_o,
     input  logic     [NrLanes-1:0]                     masku_result_gnt_i,
+    input  logic     [NrLanes-1:0]                     masku_result_final_gnt_i,
     // Interface with the VFUs
     output strb_t    [NrLanes-1:0]                     mask_o,
     output logic     [NrLanes-1:0]                     mask_valid_o,
@@ -200,6 +201,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_read_pnt_d, result_queue_read_pnt_q;
   // We need to count how many valid elements are there in this result queue.
   logic     [idx_width(ResultQueueDepth):0]     result_queue_cnt_d, result_queue_cnt_q;
+  // Vector to register the final grants from the operand requesters, which indicate
+  // that the result was actually written in the VRF (while the normal grant just says
+  // that the result was accepted by the operand requester stage
+  logic     [NrLanes-1:0]                       result_final_gnt_d, result_final_gnt_q;
 
   // Is the result queue full?
   logic result_queue_full;
@@ -405,6 +410,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_write_pnt_d = result_queue_write_pnt_q;
     result_queue_read_pnt_d  = result_queue_read_pnt_q;
     result_queue_cnt_d       = result_queue_cnt_q;
+
+    result_final_gnt_d = result_final_gnt_q;
 
     // Vector instructions currently running
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
@@ -648,16 +655,22 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       masku_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
       masku_result_be_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].be;
 
+      // Update the final gnt vector
+      result_final_gnt_d[lane] |= masku_result_final_gnt_i[lane];
+
       // Received a grant from the VRF.
       // Deactivate the request, but do not bump the pointers for now.
       if (masku_result_req_o[lane] && masku_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
+        // Reset the final gnt vector since we are now waiting for another final gnt
+        result_final_gnt_d[lane] = 1'b0;
       end
     end: result_write
 
     // All lanes accepted the VRF request
-    if (!(|result_queue_valid_d[result_queue_read_pnt_q]))
+    if (!(|result_queue_valid_d[result_queue_read_pnt_q]) &&
+      (&result_final_gnt_d || (commit_cnt_q > (NrLanes * DataWidth))))
       // There is something waiting to be written
       if (!result_queue_empty) begin
         // Increment the read pointer
@@ -679,9 +692,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
 
     // Finished committing the results of a vector instruction
-    // When the masku acts as a master for the VRF, wait the grant from the operand requester
-    if (vinsn_commit_valid && commit_cnt_d == '0 && (!(vinsn_issue.op inside {[VMFEQ:VMSBC]}) ||
-      &(masku_result_req_o & masku_result_gnt_i))) begin
+    // Some instructions forward operands to the lanes before writing the VRF
+    // In this case, wait for the lanes to be written
+    if (vinsn_commit_valid && commit_cnt_d == '0 &&
+      (!(vinsn_commit.op inside {[VMFEQ:VMSBC]}) || &result_final_gnt_d)) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
@@ -708,6 +722,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           issue_cnt_d -= vlen_t'(pe_req_i.stride);
           read_cnt_d -= vlen_t'(pe_req_i.stride);
         end
+
+        // Reset the final grant vector
+        // Be aware: this works only if the insn queue length is 1
+
+        result_final_gnt_d = '0;
       end
       if (vinsn_queue_d.commit_cnt == '0) begin
         commit_cnt_d = pe_req_i.vl;
@@ -724,21 +743,23 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      vinsn_running_q <= '0;
-      read_cnt_q      <= '0;
-      issue_cnt_q     <= '0;
-      commit_cnt_q    <= '0;
-      vrf_pnt_q       <= '0;
-      mask_pnt_q      <= '0;
-      pe_resp_o       <= '0;
+      vinsn_running_q    <= '0;
+      read_cnt_q         <= '0;
+      issue_cnt_q        <= '0;
+      commit_cnt_q       <= '0;
+      vrf_pnt_q          <= '0;
+      mask_pnt_q         <= '0;
+      pe_resp_o          <= '0;
+      result_final_gnt_q <= '0;
     end else begin
-      vinsn_running_q <= vinsn_running_d;
-      read_cnt_q      <= read_cnt_d;
-      issue_cnt_q     <= issue_cnt_d;
-      commit_cnt_q    <= commit_cnt_d;
-      vrf_pnt_q       <= vrf_pnt_d;
-      mask_pnt_q      <= mask_pnt_d;
-      pe_resp_o       <= pe_resp;
+      vinsn_running_q    <= vinsn_running_d;
+      read_cnt_q         <= read_cnt_d;
+      issue_cnt_q        <= issue_cnt_d;
+      commit_cnt_q       <= commit_cnt_d;
+      vrf_pnt_q          <= vrf_pnt_d;
+      mask_pnt_q         <= mask_pnt_d;
+      pe_resp_o          <= pe_resp;
+      result_final_gnt_q <= result_final_gnt_d;
     end
   end
 
