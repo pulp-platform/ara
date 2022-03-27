@@ -34,10 +34,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t    [NrLanes-1:0] sldu_result_wdata_o,
     output strb_t    [NrLanes-1:0] sldu_result_be_o,
     input  logic     [NrLanes-1:0] sldu_result_gnt_i,
+    input  logic     [NrLanes-1:0] sldu_result_final_gnt_i,
     // Support for reductions
     output sldu_mux_e              sldu_mux_sel_o,
     output logic     [NrLanes-1:0] sldu_red_valid_o,
-    input  logic     [NrLanes-1:0] sldu_result_final_gnt_i,
     // Interface with the Mask Unit
     input  strb_t    [NrLanes-1:0] mask_i,
     input  logic     [NrLanes-1:0] mask_valid_i,
@@ -479,8 +479,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
     // All lanes accepted the VRF request
     // If this was the last request, wait for all the final grants!
+    // If this is a reduction, no need for the final grants
     if (!(|result_queue_valid_d[result_queue_read_pnt_q]) &&
-      (&result_final_gnt_d || commit_cnt_q > (NrLanes * 8)))
+      (vinsn_commit.vfu == VFU_Alu || (&result_final_gnt_d || commit_cnt_q > (NrLanes * 8))))
       // There is something waiting to be written
       if (!result_queue_empty) begin
         // Increment the read pointer
