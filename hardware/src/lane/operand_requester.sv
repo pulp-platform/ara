@@ -275,12 +275,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               // but the requester must refer to the old EEW (eew here)
               // This reasoning cannot be applied also to widening instructions, which modify vsew
               // treating it as the EEW of vd
-              vl  : (operand_request_i[requester].scale_vl) ?
-                      ((operand_request_i[requester].vl <<
-                      operand_request_i[requester].vtype.vsew) >>
-                      operand_request_i[requester].eew) :
-                      operand_request_i[requester].vl,
-              conv: operand_request_i[requester].conv,
+              vl       : (operand_request_i[requester].scale_vl) ?
+                           ((operand_request_i[requester].vl <<
+                           operand_request_i[requester].vtype.vsew) >>
+                           operand_request_i[requester].eew) :
+                           operand_request_i[requester].vl,
+              conv     : operand_request_i[requester].conv,
+              ntr_red  : operand_request_i[requester].cvt_resize,
               target_fu: operand_request_i[requester].target_fu
             };
             operand_queue_cmd_valid_o[requester] = 1'b1;
@@ -356,13 +357,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Send a command to the operand queue
                 operand_queue_cmd_o[requester] = '{
-                  eew : operand_request_i[requester].eew,
-                  vl  : (operand_request_i[requester].scale_vl) ?
-                          ((operand_request_i[requester].vl <<
-                          operand_request_i[requester].vtype.vsew) >>
-                          operand_request_i[requester].eew) :
-                          operand_request_i[requester].vl,
-                  conv: operand_request_i[requester].conv,
+                  eew      : operand_request_i[requester].eew,
+                  vl       : (operand_request_i[requester].scale_vl) ?
+                               ((operand_request_i[requester].vl <<
+                               operand_request_i[requester].vtype.vsew) >>
+                               operand_request_i[requester].eew) :
+                               operand_request_i[requester].vl,
+                  conv     : operand_request_i[requester].conv,
+                  ntr_red  : operand_request_i[requester].cvt_resize,
                   target_fu: operand_request_i[requester].target_fu
                 };
                 operand_queue_cmd_valid_o[requester] = 1'b1;

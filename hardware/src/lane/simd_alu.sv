@@ -45,7 +45,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Comparison instructions that use signed operands
   logic is_signed;
-  assign is_signed = op_i inside {VMAX, VMIN, VMSLT, VMSLE, VMSGT};
+  assign is_signed = op_i inside {VMAX, VREDMAX, VMIN, VREDMIN, VMSLT, VMSLE, VMSGT};
   // Compare operands.
   // For vew_i = EW8, all bits are valid.
   // For vew_i = EW16, bits 0, 2, 4, and 6 are valid.
@@ -97,9 +97,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     if (valid_i)
       unique case (op_i)
         // Logical operations
-        VAND: res = operand_a_i & operand_b_i;
-        VOR : res = operand_a_i | operand_b_i;
-        VXOR: res = operand_a_i ^ operand_b_i;
+        VAND, VREDAND: res = operand_a_i & operand_b_i;
+        VOR, VREDOR  : res = operand_a_i | operand_b_i;
+        VXOR, VREDXOR: res = operand_a_i ^ operand_b_i;
 
         // Mask logical operations
         VMAND   : res = operand_a_i & operand_b_i;
@@ -112,7 +112,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
         // Arithmetic instructions
-        VADD, VADC, VMADC: unique case (vew_i)
+        VADD, VADC, VMADC, VREDSUM, VWREDSUMU, VWREDSUM: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b] +
                 logic'(op_i inside {VADC, VMADC} && mask_i[1*b] && !vm_i);
@@ -208,15 +208,16 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
           endcase
 
         // Comparison instructions
-        VMIN, VMINU, VMAX, VMAXU: unique case (vew_i)
+        VMIN, VMINU, VMAX, VMAXU,
+        VREDMINU, VREDMIN, VREDMAXU, VREDMAX: unique case (vew_i)
             EW8 : for (int b = 0; b < 8; b++) res.w8 [b] =
-                (less[1*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w8 [b] : opa.w8 [b];
+                (less[1*b] ^ (op_i == VMAX || op_i == VMAXU || op_i == VREDMAXU || op_i == VREDMAX)) ? opb.w8 [b] : opa.w8 [b];
             EW16: for (int b = 0; b < 4; b++) res.w16[b] =
-                (less[2*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w16[b] : opa.w16[b];
+                (less[2*b] ^ (op_i == VMAX || op_i == VMAXU || op_i == VREDMAXU || op_i == VREDMAX)) ? opb.w16[b] : opa.w16[b];
             EW32: for (int b = 0; b < 2; b++) res.w32[b] =
-                (less[4*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w32[b] : opa.w32[b];
+                (less[4*b] ^ (op_i == VMAX || op_i == VMAXU || op_i == VREDMAXU || op_i == VREDMAX)) ? opb.w32[b] : opa.w32[b];
             EW64: for (int b = 0; b < 1; b++) res.w64[b] =
-                (less[8*b] ^ (op_i == VMAX || op_i == VMAXU)) ? opb.w64[b] : opa.w64[b];
+                (less[8*b] ^ (op_i == VMAX || op_i == VMAXU || op_i == VREDMAXU || op_i == VREDMAX)) ? opb.w64[b] : opa.w64[b];
           endcase
         VMSEQ, VMSNE: unique case (vew_i)
             EW8 : for (int b = 0; b < 8; b++) res.w8 [b][1:0] =

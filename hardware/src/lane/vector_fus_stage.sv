@@ -7,7 +7,7 @@
 // This is Ara's vector execution stage. This contains the functional units
 // of each lane, namely the ALU and the Multiplier/FPU.
 
-module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
+module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int           unsigned NrLanes    = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
@@ -19,6 +19,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
+    input  logic [idx_width(NrLanes)-1:0]     lane_id_i,
     // Interface with CVA6
     output logic           [4:0]              fflags_ex_o,
     output logic                              fflags_ex_valid_o,
@@ -50,6 +51,12 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                             mfpu_result_wdata_o,
     output strb_t                             mfpu_result_be_o,
     input  logic                              mfpu_result_gnt_i,
+    // Interface with the Slide Unit
+    output logic                              sldu_alu_req_valid_o,
+    input  elen_t                             sldu_operand_i,
+    input  logic                              sldu_alu_valid_i,
+    output logic                              sldu_alu_ready_o,
+    input  logic                              sldu_alu_gnt_i,
     // Interface with the Mask unit
     output elen_t          [NrMaskFUnits-1:0] mask_operand_o,
     output logic           [NrMaskFUnits-1:0] mask_operand_valid_o,
@@ -81,6 +88,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
   ) i_valu (
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
+    .lane_id_i            (lane_id_i                      ),
     // Interface with the lane sequencer
     .vfu_operation_i      (vfu_operation_i                ),
     .vfu_operation_valid_i(vfu_operation_valid_i          ),
@@ -97,6 +105,13 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; #(
     .alu_result_wdata_o   (alu_result_wdata_o             ),
     .alu_result_be_o      (alu_result_be_o                ),
     .alu_result_gnt_i     (alu_result_gnt_i               ),
+    // Interface with the Slide Unit
+    .alu_red_valid_o      (sldu_alu_req_valid_o           ),
+    .sldu_operand_i       (sldu_operand_i                 ),
+    .sldu_alu_valid_i     (sldu_alu_valid_i               ),
+    .sldu_alu_ready_o     (sldu_alu_ready_o               ),
+    // Interface with the Slide Unit
+    .alu_red_ready_i      (sldu_alu_gnt_i),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o[MaskFUAlu]      ),
     .mask_operand_valid_o (mask_operand_valid_o[MaskFUAlu]),

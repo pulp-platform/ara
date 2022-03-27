@@ -6,12 +6,14 @@
 // Description:
 // This stage holds the operand queues, holding elements for the VRFs.
 
-module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
+module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
+    parameter int     unsigned NrLanes = 0,
     // Support for floating-point data types
     parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,
+    input  logic            [idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with the Vector Register File
     input  elen_t              [NrOperandQueues-1:0] operand_i,
     input  logic               [NrOperandQueues-1:0] operand_valid_i,
@@ -52,12 +54,14 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   operand_queue #(
     .BufferDepth   (5         ),
     .FPUSupport    (FPUSupport),
+    .NrLanes       (NrLanes   ),
     .SupportIntExt2(1'b1      ),
     .SupportIntExt4(1'b1      ),
     .SupportIntExt8(1'b1      )
   ) i_operand_queue_alu_a (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
+    .lane_id_i                (lane_id_i                      ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[AluA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluA]),
     .operand_i                (operand_i[AluA]                ),
@@ -73,12 +77,14 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   operand_queue #(
     .BufferDepth   (5         ),
     .FPUSupport    (FPUSupport),
+    .NrLanes       (NrLanes   ),
     .SupportIntExt2(1'b1      ),
     .SupportIntExt4(1'b1      ),
     .SupportIntExt8(1'b1      )
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
+    .lane_id_i                (lane_id_i                      ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[AluB]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluB]),
     .operand_i                (operand_i[AluB]                ),
@@ -98,10 +104,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   operand_queue #(
     .BufferDepth   (5         ),
     .FPUSupport    (FPUSupport),
+    .NrLanes       (NrLanes   ),
     .SupportIntExt2(1'b1      )
   ) i_operand_queue_mfpu_a (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
+    .lane_id_i                (lane_id_i                         ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MulFPUA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MulFPUA]),
     .operand_i                (operand_i[MulFPUA]                ),
@@ -117,10 +125,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   operand_queue #(
     .BufferDepth   (5         ),
     .FPUSupport    (FPUSupport),
+    .NrLanes       (NrLanes   ),
     .SupportIntExt2(1'b1      )
   ) i_operand_queue_mfpu_b (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
+    .lane_id_i                (lane_id_i                         ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MulFPUB]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MulFPUB]),
     .operand_i                (operand_i[MulFPUB]                ),
@@ -136,10 +146,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   operand_queue #(
     .BufferDepth   (5         ),
     .FPUSupport    (FPUSupport),
+    .NrLanes       (NrLanes   ),
     .SupportIntExt2(1'b1      )
   ) i_operand_queue_mfpu_c (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
+    .lane_id_i                (lane_id_i                         ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MulFPUC]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MulFPUC]),
     .operand_i                (operand_i[MulFPUC]                ),
@@ -158,10 +170,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
 
   operand_queue #(
     .BufferDepth(2         ),
-    .FPUSupport (FPUSupport)
+    .FPUSupport (FPUSupport),
+    .NrLanes    (NrLanes   )
   ) i_operand_queue_st_mask_a (
     .clk_i                    (clk_i                         ),
     .rst_ni                   (rst_ni                        ),
+    .lane_id_i                (lane_id_i                     ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[StA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StA]),
     .operand_i                (operand_i[StA]                ),
@@ -180,10 +194,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
 
   operand_queue #(
     .BufferDepth(2         ),
-    .FPUSupport (FPUSupport)
+    .FPUSupport (FPUSupport),
+    .NrLanes    (NrLanes   )
   ) i_operand_queue_slide_addrgen_a (
     .clk_i                    (clk_i                                         ),
     .rst_ni                   (rst_ni                                        ),
+    .lane_id_i                (lane_id_i                                     ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]            ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]      ),
     .operand_i                (operand_i[SlideAddrGenA]                      ),
@@ -202,10 +218,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
 
   operand_queue #(
     .BufferDepth(1         ),
-    .FPUSupport (FPUSupport)
+    .FPUSupport (FPUSupport),
+    .NrLanes    (NrLanes   )
   ) i_operand_queue_mask_b (
     .clk_i                    (clk_i                           ),
     .rst_ni                   (rst_ni                          ),
+    .lane_id_i                (lane_id_i                       ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MaskB]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MaskB]),
     .operand_i                (operand_i[MaskB]                ),
@@ -219,10 +237,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   operand_queue #(
-    .BufferDepth(1)
+    .BufferDepth(1         ),
+    .NrLanes    (NrLanes   )
   ) i_operand_queue_mask_m (
     .clk_i                    (clk_i                           ),
     .rst_ni                   (rst_ni                          ),
+    .lane_id_i                (lane_id_i                       ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MaskM]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MaskM]),
     .operand_i                (operand_i[MaskM]                ),

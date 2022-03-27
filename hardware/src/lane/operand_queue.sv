@@ -11,6 +11,7 @@
 module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int           unsigned BufferDepth    = 2,
     parameter  int           unsigned NrSlaves       = 1,
+    parameter  int           unsigned NrLanes        = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble,
     // Supported conversions
@@ -23,6 +24,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
+    // Lane ID
+    input  logic [idx_width(NrLanes)-1:0]     lane_id_i,
     // Interface with the Operand Requester
     input  operand_queue_cmd_t                operand_queue_cmd_i,
     input  logic                              operand_queue_cmd_valid_i,
@@ -37,6 +40,14 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output logic                              operand_valid_o,
     input  logic               [NrSlaves-1:0] operand_ready_i
   );
+
+  /////////////
+  // Lane ID //
+  /////////////
+
+  // Lane 0 has different logic than Lanes != 0
+  // A parameter would be perfect to save HW, but our hierarchical
+  // synth/pnr flow needs that all lanes are the same
 
   //////////////////////
   //  Command Buffer  //
@@ -125,11 +136,24 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic  [idx_width(StrbWidth)-1:0] select_d, select_q;
 
   always_comb begin: type_conversion
+    // Helper variables for reductions
+    logic ntrh, ntrl;
     // Shuffle the input operand
     automatic logic [idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
 
     // Default: no conversion
     conv_operand = ibuf_operand;
+
+    // Calculate the neutral values for reductions
+    // Examples with EW8:
+    // VREDSUM, VREDOR, VREDXOR, VREDMAXU, VWREDSUMU, VWRESUM: 0x00
+    // VREDAND, VREDMINU:                                      0xff
+    // VREDMIN:                                                0x7f
+    // VREDMAX:                                                0x80
+    // Neutral low bits
+    ntrl = cmd.ntr_red[0];
+    // Neutral high bit
+    ntrh = cmd.ntr_red[1];
 
     unique case (cmd.conv)
       // Sign extension
@@ -190,6 +214,26 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           endcase
       end
 
+      OpQueueReductionZExt: begin
+        if (lane_id_i == '0) begin
+          unique case (cmd.eew)
+            EW8 : conv_operand = {{7{ntrh, { 7{ntrl}}}}, ibuf_operand[7:0]};
+            EW16: conv_operand = {{3{ntrh, {15{ntrl}}}}, ibuf_operand[15:0]};
+            EW32: conv_operand = {{1{ntrh, {31{ntrl}}}}, ibuf_operand[31:0]};
+            default:;
+          endcase
+        end else begin
+          unique case (cmd.eew)
+            // Lane != 0, just send harmless values
+            EW8 : conv_operand = {8{ntrh, { 7{ntrl}}}};
+            EW16: conv_operand = {4{ntrh, {15{ntrl}}}};
+            EW32: conv_operand = {2{ntrh, {31{ntrl}}}};
+            default: // EW64
+              conv_operand = {1{ntrh, {63{ntrl}}}};
+          endcase
+        end
+      end
+
       // Floating-Point re-encoding
       OpQueueConversionWideFP2: begin
         if (FPUSupport != FPUSupportNone) begin
@@ -220,6 +264,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           endcase
         end
       end
+
       // Zero extension + Reordering for FP conversions
       OpQueueAdjustFPCvt: begin
         unique case (cmd.eew)
@@ -271,6 +316,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         OpQueueConversionSExt8,
         OpQueueConversionZExt8:
           if (SupportIntExt8) vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
+        OpQueueReductionZExt:
+          vl_d = vl_q + 1;
         default: vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
       endcase
 

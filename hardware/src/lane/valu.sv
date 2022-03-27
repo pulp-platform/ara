@@ -7,7 +7,7 @@
 // This is Ara's vector ALU. It is capable of executing integer operations
 // in a SIMD fashion, always operating on 64 bits.
 
-module valu import ara_pkg::*; import rvv_pkg::*; #(
+module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int  unsigned NrLanes   = 0,
     // Type used to address vector register file elements
     parameter  type          vaddr_t   = logic,
@@ -18,6 +18,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
+    input  logic[idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with the lane sequencer
     input  vfu_operation_t               vfu_operation_i,
     input  logic                         vfu_operation_valid_i,
@@ -34,6 +35,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                        alu_result_wdata_o,
     output strb_t                        alu_result_be_o,
     input  logic                         alu_result_gnt_i,
+    // Interface with the Slide Unit
+    output logic                         alu_red_valid_o,
+    input  logic                         alu_red_ready_i,
+    input  elen_t                        sldu_operand_i,
+    input  logic                         sldu_alu_valid_i,
+    output logic                         sldu_alu_ready_o,
     // Interface with the Mask unit
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
@@ -44,6 +51,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   import cf_math_pkg::idx_width;
+
+  /////////////
+  // Lane ID //
+  /////////////
+
+  // Lane 0 has different logic than Lanes != 0
+  // A parameter would be perfect to save HW, but our hierarchical
+  // synth/pnr flow needs that all lanes are the same
 
   ////////////////////////////////
   //  Vector instruction queue  //
@@ -209,6 +224,119 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   // output EEW word we are producing.
   logic narrowing_select_d, narrowing_select_q;
 
+  //////////////////
+  //  Reductions  //
+  //////////////////
+
+  // Cut the path between the SLDU and the ALU. This increase latency
+  // but does has negligible impact on long vectors
+  elen_t sldu_operand_q;
+  logic  sldu_alu_valid_q, sldu_alu_ready_d;
+  spill_register #(
+    .T(elen_t)
+  ) i_alu_reduction_spill_register (
+    .clk_i  (clk_i           ),
+    .rst_ni (rst_ni          ),
+    .valid_i(sldu_alu_valid_i),
+    .ready_o(sldu_alu_ready_o),
+    .data_i (sldu_operand_i  ),
+    .valid_o(sldu_alu_valid_q),
+    .ready_i(sldu_alu_ready_d),
+    .data_o (sldu_operand_q  )
+  );
+
+  // This function returns 1'b1 if `op` is a reduction instruction, i.e.,
+  // it must accumulate the result (intra-lane reduction) before sending it to the
+  // sliding unit (inter-lane and SIMD reduction).
+  function automatic logic is_reduction(ara_op_e op);
+    is_reduction = 1'b0;
+    if (op inside {[VREDSUM:VWREDSUM]})
+      is_reduction = 1'b1;
+  endfunction: is_reduction
+
+  // During an inter-lane reduction (after the intra-lane reduction), the NrLanes partial results
+  // must be reduced to only one. The first reduction is done by NrLanes/2 FUs, then NrLanes/4, and
+  // so on. In the end, the result is collected in Lane 0 and the last SIMD reduction is performed.
+  // The following function determines how many partial results this lane must process during the
+  // inter-lane reduction.
+  typedef logic [idx_width(NrLanes/2):0] reduction_rx_cnt_t;
+  reduction_rx_cnt_t reduction_rx_cnt_d, reduction_rx_cnt_q;
+  reduction_rx_cnt_t simd_red_cnt_max_d, simd_red_cnt_max_q;
+
+  // Use this function to assign a counter value to each lane if you can use in-lane parameters with your flow
+  //  function automatic reduction_rx_cnt_t reduction_rx_cnt_init(int unsigned NrLanes, int unsigned LaneIdx);
+  //    // The even lanes do not receive intermediate results. Only Lane 0 will receive the final result, but this is not checked here.
+  //    int adjusted_idx = LaneIdx + 1;
+  //    reduction_rx_cnt_init = '0;
+  //    for (int i = 2; i <= NrLanes; i *= 2) if (!(adjusted_idx % i)) reduction_rx_cnt_init++;
+  //  endfunction: reduction_rx_cnt_init
+  // Otherwise, use the following function (okay until 16 lanes)
+  function automatic reduction_rx_cnt_t reduction_rx_cnt_init(int unsigned NrLanes, logic [3:0] lane_id);
+     // The even lanes do not receive intermediate results. Only Lane 0 will receive the final result, but this is not checked here.
+     case (lane_id)
+      0:  reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      1:  reduction_rx_cnt_init = reduction_rx_cnt_t'(1);
+      2:  reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      3:  reduction_rx_cnt_init = reduction_rx_cnt_t'(2);
+      4:  reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      5:  reduction_rx_cnt_init = reduction_rx_cnt_t'(1);
+      6:  reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      7:  reduction_rx_cnt_init = reduction_rx_cnt_t'(3);
+      8:  reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      9:  reduction_rx_cnt_init = reduction_rx_cnt_t'(1);
+      10: reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      11: reduction_rx_cnt_init = reduction_rx_cnt_t'(2);
+      12: reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      13: reduction_rx_cnt_init = reduction_rx_cnt_t'(1);
+      14: reduction_rx_cnt_init = reduction_rx_cnt_t'(0);
+      15: reduction_rx_cnt_init = reduction_rx_cnt_t'(4);
+    endcase
+  endfunction: reduction_rx_cnt_init
+
+  // Count how many transactions we must do in total to complete the reduction operation
+  logic [idx_width($clog2(NrLanes)+1):0] sldu_transactions_cnt_d, sldu_transactions_cnt_q;
+
+  // Handshake synchronizer
+  // Since the SLDU must receive a valid signals also from lanes that should not send anything,
+  // we need to synchronize the dummy valids. A valid is given, then it is deleted after an
+  // handshake. It will be given again only after a valid_o by the SLDU
+  logic red_hs_synch_d, red_hs_synch_q;
+
+  // Counter to drive SIMD reductions
+  logic [1:0] simd_red_cnt_d, simd_red_cnt_q;
+
+  // Signal the first operation of an instruction. The first operation of a reduction instruction
+  // the operation is performed between the first vector element and the scalar.
+  logic first_op_d, first_op_q;
+
+  // Signal to indicate the state of the ALU
+  typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION, WAIT_STATE, SIMD_REDUCTION} alu_state_e;
+  alu_state_e alu_state_d, alu_state_q;
+
+  // This signal is used to cut a in2reg bad path
+  // This works since the signal is never checked
+  // twice in two consecutive cycles
+  logic  alu_red_ready_q;
+
+  // Input multiplexers.
+  elen_t simd_red_operand;
+  strb_t red_mask;
+  // During the first cycle, the reduction adds a scalar value kept into a
+  // vector register to the first group of vector elements. Then, one of the operand is always
+  // the accumulator.
+  // For lane[0], the scalar value is actually a value. For the other lanes the value is a neutral one.
+  elen_t alu_operand_a;
+  elen_t alu_operand_b;
+
+  // Main Alu input MUXes
+  // Operands can come from the input queues, from the other lanes, or from the reduction accumulator
+  assign alu_operand_a  = (alu_state_q inside {INTER_LANES_REDUCTION, SIMD_REDUCTION, INTRA_LANE_REDUCTION} && !first_op_q)
+                        ? result_queue_q[result_queue_write_pnt_q].wdata
+                        : vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0];
+  assign alu_operand_b  = (alu_state_q inside {INTER_LANES_REDUCTION, SIMD_REDUCTION})
+                        ? alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_q
+                        : alu_operand_i[1];
+
   ///////////////////////
   //  SIMD Vector ALU  //
   ///////////////////////
@@ -217,8 +345,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
   logic  valu_valid;
 
   simd_alu i_simd_alu (
-    .operand_a_i       (vinsn_issue_q.use_scalar_op ? scalar_op : alu_operand_i[0]      ),
-    .operand_b_i       (alu_operand_i[1]                                                ),
+    .operand_a_i       (alu_operand_a                                                   ),
+    .operand_b_i       (alu_operand_b                                                   ),
     .valid_i           (valu_valid                                                      ),
     .vm_i              (vinsn_issue_q.vm                                                ),
     .mask_i            ((mask_valid_i && !vinsn_issue_q.vm) ? mask_i : {StrbWidth{1'b1}}),
@@ -251,8 +379,20 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
     narrowing_select_d = narrowing_select_q;
 
+    first_op_d              = first_op_q;
+    simd_red_cnt_d          = simd_red_cnt_q;
+    reduction_rx_cnt_d      = reduction_rx_cnt_q;
+    sldu_transactions_cnt_d = sldu_transactions_cnt_q;
+    red_hs_synch_d          = red_hs_synch_q;
+    alu_red_valid_o         = 1'b0;
+    sldu_alu_ready_d        = 1'b0;
+    simd_red_cnt_max_d      = simd_red_cnt_max_q;
+    simd_red_operand        = '0;
+    red_mask                = '0;
+
     // Do not issue any operations
-    valu_valid = 1'b0;
+    valu_valid  = 1'b0;
+    alu_state_d = alu_state_q;
 
     // Inform our status to the lane controller
     alu_ready_o      = !vinsn_queue_full;
@@ -266,100 +406,282 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     //  Write data into the result queue  //
     ////////////////////////////////////////
 
-    // There is a vector instruction ready to be issued
-    if (vinsn_issue_valid && !result_queue_full) begin
-      // Do we have all the operands necessary for this instruction?
-      if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
-          (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
-          (mask_valid_i || vinsn_issue_q.vm)) begin
-        // How many elements are we committing with this word?
-        automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
-        if (element_cnt > issue_cnt_q) element_cnt = issue_cnt_q;
+    if (vinsn_issue_valid || alu_state_q != NO_REDUCTION) begin
+      case (alu_state_q)
+        NO_REDUCTION: begin
+          if (!result_queue_full) begin
+            // Do we have all the operands necessary for this instruction?
+            if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
+                (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
+                (mask_valid_i || vinsn_issue_q.vm)) begin
+              // How many elements are we committing with this word?
+              automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+              if (element_cnt > issue_cnt_q)
+                element_cnt = issue_cnt_q;
 
-        // Issue the operation
-        valu_valid = 1'b1;
+              // Issue the operation
+              valu_valid = 1'b1;
 
-        // Acknowledge the operands of this instruction
-        alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
-        // Narrowing instructions might need an extra cycle before acknowledging the mask operands
-        // If the results are being sent to the Mask Unit, it is up to it to acknowledge the
-        // operands.
-        if (!narrowing(vinsn_issue_q.op) && vinsn_issue_q != VFU_MaskUnit)
-          mask_ready_o = !vinsn_issue_q.vm;
+              // Acknowledge the operands of this instruction
+              alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
+              // Narrowing instructions might need an extra cycle before acknowledging the mask operands
+              // If the results are being sent to the Mask Unit, it is up to it to acknowledge the operands.
+              if (!narrowing(vinsn_issue_q.op) && vinsn_issue_q != VFU_MaskUnit)
+                mask_ready_o = !vinsn_issue_q.vm;
 
-        // Store the result in the result queue
-        result_queue_d[result_queue_write_pnt_q].wdata =
-          result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
-        result_queue_d[result_queue_write_pnt_q].addr = vaddr(vinsn_issue_q.vd, NrLanes) +
-          ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
-        result_queue_d[result_queue_write_pnt_q].id   = vinsn_issue_q.id;
-        result_queue_d[result_queue_write_pnt_q].mask = vinsn_issue_q.vfu == VFU_MaskUnit;
-        if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
-          result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) &
-          (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ?
-            {StrbWidth{1'b1}} :
-            mask_i);
+              // Store the result in the result queue
+              result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
+              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
+              result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
+              result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
+              if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
+                result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
 
-        // Is this a narrowing instruction?
-        if (narrowing(vinsn_issue_q.op)) begin
-          // How many elements did we calculate in this iteration?
-          automatic logic [3:0] element_cnt_narrow =
-            (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
-          if (element_cnt_narrow > issue_cnt_q) element_cnt_narrow = issue_cnt_q;
+              // Is this a narrowing instruction?
+              if (narrowing(vinsn_issue_q.op)) begin
+                // How many elements did we calculate in this iteration?
+                automatic logic [3:0] element_cnt_narrow = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew))) / 2;
+                if (element_cnt_narrow > issue_cnt_q)
+                  element_cnt_narrow = issue_cnt_q;
 
-          // Account for the issued operands
-          issue_cnt_d = issue_cnt_q - element_cnt_narrow;
+                // Account for the issued operands
+                issue_cnt_d = issue_cnt_q - element_cnt_narrow;
 
-          // Write the next half of the results in the next cycle.
-          narrowing_select_d = !narrowing_select_q;
+                // Write the next half of the results in the next cycle.
+                narrowing_select_d = !narrowing_select_q;
 
-          // Did we fill up a word?
-          if (issue_cnt_d == '0 || !narrowing_select_d) begin
-            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+                // Did we fill up a word?
+                if (issue_cnt_d == '0 || !narrowing_select_d) begin
+                  result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
-            // Acknowledge the mask operand, if needed
-            if (vinsn_issue_q != VFU_MaskUnit) mask_ready_o = !vinsn_issue_q.vm;
+                  // Acknowledge the mask operand, if needed
+                  if (vinsn_issue_q != VFU_MaskUnit)
+                    mask_ready_o = !vinsn_issue_q.vm;
 
-            // Bump pointers and counters of the result queue
-            result_queue_cnt_d += 1;
-            if (result_queue_write_pnt_q == ResultQueueDepth-1) result_queue_write_pnt_d = 0;
-            else result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+                  // Bump pointers and counters of the result queue
+                  result_queue_cnt_d += 1;
+                  if (result_queue_write_pnt_q == ResultQueueDepth-1)
+                    result_queue_write_pnt_d = 0;
+                  else
+                    result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+                end
+              end else begin // Normal behavior
+                // Bump pointers and counters of the result queue
+                result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+                result_queue_cnt_d += 1;
+                if (result_queue_write_pnt_q == ResultQueueDepth-1)
+                  result_queue_write_pnt_d = 0;
+                else
+                  result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+                issue_cnt_d = issue_cnt_q - element_cnt;
+              end
+
+              // Finished issuing the micro-operations of this vector instruction
+              if (vinsn_issue_valid && issue_cnt_d == '0) begin
+                // Reset the narrowing pointer
+                narrowing_select_d = 1'b0;
+
+                // Bump issue counter and pointers
+                vinsn_queue_d.issue_cnt -= 1;
+                if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                  vinsn_queue_d.issue_pnt = '0;
+                else
+                  vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+                if (vinsn_queue_d.issue_cnt != 0)
+                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+              end
+            end
           end
-        end else begin // Normal behavior
-          // Bump pointers and counters of the result queue
-          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-          result_queue_cnt_d += 1;
-          if (result_queue_write_pnt_q == ResultQueueDepth-1) result_queue_write_pnt_d = 0;
-          else result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
-          issue_cnt_d = issue_cnt_q - element_cnt;
         end
+        INTRA_LANE_REDUCTION: begin
+          // Stall only if this is the first operation for this reduction instruction and the result queue is full
+          if (!(first_op_q && result_queue_full)) begin
+            // Do we have all the operands necessary for this instruction?
+            // The second operand is needed only during the first operation of a reduction instruction
+            if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
+                (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1 || !first_op_q) &&
+                (mask_valid_i || vinsn_issue_q.vm)) begin
+              // How many elements are we committing with this word?
+              automatic logic [3:0] element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+              if (element_cnt > issue_cnt_q)
+                element_cnt = issue_cnt_q;
 
-        // Finished issuing the micro-operations of this vector instruction
-        if (vinsn_issue_valid && issue_cnt_d == '0) begin
-          // Reset the narrowing pointer
-          narrowing_select_d = 1'b0;
+              // Mask the inactive elements
+              red_mask = be(element_cnt, vinsn_issue_q.vtype.vsew) & ({StrbWidth{vinsn_issue_q.vm}} | mask_i);
 
-          // Bump issue counter and pointers
-          vinsn_queue_d.issue_cnt -= 1;
-          if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
-          else vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+              // Issue the operation
+              valu_valid = 1'b1;
 
-          if (vinsn_queue_d.issue_cnt != 0) issue_cnt_d =
-            vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+              // Acknowledge the operands of this instruction
+              alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1 & first_op_q};
+              // Acknowledge the mask operands
+              mask_ready_o = ~vinsn_issue_q.vm;
+
+              // Reduction instruction, accumulate the result
+              for (int b = 0; b < 8; b++) begin
+                result_queue_d[result_queue_write_pnt_q].wdata[8*b +: 8] =
+                    red_mask[b]            ?
+                    valu_result[8*b +: 8]  :
+                    alu_operand_a[8*b +: 8];
+              end
+              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes);
+              result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
+              result_queue_d[result_queue_write_pnt_q].be    = be(1, vinsn_issue_q.vtype.vsew);
+
+              // The first operation of this instruction has just been done
+              first_op_d = 1'b0;
+
+              issue_cnt_d = issue_cnt_q - element_cnt;
+
+              // Finished issuing the micro-operations of this vector instruction
+              if (vinsn_issue_valid && issue_cnt_d == '0) begin
+                // We can start the inter-lanes reduction
+                alu_state_d = INTER_LANES_REDUCTION;
+              end
+            end
+          end
         end
-      end
+        INTER_LANES_REDUCTION: begin
+          if (reduction_rx_cnt_q == '0) begin
+            // This unit has finished processing data for this reduction instruction, send the partial result to the sliding unit
+            alu_red_valid_o = 1'b1;
+            // We can simply delay the ready since we will immediately change state,
+            // so, no risk to re-sample alu_red_ready_i with side effects
+            if (alu_red_ready_q) begin
+              alu_state_d = WAIT_STATE;
+                if (lane_id_i != '0) begin
+                // Bump issue counter and pointers
+                vinsn_queue_d.issue_cnt -= 1;
+                if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                  vinsn_queue_d.issue_pnt = '0;
+                else
+                  vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+                if (vinsn_queue_d.issue_cnt != 0)
+                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+              end
+            end
+          end else begin
+            // This unit should still process data for the inter-lane reduction.
+            // Ready to accept incoming operands from the slide unit.
+            alu_red_valid_o = red_hs_synch_q;
+            if (sldu_alu_valid_q) begin
+              // Issue the operation
+              valu_valid = 1'b1;
+              sldu_alu_ready_d = 1'b1;
+              reduction_rx_cnt_d = reduction_rx_cnt_q - 1;
+              result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
+            end
+          end
+          // Count the successful transaction with the SLDU
+          if (sldu_alu_valid_q && sldu_alu_ready_d) begin
+            sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
+          end
+          if (alu_red_valid_o && alu_red_ready_i) red_hs_synch_d = 1'b0;
+          if (sldu_alu_valid_q && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
+        end
+        WAIT_STATE: begin
+          // Acknowledge the sliding unit even if it is not forwarding anything useful
+          sldu_alu_ready_d = sldu_alu_valid_q;
+          alu_red_valid_o  = red_hs_synch_q;
+          // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
+          if (lane_id_i == '0) begin
+            if (sldu_alu_valid_q) begin
+              if (sldu_transactions_cnt_q == 1) begin
+                result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
+                unique case (vinsn_issue_q.vtype.vsew)
+                  EW8 : simd_red_cnt_max_d = 2'd3;
+                  EW16: simd_red_cnt_max_d = 2'd2;
+                  EW32: simd_red_cnt_max_d = 2'd1;
+                  EW64: simd_red_cnt_max_d = 2'd0;
+                endcase
+                simd_red_cnt_d = '0;
+                alu_state_d = SIMD_REDUCTION;
+              end
+            end
+          end else if (sldu_transactions_cnt_q == '0) begin
+            // If not lane 0, wait for the completion of the reduction
+            alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+            // The next will be the first operation of this instruction
+            // This information is useful for reduction operation
+            first_op_d         = 1'b1;
+            reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+            sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+            // Allow the first valid
+            red_hs_synch_d = 1'b1;
+            // Give the done to the main sequencer
+            commit_cnt_d = '0;
+          end
+          if (sldu_alu_valid_q && sldu_alu_ready_d) begin
+            sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
+          end
+          if (alu_red_valid_o && alu_red_ready_i) red_hs_synch_d = 1'b0;
+          if (sldu_alu_valid_q && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
+        end
+        SIMD_REDUCTION: begin
+          if (lane_id_i == '0) begin
+            valu_valid = (simd_red_cnt_q != simd_red_cnt_max_q);
+
+            unique case (simd_red_cnt_q)
+              2'd0: simd_red_operand = {32'b0, result_queue_q[result_queue_write_pnt_q].wdata[63:32]};
+              2'd1: simd_red_operand = {48'b0, result_queue_q[result_queue_write_pnt_q].wdata[31:16]};
+              2'd2: simd_red_operand = {56'b0, result_queue_q[result_queue_write_pnt_q].wdata[15:8]};
+              default:;
+            endcase
+
+            if (simd_red_cnt_q != simd_red_cnt_max_q) begin
+              simd_red_cnt_d = simd_red_cnt_q + 1;
+              result_queue_d[result_queue_write_pnt_q].wdata = valu_result;
+            end else begin
+              // Bump issue counter and pointers
+              vinsn_queue_d.issue_cnt -= 1;
+              if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                vinsn_queue_d.issue_pnt = '0;
+              else
+                vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+              if (vinsn_queue_d.issue_cnt != 0)
+                issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+
+              alu_state_d = is_reduction(vinsn_issue_d.op) && (vinsn_queue_d.issue_cnt != 0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+              // The next will be the first operation of this instruction
+              // This information is useful for reduction operation
+              first_op_d         = 1'b1;
+              reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+              sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+              // Allow the first valid
+              red_hs_synch_d = 1'b1;
+              // Give the done to the main sequencer
+              commit_cnt_d = '0;
+
+              // Bump pointers and counters of the result queue
+              result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+              result_queue_cnt_d += 1;
+              if (result_queue_write_pnt_q == ResultQueueDepth-1)
+                result_queue_write_pnt_d = 0;
+              else
+                result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+              end
+          end
+        end
+        default:;
+      endcase
     end
 
     //////////////////////////////////
     //  Write results into the VRF  //
     //////////////////////////////////
 
-    alu_result_req_o = result_queue_valid_q[result_queue_read_pnt_q] &&
-      !result_queue_q[result_queue_read_pnt_q].mask;
-    alu_result_addr_o  = result_queue_q[result_queue_read_pnt_q].addr;
-    alu_result_id_o    = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
-    alu_result_be_o    = result_queue_q[result_queue_read_pnt_q].be;
+    if (alu_state_q == NO_REDUCTION || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max_q)) begin
+      alu_result_req_o = result_queue_valid_q[result_queue_read_pnt_q] & ((alu_state_q == SIMD_REDUCTION) || !result_queue_q[result_queue_read_pnt_q].mask);
+    end else begin
+      alu_result_req_o = 1'b0;
+    end
+    alu_result_addr_o = result_queue_q[result_queue_read_pnt_q].addr;
+    alu_result_id_o   = result_queue_q[result_queue_read_pnt_q].id;
+    alu_result_be_o   = result_queue_q[result_queue_read_pnt_q].be;
 
     // Received a grant from the VRF.
     // Deactivate the request.
@@ -375,7 +697,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
       result_queue_cnt_d -= 1;
 
       // Decrement the counter of remaining vector elements waiting to be written
-      commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
+      // Don't do it in case of a reduction
+      if (!is_reduction(vinsn_commit.op))
+        commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
       if (commit_cnt_q < (1 << (int'(EW64) - vinsn_commit.vtype.vsew))) commit_cnt_d = '0;
     end
 
@@ -401,9 +725,23 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
     if (!vinsn_queue_full && vfu_operation_valid_i &&
       (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VMXNOR]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
+      // Do not wait for masks if, during a reduction, this lane is just a pass-through
+      // The only valid instructions here with vl == '0 are reductions
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.vm | (vfu_operation_i.vl == '0);
 
-      // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0) issue_cnt_d = vfu_operation_i.vl;
+      // Initialize counters and alu state if this is the instruction queue was empty
+      if (vinsn_queue_d.issue_cnt == '0) begin
+        alu_state_d = is_reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+        // The next will be the first operation of this instruction
+        // This information is useful for reduction operation
+        first_op_d         = 1'b1;
+        reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+
+        sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+        // Allow the first valid
+        red_hs_synch_d = 1'b1;
+        issue_cnt_d    = vfu_operation_i.vl;
+      end
       if (vinsn_queue_d.commit_cnt == '0) commit_cnt_d = vfu_operation_i.vl;
 
       // Bump pointers and counters of the vector instruction queue
@@ -415,13 +753,29 @@ module valu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      issue_cnt_q        <= '0;
-      commit_cnt_q       <= '0;
-      narrowing_select_q <= 1'b0;
+      issue_cnt_q             <= '0;
+      commit_cnt_q            <= '0;
+      narrowing_select_q      <= 1'b0;
+      simd_red_cnt_q          <= '0;
+      alu_state_q             <= NO_REDUCTION;
+      reduction_rx_cnt_q      <= '0;
+      first_op_q              <= 1'b0;
+      sldu_transactions_cnt_q <= '0;
+      red_hs_synch_q          <= 1'b0;
+      simd_red_cnt_max_q      <= '0;
+      alu_red_ready_q         <= 1'b0;
     end else begin
-      issue_cnt_q        <= issue_cnt_d;
-      commit_cnt_q       <= commit_cnt_d;
-      narrowing_select_q <= narrowing_select_d;
+      issue_cnt_q             <= issue_cnt_d;
+      commit_cnt_q            <= commit_cnt_d;
+      narrowing_select_q      <= narrowing_select_d;
+      simd_red_cnt_q          <= simd_red_cnt_d;
+      alu_state_q             <= alu_state_d;
+      reduction_rx_cnt_q      <= reduction_rx_cnt_d;
+      first_op_q              <= first_op_d;
+      sldu_transactions_cnt_q <= sldu_transactions_cnt_d;
+      red_hs_synch_q          <= red_hs_synch_d;
+      simd_red_cnt_max_q      <= simd_red_cnt_max_d;
+      alu_red_ready_q         <= alu_red_ready_i;
     end
   end
 
