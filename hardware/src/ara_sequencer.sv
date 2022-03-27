@@ -211,8 +211,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic [NrVFUs-1:0] insn_queue_cnt_en, insn_queue_cnt_down, insn_queue_cnt_up;
   // Each FU has its own ready signal
   logic [NrVFUs-1:0] vinsn_queue_ready;
-  logic              vinsn_ready;
-  logic              accepted_insn;
+  // Bit [i] is 1'b1 if the respective PE is ready for the issue of this insn
+  logic [NrVFUs-1:0] vinsn_queue_issue;
+  logic              accepted_insn, accepted_insn_stalled;
   logic [NrVFUs-1:0] target_vfus_vec;
   // Gold tickets and passes
   // Normally, instructions can be issued to the lane sequencer only if
@@ -278,7 +279,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         end else if (ara_req_valid_i) begin
           // The target PE is ready, and we can handle another running vector instruction
           // Let instructions with priority pass be issued
-          if ((vinsn_ready || |priority_pass) && !stall_lanes_desynch && !vinsn_running_full) begin
+          if (&vinsn_queue_issue && !stall_lanes_desynch && !vinsn_running_full) begin
             ///////////////
             //  Hazards  //
             ///////////////
@@ -477,8 +478,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Register the incoming instruction if it is valid
   assign accepted_insn = ara_req_valid_i & (ara_req_token_q != ara_req_i.token);
 
-  // Here to please Verilator
-  assign target_vfus_vec = target_vfus(ara_req_i.op);
+  // The new accepted instruction will not be immediately issued
+  assign accepted_insn_stalled = accepted_insn & ~ara_req_ready_o;
+
+  // Masked instructions do use the mask unit as well
+  assign target_vfus_vec = target_vfus(ara_req_i.op) | (!ara_req_i.vm << VFU_MaskUnit);
 
   // One counter per VFU
   for (genvar i = 0; i < NrVFUs; i++) begin : gen_seq_fu_cnt
@@ -500,25 +504,30 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     );
 
     // Each PE is ready only if it can accept a new instruction in the queue
-    assign vinsn_queue_ready[i] = (insn_queue_cnt_q[i] < InsnQueueDepth[i]) & target_vfus_vec[i];
-    // Count up on the right coutner
+    assign vinsn_queue_ready[i] = insn_queue_cnt_q[i] < InsnQueueDepth[i];
+    // Count up on the right counter
     assign insn_queue_cnt_up[i] = accepted_insn & target_vfus_vec[i];
     // Count down if an instruction was consumed by the PE
     assign insn_queue_cnt_down[i] = insn_queue_done[i];
     // Don't count if one instruction is issued and one is consumed
     assign insn_queue_cnt_en[i] = insn_queue_cnt_up[i] ^ insn_queue_cnt_down[i];
-    // Assign the gold ticket to the new instructions that come when the cnt is already full
-    // Mask instructions receive only the ticket for the Mask Unit, the one that will finish later
-    assign gold_ticket_d[i] = accepted_insn ? (vfu(ara_req_i.op) == vfu_e'(i)) &
-      (insn_queue_cnt_q[i] == InsnQueueDepth[i]) : gold_ticket_q[i];
+    // Assign the gold ticket when:
+    //   1) The new instruction finds the target cnt already full
+    //   2) The new instruction is stalled and the target cnt is pre-filled
+    // In both cases the instruction is stalled, and it should pass as soon as
+    // insn_queue_cnt_q[i] == InsnQueueDepth[i] since it was already counted
+    assign gold_ticket_d[i] = accepted_insn_stalled
+                            ? (insn_queue_cnt_q[i] >= (InsnQueueDepth[i] - 1)) & target_vfus_vec[i]
+                            : gold_ticket_q[i];
     // The instructions with a gold ticket can pass the checks even if the cnt is full,
     // but not when (insn_queue_cnt_q[i] == InsnQueueDepth[i] + 1)
 	// Moreover, just arrived instructions cannot use the golden ticket of a previous instruction
     assign priority_pass[i] = gold_ticket_q[i] & (insn_queue_cnt_q[i] == InsnQueueDepth[i]) &
       (ara_req_token_q == ara_req_i.token);
+    // The instruction queue [i] allows us to issue the instruction
+    // If the insn is not targeting the PE [i], PE [i] cannot stall the instruction issue.
+    // Each targeted PE must be ready (either with cnt < MAX or with a priority pass)
+    assign vinsn_queue_issue[i] = ~target_vfus_vec[i] | (vinsn_queue_ready[i] | priority_pass[i]);
   end
-
-  // The target FUs must be all ready
-  assign vinsn_ready = ~(|(vinsn_queue_ready ^ target_vfus_vec));
 
 endmodule : ara_sequencer
