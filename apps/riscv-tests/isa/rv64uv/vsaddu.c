@@ -7,7 +7,6 @@
 
 #include "vector_macros.h"
 
-
 void TEST_CASE1(void) {
   uint64_t vxsat;
   VSET(4, e8, m1);
@@ -80,7 +79,6 @@ void TEST_CASE6(void) {
   check_vxsat(6, vxsat, 1);
 }
 
-// Dont use VCLEAR here, it results in a glitch where are values are off by 1
 void TEST_CASE7(void) {
   uint64_t vxsat;
   VSET(4, e32, m1);
