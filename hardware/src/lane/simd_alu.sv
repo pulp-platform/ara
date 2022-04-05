@@ -21,16 +21,10 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     input  ara_op_e    op_i,
     input  vew_e       vew_i,
     output alu_vxsat_t vxsat_o,
+    input  vxrm_t      vxrm_i,
     output elen_t      result_o
   );
   
-  // Temp logic rounding mode CSR (vxrm_i) needs to be integrated as input to alu
-  vxrm_t       vxrm_i;
-  logic        r;
-  // logic        vxsat;
-
-  assign vxrm_i = 0;
-
   ///////////////////
   //  Definitions  //
   ///////////////////
@@ -57,9 +51,11 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
 
   alu_sat_operand_t sat_sum, sat_sub;
   alu_vxsat_t vxsat;
-  
+  vxrm_t      vxrm;
+  logic       r;
+
+  assign vxrm = vxrm_i;
   assign vxsat_o = vxsat;
-  // assign vxsat_o = |vxsat.w8;
 
   ///////////////////
   //  Comparisons  //
@@ -181,7 +177,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VAADD, VAADDU: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
               automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
@@ -191,7 +187,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [16:0] sum = opa.w16[b] + opb.w16[b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
@@ -201,7 +197,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [32:0] sum = opa.w32[b] + opb.w32[b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
@@ -211,7 +207,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [64:0] sum = opa.w64[b] + opb.w64[b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
@@ -317,7 +313,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VASUB, VASUBU: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sub = opb.w8 [b] - opa.w8 [b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
@@ -327,7 +323,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [ 16:0] sub = opb.w16[b] - opa.w16[b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
@@ -337,7 +333,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [ 32:0] sub = opb.w32[b] - opa.w32[b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
@@ -347,7 +343,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [ 64:0] sub = opb.w64[b] - opa.w64[b];
-                unique case (vxrm_i)
+                unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
