@@ -34,6 +34,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic              [NrLanes-1:0][4:0] fflags_ex_i,
     input  logic              [NrLanes-1:0]      fflags_ex_valid_i,
     input  logic              [NrLanes-1:0]      vxsat_flag_i,
+    output vxrm_t             [NrLanes-1:0]      alu_vxrm_o,
+    // Rounding mode is shared between all lanes
+
     // Interface with the Vector Store Unit
     output logic                                 core_st_pending_o,
     input  logic                                 load_complete_i,
@@ -275,6 +278,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Saturation in any lane will raise vxsat flag
     vxsat_d = |vxsat_flag_i;
+    alu_vxrm_o = vxrm_q;
+    // Rounding mode is shared between all lanes
+    for (int lane = 0; lane < NrLanes; lane++) acc_resp_o.fflags |= fflags_ex_i[lane];
     // Special states
     case (state_q)
       // Is Ara idle?
@@ -2749,11 +2755,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.result = vstart_q;
                   end
                   riscv::CSR_VXRM: begin
-                    vxrm_d            = acc_req_i.rs1[1:0];
+                    vxrm_d            = vxrm_t'(acc_req_i.rs1[1:0]);
                     acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = acc_req_i.rs1[0];
+                    vxsat_d           = vxsat_t'(acc_req_i.rs1[0]);
                     acc_resp_o.result = vlen_t'(vxsat_q);
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2786,7 +2792,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q | vlen_t'(acc_req_i.rs1[0]);
+                    vxsat_d           = vxsat_q | vxsat_t'(acc_req_i.rs1[0]);
                     acc_resp_o.result = vlen_t'(vxsat_q);
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2814,6 +2820,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
                     else acc_resp_o.error                                 = 1'b1;
                   end
+                  riscv::CSR_VXSAT: begin
+                    vxsat_d           = vxsat_q & ~vxsat_t'(acc_req_i.rs1[0]);
+                    acc_resp_o.result = vxsat_q;
+                  end
                   default: acc_resp_o.error = 1'b1;
                 endcase
               end
@@ -2826,8 +2836,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.result = vstart_q;
                   end
                   riscv::CSR_VXRM: begin
-                    vxrm_d            = vxrm_t'(acc_req_i.insn.itype.rs1[1:0]);
+                    vxrm_d            = vxrm_t'(acc_req_i.rs1[1:0]);
                     acc_resp_o.result = vlen_t'(vxrm_q);
+                  end
+                  riscv::CSR_VXSAT: begin
+                    vxsat_d           = acc_req_i.insn.itype.rs1[0];
+                    acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
                 endcase
@@ -2854,6 +2868,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
                     else acc_resp_o.error                                 = 1'b1;
                   end
+                  riscv::CSR_VXSAT: begin
+                    vxsat_d           = vxsat_q | vxsat_t'(acc_req_i.insn.itype.rs1[0]);
+                    acc_resp_o.result = vxsat_q;
+                  end
                   default: acc_resp_o.error = 1'b1;
                 endcase
               end
@@ -2878,6 +2896,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     // Only reads are allowed
                     if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
                     else acc_resp_o.error                                 = 1'b1;
+                  end
+                  riscv::CSR_VXSAT: begin
+                    vxsat_d           = vxsat_q & ~vxsat_t'(acc_req_i.insn.itype.rs1[0]);
+                    acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
                 endcase
