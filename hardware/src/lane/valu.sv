@@ -21,6 +21,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     input  logic[idx_width(NrLanes)-1:0] lane_id_i,
     // Interface with Dispatcher
     output logic                         vxsat_flag_o,
+    input  vxrm_t                        alu_vxrm_i,
     // Interface with the lane sequencer
     input  vfu_operation_t               vfu_operation_i,
     input  logic                         vfu_operation_valid_i,
@@ -362,6 +363,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     .op_i              (vinsn_issue_q.op                                                ),
     .vew_i             (vinsn_issue_q.vtype.vsew                                        ),
     .vxsat_o           (alu_vxsat                                                       ),
+    .vxrm_i            (alu_vxrm_i                                                      ),
     .result_o          (valu_result                                                     )
   );
 
