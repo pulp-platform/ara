@@ -16,29 +16,14 @@
 
 // Author: Matheus Cavalcante, ETH Zurich
 
-#ifndef EW_H
-#define EW_H
+#ifndef EX4_H
+#define EX4_H
 
-// Ara supports the following element widths.
-typedef enum { EW8 = 8, EW16 = 16, EW32 = 32, EW64 = 64 } ew_t;
+#include "../intrinsics.h"
+#include "../sew.h"
+#include "printf.h"
+#include "runtime.h"
 
-// Standard element width of the vector elements.
-// Should be defined through the Makefile!
-// #define SEW EW64
+void ex4(velement_t *c, velement_t *a, velement_t *b);
 
-// Type of the vector elements
-#if (SEW == 8)
-#define velement_t int8_t
-#define sew_byte_exp 0
-#elif (SEW == 16)
-#define velement_t int16_t
-#define sew_byte_exp 1
-#elif (SEW == 32)
-#define velement_t int32_t
-#define sew_byte_exp 2
-#elif (SEW == 64)
-#define velement_t int64_t
-#define sew_byte_exp 3
-#endif
-
-#endif // EW_H
+#endif // EX4_H

@@ -24,6 +24,6 @@
 #include "printf.h"
 #include "runtime.h"
 
-void ex3(velement_t *c, velement_t *a, velement_t *b);
+void ex3(velement_t *i, velement_t *sel, velement_t *o, velement_t *o_gold);
 
 #endif // EX3_H
