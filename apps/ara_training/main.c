@@ -40,6 +40,8 @@ velement_t b[SIZE * SIZE]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
 velement_t c[SIZE * SIZE]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
+velement_t d[SIZE * SIZE]
+    __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 int main(void) {
   printf("SoCDAML -- 20/04/2021\n\n");
@@ -56,6 +58,11 @@ int main(void) {
 
 #if (EX3 == 1)
   printf("\n-- Exercise 3 --\n");
+  ex3(d, c, a, b);
+#endif
+
+#if (EX4 == 1)
+  printf("\n-- Exercise 4 --\n");
   ex3(c, a, b);
 #endif
 

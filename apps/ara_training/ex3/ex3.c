@@ -14,135 +14,149 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Author: Matheus Cavalcante, ETH Zurich
+// Author: Matteo Perotti, ETH Zurich
 
 #include "ex3.h"
 
-// Matrix matrix multiplication kernel. Defined below.
+// Dropout kernel, defined below.
+// Look at the end of the file for the definition of the scalar function.
+void dropout_scalar(uint64_t n, velement_t *i, velement_t scale,
+                 velement_t *sel, velement_t *o);
+void dropout_vector(uint64_t n, velement_t *i, velement_t scale,
+                 velement_t *sel, velement_t *o);
 
-void matmul(velement_t *c, velement_t *a, velement_t *b, uint64_t nrows,
-            uint64_t ncols);
+// Dropout
 
-// Matrix multiplication
-
-void ex3(velement_t *c, velement_t *a, velement_t *b) {
-  // In this exercise, we will multiply matrices a and b (both of size
-  // SIZE*SIZE), and store the result back in matrix c. We will implement the
-  // kernel we analyzed during the lecture.
+void ex3(velement_t *i, velement_t *sel, velement_t *o, velement_t *o_gold) {
+  // In this exercise, you will implement Dropout, a way to fight against
+  // network overfitting during training. Some of the nodes are
+  // dropped out from the network, introducing random noise.
+  // We will assume to already have in memory our keep/drop vector.
 
   /***************************
-   *  Matrix initialization  *
+   *  Vectors initialization  *
    ***************************/
 
-  const int64_t aa = 1;
-  const int64_t ab = 1;
-  const int64_t ac = -32;
-  const int64_t ba = 2;
-  const int64_t bb = 1;
-  const int64_t bc = 16;
   const int64_t N = SIZE;
+  velement_t scale;
+  uint64_t error;
 
-  // Initialize matrix a to a[i][j] = aa*i + ab*j + ac
-  printf("Initializing matrix a...\n");
-  for (int i = 0; i < N; ++i)
-    for (int j = 0; j < N; ++j)
-      *(a + i * N + j) = aa * i + ab * j + ac;
-  // Initialize matrix b to b[i][j] = ba*i + bb*j + bc
-  printf("Initializing matrix b...\n");
-  for (int i = 0; i < N; ++i)
-    for (int j = 0; j < N; ++j)
-      *(b + i * N + j) = ba * i + bb * j + bc;
+  printf("Initializing input vector...\n");
+  for (int k = 0; k < N; ++k) {
+    i[k] = k;
+  }
+  printf("Initializing output vector...\n");
+  for (int k = 0; k < N; ++k) {
+    // Fill the output memory bits with 1s to increase the
+    // verification process reliability
+    o[k] = ~0;
+  }
+  printf("Initializing keep/drop vector...\n");
+  for (int k = 0; k < N; ++k) {
+    // A real dropout would randomize this process with a given probability.
+    sel[k] = (k % 3) ? 1 : 0;
+  }
+  // In a real dropout kernel, this value depends on the drop probability.
+  printf("Initializing the scale factor...\n");
+  scale = 17;
 
   /************
    *  Kernel  *
    ************/
 
-  printf("Calling the matmul kernel...\n");
-  // Check the matmul(c, a, b, N, N) function for the matmul kernel, and tasks 1
-  // to 3.
+  printf("Calling the dropout kernel...\n");
   start_timer();
-  matmul(c, a, b, SIZE, SIZE);
+  dropout_vector(N, i, scale, sel, o);
   stop_timer();
 
   /************
    *  Task 4  *
    ************/
 
-  printf("The execution of the matmul kernel took %d cycles.\n", get_timer());
+  printf("The execution of the dropout kernel took %d cycles.\n", get_timer());
 
-  // The matrix multiplication is a compute-bound kernel. This means that the
-  // performance of this kernel is (theoretically) limited by the functional
-  // units of the processor, and not by the memory bandwidth. Considering each
-  // addition and multiplication of the vmacc instruction as two individual
-  // operations, we need to 2N^3 operations to run the matmul kernel. Ara is
-  // capable of running 8 operations per cycle.
+  // Let's analyze the performances of the dropout kernel
 
-  double performance = (double)get_timer() / 2 * N * N * N;
+  double performance = (double)N / get_timer();
   printf(
-      "Ara's performance is %lf OP/cycle, or %lf %% of the peak performance.",
+      "Ara's performance is %lf OP/cycle, or %lf %% of the peak performance.\n",
       performance, performance / 8);
 
   // Q1: Did your kernel achieve a high performance?
 
-  // Q2: Analyze your kernel and propose ways to improve the performance of this
-  // kernel. Discuss with the TAs.
+  // Q2: Analyze the dropout performance finding its arithmetic intensity.
+  // How can you improve the perfromance of the kernel?
 
   /**********************
    *  Check the result  *
    **********************/
 
-  // The result will be the following matrix
-  // c[i][j] = (aa*bb*i*j + aa*bc*i + ac*bb*j + ac*bc) * N
-  //         + (aa*ba*i + ab*bb*j + ab*bc + ba*ac) * (N*(N-1))/2
-  //         + (ab*ba) * (N*(N-1)*(2*N-1))/6
-
+  // The result vector is checked against the golden value produced
+  // by the scalar implementation.
+  dropout_scalar(N, i, scale, sel, o_gold);
   printf("Checking results...\n");
 
-  for (int i = 0; i < N; ++i)
-    for (int j = 0; j < N; ++j) {
-      int64_t lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * N;
-      int64_t qua =
-          ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (N * (N - 1))) / 2;
-      int64_t cub = ((ab * ba) * (N * (N - 1) * (2 * N - 1))) / 6;
-
-      if (*(c + i * N + j) != lin + qua + cub) {
-        printf(
-            "Error! Expected c[%d][%d] = %d, but found %d instead. Aborting.\n",
-            i, j, lin + qua + cub, *(c + i * N + j));
-        return;
-      }
+  error = 0;
+  for (uint64_t k = 0; k < N; ++k) {
+    if (o[k] != o_gold[k]) {
+      printf("Error at index %d. (o[%d] = %ld) != (o_gold[%d] = %ld)\n", k, k, o[k], k, o_gold[k]);
+      error++;
+      break;
     }
+  }
+
+  if (error) {
+    printf("FAIL.\n");
+  } else {
+    printf("SUCCESS. Your vector dropout works like a charm!\n");
+  }
 }
 
-void matmul(velement_t *c, velement_t *a, velement_t *b, uint64_t nrows,
-            uint64_t ncols) {
+// Dropout, scalar version.
+// n: the number of elements of the input vector
+// i: addr of the input vector
+// scale: scaling factor
+// sel: addr of the keep/drop vector
+// o: addr of the output vector
+void dropout_scalar(uint64_t n, velement_t *i, velement_t scale,
+                 velement_t *sel, velement_t *o) {
   /************
    *  Task 1  *
    ************/
 
-  // Since we do not have a vectorizing compiler, we will need to do vector
-  // register allocation manually. For this matmul, you will need
-  // two vector registers, `vA` and `vC`. Choose two vectors from the
-  // v0-v31 available for the execution of this kernel.
+  // What does this function do?
 
-  // vA = ??
-  // vC = ??
+  for (uint64_t k = 0; k < n; ++k) {
+    o[k] = sel[k] ? (i[k] * scale) : 0;
+  }
+}
+
+void dropout_vector(uint64_t n, velement_t *i, velement_t scale,
+                 velement_t *sel, velement_t *o) {
+  /************
+   *  Task 2  *
+   ************/
+
+  // We want to vectorize the dropout_scalar function.
+  // The ternary operator in the loop forks the flow at each iteration.
+  // This seems to prevent a vector implementation... how can you circumvent the issue?
+  // Provide a vector implementation
 
   /************
    *  Task 2  *
    ************/
 
-  // Implement the matrix multiplication, using the algorithm discussed during
-  // the lecture. For the time being, consider that a row of the matrix fit
-  // inside a vector. You will need to use other intrinsics defined in the
-  // `intrinsics.h` file (Tip: look for the vmv and vmacc intrinsics).
+  // Test your implementation. Is it correct? If not, why?
+  // Suggestion: pay attention to the RISC-V V VRF byte layouts.
 
   /************
    *  Task 3  *
    ************/
 
-  // Optional: Implement the stripmining loop around your matrix multiplication.
-  // You can test the result with a larger matrix (SIZE = 128, for example).
-  // Beware of the runtime, this might take a long time to execute (a few
-  // minutes to an hour).
+  // Implement the stripmining loop around your Dropout kernel to support vectors longer
+  // then your current maximum vl.
+
+  /*
+    IMPLEMENT THE VECTOR DROPOUT CODE HERE
+  */
 }

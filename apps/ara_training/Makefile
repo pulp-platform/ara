@@ -26,12 +26,13 @@ SIZE ?= 64
 EX1 ?= 0
 EX2 ?= 0
 EX3 ?= 0
+EX4 ?= 0
 
 #
 # Defines
 #
 
-DEFINES += "-DSIZE=$(SIZE) -DSEW=$(SEW) -DEX1=$(EX1) -DEX2=$(EX2) -DEX3=$(EX3)"
+DEFINES += "-DSIZE=$(SIZE) -DSEW=$(SEW) -DEX1=$(EX1) -DEX2=$(EX2) -DEX3=$(EX3) -DEX4=$(EX4)"
 
 # Default target
 .PHONY: all

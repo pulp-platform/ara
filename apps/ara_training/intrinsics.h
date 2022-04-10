@@ -34,22 +34,22 @@ inline uint64_t __vsetvl(uint64_t vl, ew_t ew) {
   uint64_t retval;
   switch (ew) {
   case EW8:
-    asm volatile("vsetvli %[retval], %[vl], e8"
+    asm volatile("vsetvli %[retval], %[vl], e8, ta, ma"
                  : [ retval ] "=r"(retval)
                  : [ vl ] "r"(vl));
     break;
   case EW16:
-    asm volatile("vsetvli %[retval], %[vl], e16"
+    asm volatile("vsetvli %[retval], %[vl], e16, ta, ma"
                  : [ retval ] "=r"(retval)
                  : [ vl ] "r"(vl));
     break;
   case EW32:
-    asm volatile("vsetvli %[retval], %[vl], e32"
+    asm volatile("vsetvli %[retval], %[vl], e32, ta, ma"
                  : [ retval ] "=r"(retval)
                  : [ vl ] "r"(vl));
     break;
   case EW64:
-    asm volatile("vsetvli %[retval], %[vl], e64"
+    asm volatile("vsetvli %[retval], %[vl], e64, ta, ma"
                  : [ retval ] "=r"(retval)
                  : [ vl ] "r"(vl));
     break;
@@ -237,6 +237,54 @@ __vmacc_vv_generator(v0, v0, v2)
 __vmacc_vx_generator(v0, v1)
 __vmacc_vx_generator(v0, v2)
 __vmacc_vx_generator(v0, v3)
+// ... Add more if needed
+// clang-format on
+
+/**************
+ *  VMUL.VX  *
+ **************/
+
+// The following macro generates functions that multiplies vectors vs1 and
+// scalar value scalar, and store the final result back to vd.
+
+// Calling convention: __vmul_vx__vd_vs1(scalar). Example:
+// __vmul_vx__v2_v1(2);
+
+#define __vmul_vx_generator(vd, vs1)                                          \
+  inline void __vmul_vx__##vd##_##vs1(uint64_t scalar) {                      \
+    asm volatile("vmul.vx " #vd ", %[scalar], " #vs1 ::[scalar] "r"(scalar)); \
+  }
+
+    // clang-format off
+// Generate the intrinsics
+__vmul_vx_generator(v0, v1)
+__vmul_vx_generator(v0, v2)
+__vmul_vx_generator(v0, v3)
+// ... Add more if needed
+// clang-format on
+
+/********************
+ *  Masked VMUL.VX  *
+ *******************/
+
+// The following macro generates functions that multiplies the unmasked vectors vs1 and
+// scalar value scalar, and store the final result back to vd. The elements of vd
+// with masked index, keeps their previous value.
+// The mask vector is contained in vm.
+
+// Calling convention: __vmul_vx__vd_vs1_vm(scalar). Example:
+// __vmul_vx__v2_v1_v0(2);
+
+#define __vmul_vx_m_generator(vd, vs1, vm)                                        \
+  inline void __vmul_vx_m__##vd##_##vs1##_##vm(uint64_t scalar) {                      \
+    asm volatile("vmul.vx " #vd ", %[scalar], " #vs1 ", " #vm ".t" ::[scalar] "r"(scalar)); \
+  }
+
+    // clang-format off
+// Generate the intrinsics
+__vmul_vx_m_generator(v0, v1, v31)
+__vmul_vx_m_generator(v0, v2, v31)
+__vmul_vx_m_generator(v0, v3, v31)
 // ... Add more if needed
 // clang-format on
 
