@@ -21,7 +21,7 @@ If the compilation is succesful, the compiled binary can be found in `../bin/ara
 You can define a series of variables to tweak the execution of the exercise.
 - `SEW`: The width of a vector element. Can be one of `8`, `16`, `32`, or `64`. By default, `SEW = 64`.
 - `SIZE`: The size of the matrices used throughout the exercise. The three statically allocated matrices, `a`, `b`, and `c`, have `SIZE` rows and `SIZE` columns. You can also use those matrices a _vector_ of length `SIZE * SIZE`. By default, `SIZE = 64`.
-- `EX1`, `EX2`, `EX3`: Define each variable to `1` to run the corresponding exercise. By default, all exercises are deactivated.
+- `EX1`, `EX2`, `EX3`, `EX4`: Define each variable to `1` to run the corresponding exercise. By default, all exercises are deactivated.
 
 For example, to run `EX2` and `EX3` with elements of `32` bits and a matrix of size `64`, you can run `EX2=1 EX3=1 SEW=32 SIZE=64 make compile`.
 
@@ -39,4 +39,8 @@ In this exercise, we will add two very long vectors together. We will need to wr
 
 ## Exercise 3
 
-In this exercise, we will implement the matrix multiplication of two matrices. Check `ex3/ex3.c` for more details.
+In this exercise, we will vectorize Dropout, an algorithm using during NN training. Check `ex3/ex3.c` for more details.
+
+## Exercise 4 (optional)
+
+In this exercise, we will implement the matrix multiplication of two matrices. Check `ex4/ex4.c` for more details.
