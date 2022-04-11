@@ -64,7 +64,7 @@ DEFINES += -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argument # -Werror
 
 # LLVM Flags
-LLVM_FLAGS     ?= -march=rv64gcv0p10 -mabi=$(RISCV_ABI) -menable-experimental-extensions -mno-relax -fuse-ld=lld
+LLVM_FLAGS     ?= -march=rv64gcv -mabi=$(RISCV_ABI) -menable-experimental-extensions -mno-relax -fuse-ld=lld
 RISCV_FLAGS    ?= $(LLVM_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
 RISCV_CXXFLAGS ?= $(RISCV_FLAGS)
