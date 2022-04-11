@@ -254,7 +254,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Saturation in any lane will raise vxsat flag
     vxsat_d = |vxsat_flag_i;
-    alu_vxrm_o = vxrm_q;
+    // Fixed-point rounding mode is applied to all lanes
+    for (int lane = 0; lane < NrLanes; lane++) alu_vxrm_o[lane] = vxrm_q;
     // Rounding mode is shared between all lanes
     for (int lane = 0; lane < NrLanes; lane++) acc_resp_o.fflags |= fflags_ex_i[lane];
     // Special states
