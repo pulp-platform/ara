@@ -386,6 +386,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
+  logic [NrLanes-1:0] fake_a_valid;
+  logic last_incoming_a;
+  logic unbalanced_a;
+
   // Information about which is the target FU of the request
   assign masku_operand_fu = (vinsn_issue.op inside {[VMFEQ:VMFGE]}) ? MaskFUMFpu : MaskFUAlu;
 
@@ -505,13 +509,21 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Write results to the lanes  //
     //////////////////////////////////
 
+    assign unbalanced_a = (|commit_cnt_q[idx_width(NrLanes)-1:0] != 1'b0) ? 1'b1 : 1'b0;
+    last_incoming_a = ((commit_cnt_q - vrf_pnt_q) < NrLanes) ? 1'b1 : 1'b0;
+    for (int unsigned i = 1; i < NrLanes; i++)
+      if (i >= {1'b0, commit_cnt_q[idx_width(NrLanes)-1:0]})
+        fake_a_valid[i] = last_incoming_a & unbalanced_a;
+      else
+        fake_a_valid = 1'b0;
+
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid) begin
       // This instruction executes on the Mask Unit
       if (vinsn_issue.vfu == VFU_MaskUnit) begin
         // Is there place in the result queue to write the results?
         // Did we receive the operands?
-        if (!result_queue_full && &masku_operand_a_valid_i &&
+        if (!result_queue_full && &(masku_operand_a_valid_i | fake_a_valid) &&
             (!vinsn_issue.use_vd_op || &masku_operand_b_valid_i)) begin
           // How many elements are we committing in total?
           // Since we are committing bits instead of bytes, we carry out the following calculation
