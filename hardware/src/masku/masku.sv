@@ -257,7 +257,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // from the previous value of the destination register (mask_operand_b_i). Byte strobes
       // do not work here, since this has to be done at a bit granularity. Therefore, the Mask Unit
       // received both operands, and does a masking depending on the value of the vl.
-      if (vinsn_issue.vl > ELEN*NrLanes)
+      if (vinsn_issue.vl >= ELEN*NrLanes)
         bit_enable = '1;
       else begin
         bit_enable[vinsn_issue.vl] = 1'b1;
