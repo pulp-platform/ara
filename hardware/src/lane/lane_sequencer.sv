@@ -643,8 +643,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             hazard  : pe_req.hazard_vd,
             default : '0
           };
-          if ((pe_req.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req.vtype.vsew)) !=
-              pe_req.vl) operand_request_i[MaskB].vl += 1;
+          if (((pe_req.vl / NrLanes / ELEN) * NrLanes * ELEN) !=
+            pe_req.vl) operand_request_i[MaskB].vl += 1;
           operand_request_push[MaskB] = pe_req.use_vd_op;
 
           operand_request_i[MaskM] = '{
