@@ -71,3 +71,8 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Integer Scalar Move instructions: `vmv.x.s`, `vmv.s.x`
 - Floating-Point Scalar Move instructions: `vfmv.f.s`, `vfmv.s.f`
 - Vector slide instructions: `vslideup`, `vslidedown`, `vslide1up`, `vfslide1up`, `vslide1down`, `vfslide1down`
+
+## Vector fixed-point arithmetic instructions
+
+- Vector single-width saturating add and subtract: `vsaddu`, `vsadd`, `vssubu`,`vssub`
+- Vector single-width averaging add and subtract: `vaadd`, `vaaddu`, `vasub`, `vasubu`
