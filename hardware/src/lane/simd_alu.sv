@@ -184,7 +184,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sum[1] & sum[0];
+                  2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
                 res.w8[b] = (op_i == VAADDU) ? sum[8:1] + r : {sum[7], sum[7:1]} + r;
               end
@@ -194,7 +194,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sum[1] & sum[0];
+                  2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
                 res.w16[b] = (op_i == VAADDU) ? sum[16:1] + r : {sum[15], sum[15:1]} + r;
               end
@@ -204,7 +204,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sum[1] & sum[0];
+                  2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
                 res.w32[b] = (op_i == VAADDU) ? sum[32:1] + r : {sum[31], sum[31:1]} + r;
               end
@@ -214,7 +214,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sum[1] & sum[0];
+                  2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
                 res.w64[b] = (op_i == VAADDU) ? sum[64:1] + r : {sum[63], sum[63:1]} + r;
               end
@@ -320,7 +320,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sub[1] & sub[0];
+                  2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
                 res.w8[b] = (op_i == VSSUBU) ? (sub[7:0] >> 1) + r : $signed(sub[7:0]) >>> 1 + r;
               end
@@ -330,7 +330,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sub[1] & sub[0];
+                  2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
                 res.w16[b] = (op_i == VSSUBU) ? (sub[15:0] >> 1) + r : $signed(sub[15:0]) >>> 1 + r;
               end
@@ -340,7 +340,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sub[1] & sub[0];
+                  2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
                 res.w32[b] = (op_i == VSSUBU) ? (sub[31:0] >> 1) + r : $signed(sub[31:0]) >>> 1 + r;
               end
@@ -350,7 +350,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
-                  2'b11: r = !sub[1] & sub[0];
+                  2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
                 res.w64[b] = (op_i == VSSUBU) ? (sub[63:0] >> 1) + r : $signed(sub[63:0]) >>> 1 + r;
               end
