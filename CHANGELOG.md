@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
+ - Fixed-Point instructions were added (`VSADDU`, `VSADD`, `VAADD`, `VAADDU`, `VSSUBU`, `VSSUB`, `VASUB`, `VASUBU`)
  - The main sequencer issues instructions every time the target unit has a non-full instruction queue
  - The main sequencer stalls if the instructions target a lane, and its operand requesters are not ready
  - New instructions enter the main sequencer with a token that marks them as new, and the related counter is updated upon arrival
