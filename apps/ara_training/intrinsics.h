@@ -250,9 +250,9 @@ __vmacc_vx_generator(v0, v3)
 // Calling convention: __vmul_vx__vd_vs1(scalar). Example:
 // __vmul_vx__v2_v1(2);
 
-#define __vmul_vx_generator(vd, vs1)                                          \
-  inline void __vmul_vx__##vd##_##vs1(uint64_t scalar) {                      \
-    asm volatile("vmul.vx " #vd ", %[scalar], " #vs1 ::[scalar] "r"(scalar)); \
+#define __vmul_vx_generator(vd, vs1)                                             \
+  inline void __vmul_vx__##vd##_##vs1(uint64_t scalar) {                         \
+    asm volatile("vmul.vx " #vd ", " #vs1 ", %[scalar]" ::[scalar] "r"(scalar)); \
   }
 
     // clang-format off
