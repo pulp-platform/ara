@@ -24,7 +24,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     input  vxrm_t      vxrm_i,
     output elen_t      result_o
   );
-  
+
   ///////////////////
   //  Definitions  //
   ///////////////////
