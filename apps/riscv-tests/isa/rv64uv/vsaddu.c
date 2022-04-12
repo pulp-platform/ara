@@ -14,7 +14,7 @@ void TEST_CASE1(void) {
   VLOAD_8(v2, 133, 2, 50, 4);
   __asm__ volatile("vsaddu.vv v3, v1, v2" ::);
   VCMP_U8(1, v3, 255, 4, 255, 8);
-  read_vxsat(vxsat)
+  read_vxsat(vxsat);
   check_vxsat(1, vxsat, 1);
 }
 
