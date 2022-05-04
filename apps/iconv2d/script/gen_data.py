@@ -19,8 +19,42 @@
 # arg1: image size, arg2: filter size
 
 import numpy as np
-import scipy.signal
 import sys
+
+def convolve2D(kernel, image, padding):
+    # Default stride
+    strides = 1
+
+    # Gather Shapes of Kernel + Image + Padding
+    xKernShape = kernel.shape[0]
+    yKernShape = kernel.shape[1]
+    xImgShape  = image.shape[0]
+    yImgShape  = image.shape[1]
+
+    # Shape of Output Convolution
+    xOutput = xImgShape - xKernShape + 1
+    yOutput = yImgShape - yKernShape + 1
+    output = np.zeros((xOutput, yOutput))
+
+    # Iterate through image
+    for y in range(image.shape[1]):
+        # Exit Convolution
+        if y > image.shape[1] - yKernShape:
+            break
+        # Only Convolve if y has gone down by the specified Strides
+        if y % strides == 0:
+            for x in range(image.shape[0]):
+                # Go to next row once kernel is out of bounds
+                if x > image.shape[0] - xKernShape:
+                    break
+                try:
+                    # Only Convolve if x has moved by the specified Strides
+                    if x % strides == 0:
+                        output[x, y] = (kernel * image[x: x + xKernShape, y: y + yKernShape]).sum()
+                except:
+                    break
+
+    return output
 
 def rand_matrix(N, M, seed):
 	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
@@ -69,7 +103,7 @@ np.random.shuffle(gen_filter.flat)
 empty_o = np.zeros((M, N)).astype(np.int64)
 
 # Calculate the output matrix
-result = np.around(scipy.signal.convolve2d(np.flip(gen_filter), image, 'valid')).astype(np.int64) # https://stackoverflow.com/questions/41613155/what-does-scipy-signal-convolve2d-calculate
+result = np.around(convolve2D(gen_filter, image, padding)).astype(np.int64)
 
 # Calculate a checksum
 checksum = np.sum(result, dtype=np.int64)

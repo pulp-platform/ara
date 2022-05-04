@@ -18,7 +18,6 @@
 # arg1: image size, arg2: filter size
 
 import numpy as np
-import scipy.signal
 import sys
 
 def rand_array(N, type, seed):
