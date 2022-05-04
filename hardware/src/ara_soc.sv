@@ -225,7 +225,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   tc_sram #(
     .NumWords (L2NumWords  ),
     .NumPorts (1           ),
-    .DataWidth(AxiDataWidth)
+    .DataWidth(AxiDataWidth),
+    .SimInit("random")
   ) i_dram (
     .clk_i  (clk_i                                                                      ),
     .rst_ni (rst_ni                                                                     ),
@@ -473,14 +474,33 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   ara_system
 `endif
   i_system (
-    .clk_i        (clk_i            ),
-    .rst_ni       (rst_ni           ),
-    .boot_addr_i  (DRAMBase         ), // start fetching from DRAM
-    .scan_enable_i(1'b0             ),
-    .scan_data_i  (1'b0             ),
-    .scan_data_o  (/* Unconnected */),
-    .axi_req_o    (system_axi_req   ),
-    .axi_resp_i   (system_axi_resp  )
+    .clk_i        (clk_i                    ),
+    .rst_ni       (rst_ni                   ),
+    .boot_addr_i  (DRAMBase                 ), // start fetching from DRAM
+    .scan_enable_i(1'b0                     ),
+    .scan_data_i  (1'b0                     ),
+    .scan_data_o  (/* Unconnected */        ),
+    .axi_req_o    (system_axi_req_spill     ),
+    .axi_resp_i   (system_axi_resp_spill_del)
+  );
+
+  assign #200ps system_axi_resp_spill_del = system_axi_resp_spill;
+
+  axi_cut #(
+    .ar_chan_t   (system_ar_chan_t     ),
+    .aw_chan_t   (system_aw_chan_t     ),
+    .b_chan_t    (system_b_chan_t      ),
+    .r_chan_t    (system_r_chan_t      ),
+    .w_chan_t    (system_w_chan_t      ),
+    .req_t       (system_req_t         ),
+    .resp_t      (system_resp_t        )
+  ) i_system_cut (
+				   .clk_i(clk_i),
+				   .rst_ni(rst_ni),
+				   .slv_req_i(system_axi_req_spill),
+				   .slv_resp_o(system_axi_resp_spill),
+				   .mst_req_o(system_axi_req),
+				   .mst_resp_i(system_axi_resp)
   );
 
   //////////////////

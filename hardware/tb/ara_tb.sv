@@ -44,18 +44,21 @@ module ara_tb;
   logic clk;
   logic rst_n;
 
-  // Toggling the clock
-  always #(ClockPeriod/2) clk = !clk;
-
-  // Controlling the reset
   initial begin
     clk   = 1'b0;
     rst_n = 1'b0;
 
-    repeat (5)
-      #(ClockPeriod);
+    // Synch reset for TB memories
+    repeat (10) #(ClockPeriod/2) clk = ~clk;
+    clk = 1'b0;
 
+    // Asynch reset for main system
+    repeat (5) #(ClockPeriod);
     rst_n = 1'b1;
+    repeat (5) #(ClockPeriod);
+
+    // Start the clock
+    forever #(ClockPeriod/2) clk = ~clk;
   end
 
   /*********
