@@ -10,4 +10,3 @@ jsonschema
 tabulate
 yamlfmt
 numpy
-scipy
