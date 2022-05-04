@@ -49,6 +49,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   );
 
   import cf_math_pkg::idx_width;
+  `include "common_cells/registers.svh"
 
   ////////////////////////////////
   //  Vector instruction queue  //
@@ -254,80 +255,107 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*; #(
   // Another choice would be to delay the mask grant when the vmul_result is committed
   strb_t [3:0] vmul_simd_mask;
 
+  // Only for power-saving purposes
+  // The pipeline inside the multipliers is passive and always enabled
+  // Masking the inputs is almost necessary since their logic cone is huge
+  elen_t vmul_simd_op_a_gated, vmul_simd_op_b_gated, vmul_simd_op_c_gated;
+  strb_t vmul_simd_mask_gated;
+  ara_op_e vmul_simd_op_gated;
+  logic [3:0] vmul_simd_in_valid_gated;
+  logic gate_ff_en, gate_ff_clr;
+
+  // Enable if the next stage is ready
+  assign gate_ff_en  = vmul_simd_in_ready[vinsn_processing.vtype.vsew];
+  // Flush if the next stage is clear but there is no valid input
+  assign gate_ff_clr = vmul_simd_in_ready[vinsn_processing.vtype.vsew] & ~vmul_simd_in_valid[vinsn_issue_q.vtype.vsew];
+
+  `FFLSR(vmul_simd_op_a_gated, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
+    gate_ff_en, '0, clk_i, gate_ff_clr);
+  `FFLSR(vmul_simd_op_b_gated, mfpu_operand_i[1],
+    gate_ff_en, '0, clk_i, gate_ff_clr);
+  `FFLSR(vmul_simd_op_c_gated, mfpu_operand_i[2],
+    gate_ff_en, '0, clk_i, gate_ff_clr);
+  `FFLSR(vmul_simd_mask_gated, mask_i,
+    gate_ff_en, '0, clk_i, gate_ff_clr);
+  `FFLSR(vmul_simd_op_gated, vinsn_issue_q.op,
+    gate_ff_en, ara_op_e'('0), clk_i, gate_ff_clr);
+  `FFLSR(vmul_simd_in_valid_gated, vmul_simd_in_valid,
+    gate_ff_en, '0, clk_i, gate_ff_clr);
+
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW64),
     .ElementWidth(EW64             )
   ) i_simd_mul_ew64 (
-    .clk_i      (clk_i                                                      ),
-    .rst_ni     (rst_ni                                                     ),
-    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                          ),
-    .operand_c_i(mfpu_operand_i[2]                                          ),
-    .mask_i     (mask_i                                                     ),
-    .op_i       (vinsn_issue_q.op                                           ),
-    .result_o   (vmul_simd_result[EW64]                                     ),
-    .mask_o     (vmul_simd_mask[EW64]                                       ),
-    .valid_i    (vmul_simd_in_valid[EW64]                                   ),
-    .ready_o    (vmul_simd_in_ready[EW64]                                   ),
-    .ready_i    (vmul_simd_out_ready[EW64]                                  ),
-    .valid_o    (vmul_simd_out_valid[EW64]                                  )
+    .clk_i      (clk_i                         ),
+    .rst_ni     (rst_ni                        ),
+    .operand_a_i(vmul_simd_op_a_gated          ),
+    .operand_b_i(vmul_simd_op_b_gated          ),
+    .operand_c_i(vmul_simd_op_c_gated          ),
+    .mask_i     (vmul_simd_mask_gated          ),
+    .op_i       (vmul_simd_op_gated            ),
+    .result_o   (vmul_simd_result[EW64]        ),
+    .mask_o     (vmul_simd_mask[EW64]          ),
+    .valid_i    (vmul_simd_in_valid_gated[EW64]),
+    .ready_o    (vmul_simd_in_ready[EW64]      ),
+    .ready_i    (vmul_simd_out_ready[EW64]     ),
+    .valid_o    (vmul_simd_out_valid[EW64]     )
   );
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW32),
     .ElementWidth(EW32             )
   ) i_simd_mul_ew32 (
-    .clk_i      (clk_i                                                      ),
-    .rst_ni     (rst_ni                                                     ),
-    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                          ),
-    .operand_c_i(mfpu_operand_i[2]                                          ),
-    .mask_i     (mask_i                                                     ),
-    .op_i       (vinsn_issue_q.op                                           ),
-    .result_o   (vmul_simd_result[EW32]                                     ),
-    .mask_o     (vmul_simd_mask[EW32]                                       ),
-    .valid_i    (vmul_simd_in_valid[EW32]                                   ),
-    .ready_o    (vmul_simd_in_ready[EW32]                                   ),
-    .ready_i    (vmul_simd_out_ready[EW32]                                  ),
-    .valid_o    (vmul_simd_out_valid[EW32]                                  )
+    .clk_i      (clk_i                         ),
+    .rst_ni     (rst_ni                        ),
+    .operand_a_i(vmul_simd_op_a_gated          ),
+    .operand_b_i(vmul_simd_op_b_gated          ),
+    .operand_c_i(vmul_simd_op_c_gated          ),
+    .mask_i     (vmul_simd_mask_gated          ),
+    .op_i       (vmul_simd_op_gated            ),
+    .result_o   (vmul_simd_result[EW32]        ),
+    .mask_o     (vmul_simd_mask[EW32]          ),
+    .valid_i    (vmul_simd_in_valid_gated[EW32]),
+    .ready_o    (vmul_simd_in_ready[EW32]      ),
+    .ready_i    (vmul_simd_out_ready[EW32]     ),
+    .valid_o    (vmul_simd_out_valid[EW32]     )
   );
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW16),
     .ElementWidth(EW16             )
   ) i_simd_mul_ew16 (
-    .clk_i      (clk_i                                                      ),
-    .rst_ni     (rst_ni                                                     ),
-    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                          ),
-    .operand_c_i(mfpu_operand_i[2]                                          ),
-    .mask_i     (mask_i                                                     ),
-    .op_i       (vinsn_issue_q.op                                           ),
-    .result_o   (vmul_simd_result[EW16]                                     ),
-    .mask_o     (vmul_simd_mask[EW16]                                       ),
-    .valid_i    (vmul_simd_in_valid[EW16]                                   ),
-    .ready_o    (vmul_simd_in_ready[EW16]                                   ),
-    .ready_i    (vmul_simd_out_ready[EW16]                                  ),
-    .valid_o    (vmul_simd_out_valid[EW16]                                  )
+    .clk_i      (clk_i                         ),
+    .rst_ni     (rst_ni                        ),
+    .operand_a_i(vmul_simd_op_a_gated          ),
+    .operand_b_i(vmul_simd_op_b_gated          ),
+    .operand_c_i(vmul_simd_op_c_gated          ),
+    .mask_i     (vmul_simd_mask_gated          ),
+    .op_i       (vmul_simd_op_gated            ),
+    .result_o   (vmul_simd_result[EW16]        ),
+    .mask_o     (vmul_simd_mask[EW16]          ),
+    .valid_i    (vmul_simd_in_valid_gated[EW16]),
+    .ready_o    (vmul_simd_in_ready[EW16]      ),
+    .ready_i    (vmul_simd_out_ready[EW16]     ),
+    .valid_o    (vmul_simd_out_valid[EW16]     )
   );
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW8),
     .ElementWidth(EW8             )
   ) i_simd_mul_ew8 (
-    .clk_i      (clk_i                                                      ),
-    .rst_ni     (rst_ni                                                     ),
-    .operand_a_i(vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]),
-    .operand_b_i(mfpu_operand_i[1]                                          ),
-    .operand_c_i(mfpu_operand_i[2]                                          ),
-    .mask_i     (mask_i                                                     ),
-    .op_i       (vinsn_issue_q.op                                           ),
-    .result_o   (vmul_simd_result[EW8]                                      ),
-    .mask_o     (vmul_simd_mask[EW8]                                        ),
-    .valid_i    (vmul_simd_in_valid[EW8]                                    ),
-    .ready_o    (vmul_simd_in_ready[EW8]                                    ),
-    .ready_i    (vmul_simd_out_ready[EW8]                                   ),
-    .valid_o    (vmul_simd_out_valid[EW8]                                   )
+    .clk_i      (clk_i                        ),
+    .rst_ni     (rst_ni                       ),
+    .operand_a_i(vmul_simd_op_a_gated         ),
+    .operand_b_i(vmul_simd_op_b_gated         ),
+    .operand_c_i(vmul_simd_op_c_gated         ),
+    .mask_i     (vmul_simd_mask_gated         ),
+    .op_i       (vmul_simd_op_gated           ),
+    .result_o   (vmul_simd_result[EW8]        ),
+    .mask_o     (vmul_simd_mask[EW8]          ),
+    .valid_i    (vmul_simd_in_valid_gated[EW8]),
+    .ready_o    (vmul_simd_in_ready[EW8]      ),
+    .ready_i    (vmul_simd_out_ready[EW8]     ),
+    .valid_o    (vmul_simd_out_valid[EW8]     )
   );
 
   // The outputs of the SIMD multipliers are read in order
