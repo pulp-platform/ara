@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+extern int64_t event_trigger;
+
 extern int64_t timer;
 
 // Return the current value of the cycle counter
