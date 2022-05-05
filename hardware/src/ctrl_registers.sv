@@ -24,7 +24,8 @@ module ctrl_registers #(
     // Control registers
     output logic           [DataWidth-1:0] exit_o,
     output logic           [DataWidth-1:0] dram_base_addr_o,
-    output logic           [DataWidth-1:0] dram_end_addr_o
+    output logic           [DataWidth-1:0] dram_end_addr_o,
+    output logic           [DataWidth-1:0] event_trigger_o
   );
 
   `include "common_cells/registers.svh"
@@ -33,7 +34,7 @@ module ctrl_registers #(
   //  Definitions  //
   ///////////////////
 
-  localparam int unsigned NumRegs          = 3;
+  localparam int unsigned NumRegs          = 4;
   localparam int unsigned DataWidthInBytes = (DataWidth + 7) / 8;
   localparam int unsigned RegNumBytes      = NumRegs * DataWidthInBytes;
 
@@ -41,15 +42,18 @@ module ctrl_registers #(
   localparam logic [DataWidthInBytes-1:0] ReadWriteReg = {DataWidthInBytes{1'b0}};
 
   // Memory map
+  // [25:31]: event_trigger  (rw)
   // [23:24]: dram_end_addr  (ro)
   // [15:8]:  dram_base_addr (ro)
   // [7:0]:   exit           (rw)
   localparam logic [NumRegs-1:0][DataWidth-1:0] RegRstVal = '{
+    0,
     DRAMBaseAddr + DRAMLength,
     DRAMBaseAddr,
     0
   };
   localparam logic [NumRegs-1:0][DataWidthInBytes-1:0] AxiReadOnly = '{
+    ReadWriteReg,
     ReadOnlyReg,
     ReadOnlyReg,
     ReadWriteReg
@@ -64,6 +68,7 @@ module ctrl_registers #(
   logic [DataWidth-1:0] dram_base_address;
   logic [DataWidth-1:0] dram_end_address;
   logic [DataWidth-1:0] exit;
+  logic [DataWidth-1:0] event_trigger;
 
   axi_lite_regs #(
     .RegNumBytes (RegNumBytes    ),
@@ -74,15 +79,15 @@ module ctrl_registers #(
     .req_lite_t  (axi_lite_req_t ),
     .resp_lite_t (axi_lite_resp_t)
   ) i_axi_lite_regs (
-    .clk_i      (clk_i                                      ),
-    .rst_ni     (rst_ni                                     ),
-    .axi_req_i  (axi_lite_slave_req_i                       ),
-    .axi_resp_o (axi_lite_slave_resp_o                      ),
-    .wr_active_o(wr_active_d                                ),
-    .rd_active_o(/* Unused */                               ),
-    .reg_d_i    ('0                                         ),
-    .reg_load_i ('0                                         ),
-    .reg_q_o    ({dram_end_address, dram_base_address, exit})
+    .clk_i      (clk_i                                                     ),
+    .rst_ni     (rst_ni                                                    ),
+    .axi_req_i  (axi_lite_slave_req_i                                      ),
+    .axi_resp_o (axi_lite_slave_resp_o                                     ),
+    .wr_active_o(wr_active_d                                               ),
+    .rd_active_o(/* Unused */                                              ),
+    .reg_d_i    ('0                                                        ),
+    .reg_load_i ('0                                                        ),
+    .reg_q_o    ({event_trigger, dram_end_address, dram_base_address, exit})
   );
 
   `FF(wr_active_q, wr_active_d, '0);
@@ -91,6 +96,7 @@ module ctrl_registers #(
   //   Signals   //
   /////////////////
 
+  assign event_trigger_o  = event_trigger;
   assign dram_base_addr_o = dram_base_address;
   assign dram_end_addr_o  = dram_end_address;
   assign exit_o           = {exit, logic'(|wr_active_q[7:0])};

@@ -126,6 +126,63 @@ module ara_tb;
     end
   end : dram_init
 
+// Dump VCD with a SW trigger
+`ifdef VCD_DUMP
+
+  /****************
+  *  VCD DUMPING  *
+  ****************/
+
+`ifdef VCD_PATH
+  string vcd_path = `VCD_PATH;
+`else
+  string vcd_path = "last_sim.vcd";
+`endif
+
+  localparam logic [63:0] VCD_TRIGGER_ON  = 64'h0000_0000_0000_0001;
+  localparam logic [63:0] VCD_TRIGGER_OFF = 64'hFFFF_FFFF_FFFF_FFFF;
+
+  event start_dump_event;
+  event stop_dump_event;
+
+  logic [63:0] event_trigger_reg;
+  logic        dumping = 1'b0;
+
+  assign event_trigger_reg =
+           dut.i_ara_soc.i_ctrl_registers.event_trigger_o;
+
+  initial begin
+    $display("VCD_DUMP successfully defined\n");
+  end
+
+  always_ff @(posedge clk) begin
+    if(event_trigger_reg == VCD_TRIGGER_ON && !dumping) begin
+       $display("[TB - VCD] START DUMPING\n");
+       -> start_dump_event;
+       dumping = 1'b1;
+    end
+    if(event_trigger_reg == VCD_TRIGGER_OFF) begin
+       -> stop_dump_event;
+       $display("[TB - VCD] STOP DUMPING\n");
+    end
+  end
+
+  initial begin
+    @(start_dump_event);
+    $dumpfile(vcd_path);
+    $dumpvars(0, dut.i_ara_soc.i_system);
+    $dumpon;
+
+    #1 $display("[TB - VCD] DUMPING...\n");
+
+    @(stop_dump_event)
+    $dumpoff;
+    $dumpflush;
+    $finish;
+  end
+
+`endif
+
   /*********
    *  EOC  *
    *********/

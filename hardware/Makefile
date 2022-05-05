@@ -56,6 +56,10 @@ questa_args    ?=
 # Path to the binaries
 app_path       ?= $(abspath $(ROOT_DIR)/../apps/bin)
 
+ifeq ($(vcd_dump), 1)
+  bender_defs += --define VCD_DUMP=1
+endif
+
 # Check if the specified QuestaSim version exists
 ifeq (, $(shell which $(questa_cmd)))
   # Spaces are needed for indentation here!

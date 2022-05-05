@@ -103,6 +103,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   `AXI_LITE_TYPEDEF_ALL(soc_narrow_lite, axi_addr_t, axi_narrow_data_t, axi_narrow_strb_t)
 
   // Buses
+  system_req_t  system_axi_req_spill;
+  system_resp_t system_axi_resp_spill, system_axi_resp_spill_del;
   system_req_t  system_axi_req;
   system_resp_t system_axi_resp;
 
@@ -341,6 +343,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   soc_narrow_lite_req_t  axi_lite_ctrl_registers_req;
   soc_narrow_lite_resp_t axi_lite_ctrl_registers_resp;
 
+  logic [63:0] event_trigger;
+
   axi_to_axi_lite #(
     .AxiAddrWidth   (AxiAddrWidth          ),
     .AxiDataWidth   (AxiNarrowDataWidth    ),
@@ -377,7 +381,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .axi_lite_slave_resp_o(axi_lite_ctrl_registers_resp),
     .dram_base_addr_o     (/* Unused */                ),
     .dram_end_addr_o      (/* Unused */                ),
-    .exit_o               (exit_o                      )
+    .exit_o               (exit_o                      ),
+    .event_trigger_o      (event_trigger               )
   );
 
   axi_dw_converter #(
