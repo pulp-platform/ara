@@ -153,7 +153,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   function automatic vfu_e vfu(ara_op_e op);
     unique case (op) inside
       [VADD:VWREDSUM]      : vfu = VFU_Alu;
-      [VMUL:VFCVTFF]       : vfu = VFU_MFpu;
+      [VMUL:VFWREDOSUM]    : vfu = VFU_MFpu;
       [VMFEQ:VMXNOR]       : vfu = VFU_MaskUnit;
       [VLE:VLXE]           : vfu = VFU_LoadUnit;
       [VSE:VSXE]           : vfu = VFU_StoreUnit;
@@ -174,6 +174,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VREDSUM:VWREDSUM]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
+      [VFREDUSUM:VFWREDOSUM]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_MFpu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
       [VMUL:VFCVTFF]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_MFpu) target_vfus[i] = 1'b1;

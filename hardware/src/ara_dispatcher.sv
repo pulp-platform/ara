@@ -234,6 +234,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_vd_op    : vtype_q.vsew,
       eew_vmask    : eew_q[VMASK],
       cvt_resize   : CVT_SAME,
+      ntr_type     : zero,
       default      : '0
     };
     ara_req_valid_d = 1'b0;
@@ -1581,12 +1582,34 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       // operand. Send the first operand (vs2) to the third result queue.
                       ara_req_d.swap_vs2_vd_op = 1'b1;
                     end
+                    6'b000001: begin
+                      ara_req_d.op             = ara_pkg::VFREDUSUM;
+                      ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                      ara_req_d.swap_vs2_vd_op = 1'b1;
+                      ara_req_d.ntr_type       = zero;
+                    end
                     6'b000010: begin
                       ara_req_d.op             = ara_pkg::VFSUB;
                       ara_req_d.swap_vs2_vd_op = 1'b1;
                     end
+                    6'b000011: begin
+                      ara_req_d.op             = ara_pkg::VFREDOSUM;
+                      ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                      ara_req_d.swap_vs2_vd_op = 1'b1;
+                      ara_req_d.ntr_type       = zero;
+                    end
                     6'b000100: ara_req_d.op = ara_pkg::VFMIN;
+                    6'b000101: begin
+                      ara_req_d.op             = ara_pkg::VFREDMIN;
+                      ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                      ara_req_d.ntr_type       = pinf;
+                    end
                     6'b000110: ara_req_d.op = ara_pkg::VFMAX;
+                    6'b000111: begin
+                      ara_req_d.op             = ara_pkg::VFREDMAX;
+                      ara_req_d.conversion_vs1 = OpQueueReductionZExt;
+                      ara_req_d.ntr_type       = ninf;
+                    end
                     6'b001000: ara_req_d.op = ara_pkg::VFSGNJ;
                     6'b001001: ara_req_d.op = ara_pkg::VFSGNJN;
                     6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
@@ -1778,6 +1801,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
                       ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
                     end
+                    6'b110001: begin // VFWREDUSUM
+                      ara_req_d.op             = ara_pkg::VFWREDUSUM;
+                      ara_req_d.swap_vs2_vd_op = 1'b1;
+                      ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                      ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                      ara_req_d.conversion_vs1 = OpQueueReductionWideZExt;
+                      ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                      ara_req_d.ntr_type       = zero;
+                    end
                     6'b110010: begin // VFWSUB
                       ara_req_d.op             = ara_pkg::VFSUB;
                       ara_req_d.swap_vs2_vd_op = 1'b1;
@@ -1785,6 +1817,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                       ara_req_d.conversion_vs1 = OpQueueConversionWideFP2;
                       ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                    end
+                    6'b110011: begin // VFWREDOSUM
+                      ara_req_d.op             = ara_pkg::VFWREDOSUM;
+                      ara_req_d.swap_vs2_vd_op = 1'b1;
+                      ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                      ara_req_d.vtype.vsew     = vtype_q.vsew.next();
+                      ara_req_d.conversion_vs1 = OpQueueReductionWideZExt;
+                      ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                      ara_req_d.ntr_type       = zero;
                     end
                     6'b110100: begin // VFWADD.W
                       ara_req_d.op             = ara_pkg::VFADD;

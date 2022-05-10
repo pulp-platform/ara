@@ -216,7 +216,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
       // Mute request if the instruction runs in the lane and the vl is zero.
       // During a reduction, all the lanes must cooperate anyway.
-      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM]})) begin
+      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]})) begin
         vfu_operation_valid_d = 1'b0;
         // We are already done with this instruction
         vinsn_done_d[pe_req.id] |= 1'b1;
@@ -295,13 +295,17 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id         : pe_req.id,
             vs         : pe_req.vs1,
             eew        : pe_req.eew_vs1,
-            conv       : pe_req.conversion_vs1,
+            // If reductions and vl == 0, we must replace with neutral values
+            conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs1,// FIXME Not for ordered sum
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
             vtype      : pe_req.vtype,
-            vl         : vfu_operation_d.vl,
+            // If reductions and vl == 0, we must replace the operands with neutral
+            // values in the opqueues. So, vl must be 1 at least
+            vl         : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]}) ? 1 : vfu_operation_d.vl, // FIXME
             vstart     : vfu_operation_d.vstart,
             hazard     : pe_req.hazard_vs1 | pe_req.hazard_vd,
+            ntr_type   : pe_req.ntr_type,
             default    : '0
           };
           operand_request_push[MulFPUA] = pe_req.use_vs1;
@@ -310,14 +314,19 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id         : pe_req.id,
             vs         : pe_req.swap_vs2_vd_op ? pe_req.vd        : pe_req.vs2,
             eew        : pe_req.swap_vs2_vd_op ? pe_req.eew_vd_op : pe_req.eew_vs2,
-            conv       : pe_req.conversion_vs2,
+            // If reductions and vl == 0, we must replace with neutral values
+            conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs2,// FIXME
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
             vtype      : pe_req.vtype,
-            vl         : vfu_operation_d.vl,
+            // If reductions and vl == 0, we must replace the operands with neutral
+            // values in the opqueues. So, vl must be 1 at least
+            vl         : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} && vfu_operation_d.vl == '0) // FIXME
+                        ? 1 : vfu_operation_d.vl,
             vstart     : vfu_operation_d.vstart,
             hazard     : (pe_req.swap_vs2_vd_op ?
-              pe_req.hazard_vd : (pe_req.hazard_vs2 | pe_req.hazard_vd)),
+            pe_req.hazard_vd : (pe_req.hazard_vs2 | pe_req.hazard_vd)),
+            ntr_type   : pe_req.ntr_type,
             default: '0
           };
           operand_request_push[MulFPUB] = pe_req.swap_vs2_vd_op ?
@@ -327,14 +336,20 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id         : pe_req.id,
             vs         : pe_req.swap_vs2_vd_op ? pe_req.vs2            : pe_req.vd,
             eew        : pe_req.swap_vs2_vd_op ? pe_req.eew_vs2        : pe_req.eew_vd_op,
-            conv       : pe_req.swap_vs2_vd_op ? pe_req.conversion_vs2 : OpQueueConversionNone,
+            conv       : pe_req.swap_vs2_vd_op
+                       ? ((vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs2) //FIXME
+                       : OpQueueConversionNone,
             scale_vl   : pe_req.scale_vl,
             cvt_resize : pe_req.cvt_resize,
-            vl         : vfu_operation_d.vl,
+            // If reductions and vl == 0, we must replace the operands with neutral
+            // values in the opqueues. So, vl must be 1 at least
+            vl         : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} && vfu_operation_d.vl == '0) // FIXME
+                        ? 1 : vfu_operation_d.vl,
             vstart     : vfu_operation_d.vstart,
             vtype      : pe_req.vtype,
             hazard     : pe_req.swap_vs2_vd_op ?
-              (pe_req.hazard_vs2 | pe_req.hazard_vd) : pe_req.hazard_vd,
+            (pe_req.hazard_vs2 | pe_req.hazard_vd) : pe_req.hazard_vd,
+            ntr_type   : pe_req.ntr_type,
             default : '0
           };
           operand_request_push[MulFPUC] = pe_req.swap_vs2_vd_op ?
