@@ -238,6 +238,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes*ELEN-1:0] bit_enable_shuffle;
   logic  [NrLanes*ELEN-1:0] bit_enable_mask;
 
+  logic  [NrLanes*ELEN-1:0] vcpop_to_count;
+  logic  [7:0]              popcount;
+
   // Pointers
   //
   // We need a pointer to which bit on the full VRF word we are reading mask operands from.
@@ -245,11 +248,22 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // We need a pointer to which bit on the full VRF word we are writing results to.
   logic [idx_width(DataWidth*NrLanes):0] vrf_pnt_d, vrf_pnt_q;
 
+  // Vector population counter
+  popcount #(
+    .INPUT_WIDTH(256)
+  ) i_popcount (
+    .data_i    (vcpop_to_count)
+    .popcount_o(popcount)
+  );
+  
+
   always_comb begin: p_mask_alu
     alu_result         = '0;
     bit_enable         = '0;
     bit_enable_shuffle = '0;
     bit_enable_mask    = '0;
+
+    vcpop_to_count     = '0;
 
     if (vinsn_issue_valid) begin
       // Calculate bit enable
@@ -363,6 +377,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           // Final assignment
           alu_result = (alu_result_flat & bit_enable_shuffle) |
             (masku_operand_b_i & ~bit_enable_shuffle);
+        end
+        [VCPOP] : begin
+          vcpop_to_count = masku_operand_b_i & bit_enable_mask;
         end
         default: alu_result = '0;
       endcase
