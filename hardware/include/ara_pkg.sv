@@ -126,6 +126,8 @@ package ara_pkg;
     VLE, VLSE, VLXE,
     // Store instructions
     VSE, VSSE, VSXE
+    // Vector Mask instructions
+    VFIRST, VCPOP
   } ara_op_e;
 
   // Return true if op is a load operation
