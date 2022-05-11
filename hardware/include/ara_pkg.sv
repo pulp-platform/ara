@@ -175,8 +175,9 @@ package ara_pkg;
     OpQueueConversionZExt8,
     OpQueueConversionSExt8,
     OpQueueConversionWideFP2,
-    OpQueueReductionZExt,
-    OpQueueReductionWideZExt,
+    OpQueueIntReductionZExt,
+    OpQueueFloatReductionZExt,
+    OpQueueFloatReductionWideZExt,
     OpQueueAdjustFPCvt
   } opqueue_conversion_e;
   // OpQueueAdjustFPCvt is introduced to support widening FP conversions, to comply with the
@@ -186,6 +187,8 @@ package ara_pkg;
   // Moreover, the operand requester treats widening instructions differently for handling WAW
   // CVT_WIDE is equal to 2'b00 since these bits are reused with reductions
   // (this is a hack to save wires)
+  // Also for floating-point reduction, it is reused as neutral value
+  // 00: zero, 01: positive infinity, 10: negative infinity
   typedef enum logic [1:0] {
     CVT_WIDE   = 2'b00,
     CVT_SAME   = 2'b01,
@@ -210,12 +213,6 @@ package ara_pkg;
     logic [10:0] e;
     logic [51:0] m;
   } fp64_t;
-
-  typedef enum logic [1:0] {
-    zero, // zero
-    pinf, // positive infinity
-    ninf  // negative infinity
-  } ntr_type_e;
 
   /////////////////////////////
   //  Accelerator interface  //
@@ -289,10 +286,6 @@ package ara_pkg;
 
     // Request token, for registration in the sequencer
     logic token;
-
-    // Neutral type for floating-point reduction
-    ntr_type_e ntr_type;
-
   } ara_req_t;
 
   typedef struct packed {
@@ -382,9 +375,6 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
-
-    // Neutral type for floating-point reduction
-    ntr_type_e ntr_type;
 
     // Vector machine metadata
     vlen_t vl;
@@ -886,16 +876,13 @@ package ara_pkg;
 
     // Hazards
     logic [NrVInsn-1:0] hazard;
-
-    // Neutral type for floating-point reduction
-    ntr_type_e ntr_type;
   } operand_request_cmd_t;
 
   typedef struct packed {
     rvv_pkg::vew_e eew;        // Effective element width
     vlen_t vl;                 // Vector length
     opqueue_conversion_e conv; // Type conversion
-    ntr_type_e ntr_type;       // Neutral type for floating-point reduction
+    logic [1:0] ntr_red;       // Neutral type for reductions
     target_fu_e target_fu;     // Target FU of the opqueue (if it is not clear)
   } operand_queue_cmd_t;
 
