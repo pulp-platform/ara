@@ -445,10 +445,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .ready_i(sldu_mfpu_ready_d),
     .data_o (sldu_operand_q  )
   );
-  // FIXME Without spill register
-  //assign sldu_mfpu_valid_q = sldu_mfpu_valid_i;
-  //assign sldu_mfpu_ready_o = sldu_mfpu_ready_d;
-  //assign sldu_operand_q    = sldu_operand_i;
 
   // During an inter-lane reduction (after the intra-lane reduction), the NrLanes partial results
   // must be reduced to only one. The first reduction is done by NrLanes/2 FUs, then NrLanes/4, and
@@ -487,11 +483,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // ntr_filling indicates that the neutral value is being sent to the FPU as an operand
   logic ntr_filling_d, ntr_filling_q;
-  // Both tx and rx counters are used to prevent updating issue_cnt and to_processed_cnt when the neutral values are involved
-  logic [2:0] ntr_filling_rx_cnt_d, ntr_filling_rx_cnt_q,
-              ntr_filling_tx_cnt_d, ntr_filling_tx_cnt_q;
 
-  // Check if there is a valid result data that can be used as an operand
+  // Check if there is a valid result data that can be used as an operand (result_queue_q)
+  // Because result_queue_valid may be set to 0, we need a signal to indicate that the old value is still valid
   logic first_result_op_valid_d, first_result_op_valid_q;
 
   // Count until the first result is avaible, used to end the neutral value filling
@@ -534,13 +528,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       next_mfpu_state = NO_REDUCTION;
   endfunction : next_mfpu_state
 
-  // TODO
-  function automatic elen_t processed_red_operand(elen_t mfpu_operand, logic is_masked, strb_t mask, elen_t ntr_val);
-    if (is_masked) begin
-      for (int i=0; i<8; i++)
-        processed_red_operand[8*i +: 8] = mask[i] ? mfpu_operand[8*i +: 8] : ntr_val[8*i +: 8];
-    end else
-      processed_red_operand = mfpu_operand;
+  // Deactivate all masked or position disabled elements
+  function automatic elen_t processed_red_operand(elen_t mfpu_operand, logic is_masked, strb_t mask, logic [3:0] issue_element_cnt, elen_t ntr_val);
+    automatic strb_t pos_mask = be(issue_element_cnt, vinsn_issue_q.vtype.vsew);
+    for (int i=0; i<8; i++)
+      processed_red_operand[8*i +: 8] = ((~is_masked | mask[i]) & pos_mask[i]) ? mfpu_operand[8*i +: 8] : ntr_val[8*i +: 8];
   endfunction : processed_red_operand
 
   // This function returns the element pointed by the osum_issue_cnt
@@ -622,6 +614,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   logic          vfpu_out_ready;
   logic          fflags_ex_valid_d, fflags_ex_valid_q;
   logic    [4:0] fflags_ex_d, fflags_ex_q;
+
+  // In floating-point comparisons the tag is used as mask,
+  // In unordered reductions the tag is used as ntr indicator.
+  // 0: no neutral value,
+  // 1: only one of the operands is neutral value,
+  // 2: both operands are neutral values
+  strb_t vfpu_tag_in, vfpu_tag_out;
+
+  assign vfpu_mask = vfpu_tag_out;
 
   // neutral value for Intraline reduction optimization
   elen_t         ntr_val;
@@ -803,6 +804,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         default:;
       endcase
 
+      // TODO
       // vtype.vsew encodes the destination format
       unique case (vinsn_issue_q.vtype.vsew)
         EW16: begin
@@ -825,6 +827,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         default:;
       endcase
 
+      // TODO
       // Sign injection
       unique case (vinsn_issue_q.vtype.vsew)
         EW16: for (int b = 0; b < 4; b++) begin
@@ -878,7 +881,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .op_mod_i      (fp_opmod      ),
       .vectorial_op_i(1'b1          ),
       .operands_i    (vfpu_operands ),
-      .tag_i         (mask_i        ),
+      .tag_i         (vfpu_tag_in   ),
       .simd_mask_i   (vfpu_simd_mask),
       .src_fmt_i     (fp_src_fmt    ),
       .dst_fmt_i     (fp_dst_fmt    ),
@@ -887,7 +890,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .in_ready_o    (vfpu_in_ready ),
       .result_o      (vfpu_result   ),
       .status_o      (vfpu_ex_flag  ),
-      .tag_o         (vfpu_mask     ),
+      .tag_o         (vfpu_tag_out  ),
       .out_valid_o   (vfpu_out_valid),
       .out_ready_i   (vfpu_out_ready),
       .busy_o        (/* Unused */  )
@@ -1024,14 +1027,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     // If vs2 and vd were swapped, re-route the handshake signals to/from the operand queues
     operands_valid = vinsn_issue_q.swap_vs2_vd_op
-                   ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2)  &&
-                     (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) &&
-                     (mask_valid_i || vinsn_issue_q.vm)                    &&
-                     (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
+                   ? ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vs2) &&
+                      (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vd_op) &&
+                      (mask_valid_i || vinsn_issue_q.vm) &&
+                      (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1))
                    : ((mfpu_operand_valid_i[2] || !vinsn_issue_q.use_vd_op) &&
-                     (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2)    &&
-                     (mask_valid_i || vinsn_issue_q.vm)                     &&
-                     (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
+                      (mfpu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
+                      (mask_valid_i || vinsn_issue_q.vm) &&
+                      (mfpu_operand_valid_i[0] || !vinsn_issue_q.use_vs1));
     operands_ready = vinsn_issue_q.swap_vs2_vd_op
                    ? {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
                    : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
@@ -1049,6 +1052,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     // Do not issue any operations
     vfpu_in_valid  = 1'b0;
+    vfpu_tag_in    = '0;
     mfpu_state_d   = mfpu_state_q;
 
     // Inform our status to the lane controller
@@ -1060,8 +1064,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     mask_ready_o         = '0;
 
     ntr_filling_d           = ntr_filling_q;
-    ntr_filling_rx_cnt_d    = ntr_filling_rx_cnt_q;
-    ntr_filling_tx_cnt_d    = ntr_filling_tx_cnt_q;
     intra_issued_op_cnt_d   = intra_issued_op_cnt_q;
     first_result_op_valid_d = first_result_op_valid_q;
     intra_op_rx_cnt_d       = intra_op_rx_cnt_q;
@@ -1074,53 +1076,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     //  Issue the instruction and Write data into the result queue  //
     //////////////////////////////////////////////////////////////////
 
-    // If the result queue is not full, it is ready to accept a result
-    vmul_out_ready = ~result_queue_full;
-    vdiv_out_ready = ~result_queue_full;
-    vfpu_out_ready = ~result_queue_full;
-
-    // Select the correct valid, result, and mask, to write in the result queue
-    case (vinsn_processing_q.op) inside
-      [VMUL:VNMSUB]: begin
-        unit_out_valid  = vmul_out_valid;
-        unit_out_result = vmul_result;
-        unit_out_mask   = vmul_mask;
-      end
-      [VDIVU:VREM]: begin
-        unit_out_valid  = vdiv_out_valid;
-        unit_out_result = vdiv_result;
-        unit_out_mask   = vdiv_mask;
-      end
-      [VFADD:VFCVTFF], [VMFEQ:VMFGE]: begin
-        unit_out_valid  = vfpu_out_valid;
-        unit_out_result = vfpu_processed_result;
-        unit_out_mask   = vfpu_mask;
-      end
-    endcase
-
-    // Narrowing FPU results need to be shuffled before being saved for storing
-    unique case (vinsn_processing_q.vtype.vsew)
-      EW16: begin
-        narrowing_shuffled_result[63:48] = unit_out_result[31:16];
-        narrowing_shuffled_result[47:32] = unit_out_result[31:16];
-        narrowing_shuffled_result[31:16] = unit_out_result[15:0];
-        narrowing_shuffled_result[15:0]  = unit_out_result[15:0];
-        narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
-      end
-      EW32: begin
-        narrowing_shuffled_result[63:32] = unit_out_result[31:0];
-        narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
-        narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0011 : 4'b1100;
-      end
-      default: begin
-        narrowing_shuffled_result[63:32] = unit_out_result[31:0];
-        narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
-        narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
-      end
-    endcase
-
     case (mfpu_state_q)
       NO_REDUCTION: begin
+        vfpu_tag_in = mask_i;
+
         // Is there a vector instruction ready to be issued and do we have all the operands necessary for this instruction?
         if (operands_valid && vinsn_issue_valid && !latency_stall) begin
           // Valiudate the inputs of the correct unit
@@ -1188,6 +1147,51 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             end
           end
         end
+
+        // If the result queue is not full, it is ready to accept a result
+        vmul_out_ready = ~result_queue_full;
+        vdiv_out_ready = ~result_queue_full;
+        vfpu_out_ready = ~result_queue_full;
+
+        // Select the correct valid, result, and mask, to write in the result queue
+        case (vinsn_processing.op) inside
+          [VMUL:VNMSUB]: begin
+            unit_out_valid  = vmul_out_valid;
+            unit_out_result = vmul_result;
+            unit_out_mask   = vmul_mask;
+          end
+          [VDIVU:VREM]: begin
+            unit_out_valid  = vdiv_out_valid;
+            unit_out_result = vdiv_result;
+            unit_out_mask   = vdiv_mask;
+          end
+          [VFADD:VFCVTFF], [VMFEQ:VMFGE]: begin
+            unit_out_valid  = vfpu_out_valid;
+            unit_out_result = vfpu_processed_result;
+            unit_out_mask   = vfpu_mask;
+          end
+        endcase
+
+        // Narrowing FPU results need to be shuffled before being saved for storing
+        unique case (vinsn_processing.vtype.vsew)
+          EW16: begin
+            narrowing_shuffled_result[63:48] = unit_out_result[31:16];
+            narrowing_shuffled_result[47:32] = unit_out_result[31:16];
+            narrowing_shuffled_result[31:16] = unit_out_result[15:0];
+            narrowing_shuffled_result[15:0]  = unit_out_result[15:0];
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
+          end
+          EW32: begin
+            narrowing_shuffled_result[63:32] = unit_out_result[31:0];
+            narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0011 : 4'b1100;
+          end
+          default: begin
+            narrowing_shuffled_result[63:32] = unit_out_result[31:0];
+            narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
+          end
+        endcase
 
         // Check if we have a valid result and we can add it to the result queue
         if (unit_out_valid && !result_queue_full) begin
@@ -1288,26 +1292,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           // the operation issuing.
           if (vfpu_out_valid && !result_queue_full) begin
             // How many elements have we processed?
-            automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing_q.vtype.vsew)));
 
+            automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
             // Update the number of elements still to be processed
             if (processed_element_cnt > to_process_cnt_q)
               processed_element_cnt = to_process_cnt_q;
-            if (ntr_filling_rx_cnt_d != '0) ntr_filling_rx_cnt_d = ntr_filling_rx_cnt_q - 1;
-            else to_process_cnt_d = to_process_cnt_q - processed_element_cnt;
 
-            // Mask the inactive elements
-            //red_mask = be(processed_element_cnt, vinsn_issue_q.vtype.vsew) & ({StrbWidth{vinsn_issue_q.vm}} | vfpu_mask);
-            //red_mask = be(processed_element_cnt, vinsn_issue_q.vtype.vsew);
+            if (vfpu_tag_out == strb_t'(2))
+              to_process_cnt_d = to_process_cnt_q + (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+            else if (vfpu_tag_out == '0)
+              to_process_cnt_d = to_process_cnt_q - processed_element_cnt;
 
-            //for (int b = 0; b < 8; b++) begin
-            //  result_queue_d[result_queue_write_pnt_q].wdata[8*b +: 8] =
-            //      red_mask[b]                     ?
-            //      vfpu_processed_result[8*b +: 8] :
-            //      ntr_val[8*b +: 8];
-            //      //(first_op_q ? result_queue_q[result_queue_write_pnt_q].wdata[8*b +: 8] :
-            //      //(vinsn_issue_q.use_scalar_op ? scalar_op[8*b +: 8] : operand_b[8*b +: 8]));
-            //end
             result_queue_d[result_queue_write_pnt_q].wdata = vfpu_processed_result;
             result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes);
             result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
@@ -1318,13 +1313,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
             // Finished processing the micro-operations of this vector instruction
             if (to_process_cnt_d == '0) mfpu_state_d = INTER_LANES_REDUCTION;
-          end else result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
+          end else
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
 
           // Do we have all the operands necessary for this instruction?
           //operand_a = mfpu_operand_i[1];
           //operand_c = mfpu_operand_i[2];
-          operand_a = processed_red_operand(mfpu_operand_i[1], ~vinsn_issue_q.vm, issue_be, ntr_val);
-          operand_c = processed_red_operand(mfpu_operand_i[2], ~vinsn_issue_q.vm, issue_be, ntr_val);
+          operand_a = processed_red_operand(mfpu_operand_i[1], ~vinsn_issue_q.vm, mask_i, issue_element_cnt, ntr_val);
+          operand_c = processed_red_operand(mfpu_operand_i[2], ~vinsn_issue_q.vm, mask_i, issue_element_cnt, ntr_val);
 
           if (first_op_q) begin
             operand_b = vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0];
@@ -1333,48 +1329,54 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                  mfpu_operand_valid_i[0]) begin
               operands_valid     = 1'b1;
               intra_op_rx_cnt_en = 1'b1;
-            end else operands_valid = 1'b0;
+            end else begin
+              operands_valid = 1'b0;
+            end
           end else if (ntr_filling_q) begin
-            // The operand queue sends one data per two cycles (once the buffer is empty), and if there is no data from the
-            // operand queue, send two neutral values instead.
-            if (!(vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1])) begin
+            if ((vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1]) &&
+                (mask_valid_i || vinsn_issue_q.vm)) begin
+              intra_op_rx_cnt_en   = 1'b1;
+              vfpu_tag_in          = strb_t'(1);
+            end else begin
+              // If there is no data from the operand queue, send two neutral values instead.
               operand_a            = ntr_val;
               operand_c            = ntr_val;
-              ntr_filling_rx_cnt_d = ntr_filling_rx_cnt_q + 3'd2;
-              ntr_filling_tx_cnt_d = ntr_filling_tx_cnt_q + 3'd2;
-            end else if (mask_valid_i || vinsn_issue_q.vm) begin
-              ntr_filling_rx_cnt_d = ntr_filling_rx_cnt_q + 3'd1;
-              ntr_filling_tx_cnt_d = ntr_filling_tx_cnt_q + 3'd1;
-              intra_op_rx_cnt_en   = 1'b1;
+              vfpu_tag_in          = strb_t'(2);
             end
             operand_b = ntr_val;
             operands_valid = 1'b1;
           end else begin
             // The second operand is the result of the previous operation
-            // In case there is no data from the operand queue, first check if there are two valid results, if not,
-            // stop issuing.
+            // In case there is no data from the operand queue, first check if there are two valid results,
+            // if not, stop issuing.
             if (vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1] && (mask_valid_i || vinsn_issue_q.vm)) begin
               // Take result_queue_q first
               if (first_result_op_valid_q) begin
-                intra_op_rx_cnt_en   = 1'b1;
-                operand_b = result_queue_q[result_queue_write_pnt_q].wdata;
-                operands_valid = 1'b1;
+                // First result data is used, if there is no new data, set first_result_op_valid to 0
                 if (!result_queue_valid_d[result_queue_write_pnt_q])
                   first_result_op_valid_d = 1'b0;
+
+                intra_op_rx_cnt_en = 1'b1;
+                operand_b          = result_queue_q[result_queue_write_pnt_q].wdata;
+                operands_valid     = 1'b1;
               end else if (result_queue_valid_d[result_queue_write_pnt_q]) begin
-                intra_op_rx_cnt_en   = 1'b1;
-                operand_b = result_queue_d[result_queue_write_pnt_q].wdata;
-                operands_valid = 1'b1;
                 // This result data is used, set valid to 0
                 first_result_op_valid_d = 1'b0;
-              end else operands_valid = 1'b0;
+                intra_op_rx_cnt_en      = 1'b1;
+                operand_b               = result_queue_d[result_queue_write_pnt_q].wdata;
+                operands_valid          = 1'b1;
+              end else begin
+                operands_valid = 1'b0;
+              end
             end else if (first_result_op_valid_q && result_queue_valid_d[result_queue_write_pnt_q]) begin
-              operand_a = result_queue_q[result_queue_write_pnt_q].wdata;
-              operand_b = result_queue_d[result_queue_write_pnt_q].wdata;
-              operand_c = result_queue_q[result_queue_write_pnt_q].wdata;
-              operands_valid = 1'b1;
+              operand_a               = result_queue_q[result_queue_write_pnt_q].wdata;
+              operand_b               = result_queue_d[result_queue_write_pnt_q].wdata;
+              operand_c               = result_queue_q[result_queue_write_pnt_q].wdata;
+              operands_valid          = 1'b1;
               first_result_op_valid_d = 1'b0;
-            end else operands_valid = 1'b0;
+            end else begin
+              operands_valid = 1'b0;
+            end
           end
 
           // If issue_cnt_q is 0, there is no more element to issue
@@ -1386,10 +1388,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             if (vfpu_in_ready) begin
               automatic int unsigned latency = fpu_latency(vinsn_issue_q.vtype.vsew, vinsn_issue_q.op);
 
-              // Don't update issue_cnt if at least one of the operands is a neutral value
-              if (ntr_filling_tx_cnt_d != 0)
-                ntr_filling_tx_cnt_d = ntr_filling_tx_cnt_d - 1;
-              else
+              if (vfpu_tag_in == strb_t'(2))
+                issue_cnt_d = issue_cnt_q + (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+              else if (vfpu_tag_in == '0)
                 issue_cnt_d = issue_cnt_q - issue_element_cnt;
 
               // The first operation of this instruction has just been done
@@ -1863,8 +1864,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       simd_red_cnt_max_q      <= '0;
       mfpu_red_ready_q        <= 1'b0;
       ntr_filling_q           <= 1'b0;
-      ntr_filling_rx_cnt_q    <= '0;
-      ntr_filling_tx_cnt_q    <= '0;
       first_result_op_valid_q <= 1'b0;
       intra_issued_op_cnt_q   <= '0;
       intra_op_rx_cnt_q       <= '0;
@@ -1888,8 +1887,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       simd_red_cnt_max_q      <= simd_red_cnt_max_d;
       mfpu_red_ready_q        <= mfpu_red_ready_i;
       ntr_filling_q           <= ntr_filling_d;
-      ntr_filling_rx_cnt_q    <= ntr_filling_rx_cnt_d;
-      ntr_filling_tx_cnt_q    <= ntr_filling_tx_cnt_d;
       first_result_op_valid_q <= first_result_op_valid_d;
       intra_issued_op_cnt_q   <= intra_issued_op_cnt_d;
       intra_op_rx_cnt_q       <= intra_op_rx_cnt_d;

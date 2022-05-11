@@ -1,0 +1,6 @@
+[verilog]
+include_paths = ["hardware/include"]
+# defines = ["DEBUG", "VAR=1"]
+
+[option]
+linter = true

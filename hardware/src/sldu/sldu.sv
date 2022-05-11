@@ -477,7 +477,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               if (issue_cnt_q == 1) tgt_lane = 0;
 
               // Acknowledge the received operand
-              sldu_operand_ready_o = 1'b1;
+              sldu_operand_ready_o[lane] = 1'b1;
 
               // Send result to next lane
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata =

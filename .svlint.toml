@@ -1,0 +1,18 @@
+[option]
+exclude_paths = ["hardware/deps/.*"]
+prefix_label = ""
+
+[rules]
+non_ansi_module = true
+wire_reg = true
+blocking_assignment_in_always_ff = true
+case_default = true
+enum_with_type = true
+explicit_case_default = true
+function_same_as_system_function = true
+function_with_automatic = true
+legacy_always = true
+level_sensitive_always = true
+localparam_explicit_type = true
+non_blocking_assignment_in_always_comb = true
+tab_character = true
