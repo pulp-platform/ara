@@ -252,7 +252,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   popcount #(
     .INPUT_WIDTH(256)
   ) i_popcount (
-    .data_i    (vcpop_to_count)
+    .data_i    (vcpop_to_count),
     .popcount_o(popcount)
   );
   
@@ -378,7 +378,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           alu_result = (alu_result_flat & bit_enable_shuffle) |
             (masku_operand_b_i & ~bit_enable_shuffle);
         end
-        [VCPOP] : begin
+        VCPOP : begin
           vcpop_to_count = masku_operand_b_i & bit_enable_mask;
         end
         default: alu_result = '0;
