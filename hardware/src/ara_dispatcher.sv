@@ -37,7 +37,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                 core_st_pending_o,
     input  logic                                 load_complete_i,
     input  logic                                 store_complete_i,
-    input  logic                                 store_pending_i
+    input  logic                                 store_pending_i,
+    // Interface with the Mask unit
+    input  riscv::xlen_t                         result_scalar_i,
+    input  logic                                 result_scalar_valid_i
   );
 
   import cf_math_pkg::idx_width;
@@ -290,6 +293,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
             // These always respond at the same cycle
+            // TODO: no, not vfirst and vcpop
             acc_resp_valid_o = 1'b1;
 
             // Decode based on their func3 field
@@ -987,6 +991,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op             = ara_pkg::VREDMAX;
                     ara_req_d.conversion_vs1 = OpQueueReductionZExt;
                     ara_req_d.cvt_resize     = resize_e'(2'b10);
+                  end
+                  6'b010000: begin // VWXUNARY0
+                    // These instructions do not use vs1
+                    ara_req_d.use_vs1   = 1'b0;
+                    // These instructions return a scalar value as result to Ariane
+                    acc_resp_o.result   = result_scalar_i;
+                    acc_resp_valid_o    = result_scalar_valid_i;
+
+                    case (insn.varith_type.rs1)
+                      // 5'b00000: vmv.x.s
+                      5'b10001: begin
+                        ara_req_d.op        = ara_pkg::VFIRST;
+                      end
+                      5'b10000: begin
+                        ara_req_d.op        = ara_pkg::VCPOP;
+                      end
+                      default: illegal_insn = 1'b1;
+                    endcase
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMANDNOT;

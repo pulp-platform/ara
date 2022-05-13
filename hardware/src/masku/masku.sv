@@ -43,7 +43,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrLanes-1:0]                     lane_mask_ready_i,
     input  logic                                       vldu_mask_ready_i,
     input  logic                                       vstu_mask_ready_i,
-    input  logic                                       sldu_mask_ready_i
+    input  logic                                       sldu_mask_ready_i,
+    // Interface with the dispatcher
+    output riscv::xlen_t                               result_scalar_o,
+    output logic                                       result_scalar_valid_o
   );
 
   import cf_math_pkg::idx_width;
@@ -249,13 +252,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic [idx_width(DataWidth*NrLanes):0] vrf_pnt_d, vrf_pnt_q;
 
   // Vector population counter
+  // TODO: revise: we have to support up to 16 lanes, so 
+  // a) this 256 number should be parametrised
+  // b) we need more popcounters for >4 lanes!
   popcount #(
     .INPUT_WIDTH(256)
   ) i_popcount (
     .data_i    (vcpop_to_count),
     .popcount_o(popcount)
   );
-  
+
 
   always_comb begin: p_mask_alu
     alu_result         = '0;
@@ -380,8 +386,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         VCPOP : begin
           vcpop_to_count = masku_operand_b_i & bit_enable_mask;
+          result_scalar_o = popcount;
+          result_scalar_valid_o = '1;
         end
-        default: alu_result = '0;
+        default: alu_result = '0;   
       endcase
     end
   end: p_mask_alu
