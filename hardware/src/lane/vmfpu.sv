@@ -514,7 +514,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // sliding unit (inter-lane and SIMD reduction).
   function automatic logic is_reduction(ara_op_e op);
     is_reduction = 1'b0;
-    if (op inside {[VFREDUSUM:VFREDMAX]})
+    if (op inside {[VFREDUSUM:VFWREDOSUM]})
       is_reduction = 1'b1;
   endfunction: is_reduction
 
@@ -632,6 +632,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   elen_t operand_b;
   elen_t operand_c;
 
+  // fp_sign is used in control block
+  logic [2:0] fp_sign;
 
   // Is the FPU enabled?
   if (FPUSupport != FPUSupportNone) begin : fpu_gen
@@ -665,8 +667,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     fp_format_e fp_src_fmt, fp_dst_fmt;
     int_format_e fp_int_fmt;
     roundmode_e fp_rm;
-    logic [2:0] fp_sign;
-
     // FPU preprocessing stage
     always_comb begin: fpu_operand_preprocessing_p
       // Default rounding-mode from fcsr.rm
@@ -804,49 +804,49 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         default:;
       endcase
 
-      // TODO
       // vtype.vsew encodes the destination format
+      // cvt_resize is reused as neutral value for reductions
       unique case (vinsn_issue_q.vtype.vsew)
         EW16: begin
-          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW) ? FP32 : FP16;
+          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op)) ? FP32 : FP16;
           fp_dst_fmt = FP16;
-          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && fp_op == I2F) ? INT32 : INT16;
+          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT32 : INT16;
         end
         EW32: begin
-          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE) ? FP16 :
-            ((vinsn_issue_q.cvt_resize == CVT_NARROW) ? FP64 : FP32);
+          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op)) ? FP16 :
+            ((vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op)) ? FP64 : FP32);
           fp_dst_fmt = FP32;
-          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && fp_op == I2F) ? INT16 :
-            ((vinsn_issue_q.cvt_resize == CVT_NARROW && fp_op == I2F) ? INT64 : INT32);
+          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT16 :
+            ((vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT64 : INT32);
         end
         EW64: begin
-          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE) ? FP32 : FP64;
+          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op)) ? FP32 : FP64;
           fp_dst_fmt = FP64;
-          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && fp_op == I2F) ? INT32 : INT64;
+          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT32 : INT64;
         end
         default:;
       endcase
 
-      // TODO
-      // Sign injection
-      unique case (vinsn_issue_q.vtype.vsew)
-        EW16: for (int b = 0; b < 4; b++) begin
-            operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
-            operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
-            operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
-          end
-        EW32: for (int b = 0; b < 2; b++) begin
-            operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
-            operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
-            operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
-          end
-        EW64: for (int b = 0; b < 1; b++) begin
-            operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
-            operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
-            operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
-          end
-        default:;
-      endcase
+      // Moved to control block
+      //// Sign injection
+      //unique case (vinsn_issue_q.vtype.vsew)
+      //  EW16: for (int b = 0; b < 4; b++) begin
+      //      operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
+      //      operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
+      //      operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
+      //    end
+      //  EW32: for (int b = 0; b < 2; b++) begin
+      //      operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
+      //      operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
+      //      operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
+      //    end
+      //  EW64: for (int b = 0; b < 1; b++) begin
+      //      operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
+      //      operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
+      //      operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
+      //    end
+      //  default:;
+      //endcase
     end : fpu_operand_preprocessing_p
 
     // FPU signals
@@ -1051,17 +1051,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     red_mask                = '0;
 
     // Do not issue any operations
-    vfpu_in_valid  = 1'b0;
     vfpu_tag_in    = '0;
     mfpu_state_d   = mfpu_state_q;
-
-    // Inform our status to the lane controller
-    mfpu_ready_o      = !vinsn_queue_full;
-    mfpu_vinsn_done_o = '0;
-
-    // Do not acknowledge any operands
-    mfpu_operand_ready_o = '0;
-    mask_ready_o         = '0;
 
     ntr_filling_d           = ntr_filling_q;
     intra_issued_op_cnt_d   = intra_issued_op_cnt_q;
@@ -1079,6 +1070,26 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     case (mfpu_state_q)
       NO_REDUCTION: begin
         vfpu_tag_in = mask_i;
+
+        // Sign injection
+        unique case (vinsn_issue_q.vtype.vsew)
+          EW16: for (int b = 0; b < 4; b++) begin
+              operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
+              operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
+              operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
+            end
+          EW32: for (int b = 0; b < 2; b++) begin
+              operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
+              operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
+              operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
+            end
+          EW64: for (int b = 0; b < 1; b++) begin
+              operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
+              operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
+              operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
+            end
+          default:;
+        endcase
 
         // Is there a vector instruction ready to be issued and do we have all the operands necessary for this instruction?
         if (operands_valid && vinsn_issue_valid && !latency_stall) begin
@@ -1272,9 +1283,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       end
       INTRA_LANE_REDUCTION: begin
         // Short Note:
-        // 1. If the vector length for this lane is 0, the operand queue still gives one data,
+        // 1. If the vector length for this lane is 0, the operand queue still gives one data
         // to make it compatible with the normal procedure
-        // 2. Mask processing is in input stage
+        // 2. Mask is processed in input stage
 
         // Update the element issue counter and the related issue_be signal for the divider
         // How many elements are we issuing?
@@ -1287,8 +1298,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
         // Stall only if this is the first operation for this reduction instruction and the result queue is full
         if (!(first_op_q && result_queue_full)) begin
-          // Reduction instruction, accumulate the result
-          // Since operands may come from the result queue, result processing should be placed before
+          // =======================================================
+          // Accumulate the result
+          // =======================================================
+
+          // Since operands may be result_queue_d, result processing should be placed before
           // the operation issuing.
           if (vfpu_out_valid && !result_queue_full) begin
             // How many elements have we processed?
@@ -1316,9 +1330,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           end else
             result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
 
+          // =======================================================
+          // Assign corresponding input operands for different stages
+          // =======================================================
+
           // Do we have all the operands necessary for this instruction?
-          //operand_a = mfpu_operand_i[1];
-          //operand_c = mfpu_operand_i[2];
           operand_a = processed_red_operand(mfpu_operand_i[1], ~vinsn_issue_q.vm, mask_i, issue_element_cnt, ntr_val);
           operand_c = processed_red_operand(mfpu_operand_i[2], ~vinsn_issue_q.vm, mask_i, issue_element_cnt, ntr_val);
 
@@ -1379,7 +1395,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             end
           end
 
-          // If issue_cnt_q is 0, there is no more element to issue
+          // =======================================================
+          // Issue the micro-operations
+          // =======================================================
+
           if (operands_valid && vinsn_issue_valid) begin
             // Validate the inputs of FPU
             vfpu_in_valid = 1'b1;
@@ -1753,9 +1772,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
       // Decrement the counter of remaining vector elements waiting to be written
       // Don't do it in case of a reduction
-      if (!is_reduction(vinsn_commit.op))
-        commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
-      if (commit_cnt_q < (1 << (int'(EW64) - vinsn_commit.vtype.vsew))) commit_cnt_d = '0;
+      if (!is_reduction(vinsn_commit.op)) begin
+        commit_cnt_d = commit_cnt_q - commit_element_cnt;
+        if (commit_cnt_q < commit_element_cnt) commit_cnt_d = '0;
+      end
     end
 
     // Finished committing the results of a vector instruction
@@ -1769,8 +1789,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       else vinsn_queue_d.commit_pnt += 1;
 
       // Update the commit counter for the next instruction
-      if (vinsn_queue_d.commit_cnt == '0)
-        commit_cnt_d = is_reduction(vfu_operation_i.op) ? 1 : vfu_operation_i.vl;
+      if (vinsn_queue_d.commit_cnt != '0)
+        commit_cnt_d = is_reduction(vfu_operation_i.op) ? 1 :
+                       vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
     end
 
     //////////////////////////////
