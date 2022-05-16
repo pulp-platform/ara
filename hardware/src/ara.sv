@@ -46,6 +46,7 @@ module ara import ara_pkg::*; #(
   );
 
   import cf_math_pkg::idx_width;
+  import riscv::xlen_t;
 
   ///////////////////
   //  Definitions  //
@@ -82,7 +83,7 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0][4:0] fflags_ex;
   logic      [NrLanes-1:0]      fflags_ex_valid;
   // Interface with the Mask Unit
-  logic xlen_t                  result_scalar;
+  xlen_t                        result_scalar;
   logic                         result_scalar_valid;
 
   ara_dispatcher #(
