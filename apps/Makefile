@@ -26,7 +26,8 @@ include $(COMMON_DIR)/runtime.mk
 include $(COMMON_DIR)/riscv_tests.mk
 
 APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -name "main.c"))
-BINARIES := $(addprefix bin/,$(APPS))
+# Don't automatically compile the benchmark app, which is only a wrapper around the other apps
+BINARIES := $(filter-out bin/benchmarks, $(addprefix bin/,$(APPS)))
 
 CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si
 # Atomics are messy, since there is currently no memory region capable of handling them
@@ -48,10 +49,19 @@ linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/$
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 .PHONY: $(BINARIES)
 
+# Only some applications need to generate and then compile the data file
+# Generate a dummy data file for applications that do not need it
+define app_gen_data_template
+.PHONY: $1/data.S
+$1/data.S:
+	cd $1 && if [ -d script ]; then source $$(COMMON_DIR)/script/datagen.sh $1 $$(OUT_MTX_SIZE) $$(F_SIZE); else touch data.S; fi
+endef
+$(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
+
 define app_compile_template
-bin/$1: $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
+bin/$1: $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -114,5 +124,6 @@ clean: riscv_tests_spike_clean
 	rm -vf $(addsuffix /main.c.o,$(APPS))
 	rm -vf $(RUNTIME_GCC)
 	rm -vf $(RUNTIME_LLVM)
+	for app in $(APPS); do cd $${app} && rm -f ./*.c.o && rm -f ./*.S* && cd .. ; done
 
 .INTERMEDIATE: $(addsuffix /main.c.o,$(APPS))

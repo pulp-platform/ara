@@ -9,3 +9,4 @@ jsonref
 jsonschema
 tabulate
 yamlfmt
+numpy
