@@ -22,7 +22,7 @@
 # Extract the name of the application
 app=$1
 
-if [[ $1 == *"conv"* ]]
+if [[ $app == *"conv"* ]]
 then
   # Convolutions need args to be passed along
   args="${@:2}"
@@ -46,6 +46,12 @@ then
   args="${@:2}"
   # 1024 numbers by default
   [ -z "$args" ] && args="1024"
+elif [[ $app == *"fft"* ]]
+then
+  # FFT needs to initialize input data and twiddle factors
+  args="${@:2}"
+  # Use default values if args is not set
+  [ -z "$args" ] && args="256 float32"
 else
   # Other program datagens do not need any arguments
   args=
