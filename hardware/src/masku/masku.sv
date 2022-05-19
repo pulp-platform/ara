@@ -9,6 +9,8 @@
 // This unit is shared between all the functional units who can execute
 // predicated instructions.
 
+// TODO: explain the result path and mask path here
+
 module masku import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int  unsigned NrLanes = 0,
     parameter  type          vaddr_t = logic, // Type used to address vector register file elements
@@ -46,7 +48,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                       sldu_mask_ready_i,
     // Interface with the dispatcher
     output riscv::xlen_t                               result_scalar_o,
-    output logic                                       result_scalar_valid_o
+    output logic                                       result_scalar_valid_o,
+    input  logic                                       result_scalar_ready_i
   );
 
   import cf_math_pkg::idx_width;
@@ -232,17 +235,48 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+
+  /////////////////////////
+  // Scalar result queue //
+  /////////////////////////
+
+  // "Queue" with length 1 for scalar results to accumulate, TODO: maybe remane this?
+  // It's not a queue, but a register where the scalar_result can accumulate over multiple cycles
+  // Naming it a queue because the equivalent elements (stage-wise equivalent; there is no
+  // multi-cycle operations in the mask and result paths, but this is where the queues would be)
+  // It is reset once the result has been acknowledged by the dispatcher
+  riscv::xlen_t scalar_queue_d, scalar_queue_o;
+  
+  // only valid once result has finished accumulating over one or multiple cycles
+  logic scalar_queue_valid_d, scalar_queue_valid_o;
+
+  assign result_scalar_o = scalar_queue_o;
+  assign result_scalar_valid_o = scalar_queue_valid_o;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin: p_scalar_queue_ff
+    if (!rst_ni) begin
+      scalar_queue_o       <= '0;
+      scalar_queue_valid_o <= '0;
+    end else begin
+      scalar_queue_o       <= scalar_queue_d;
+      scalar_queue_valid_o <= scalar_queue_valid_d;
+    end
+  end
+
+
   ////////////////
   //  Mask ALU  //
   ////////////////
 
-  elen_t [NrLanes-1:0]      alu_result;
-  logic  [NrLanes*ELEN-1:0] bit_enable;
-  logic  [NrLanes*ELEN-1:0] bit_enable_shuffle;
-  logic  [NrLanes*ELEN-1:0] bit_enable_mask;
+  elen_t        [NrLanes-1:0]                           alu_result;
+  logic         [NrLanes*ELEN-1:0]                      bit_enable;
+  logic         [NrLanes*ELEN-1:0]                      bit_enable_shuffle;
+  logic         [NrLanes*ELEN-1:0]                      bit_enable_mask;
 
-  logic  [NrLanes*ELEN-1:0] vcpop_to_count;
-  logic  [7:0]              popcount;
+  logic         [NrLanes*ELEN-1:0]                      vcpop_to_count;
+  logic         [NrLanes-1:0][$clog2(DataWidth)+1-1:0]  popcount;
+  riscv::xlen_t [NrLanes-1:0]                           popcount_d, popcount_q;
+  riscv::xlen_t                                         popcount_sum;
 
   // Pointers
   //
@@ -251,16 +285,15 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // We need a pointer to which bit on the full VRF word we are writing results to.
   logic [idx_width(DataWidth*NrLanes):0] vrf_pnt_d, vrf_pnt_q;
 
-  // Vector population counter
-  // TODO: revise: we have to support up to 16 lanes, so 
-  // a) this 256 number should be parametrised
-  // b) we need more popcounters for >4 lanes!
-  popcount #(
-    .INPUT_WIDTH(256)
-  ) i_popcount (
-    .data_i    (vcpop_to_count),
-    .popcount_o(popcount)
-  );
+  // Vector population counter for vcpop.m instruction
+  for (genvar lane = 0; lane < NrLanes; lane++) begin : gen_popcounters
+    popcount #(
+      .INPUT_WIDTH(DataWidth)
+    ) i_popcount (
+      .data_i    (vcpop_to_count[lane*ELEN +: ELEN]),
+      .popcount_o(popcount[lane])
+    );
+  end
 
 
   always_comb begin: p_mask_alu
@@ -386,8 +419,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         VCPOP : begin
           vcpop_to_count = masku_operand_b_i & bit_enable_mask;
-          result_scalar_o = popcount;
-          result_scalar_valid_o = '1;
         end
         default: alu_result = '0;   
       endcase
@@ -454,12 +485,20 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
+    // scalar path signals
+    scalar_queue_d        = scalar_queue_o;
+    scalar_queue_valid_d  = scalar_queue_valid_o;
+    popcount_d            = popcount_q;
+    popcount_sum          = '0;
+
     /////////////////////
     //  Mask Operands  //
     /////////////////////
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid) begin
+    // if (vinsn_issue_valid && !(vinsn_issue.op inside {[VFIRST:VCPOP]})) begin
+      
       // Is there place in the mask queue to write the mask operands?
       // Did we receive the mask bits on the MaskM channel?
       if (!vinsn_issue.vm && !mask_queue_full && &masku_operand_m_valid_i) begin
@@ -630,6 +669,43 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
 
+    //////////////////////////////
+    // Calculate scalar results //
+    //////////////////////////////
+
+    // TODO: find out what the issue stage does for the other paths and see what is not
+    // done yet in the Mask ALU. Implement that here. The Mask ALU has vinsn_issue_valid check, too
+    // It also has a vinsn_issue.op case check, which make it the better place to implement stuff
+    if (vinsn_issue_valid && vinsn_issue.op inside {[VFIRST:VCPOP]}) begin
+      if (masku_operand_b_valid_i && (masku_operand_m_valid_i || vinsn_issue.vm)) begin
+        // accumulate popcounts in the popcount register\
+        for (int lane = 0; lane < NrLanes; lane++) begin
+          popcount_d[lane] = popcount_q[lane] + popcount[lane];
+        end
+
+        // Account for the elements that were processed
+        issue_cnt_d = issue_cnt_q - NrLanes * DataWidth;
+        if (issue_cnt_q < NrLanes * DataWidth)
+          issue_cnt_d = '0;
+
+        // Acknowledge the operands, also triggers another beat if necessary
+        masku_operand_b_ready_o = '1;
+        if (!vinsn_issue.vm) masku_operand_m_ready_o = '1;
+
+        // if this is the last beat, commit the result to the scalar_result queue
+        if (issue_cnt_d == 0) begin
+          for (int lane = 0; lane < NrLanes; lane++) begin
+            popcount_sum += popcount_d[lane];
+          end
+          scalar_queue_d = popcount_sum;
+          scalar_queue_valid_d = '1;
+        end
+      end
+    end
+      
+
+    /////////////////////////////////// INDEPENDENT //////////////////////////////
+
     // Finished issuing results
     if (vinsn_issue_valid && (
           ( (vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit) && issue_cnt_d == '0) ||
@@ -638,48 +714,60 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.issue_cnt -= 1;
     end
 
+    ///////////////////////////////////////////////
+    // END OF ISSUE STAGE, BEGIN OF COMMIT STAGE //
+    ///////////////////////////////////////////////
+
+
+
     /////////////////////////////////
     //  Send operands to the VFUs  //
     /////////////////////////////////
 
-    for (int lane = 0; lane < NrLanes; lane++) begin: send_operand
-      mask_valid_o[lane] = mask_queue_valid_q[mask_queue_read_pnt_q][lane];
-      mask_o[lane]       = mask_queue_q[mask_queue_read_pnt_q][lane];
-      // Received a grant from the VFUs.
-      // The VLDU and the VSTU acknowledge all the operands at once.
-      // Only accept the acknowledgement from the lanes if the current instruction is executing there.
-      // Deactivate the request, but do not bump the pointers for now.
-      if ((lane_mask_ready_i[lane] && mask_valid_o[lane] && vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) ||
-           vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
-        mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
-        mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
+    // [VFIRST:VCPOP] instructions don't use the mask queue, 
+    // but this section interferes with the commit_cnt
+    if (!(vinsn_commit.op inside {[VFIRST:VCPOP]})) begin
+
+      for (int lane = 0; lane < NrLanes; lane++) begin: send_operand
+        mask_valid_o[lane] = mask_queue_valid_q[mask_queue_read_pnt_q][lane];
+        mask_o[lane]       = mask_queue_q[mask_queue_read_pnt_q][lane];
+        // Received a grant from the VFUs.
+        // The VLDU and the VSTU acknowledge all the operands at once.
+        // Only accept the acknowledgement from the lanes if the current instruction is executing there.
+        // Deactivate the request, but do not bump the pointers for now.
+        if ((lane_mask_ready_i[lane] && mask_valid_o[lane] && vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) ||
+            vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
+          mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
+          mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
+        end
+      end: send_operand
+
+      // Is this operand going to the lanes?
+      mask_valid_lane_o = vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit};
+
+      // All lanes accepted the VRF request
+      if (!(|mask_queue_valid_d[mask_queue_read_pnt_q])) begin
+        // There is something waiting to be written
+        if (!mask_queue_empty) begin
+          // Increment the read pointer
+          if (mask_queue_read_pnt_q == MaskQueueDepth-1)
+            mask_queue_read_pnt_d = 0;
+          else
+            mask_queue_read_pnt_d = mask_queue_read_pnt_q + 1;
+
+          // Reset the queue
+          mask_queue_d[mask_queue_read_pnt_q] = '0;
+
+          // Decrement the counter of mask operands waiting to be used
+          mask_queue_cnt_d -= 1;
+
+          // Decrement the counter of remaining vector elements waiting to be used
+          commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
+          if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew))))
+            commit_cnt_d = '0;
+        end
       end
-    end: send_operand
-
-    // Is this operand going to the lanes?
-    mask_valid_lane_o = vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit};
-
-    // All lanes accepted the VRF request
-    if (!(|mask_queue_valid_d[mask_queue_read_pnt_q]))
-      // There is something waiting to be written
-      if (!mask_queue_empty) begin
-        // Increment the read pointer
-        if (mask_queue_read_pnt_q == MaskQueueDepth-1)
-          mask_queue_read_pnt_d = 0;
-        else
-          mask_queue_read_pnt_d = mask_queue_read_pnt_q + 1;
-
-        // Reset the queue
-        mask_queue_d[mask_queue_read_pnt_q] = '0;
-
-        // Decrement the counter of mask operands waiting to be used
-        mask_queue_cnt_d -= 1;
-
-        // Decrement the counter of remaining vector elements waiting to be used
-        commit_cnt_d = commit_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
-        if (commit_cnt_q < (NrLanes * (1 << (int'(EW64) - vinsn_commit.vtype.vsew))))
-          commit_cnt_d = '0;
-      end
+    end
 
     //////////////////////////////////
     //  Write results into the VRF  //
@@ -707,7 +795,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // All lanes accepted the VRF request
     if (!(|result_queue_valid_d[result_queue_read_pnt_q]) &&
-      (&result_final_gnt_d || (commit_cnt_q > (NrLanes * DataWidth))))
+      (&result_final_gnt_d || (commit_cnt_q > (NrLanes * DataWidth)))) begin
       // There is something waiting to be written
       if (!result_queue_empty) begin
         // Increment the read pointer
@@ -727,6 +815,31 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         if (commit_cnt_q < (NrLanes * DataWidth))
           commit_cnt_d = '0;
       end
+    end
+
+
+    ///////////////////////////
+    // Commit scalar results //
+    ///////////////////////////
+
+    // The scalar result is sent to the dispatcher
+    if (vinsn_commit.op == VCPOP && scalar_queue_valid_o == 1) begin
+
+      // The dispatcher acknowledges the scalar result
+      if (result_scalar_ready_i == '1) begin
+        // Decrement the commit counter by the entire number of elements,
+        // since we only commit one result for everything
+        commit_cnt_d = '0;
+
+        // reset popcount_d
+        popcount_d = '0;
+
+        // Deactivate the valid signal for the scalar result
+        scalar_queue_valid_d = '0;
+      end
+    end
+
+    /////////////////////////////////// INDEPENDENT //////////////////////////////
 
     // Finished committing the results of a vector instruction
     // Some instructions forward operands to the lanes before writing the VRF
@@ -739,6 +852,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Update the commit counters and pointers
       vinsn_queue_d.commit_cnt -= 1;
     end
+
+
+    /////////////////////////
+    // END OF COMMIT STAGE //
+    /////////////////////////
+
 
     //////////////////////////////
     //  Accept new instruction  //
@@ -788,6 +907,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= '0;
       pe_resp_o          <= '0;
       result_final_gnt_q <= '0;
+      popcount_q         <= '0;
     end else begin
       vinsn_running_q    <= vinsn_running_d;
       read_cnt_q         <= read_cnt_d;
@@ -797,6 +917,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= mask_pnt_d;
       pe_resp_o          <= pe_resp;
       result_final_gnt_q <= result_final_gnt_d;
+      popcount_q         <= popcount_d;
     end
   end
 
