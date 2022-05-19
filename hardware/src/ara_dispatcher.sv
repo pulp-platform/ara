@@ -40,7 +40,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_pending_i,
     // Interface with the Mask unit
     input  riscv::xlen_t                         result_scalar_i,
-    input  logic                                 result_scalar_valid_i
+    input  logic                                 result_scalar_valid_i,
+    output logic                                 result_scalar_ready_o
   );
 
   import cf_math_pkg::idx_width;
@@ -235,6 +236,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     is_config            = 1'b0;
     ignore_zero_vl_check = 1'b0;
+
+    result_scalar_ready_o = '0;
 
     // The token must change at every new instruction
     ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
@@ -996,9 +999,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     // These instructions do not use vs1
                     ara_req_d.use_vs1   = 1'b0;
                     // These instructions return a scalar value as result to Ariane
-                    acc_resp_o.result   = result_scalar_i;
-                    acc_resp_valid_o    = result_scalar_valid_i;
+                    if (result_scalar_valid_i) begin
+                      // write result into response to Ariane/CV6
+                      acc_resp_o.result   = result_scalar_i;
+                      acc_resp_valid_o    = result_scalar_valid_i;
 
+                      // acknowledge scalar result to Mask unit
+                      result_scalar_ready_o = '1;
+                    end
+                    
                     case (insn.varith_type.rs1)
                       // 5'b00000: vmv.x.s
                       5'b10001: begin
