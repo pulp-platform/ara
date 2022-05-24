@@ -75,12 +75,26 @@ void verify_result_32(float *vec, float scalar, uint16_t vl, float res) {
   printf("\n");
 }
  
-void vfredsum_32() {
+void vfredusum_32() {
+  printf("\n");
   printf("======================\n");
-  printf("EW32 VL=32\n");
+  printf("vfredsum EW32\n");
   printf("======================\n");
+  printf("\n");
+  printf("\n");
+
   float vec1[VL_S], res1[VL_S];
+  float vec2[VL_M], res2[VL_M];
+  float vec3[VL_L], res3[VL_L];
+  float vec4[VL_MAX_32], res4[VL_MAX_32];
   gen_rand_vec_32(vec1, VL_S);
+  gen_rand_vec_32(vec2, VL_M);
+  gen_rand_vec_32(vec3, VL_L);
+  gen_rand_vec_32(vec4, VL_MAX_32);
+
+  printf("======================\n");
+  printf("VL=32\n");
+  printf("======================\n");
   VSET(VL_S, e32, m1);
   asm volatile("vle32.v v0, (%0);" ::"r"(vec1));
   asm volatile("vle32.v v1, (%0);" ::"r"(vec1));
@@ -91,10 +105,8 @@ void vfredsum_32() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW32 VL=128\n");
+  printf("VL=128\n");
   printf("======================\n");
-  float vec2[VL_M], res2[VL_M];
-  gen_rand_vec_32(vec2, VL_M);
   VSET(VL_M, e32, m1);
   asm volatile("vle32.v v0, (%0);" ::"r"(vec2));
   asm volatile("vle32.v v1, (%0);" ::"r"(vec2));
@@ -105,10 +117,8 @@ void vfredsum_32() {
   printf("\n");
   
   printf("======================\n");
-  printf("EW32 VL=256\n");
+  printf("VL=256\n");
   printf("======================\n");
-  float vec3[VL_L], res3[VL_L];
-  gen_rand_vec_32(vec3, VL_L);
   VSET(VL_L, e32, m2);
   asm volatile("vle32.v v4, (%0);" ::"r"(vec3));
   asm volatile("vle32.v v6, (%0);" ::"r"(vec3));
@@ -119,10 +129,8 @@ void vfredsum_32() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW32 VL=1024\n");
+  printf("VL=1024\n");
   printf("======================\n");
-  float vec4[VL_MAX_32], res4[VL_MAX_32];
-  gen_rand_vec_32(vec4, VL_MAX_32);
   VSET(VL_MAX_32, e32, m8);
   asm volatile("vle32.v v0, (%0);" ::"r"(vec4));
   asm volatile("vle32.v v8, (%0);" ::"r"(vec4));
@@ -135,7 +143,7 @@ void vfredsum_32() {
   // Issue a redundant vector add instruction to eliminate 
   // the effect of stalls due to data denpendencies
   printf("======================\n");
-  printf("EW32 VL=32 PRELOADED\n");
+  printf("VL=32 PRELOADED\n");
   printf("======================\n");
   VSET(VL_S, e32, m1);
   asm volatile("vle32.v v0, (%0);" ::"r"(vec1));
@@ -148,7 +156,7 @@ void vfredsum_32() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW32 VL=128 PRELOADED\n");
+  printf("VL=128 PRELOADED\n");
   printf("======================\n");
   VSET(VL_M, e32, m1);
   asm volatile("vle32.v v0, (%0);" ::"r"(vec2));
@@ -161,7 +169,7 @@ void vfredsum_32() {
   printf("\n");
   
   printf("======================\n");
-  printf("EW32 VL=256 PRELOADED\n");
+  printf("VL=256 PRELOADED\n");
   printf("======================\n");
   VSET(VL_L, e32, m2);
   asm volatile("vle32.v v4, (%0);" ::"r"(vec3));
@@ -174,7 +182,7 @@ void vfredsum_32() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW32 VL=1024 PRELOADED\n");
+  printf("VL=1024 PRELOADED\n");
   printf("======================\n");
   VSET(VL_MAX_32, e32, m8);
   asm volatile("vle32.v v0, (%0);" ::"r"(vec4));
@@ -187,12 +195,146 @@ void vfredsum_32() {
   printf("\n");
 }
 
-void vfredsum_64() {
+void vfredosum_32() {
+  printf("\n");
   printf("======================\n");
-  printf("EW64 VL=32\n");
+  printf("VFREDOSUM EW32\n");
   printf("======================\n");
+  printf("\n");
+  printf("\n");
+
+  float vec1[VL_S], res1[VL_S];
+  float vec2[VL_M], res2[VL_M];
+  float vec3[VL_L], res3[VL_L];
+  float vec4[VL_MAX_32], res4[VL_MAX_32];
+  gen_rand_vec_32(vec1, VL_S);
+  gen_rand_vec_32(vec2, VL_M);
+  gen_rand_vec_32(vec3, VL_L);
+  gen_rand_vec_32(vec4, VL_MAX_32);
+
+  printf("======================\n");
+  printf("VL=32\n");
+  printf("======================\n");
+  VSET(VL_S, e32, m1);
+  asm volatile("vle32.v v0, (%0);" ::"r"(vec1));
+  asm volatile("vle32.v v1, (%0);" ::"r"(vec1));
+  asm volatile("vfredosum.vs v2, v0, v1");
+  asm volatile("vse32.v v2, (%0);" ::"r"(res1));
+  verify_result_32(vec1, vec1[0], VL_S, res1[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=128\n");
+  printf("======================\n");
+  VSET(VL_M, e32, m1);
+  asm volatile("vle32.v v0, (%0);" ::"r"(vec2));
+  asm volatile("vle32.v v1, (%0);" ::"r"(vec2));
+  asm volatile("vfredosum.vs v2, v0, v1");
+  asm volatile("vse32.v v2, (%0);" ::"r"(res2));
+  verify_result_32(vec2, vec2[0], VL_M, res2[0]);
+  printf("\n");
+  printf("\n");
+  
+  printf("======================\n");
+  printf("VL=256\n");
+  printf("======================\n");
+  VSET(VL_L, e32, m2);
+  asm volatile("vle32.v v4, (%0);" ::"r"(vec3));
+  asm volatile("vle32.v v6, (%0);" ::"r"(vec3));
+  asm volatile("vfredosum.vs v2, v4, v6");
+  asm volatile("vse32.v v2, (%0);" ::"r"(res3));
+  verify_result_32(vec3, vec3[0], VL_L, res3[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=1024\n");
+  printf("======================\n");
+  VSET(VL_MAX_32, e32, m8);
+  asm volatile("vle32.v v0, (%0);" ::"r"(vec4));
+  asm volatile("vle32.v v8, (%0);" ::"r"(vec4));
+  asm volatile("vfredosum.vs v16, v0, v8");
+  asm volatile("vse32.v v16, (%0);" ::"r"(res4));
+  verify_result_32(vec4, vec4[0], VL_MAX_32, res4[0]);
+  printf("\n");
+  printf("\n");
+  
+  // Issue a redundant vector add instruction to eliminate 
+  // the effect of stalls due to data denpendencies
+  printf("======================\n");
+  printf("VL=32 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_S, e32, m1);
+  asm volatile("vle32.v v0, (%0);" ::"r"(vec1));
+  asm volatile("vle32.v v1, (%0);" ::"r"(vec1));
+  asm volatile("vfadd.vv v2, v0, v1");
+  asm volatile("vfredosum.vs v2, v0, v1");
+  asm volatile("vse32.v v2, (%0);" ::"r"(res1));
+  verify_result_32(vec1, vec1[0], VL_S, res1[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=128 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_M, e32, m1);
+  asm volatile("vle32.v v0, (%0);" ::"r"(vec2));
+  asm volatile("vle32.v v1, (%0);" ::"r"(vec2));
+  asm volatile("vfadd.vv v2, v0, v1");
+  asm volatile("vfredosum.vs v2, v0, v1");
+  asm volatile("vse32.v v2, (%0);" ::"r"(res2));
+  verify_result_32(vec2, vec2[0], VL_M, res2[0]);
+  printf("\n");
+  printf("\n");
+  
+  printf("======================\n");
+  printf("VL=256 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_L, e32, m2);
+  asm volatile("vle32.v v4, (%0);" ::"r"(vec3));
+  asm volatile("vle32.v v6, (%0);" ::"r"(vec3));
+  asm volatile("vfadd.vv v2, v4, v6");
+  asm volatile("vfredosum.vs v2, v4, v6");
+  asm volatile("vse32.v v2, (%0);" ::"r"(res3));
+  verify_result_32(vec3, vec3[0], VL_L, res3[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=1024 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_MAX_32, e32, m8);
+  asm volatile("vle32.v v0, (%0);" ::"r"(vec4));
+  asm volatile("vle32.v v8, (%0);" ::"r"(vec4));
+  asm volatile("vfadd.vv v16, v0, v8");
+  asm volatile("vfredosum.vs v16, v0, v8");
+  asm volatile("vse32.v v16, (%0);" ::"r"(res4));
+  verify_result_32(vec4, vec4[0], VL_MAX_32, res4[0]);
+  printf("\n");
+  printf("\n");
+}
+
+void vfredusum_64() {
+  printf("\n");
+  printf("======================\n");
+  printf("VFREDUSUM EW64\n");
+  printf("======================\n");
+  printf("\n");
+  printf("\n");
+
   double vec1[VL_S], res1[VL_S];
+  double vec2[VL_M], res2[VL_M];
+  double vec3[VL_L], res3[VL_L];
+  double vec4[VL_MAX_64], res4[VL_MAX_64];
   gen_rand_vec_64(vec1, VL_S);
+  gen_rand_vec_64(vec2, VL_M);
+  gen_rand_vec_64(vec3, VL_L);
+  gen_rand_vec_64(vec4, VL_MAX_64);
+
+  printf("======================\n");
+  printf("VL=32\n");
+  printf("======================\n");
   VSET(VL_S, e64, m1);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec1));
   asm volatile("vle64.v v1, (%0);" ::"r"(vec1));
@@ -203,10 +345,8 @@ void vfredsum_64() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW64 VL=128\n");
+  printf("VL=128\n");
   printf("======================\n");
-  double vec2[VL_M], res2[VL_M];
-  gen_rand_vec_64(vec2, VL_M);
   VSET(VL_M, e64, m2);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec2));
   asm volatile("vle64.v v2, (%0);" ::"r"(vec2));
@@ -217,10 +357,8 @@ void vfredsum_64() {
   printf("\n");
   
   printf("======================\n");
-  printf("EW64 VL=256\n");
+  printf("VL=256\n");
   printf("======================\n");
-  double vec3[VL_L], res3[VL_L];
-  gen_rand_vec_64(vec3, VL_L);
   VSET(VL_L, e64, m4);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec3));
   asm volatile("vle64.v v4, (%0);" ::"r"(vec3));
@@ -231,10 +369,8 @@ void vfredsum_64() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW64 VL=512\n");
+  printf("VL=512\n");
   printf("======================\n");
-  double vec4[VL_MAX_64], res4[VL_MAX_64];
-  gen_rand_vec_64(vec4, VL_MAX_64);
   VSET(VL_MAX_64, e64, m8);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec4));
   asm volatile("vle64.v v8, (%0);" ::"r"(vec4));
@@ -247,7 +383,7 @@ void vfredsum_64() {
   // Issue a redundant vector add instruction to eliminate 
   // the effect of stalls due to data denpendencies
   printf("======================\n");
-  printf("EW64 VL=32 PRELOADED\n");
+  printf("VL=32 PRELOADED\n");
   printf("======================\n");
   VSET(VL_S, e64, m1);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec1));
@@ -260,7 +396,7 @@ void vfredsum_64() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW64 VL=128 PRELOADED\n");
+  printf("VL=128 PRELOADED\n");
   printf("======================\n");
   VSET(VL_M, e64, m2);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec2));
@@ -273,7 +409,7 @@ void vfredsum_64() {
   printf("\n");
   
   printf("======================\n");
-  printf("EW64 VL=256 PRELOADED\n");
+  printf("VL=256 PRELOADED\n");
   printf("======================\n");
   VSET(VL_L, e64, m4);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec3));
@@ -286,7 +422,7 @@ void vfredsum_64() {
   printf("\n");
 
   printf("======================\n");
-  printf("EW64 VL=1024 PRELOADED\n");
+  printf("VL=1024 PRELOADED\n");
   printf("======================\n");
   VSET(VL_MAX_64, e64, m8);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec4));
@@ -299,16 +435,130 @@ void vfredsum_64() {
   printf("\n");
 }
 
+void vfredosum_64() {
+  printf("\n");
+  printf("======================\n");
+  printf("VFREDOSUM EW64\n");
+  printf("======================\n");
+  printf("\n");
+  printf("\n");
+
+  double vec1[VL_S], res1[VL_S];
+  double vec2[VL_M], res2[VL_M];
+  double vec3[VL_L], res3[VL_L];
+  double vec4[VL_MAX_64], res4[VL_MAX_64];
+  gen_rand_vec_64(vec1, VL_S);
+  gen_rand_vec_64(vec2, VL_M);
+  gen_rand_vec_64(vec3, VL_L);
+  gen_rand_vec_64(vec4, VL_MAX_64);
+
+  printf("======================\n");
+  printf("VL=32\n");
+  printf("======================\n");
+  VSET(VL_S, e64, m1);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec1));
+  asm volatile("vle64.v v1, (%0);" ::"r"(vec1));
+  asm volatile("vfredosum.vs v2, v0, v1");
+  asm volatile("vse64.v v2, (%0);" ::"r"(res1));
+  verify_result_64(vec1, vec1[0], VL_S, res1[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=128\n");
+  printf("======================\n");
+  VSET(VL_M, e64, m2);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec2));
+  asm volatile("vle64.v v2, (%0);" ::"r"(vec2));
+  asm volatile("vfredosum.vs v4, v0, v2");
+  asm volatile("vse64.v v4, (%0);" ::"r"(res2));
+  verify_result_64(vec2, vec2[0], VL_M, res2[0]);
+  printf("\n");
+  printf("\n");
+  
+  printf("======================\n");
+  printf("VL=256\n");
+  printf("======================\n");
+  VSET(VL_L, e64, m4);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec3));
+  asm volatile("vle64.v v4, (%0);" ::"r"(vec3));
+  asm volatile("vfredosum.vs v8, v0, v4");
+  asm volatile("vse64.v v8, (%0);" ::"r"(res3));
+  verify_result_64(vec3, vec3[0], VL_L, res3[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=512\n");
+  printf("======================\n");
+  VSET(VL_MAX_64, e64, m8);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec4));
+  asm volatile("vle64.v v8, (%0);" ::"r"(vec4));
+  asm volatile("vfredosum.vs v16, v0, v8");
+  asm volatile("vse64.v v16, (%0);" ::"r"(res4));
+  verify_result_64(vec4, vec4[0], VL_MAX_64, res4[0]);
+  printf("\n");
+  printf("\n");
+  
+  // Issue a redundant vector add instruction to eliminate 
+  // the effect of stalls due to data denpendencies
+  printf("======================\n");
+  printf("VL=32 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_S, e64, m1);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec1));
+  asm volatile("vle64.v v1, (%0);" ::"r"(vec1));
+  asm volatile("vfadd.vv v2, v0, v1");
+  asm volatile("vfredosum.vs v2, v0, v1");
+  asm volatile("vse64.v v2, (%0);" ::"r"(res1));
+  verify_result_64(vec1, vec1[0], VL_S, res1[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=128 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_M, e64, m2);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec2));
+  asm volatile("vle64.v v2, (%0);" ::"r"(vec2));
+  asm volatile("vfadd.vv v4, v0, v2");
+  asm volatile("vfredosum.vs v4, v0, v2");
+  asm volatile("vse64.v v4, (%0);" ::"r"(res2));
+  verify_result_64(vec2, vec2[0], VL_M, res2[0]);
+  printf("\n");
+  printf("\n");
+  
+  printf("======================\n");
+  printf("VL=256 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_L, e64, m4);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec3));
+  asm volatile("vle64.v v4, (%0);" ::"r"(vec3));
+  asm volatile("vfadd.vv v8, v0, v4");
+  asm volatile("vfredosum.vs v8, v0, v4");
+  asm volatile("vse64.v v8, (%0);" ::"r"(res3));
+  verify_result_64(vec3, vec3[0], VL_L, res3[0]);
+  printf("\n");
+  printf("\n");
+
+  printf("======================\n");
+  printf("VL=1024 PRELOADED\n");
+  printf("======================\n");
+  VSET(VL_MAX_64, e64, m8);
+  asm volatile("vle64.v v0, (%0);" ::"r"(vec4));
+  asm volatile("vle64.v v8, (%0);" ::"r"(vec4));
+  asm volatile("vfadd.vv v16, v0, v8");
+  asm volatile("vfredosum.vs v16, v0, v8");
+  asm volatile("vse64.v v16, (%0);" ::"r"(res4));
+  verify_result_64(vec4, vec4[0], VL_MAX_64, res4[0]);
+  printf("\n");
+  printf("\n");
+}
+
 int main() {
-  printf("\n");
-  printf("======================\n");
-  printf("      VFREDUSUM\n");
-  printf("======================\n");
-  printf("\n");
-  printf("\n");
-
-  //vfredsum_32();
-  vfredsum_64();
-
+  vfredusum_32();
+  vfredosum_32();
+  vfredusum_64();
+  vfredosum_64();
   return 0;
 }
