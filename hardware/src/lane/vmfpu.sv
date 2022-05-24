@@ -550,9 +550,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           default:;
         endcase
       end
-      EW32: processed_osum_operand = (is_masked & ~mask[osum_issue_cnt * 4]) ?
-                                     {32'd0, ntr_val[osum_issue_cnt * 32 +: 31]} :
-                                     {32'd0, mfpu_operand[osum_issue_cnt * 32 +: 31]};
+      EW32: begin
+        case (osum_issue_cnt)
+          4'd0: processed_osum_operand = (is_masked & ~mask[0]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[31:0] };
+          4'd1: processed_osum_operand = (is_masked & ~mask[0]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[63:32]};
+        endcase
+      end
+      //EW32: processed_osum_operand = (is_masked & ~mask[osum_issue_cnt * 4]) ?
+      //                               {32'd0, ntr_val[osum_issue_cnt * 32 +: 31]} :
+      //                               {32'd0, mfpu_operand[osum_issue_cnt * 32 +: 31]};
       EW64: processed_osum_operand = (is_masked & ~mask[0]) ? ntr_val : mfpu_operand;
       default:;
     endcase
@@ -1291,7 +1297,22 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             if (vinsn_queue_d.issue_cnt != 0) issue_cnt_d =
               vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
 
+            //init(); TODO No idea why calling init task does not work
             mfpu_state_d = (vinsn_queue_d.issue_cnt != 0) ? next_mfpu_state(vinsn_issue_d.op) : NO_REDUCTION;
+            
+            // The next will be the first operation of this instruction
+            // This information is useful for reduction operation
+            first_op_d         = 1'b1;
+            reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+            sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+            // Allow the first valid
+            red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM});
+
+            ntr_filling_d           = 1'b0;
+            intra_issued_op_cnt_d   = '0;
+            first_result_op_valid_d = 1'b0;
+            intra_op_rx_cnt_d       = '0;
+            osum_issue_cnt_d        = '0;
           end
         end
       end
