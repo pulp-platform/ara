@@ -383,7 +383,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
               // Some instructions need to wait for an acknowledgment
               // before being committed with Ariane
-              if (is_load(ara_req_i.op) || is_store(ara_req_i.op) || !ara_req_i.use_vd) begin
+              if (is_load(ara_req_i.op) || is_store(ara_req_i.op) || !ara_req_i.use_vd || 
+                  ara_req_i.op inside {[VFIRST:VCPOP]}) begin
                 ara_req_ready_o = 1'b0;
                 state_d         = WAIT;
               end
@@ -427,6 +428,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           ara_req_ready_o  = 1'b1;
           ara_resp_o.resp  = pe_scalar_resp_i;
           ara_resp_valid_o = 1'b1;
+        end
+
+        // for instructions that write scalar result back to dispatcher:
+        if (ara_req_i.op inside {[VFIRST:VCPOP]} && |pe_resp_i[NrLanes+OffsetMask].vinsn_done) begin
+          // Acknowdledge the request to let the dispatcher know Ara is finished
+          state_d          = IDLE;
+          ara_req_ready_o  = 1'b1;
         end
       end
     endcase

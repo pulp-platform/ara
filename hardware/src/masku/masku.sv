@@ -823,20 +823,20 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     ///////////////////////////
 
     // The scalar result is sent to the dispatcher
-    if (vinsn_commit.op == VCPOP && scalar_queue_valid_o == 1) begin
+    if (vinsn_commit.op == VCPOP && scalar_queue_valid_d == 1) begin
 
-      // The dispatcher acknowledges the scalar result
-      if (result_scalar_ready_i == '1) begin
         // Decrement the commit counter by the entire number of elements,
         // since we only commit one result for everything
         commit_cnt_d = '0;
 
         // reset popcount_d
         popcount_d = '0;
+    end
 
-        // Deactivate the valid signal for the scalar result
-        scalar_queue_valid_d = '0;
-      end
+    // If result was acknowledged by dispatcher
+    if (scalar_queue_valid_o && result_scalar_ready_i) begin
+      scalar_queue_d       = '0;
+      scalar_queue_valid_d = '0;
     end
 
     /////////////////////////////////// INDEPENDENT //////////////////////////////
