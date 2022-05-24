@@ -998,14 +998,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010000: begin // VWXUNARY0
                     // These instructions do not use vs1
                     ara_req_d.use_vs1   = 1'b0;
-                    // These instructions return a scalar value as result to Ariane
-                    if (result_scalar_valid_i) begin
-                      // write result into response to Ariane/CV6
-                      acc_resp_o.result   = result_scalar_i;
-                      acc_resp_valid_o    = result_scalar_valid_i;
+                    // Until the result is here, do not acknowledge the instruction
+                    acc_req_ready_o     = 1'b0;
+                    acc_resp_valid_o    = 1'b0;
 
+                    // These instructions return a scalar value as result to Ariane
+                    if (result_scalar_valid_i == 1'b1) begin
+                      // Acknowledge instruction
+                      acc_req_ready_o       = 1'b1;
                       // acknowledge scalar result to Mask unit
                       result_scalar_ready_o = '1;
+
+                      // write result into response to Ariane/CV6
+                      acc_resp_o.result   = result_scalar_i;
+                      acc_resp_valid_o    = 1'b1;
+
+                      // Request is fulfilled, set valid bit to 0
+                      ara_req_valid_d     = 1'b0;
                     end
                     
                     case (insn.varith_type.rs1)
