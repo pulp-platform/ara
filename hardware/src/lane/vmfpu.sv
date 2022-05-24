@@ -553,7 +553,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       EW32: begin
         case (osum_issue_cnt)
           4'd0: processed_osum_operand = (is_masked & ~mask[0]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[31:0] };
-          4'd1: processed_osum_operand = (is_masked & ~mask[0]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[63:32]};
+          4'd1: processed_osum_operand = (is_masked & ~mask[4]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[63:32]};
         endcase
       end
       //EW32: processed_osum_operand = (is_masked & ~mask[osum_issue_cnt * 4]) ?
