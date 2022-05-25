@@ -476,7 +476,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // Signal to indicate the state of the MFPU
   typedef enum logic [2:0] {
-    NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION,
+    NO_REDUCTION, NO_REDUCTION_WAIT, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION,
     WAIT_STATE, SIMD_REDUCTION, OSUM_REDUCTION
   } mfpu_state_e;
   mfpu_state_e mfpu_state_d, mfpu_state_q;
@@ -1005,6 +1005,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     vdiv_in_valid = 1'b0;
     vfpu_in_valid = 1'b0;
 
+    // If the result queue is not full, it is ready to accept a result
+    vmul_out_ready = ~result_queue_full;
+    vdiv_out_ready = ~result_queue_full;
+    vfpu_out_ready = ~result_queue_full;
+
     // Valid of the unit in use (i.e., result queue input valid) is not asserted by default
     unit_out_valid  = 1'b0;
     unit_out_result = vmul_result;
@@ -1067,7 +1072,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     intra_op_rx_cnt_en      = 1'b0;
 
     osum_issue_cnt_d        = osum_issue_cnt_q;
-    mfpu_result_req_d       = 1'b0;
+
+    // Disable if gnt received, it could be enabled again if there is a new result
+    mfpu_result_req_d       = (mfpu_result_gnt_i || mask_operand_gnt) ? 1'b0 : mfpu_result_req_q;
 
     //////////////////////////////////////////////////////////////////
     //  Issue the instruction and Write data into the result queue  //
@@ -1167,11 +1174,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           end
         end
 
-        // If the result queue is not full, it is ready to accept a result
-        vmul_out_ready = ~result_queue_full;
-        vdiv_out_ready = ~result_queue_full;
-        vfpu_out_ready = ~result_queue_full;
-
         // Select the correct valid, result, and mask, to write in the result queue
         case (vinsn_processing.op) inside
           [VMUL:VNMSUB]: begin
@@ -1256,7 +1258,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             // Did we fill up a word?
             if (to_process_cnt_d == '0 || narrowing_select_out_q) begin
               result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-              mfpu_result_req_d = 1'b1;
 
               // Bump pointers and counters of the result queue
               result_queue_cnt_d += 1;
@@ -1267,7 +1268,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             end
           end else begin
             result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-            mfpu_result_req_d = 1'b1;
 
             // Bump pointers and counters of the result queue
             result_queue_cnt_d += 1;
@@ -1280,41 +1280,43 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           // Finished issuing the micro-operations of this vector instruction
           if (to_process_cnt_d == '0) begin
             narrowing_select_out_d = 1'b0;
-
-            vinsn_queue_d.processing_cnt -= 1;
-            // Bump issue processing pointers
-            if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1) vinsn_queue_d.processing_pnt = '0;
-            else vinsn_queue_d.processing_pnt = vinsn_queue_q.processing_pnt + 1;
-
-            if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
-              vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
-
-            // Bump issue counter and pointers
-            vinsn_queue_d.issue_cnt -= 1;
-            if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
-            else vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
-
-            if (vinsn_queue_d.issue_cnt != 0) issue_cnt_d =
-              vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
-
-            //init(); TODO No idea why calling init task does not work
-            mfpu_state_d = (vinsn_queue_d.issue_cnt != 0) ? next_mfpu_state(vinsn_issue_d.op) : NO_REDUCTION;
-            
-            // The next will be the first operation of this instruction
-            // This information is useful for reduction operation
-            first_op_d         = 1'b1;
-            reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-            sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
-            // Allow the first valid
-            red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM});
-
-            ntr_filling_d           = 1'b0;
-            intra_issued_op_cnt_d   = '0;
-            first_result_op_valid_d = 1'b0;
-            intra_op_rx_cnt_d       = '0;
-            osum_issue_cnt_d        = '0;
+            mfpu_state_d = NO_REDUCTION_WAIT;
           end
         end
+      end
+      NO_REDUCTION_WAIT: begin
+        vinsn_queue_d.processing_cnt -= 1;
+        // Bump issue processing pointers
+        if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1) vinsn_queue_d.processing_pnt = '0;
+        else vinsn_queue_d.processing_pnt = vinsn_queue_q.processing_pnt + 1;
+
+        if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
+          vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
+
+        // Bump issue counter and pointers
+        vinsn_queue_d.issue_cnt -= 1;
+        if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
+        else vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+        if (vinsn_queue_d.issue_cnt != 0) issue_cnt_d =
+          vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+
+        //init(); TODO No idea why calling init task does not work
+        mfpu_state_d = (vinsn_queue_d.issue_cnt != 0) ? next_mfpu_state(vinsn_issue_d.op) : NO_REDUCTION;
+
+        // The next will be the first operation of this instruction
+        // This information is useful for reduction operation
+        first_op_d         = 1'b1;
+        reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+        sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+        // Allow the first valid
+        red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM});
+
+        ntr_filling_d           = 1'b0;
+        intra_issued_op_cnt_d   = '0;
+        first_result_op_valid_d = 1'b0;
+        intra_op_rx_cnt_d       = '0;
+        osum_issue_cnt_d        = '0;
       end
       INTRA_LANE_REDUCTION: begin
         // Short Note:
@@ -1616,9 +1618,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           // Give the done to the main sequencer
           commit_cnt_d = '0;
 
+          mfpu_result_req_d = 1'b1;
+
           // Bump pointers and counters of the result queue
           result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-          mfpu_result_req_d = 1'b1;
           result_queue_cnt_d += 1;
           if (result_queue_write_pnt_q == ResultQueueDepth-1)
             result_queue_write_pnt_d = 0;
@@ -1779,7 +1782,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     //////////////////////////////////
 
     // Send result information to the VRF
-    if (mfpu_result_req_q)
+    // Use mfpu_result_gnt register instead of mfpu_state, because the state could be changed
+    if (mfpu_result_req_q || mfpu_state_q inside {NO_REDUCTION, NO_REDUCTION_WAIT})
       mfpu_result_req_o = (result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask) ? 1'b1 : 1'b0;
     else
       mfpu_result_req_o = 1'b0;
