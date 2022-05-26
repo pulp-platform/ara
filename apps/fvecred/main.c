@@ -422,7 +422,7 @@ void vfredusum_64() {
   printf("\n");
 
   printf("======================\n");
-  printf("VL=1024 PRELOADED\n");
+  printf("VL=512 PRELOADED\n");
   printf("======================\n");
   VSET(VL_MAX_64, e64, m8);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec4));
@@ -542,7 +542,7 @@ void vfredosum_64() {
   printf("\n");
 
   printf("======================\n");
-  printf("VL=1024 PRELOADED\n");
+  printf("VL=512 PRELOADED\n");
   printf("======================\n");
   VSET(VL_MAX_64, e64, m8);
   asm volatile("vle64.v v0, (%0);" ::"r"(vec4));
