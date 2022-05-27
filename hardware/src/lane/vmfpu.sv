@@ -584,26 +584,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       15: reduction_rx_cnt_init = reduction_rx_cnt_t'(4);
     endcase
   endfunction: reduction_rx_cnt_init
-
-  // Initialization task for reduction related signals
-  task init(); begin
-    mfpu_state_d = (vinsn_queue_d.issue_cnt != 0) ? next_mfpu_state(vinsn_issue_d.op) : NO_REDUCTION;
-
-    // The next will be the first operation of this instruction
-    // This information is useful for reduction operation
-    first_op_d         = 1'b1;
-    reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-    sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
-    // Allow the first valid
-    red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM});
-
-    ntr_filling_d           = 1'b0;
-    intra_issued_op_cnt_d   = '0;
-    first_result_op_valid_d = 1'b0;
-    intra_op_rx_cnt_d       = '0;
-    osum_issue_cnt_d        = '0;
-  end endtask : init
-
   ///////////
   //  FPU  //
   ///////////
@@ -1523,7 +1503,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         end else if (sldu_transactions_cnt_q == '0) begin
           // If not lane 0, wait for the completion of the reduction
           mfpu_state_d = MFPU_WAIT;
-          //init();
 
           // Give the done to the main sequencer
           commit_cnt_d = '0;
@@ -1617,13 +1596,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
               // Ackownledge the operand_c, ready to receive the next
               // operand from operand queue
               //mfpu_operand_ready_o = operands_ready;
-              mfpu_operand_ready_o = 3'b100;
+              mfpu_operand_ready_o[2] = 1'b1;
               // Acknowledge the mask operands
               mask_ready_o = ~vinsn_issue_q.vm;
             end
 
-            // Acknowledge scalar operand (first element in vector 2)
-            if (first_op_q) mfpu_operand_ready_o = 3'b001;
+            // Acknowledge scalar operand_b
+            if (first_op_q) mfpu_operand_ready_o[0] = 1'b1;
 
             // Acknowledge operand_c from the slide unit
             // Note: Also ack even if this is the first operation in lane 0
@@ -1676,7 +1655,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           //else
           //  result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
 
-          //init();
           //// Bump processing counter and pointers
           //// Finished processing the micro-operations of this vector instruction
           //vinsn_queue_d.processing_cnt -= 1;
@@ -1732,7 +1710,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
         // Allow the first valid
-        red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM});
+        red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM}) & is_reduction(vinsn_issue_d.op);
 
         ntr_filling_d           = 1'b0;
         intra_issued_op_cnt_d   = '0;
@@ -1817,7 +1795,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         reduction_rx_cnt_d      = reduction_rx_cnt_init(NrLanes, lane_id_i);
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
         // Allow the first valid
-        red_hs_synch_d          = !(vfu_operation_i.op inside {VFREDOSUM, VFWREDOSUM});
+        red_hs_synch_d          = !(vfu_operation_i.op inside {VFREDOSUM, VFWREDOSUM}) & is_reduction(vfu_operation_i.op);
         ntr_filling_d           = 1'b0;
         intra_issued_op_cnt_d   = '0;
         first_result_op_valid_d = 1'b0;
