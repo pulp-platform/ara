@@ -113,7 +113,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       ara_req_o       <= '0;
       ara_req_valid_o <= 1'b0;
     end else begin
-      if (ara_req_ready_i) begin
+      if (ara_req_ready_i || result_scalar_valid_i) begin        // TODO: Problem here! This is why it does not switch!
         ara_req_o       <= ara_req_d;
         ara_req_valid_o <= ara_req_valid_d;
       end
@@ -281,7 +281,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
 
     if (state_d == NORMAL_OPERATION && state_q != RESHUFFLE) begin
-      if (acc_req_valid_i && ara_req_ready_i && acc_resp_ready_i) begin
+      if (acc_req_valid_i && (ara_req_ready_i || result_scalar_valid_i) && acc_resp_ready_i) begin
         // Acknowledge the request
         acc_req_ready_o = ara_req_ready_i;
 
@@ -295,8 +295,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
-            // These always respond at the same cycle
-            // TODO: no, not vfirst and vcpop
+            // These always respond at the same cycle, except vfirst and vcpop
             acc_resp_valid_o = 1'b1;
 
             // Decode based on their func3 field
