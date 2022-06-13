@@ -235,31 +235,23 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  ////////////////////////////
+  // Scalar result register //
+  ////////////////////////////
 
-  /////////////////////////
-  // Scalar result queue //
-  /////////////////////////
+  // A buffer for the result of a scalar operation (e.g. popcount_sum)
+  // before it is sent to the Dispatcher
 
-  // "Queue" with length 1 for scalar results to accumulate, TODO: maybe remane this?
-  // It's not a queue, but a register where the scalar_result can accumulate over multiple cycles
-  // Naming it a queue because the equivalent elements (stage-wise equivalent; there is no
-  // multi-cycle operations in the mask and result paths, but this is where the queues would be)
-  // It is reset once the result has been acknowledged by the dispatcher
-  riscv::xlen_t scalar_queue_d, scalar_queue_o;
-  
-  // only valid once result has finished accumulating over one or multiple cycles
-  logic scalar_queue_valid_d, scalar_queue_valid_o;
-
-  assign result_scalar_o = scalar_queue_o;
-  assign result_scalar_valid_o = scalar_queue_valid_o;
+  riscv::xlen_t result_scalar_d;
+  logic         result_scalar_valid_d;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_scalar_queue_ff
     if (!rst_ni) begin
-      scalar_queue_o       <= '0;
-      scalar_queue_valid_o <= '0;
+      result_scalar_o       <= '0;
+      result_scalar_valid_o <= '0;
     end else begin
-      scalar_queue_o       <= scalar_queue_d;
-      scalar_queue_valid_o <= scalar_queue_valid_d;
+      result_scalar_o       <= result_scalar_d;
+      result_scalar_valid_o <= result_scalar_valid_d;
     end
   end
 
@@ -487,13 +479,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     pe_req_ready_o = !vinsn_queue_full;
 
     // scalar path signals
-    scalar_queue_d        = scalar_queue_o;
-    scalar_queue_valid_d  = scalar_queue_valid_o;
+    result_scalar_d       = result_scalar_o;
+    result_scalar_valid_d = result_scalar_valid_o;
     popcount_d            = popcount_q;
     popcount_sum          = '0;
 
     /////////////////////
-    //  Mask Operands  //
+    //  Mask Operands  // : issue stage, mask path
     /////////////////////
 
     // Is there an instruction ready to be issued?
@@ -571,7 +563,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     //////////////////////////////////
-    //  Write results to the lanes  //
+    //  Write results to the lanes  // : issue stage, result path
     //////////////////////////////////
 
     last_incoming_a = ((commit_cnt_q - vrf_pnt_q) < NrLanes) ? 1'b1 : 1'b0;
@@ -670,7 +662,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     //////////////////////////////
-    // Calculate scalar results //
+    // Calculate scalar results // : issue stage, scalar path
     //////////////////////////////
 
     // TODO: find out what the issue stage does for the other paths and see what is not
@@ -697,8 +689,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           for (int lane = 0; lane < NrLanes; lane++) begin
             popcount_sum += popcount_d[lane];
           end
-          scalar_queue_d = popcount_sum;
-          scalar_queue_valid_d = '1;
+          result_scalar_d = popcount_sum;
+          result_scalar_valid_d = '1;
         end
       end
     end
@@ -721,7 +713,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
 
     /////////////////////////////////
-    //  Send operands to the VFUs  //
+    //  Send operands to the VFUs  // : commit stage, mask path
     /////////////////////////////////
 
     // [VFIRST:VCPOP] instructions don't use the mask queue, 
@@ -770,7 +762,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     //////////////////////////////////
-    //  Write results into the VRF  //
+    //  Write results into the VRF  // : commit stage, result path
     //////////////////////////////////
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
@@ -819,16 +811,17 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
 
     ///////////////////////////
-    // Commit scalar results //
+    // Commit scalar results // : commit stage, scalar path
     ///////////////////////////
 
     // TODO: write the results from the queue_q to the output _o?
 
     // The scalar result has been sent to and acknowledged by the dispatcher
-    if (vinsn_commit.op == VCPOP && scalar_queue_valid_o == 1 && result_scalar_ready_i == 1) begin
+    if (vinsn_commit.op == VCPOP && result_scalar_valid_o == 1 && result_scalar_ready_i == 1) begin
       
-      scalar_queue_d       = '0;
-      scalar_queue_valid_d = '0;
+      // reset
+      result_scalar_d       = '0;
+      result_scalar_valid_d = '0;
 
       // Decrement the commit counter by the entire number of elements,
       // since we only commit one result for everything
