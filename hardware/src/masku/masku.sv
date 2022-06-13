@@ -489,8 +489,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     /////////////////////
 
     // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid) begin
-    // if (vinsn_issue_valid && !(vinsn_issue.op inside {[VFIRST:VCPOP]})) begin
+    if (vinsn_issue_valid && !(vinsn_issue.op inside {[VFIRST:VCPOP]})) begin
       
       // Is there place in the mask queue to write the mask operands?
       // Did we receive the mask bits on the MaskM channel?
