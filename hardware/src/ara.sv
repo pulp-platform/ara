@@ -149,6 +149,7 @@ module ara import ara_pkg::*; #(
     .ara_resp_o            (ara_resp           ),
     .ara_resp_valid_o      (ara_resp_valid     ),
     .ara_idle_o            (ara_idle           ),
+    .result_scalar_ready_i (result_scalar_ready),
     // Interface with the PEs
     .pe_req_o              (pe_req             ),
     .pe_req_valid_o        (pe_req_valid       ),

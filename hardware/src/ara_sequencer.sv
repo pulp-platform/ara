@@ -24,6 +24,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output ara_resp_t                       ara_resp_o,
     output logic                            ara_resp_valid_o,
     output logic                            ara_idle_o,
+    input  logic                            result_scalar_ready_i,
     // Interface with the processing elements
     output pe_req_t                         pe_req_o,
     output logic                            pe_req_valid_o,
@@ -431,7 +432,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         end
 
         // for instructions that write scalar result back to dispatcher:
-        if (ara_req_i.op inside {[VFIRST:VCPOP]} && |pe_resp_i[NrLanes+OffsetMask].vinsn_done) begin
+        if (ara_req_i.op inside {[VFIRST:VCPOP]} && result_scalar_ready_i) begin
           // Acknowdledge the request to let the dispatcher know Ara is finished
           state_d          = IDLE;
           ara_req_ready_o  = 1'b1;
