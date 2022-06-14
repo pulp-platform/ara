@@ -305,8 +305,22 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_issue.vl >= ELEN*NrLanes)
         bit_enable = '1;
       else begin
-        bit_enable[vinsn_issue.vl] = 1'b1;
-        bit_enable                 = bit_enable - 1;
+        if (vinsn_issue.op inside {[VFIRST:VCPOP]}) begin
+          // operating on mask vectors themselves, not 1 bit per element, but vsew bits per element
+          automatic int set_bit = 0;
+          unique case(vinsn_issue.vtype.vsew)
+            EW8:  set_bit = 8;
+            EW16: set_bit = 16;
+            EW32: set_bit = 32;
+            EW64: set_bit = 64;
+            default: ;
+          endcase
+          bit_enable[vinsn_issue.vl*set_bit] = 1'b1;
+          bit_enable                      = bit_enable - 1;
+        end else begin
+          bit_enable[vinsn_issue.vl] = 1'b1;
+          bit_enable                 = bit_enable - 1;
+        end
       end
 
       // Shuffle the bit enable signal
