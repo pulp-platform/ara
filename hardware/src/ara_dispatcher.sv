@@ -1018,8 +1018,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     
                     case (insn.varith_type.rs1)
                       // 5'b00000: vmv.x.s
-                      5'b10001: begin
-                        ara_req_d.op        = ara_pkg::VFIRST;
+                      5'b10001: begin       // ara_pkg::VFIRST
+                        // TODO: Not implemented
+                        illegal_insn     = 1'b1;
+                        acc_req_ready_o  = 1'b1;
+                        acc_resp_valid_o = 1'b1;
                       end
                       5'b10000: begin
                         ara_req_d.op        = ara_pkg::VCPOP;
