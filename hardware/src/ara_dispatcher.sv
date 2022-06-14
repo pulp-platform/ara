@@ -1023,6 +1023,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b10000: begin
                         ara_req_d.op        = ara_pkg::VCPOP;
+                        // raise an illegal instruction exception if vstart is non-zero
+                        if (ara_req_d.vstart != '0) begin
+                          illegal_insn     = 1'b1;
+                          acc_req_ready_o  = 1'b1;
+                          acc_resp_valid_o = 1'b1;
+                        end
                       end
                       default: illegal_insn = 1'b1;
                     endcase
