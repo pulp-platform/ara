@@ -316,7 +316,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             default: ;
           endcase
           bit_enable[vinsn_issue.vl*set_bit] = 1'b1;
-          bit_enable                      = bit_enable - 1;
+          bit_enable                         = bit_enable - 1;
         end else begin
           bit_enable[vinsn_issue.vl] = 1'b1;
           bit_enable                 = bit_enable - 1;
@@ -683,7 +683,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // It also has a vinsn_issue.op case check, which make it the better place to implement stuff
     if (vinsn_issue_valid && vinsn_issue.op inside {[VFIRST:VCPOP]}) begin
       if (masku_operand_b_valid_i && (masku_operand_m_valid_i || vinsn_issue.vm)) begin
-        // accumulate popcounts in the popcount register\
+        // accumulate popcounts in the popcount register
         for (int lane = 0; lane < NrLanes; lane++) begin
           popcount_d[lane] = popcount_q[lane] + popcount[lane];
         end
