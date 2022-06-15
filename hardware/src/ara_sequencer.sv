@@ -298,15 +298,15 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               write_list_d[VMASK].valid;
 
             // WAR
-            if (ara_req_i.use_vd) begin
+            if (ara_req_i.use_vd && !(ara_req_i.op inside {[VFIRST:VCPOP]})) begin
               pe_req_d.hazard_vs1[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
               pe_req_d.hazard_vs2[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
               pe_req_d.hazard_vm[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
             end
 
             // WAW
-            if (ara_req_i.use_vd) pe_req_d.hazard_vd[write_list_d[ara_req_i.vd].vid] |=
-              write_list_d[ara_req_i.vd].valid;
+            if (ara_req_i.use_vd && !(ara_req_i.op inside {[VFIRST:VCPOP]})) 
+              pe_req_d.hazard_vd[write_list_d[ara_req_i.vd].vid] |= write_list_d[ara_req_i.vd].valid;
 
             /////////////
             //  Issue  //
@@ -394,7 +394,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               pe_req_valid_d = 1'b1;
 
               // Mark that this vector instruction is writing to vector vd
-              if (ara_req_i.use_vd) write_list_d[ara_req_i.vd] = '{vid: vinsn_id_n, valid: 1'b1};
+              if (ara_req_i.use_vd && !(ara_req_i.op inside {[VFIRST:VCPOP]})) 
+                write_list_d[ara_req_i.vd] = '{vid: vinsn_id_n, valid: 1'b1};
 
               // Mark that this loop is reading vs
               if (ara_req_i.use_vs1) read_list_d[ara_req_i.vs1] = '{vid: vinsn_id_n, valid: 1'b1};
