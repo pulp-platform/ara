@@ -46,7 +46,6 @@ module ara import ara_pkg::*; #(
   );
 
   import cf_math_pkg::idx_width;
-  import riscv::xlen_t;
 
   ///////////////////
   //  Definitions  //
@@ -82,10 +81,6 @@ module ara import ara_pkg::*; #(
   // Interface with the lanes
   logic      [NrLanes-1:0][4:0] fflags_ex;
   logic      [NrLanes-1:0]      fflags_ex_valid;
-  // Interface with the Mask Unit
-  xlen_t                        result_scalar;
-  logic                         result_scalar_valid;
-  logic                         result_scalar_ready;
 
   ara_dispatcher #(
     .NrLanes(NrLanes)
@@ -113,11 +108,7 @@ module ara import ara_pkg::*; #(
     .core_st_pending_o(core_st_pending ),
     .load_complete_i  (load_complete   ),
     .store_complete_i (store_complete  ),
-    .store_pending_i  (store_pending   ),
-    // Interface with the Mask Unit
-    .result_scalar_i  (result_scalar   ),
-    .result_scalar_valid_i(result_scalar_valid),
-    .result_scalar_ready_o(result_scalar_ready)
+    .store_pending_i  (store_pending   )
   );
 
   /////////////////
@@ -138,6 +129,9 @@ module ara import ara_pkg::*; #(
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
   logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table;
+  // Interface with the Mask Unit
+  elen_t                        result_scalar;
+  logic                         result_scalar_valid;
 
   ara_sequencer #(.NrLanes(NrLanes)) i_sequencer (
     .clk_i                 (clk_i              ),
@@ -149,7 +143,6 @@ module ara import ara_pkg::*; #(
     .ara_resp_o            (ara_resp           ),
     .ara_resp_valid_o      (ara_resp_valid     ),
     .ara_idle_o            (ara_idle           ),
-    .result_scalar_ready_i (result_scalar_ready),
     // Interface with the PEs
     .pe_req_o              (pe_req             ),
     .pe_req_valid_o        (pe_req_valid       ),
@@ -166,7 +159,10 @@ module ara import ara_pkg::*; #(
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack        ),
     .addrgen_error_i       (addrgen_error      ),
-    .addrgen_error_vl_i    (addrgen_error_vl   )
+    .addrgen_error_vl_i    (addrgen_error_vl   ),
+    // Interface with the Mask Unit
+    .result_scalar_i       (result_scalar      ),
+    .result_scalar_valid_i (result_scalar_valid)
   );
 
   /////////////
@@ -410,6 +406,8 @@ module ara import ara_pkg::*; #(
     .pe_vinsn_running_i      (pe_vinsn_running                ),
     .pe_req_ready_o          (pe_req_ready[NrLanes+OffsetMask]),
     .pe_resp_o               (pe_resp[NrLanes+OffsetMask]     ),
+    .result_scalar_o         (result_scalar                   ),
+    .result_scalar_valid_o   (result_scalar_valid             ),
     // Interface with the lanes
     .masku_operand_i         (masku_operand                   ),
     .masku_operand_valid_i   (masku_operand_valid             ),
@@ -428,11 +426,7 @@ module ara import ara_pkg::*; #(
     .lane_mask_ready_i       (lane_mask_ready                 ),
     .vldu_mask_ready_i       (vldu_mask_ready                 ),
     .vstu_mask_ready_i       (vstu_mask_ready                 ),
-    .sldu_mask_ready_i       (sldu_mask_ready                 ),
-    // Interface with the Dispatcher
-    .result_scalar_o         (result_scalar                   ),
-    .result_scalar_valid_o   (result_scalar_valid             ),
-    .result_scalar_ready_i   (result_scalar_ready             )
+    .sldu_mask_ready_i       (sldu_mask_ready                 )
   );
 
   //////////////////

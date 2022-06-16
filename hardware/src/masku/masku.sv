@@ -27,6 +27,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrVInsn-1:0]                     pe_vinsn_running_i,
     output logic                                       pe_req_ready_o,
     output pe_resp_t                                   pe_resp_o,
+    output elen_t                                      result_scalar_o,
+    output logic                                       result_scalar_valid_o,
     // Interface with the lanes
     input  elen_t    [NrLanes-1:0][NrMaskFUnits+2-1:0] masku_operand_i,
     input  logic     [NrLanes-1:0][NrMaskFUnits+2-1:0] masku_operand_valid_i,
@@ -45,11 +47,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrLanes-1:0]                     lane_mask_ready_i,
     input  logic                                       vldu_mask_ready_i,
     input  logic                                       vstu_mask_ready_i,
-    input  logic                                       sldu_mask_ready_i,
-    // Interface with the dispatcher
-    output riscv::xlen_t                               result_scalar_o,
-    output logic                                       result_scalar_valid_o,
-    input  logic                                       result_scalar_ready_i
+    input  logic                                       sldu_mask_ready_i
   );
 
   import cf_math_pkg::idx_width;
@@ -242,7 +240,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // A buffer for the result of a scalar operation (e.g. popcount_sum)
   // before it is sent to the Dispatcher
 
-  riscv::xlen_t result_scalar_d;
+  elen_t        result_scalar_d;
   logic         result_scalar_valid_d;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_scalar_queue_ff
@@ -267,8 +265,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   logic         [NrLanes*ELEN-1:0]                      vcpop_to_count;
   logic         [NrLanes-1:0][$clog2(DataWidth)+1-1:0]  popcount;
-  riscv::xlen_t [NrLanes-1:0]                           popcount_d, popcount_q;
-  riscv::xlen_t                                         popcount_sum;
+  elen_t        [NrLanes-1:0]                           popcount_d, popcount_q;
+  elen_t                                                popcount_sum;
 
   // Pointers
   //
@@ -704,6 +702,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
           result_scalar_d = popcount_sum;
           result_scalar_valid_d = '1;
+
+          // Decrement the commit counter by the entire number of elements,
+          // since we only commit one result for everything
+          commit_cnt_d = '0;
         end
       end
     end
@@ -830,17 +832,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // TODO: write the results from the queue_q to the output _o?
 
     // The scalar result has been sent to and acknowledged by the dispatcher
-    if (vinsn_commit.op == VCPOP && result_scalar_valid_o == 1 && result_scalar_ready_i == 1) begin
+    if (vinsn_commit.op == VCPOP && result_scalar_valid_o == 1) begin
       
-      // reset
+      // reset result_scalar
       result_scalar_d       = '0;
       result_scalar_valid_d = '0;
 
-      // Decrement the commit counter by the entire number of elements,
-      // since we only commit one result for everything
-      commit_cnt_d = '0;
-
-      // reset popcount_d
+      // reset popcount
       popcount_d = '0;
     end
 

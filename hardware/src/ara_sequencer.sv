@@ -24,7 +24,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output ara_resp_t                       ara_resp_o,
     output logic                            ara_resp_valid_o,
     output logic                            ara_idle_o,
-    input  logic                            result_scalar_ready_i,
     // Interface with the processing elements
     output pe_req_t                         pe_req_o,
     output logic                            pe_req_valid_o,
@@ -41,7 +40,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Interface with the Address Generation
     input  logic                            addrgen_ack_i,
     input  logic                            addrgen_error_i,
-    input  vlen_t                           addrgen_error_vl_i
+    input  vlen_t                           addrgen_error_vl_i,
+    // Interface with the Mask Unit
+    input  elen_t                           result_scalar_i,
+    input  logic                            result_scalar_valid_i
   );
 
   ///////////////////////////////////
@@ -384,8 +386,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
               // Some instructions need to wait for an acknowledgment
               // before being committed with Ariane
-              if (is_load(ara_req_i.op) || is_store(ara_req_i.op) || !ara_req_i.use_vd || 
-                  ara_req_i.op inside {[VFIRST:VCPOP]}) begin
+              if (is_load(ara_req_i.op) || is_store(ara_req_i.op) || !ara_req_i.use_vd) begin
                 ara_req_ready_o = 1'b0;
                 state_d         = WAIT;
               end
@@ -403,6 +404,17 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               if (!ara_req_i.vm) read_list_d[VMASK]             = '{vid: vinsn_id_n, valid: 1'b1};
             end
           end else ara_req_ready_o = 1'b0; // Wait until the PEs are ready
+        end
+
+        ////////////////////
+        // Scalar results //
+        ////////////////////
+
+        if (result_scalar_valid_i) begin
+          ara_resp_o.resp     = result_scalar_i;
+          ara_resp_o.error    = '0;
+          ara_resp_o.error_vl = '0;
+          ara_resp_valid_o    = 1'b1;
         end
       end
 
@@ -430,13 +442,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           ara_req_ready_o  = 1'b1;
           ara_resp_o.resp  = pe_scalar_resp_i;
           ara_resp_valid_o = 1'b1;
-        end
-
-        // for instructions that write scalar result back to dispatcher:
-        if (ara_req_i.op inside {[VFIRST:VCPOP]} && result_scalar_ready_i) begin
-          // Acknowdledge the request to let the dispatcher know Ara is finished
-          state_d          = IDLE;
-          ara_req_ready_o  = 1'b1;
         end
       end
     endcase
