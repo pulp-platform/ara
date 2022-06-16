@@ -380,9 +380,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // wide signal to please the tool
             red_stride_cnt_d_wide = {red_stride_cnt_q, red_stride_cnt_q[idx_width(NrLanes)-1]};
             red_stride_cnt_d      = red_stride_cnt_d_wide[idx_width(NrLanes)-1:0];
-            // We used all the bits of the mask
-            if (vinsn_issue_q.op == VSLIDEUP)
-              mask_ready_o = !vinsn_issue_q.vm;
           end
 
           // Filled up a word to the VRF or finished the instruction
@@ -390,7 +387,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // Reset the pointer
             out_pnt_d = vinsn_issue_q.vfu == VFU_Alu ? {'0, red_stride_cnt_d, 3'b0} : '0;
             // We used all the bits of the mask
-            if (vinsn_issue_q.op == VSLIDEDOWN)
+            if (vinsn_issue_q.op inside {VSLIDEUP, VSLIDEDOWN})
               mask_ready_o = !vinsn_issue_q.vm;
 
             // Increment VRF address

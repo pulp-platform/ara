@@ -385,6 +385,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t issue_cnt_d, issue_cnt_q;
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
+  // Effective MASKU stride in case of VSLIDEUP
+  // MASKU receives chunks of 64 * NrLanes mask bits from the lanes
+  // VSLIDEUP only needs the bits whose index >= than its stride
+  // So, the operand requester does not send vl mask bits to MASKU
+  // and trims all the unused 64 * NrLanes mask bits chunks
+  // Therefore, the stride needs to be trimmed, too
+  elen_t trimmed_stride;
 
   logic [NrLanes-1:0] fake_a_valid;
   logic last_incoming_a;
@@ -416,6 +423,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     result_queue_cnt_d       = result_queue_cnt_q;
 
     result_final_gnt_d = result_final_gnt_q;
+
+    trimmed_stride = pe_req_i.stride;
 
     // Vector instructions currently running
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
@@ -719,6 +728,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Accept new instruction  //
     //////////////////////////////
 
+    // Trim the slide stride if it is higher than NrLanes * 64
+    // and we have a VSLIDEUP, as the mask bits with index lower than
+    // this stride are not used and therefore not sent to the MASKU
+    if (pe_req_i.stride >= NrLanes * 64)
+      trimmed_stride = pe_req_i.stride - ((pe_req_i.stride >> NrLanes * 64) << NrLanes * 64);
+
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
         (!pe_req_i.vm || pe_req_i.vfu == VFU_MaskUnit)) begin
       vinsn_queue_d.vinsn[0]       = pe_req_i;
@@ -731,8 +746,26 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
         // Trim skipped words
         if (pe_req_i.op == VSLIDEUP) begin
-          issue_cnt_d -= vlen_t'(pe_req_i.stride);
-          read_cnt_d -= vlen_t'(pe_req_i.stride);
+          issue_cnt_d -= vlen_t'(trimmed_stride);
+          case (pe_req_i.vtype.vsew)
+            EW8:  begin
+              read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 3)) << $clog2(NrLanes << 3);
+              mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 3)) << $clog2(NrLanes << 3);
+            end
+            EW16: begin
+              read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 2)) << $clog2(NrLanes << 2);
+              mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 2)) << $clog2(NrLanes << 2);
+            end
+            EW32: begin
+              read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 1)) << $clog2(NrLanes << 1);
+              mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 1)) << $clog2(NrLanes << 1);
+            end
+            EW64: begin
+              read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes)) << $clog2(NrLanes);
+              mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes)) << $clog2(NrLanes);
+            end
+            default:;
+          endcase
         end
 
         // Reset the final grant vector
@@ -744,7 +777,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = pe_req_i.vl;
         // Trim skipped words
         if (pe_req_i.op == VSLIDEUP)
-          commit_cnt_d -= vlen_t'(pe_req_i.stride);
+          commit_cnt_d -= vlen_t'(trimmed_stride);
       end
 
       // Bump pointers and counters of the vector instruction queue
