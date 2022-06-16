@@ -537,6 +537,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               if (((operand_request_i[MaskM].vl + pe_req.stride) <<
                     int'(pe_req.vtype.vsew) * NrLanes * 8 != pe_req.vl))
                 operand_request_i[MaskM].vl += 1;
+
+              // SLIDEUP only uses mask bits whose indices are > stride
+              // Don't send the previous (unused) ones to the MASKU
+              if (pe_req.stride >= NrLanes * 64)
+                operand_request_i[MaskM].vstart += ((pe_req.stride >> NrLanes * 64) << NrLanes * 64) / 8;
             end
             VSLIDEDOWN: begin
               // Since this request goes outside of the lane, we might need to request an
