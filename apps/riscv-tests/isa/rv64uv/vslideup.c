@@ -120,6 +120,38 @@ void TEST_CASE4() {
   VCMP_U64(16, v1, -1, -1, -1, 1, -1, 3, -1, 5, -1, 7, -1, 9, -1, 11, -1, 13);
 }
 
+// Stress the masked VSLIDEUP to enforce that the used mask bit indices should
+// follow the output vector element indices and not the input ones
+void TEST_CASE5() {
+  VSET(16, e8, m1);
+  VLOAD_8(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+  VLOAD_8(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+  VLOAD_8(v0, 0xAA, 0x80);
+  asm volatile("vslideup.vi v1, v2, 3, v0.t");
+  VCMP_U8(17, v1, -1, -1, -1, 1, -1, 3, -1, 5, -1, -1, -1, -1, -1, -1, -1, 13);
+
+  VSET(16, e16, m1);
+  VLOAD_16(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+  VLOAD_16(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+  asm volatile("vslideup.vi v1, v2, 4, v0.t");
+  VCMP_U16(18, v1, -1, -1, -1, -1, -1, 2, -1, 4, -1, -1, -1, -1, -1, -1, -1,
+           12);
+
+  VSET(16, e32, m1);
+  VLOAD_32(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+  VLOAD_32(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+  asm volatile("vslideup.vi v1, v2, 5, v0.t");
+  VCMP_U32(19, v1, -1, -1, -1, -1, -1, 1, -1, 3, -1, -1, -1, -1, -1, -1, -1,
+           11);
+
+  VSET(16, e64, m1);
+  VLOAD_64(v2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+  VLOAD_64(v1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+  asm volatile("vslideup.vi v1, v2, 6, v0.t");
+  VCMP_U64(20, v1, -1, -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1,
+           10);
+}
+
 int main(void) {
   INIT_CHECK();
   enable_vec();
@@ -128,6 +160,7 @@ int main(void) {
   TEST_CASE2();
   TEST_CASE3();
   TEST_CASE4();
+  TEST_CASE5();
 
   EXIT_CHECK();
 }

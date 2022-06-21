@@ -54,6 +54,16 @@ void TEST_CASE5() {
   VCMP_U8(5, v1, 0x84, 0xE1);
 }
 
+void TEST_CASE6() {
+  VSET(64, e8, m1);
+  VLOAD_8(v2, 0xCD, 0xEF, 0xCD, 0xEF, 0xCD, 0xEF, 0xCD, 0xEF);
+  VLOAD_8(v3, 0x84, 0x21, 0x84, 0x21, 0x84, 0x21, 0x84, 0x21);
+  asm volatile("vmand.mm v1, v2, v3");
+  VSET(13, e8, m1);
+  VCLEAR(v2);
+  VCMP_U8(6, v2, 0, 0, 0, 0, 0, 0, 0, 0);
+}
+
 int main(void) {
   INIT_CHECK();
   enable_vec();
@@ -63,6 +73,7 @@ int main(void) {
   TEST_CASE3();
   TEST_CASE4();
   TEST_CASE5();
+  TEST_CASE6();
 
   EXIT_CHECK();
 }
