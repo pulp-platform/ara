@@ -12,6 +12,8 @@ void TEST_CASE1(void) {
   VSET(4, e32, m1);
   VLOAD_32(v2, 7, 0, 0, 0);
   VLOAD_32(v0, 5, 0, 0, 0);
+  // vcpop interprets the vl as bits, not as e32 elements
+  VSET(128, e32, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0};
   __asm__ volatile("vpopc.m %[A], v2, v0.t \n"
@@ -25,6 +27,7 @@ void TEST_CASE1(void) {
 void TEST_CASE2(void) {
   VSET(4, e32, m1);
   VLOAD_32(v2, 9, 7, 5, 3);
+  VSET(128, e32, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0};
   __asm__ volatile("vpopc.m %[A], v2 \n"
@@ -39,6 +42,7 @@ void TEST_CASE3(void) {
   VSET(6, e8, m1);
   VLOAD_8(v2, 0xf, 0x0, 0xf, 0x0, 0x3, 0x0);
   VLOAD_8(v0, 0x1, 0x0, 0x0, 0x0, 0x7, 0x0);
+  VSET(48, e8, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0, 0, 0};
   __asm__ volatile("vpopc.m %[A], v2, v0.t \n"
@@ -52,6 +56,7 @@ void TEST_CASE3(void) {
 void TEST_CASE4(void) {
   VSET(6, e8, m1);
   VLOAD_8(v2, 0xf, 0x0, 0xf, 0x0, 0x3, 0x0);
+  VSET(48, e8, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0, 0, 0};
   __asm__ volatile("vpopc.m %[A], v2 \n"
@@ -65,6 +70,7 @@ void TEST_CASE4(void) {
 void TEST_CASE5(void) {
   VSET(2, e32, m1);
   VLOAD_32(v2, 0, 0);
+  VSET(64, e32, m1);
   volatile uint32_t scalar = 1234;
   volatile uint32_t OUP[] = {0, 0};
   __asm__ volatile("vpopc.m %[A], v2 \n"

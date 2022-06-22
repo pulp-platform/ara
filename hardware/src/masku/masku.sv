@@ -298,27 +298,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Calculate bit enable
       // The result can be taken either from the result of an operation (mask_operand_a_i), or
       // from the previous value of the destination register (mask_operand_b_i). Byte strobes
-      // do not work here, since this has to be done at a bit granularity. Therefore, the Mask Unit
+      // do not work here, since this has to be done at a *bit granularity*. Therefore, the Mask Unit
       // received both operands, and does a masking depending on the value of the vl.
       if (vinsn_issue.vl >= ELEN*NrLanes)
         bit_enable = '1;
       else begin
-        if (vinsn_issue.op inside {[VFIRST:VCPOP]}) begin
-          // operating on mask vectors themselves, not 1 bit per element, but vsew bits per element
-          automatic int set_bit = 0;
-          unique case(vinsn_issue.vtype.vsew)
-            EW8:  set_bit = 8;
-            EW16: set_bit = 16;
-            EW32: set_bit = 32;
-            EW64: set_bit = 64;
-            default: ;
-          endcase
-          bit_enable[vinsn_issue.vl*set_bit] = 1'b1;
-          bit_enable                         = bit_enable - 1;
-        end else begin
           bit_enable[vinsn_issue.vl] = 1'b1;
           bit_enable                 = bit_enable - 1;
-        end
       end
 
       // Shuffle the bit enable signal
