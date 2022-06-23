@@ -42,7 +42,7 @@ dpi_library    ?= work-dpi
 # verilator library
 veril_library  ?= $(buildpath)/verilator
 # verilator path
-veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
+veril_path     ?= /usr/local/bin#$(abspath $(INSTALL_DIR)/verilator/bin)
 # verilator top-level
 veril_top      ?= ara_tb_verilator
 # Top level module to compile

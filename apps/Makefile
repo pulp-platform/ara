@@ -97,7 +97,7 @@ $(foreach app,$(APPS),$(eval $(call app_compile_template_spike,$(app))))
 define app_compile_template
 bin/$1: $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC_GCC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -113,7 +113,7 @@ bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_GCC) linker_script
 	mkdir -p bin/
 	$$(RISCV_CC_GCC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS_GCC) $$(RISCV_LDFLAGS_GCC) -o $$@ $$< $(RUNTIME_GCC) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
-	$$(RISCV_STRIP) $$@ -S --strip-unneeded
+	#$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
 
 define rvtest_compile_template_c
@@ -121,9 +121,9 @@ TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME_LLVM) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC_GCC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME_LLVM) -T$$(CURDIR)/common/link.ld
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
-	$$(RISCV_STRIP) $$@ -S --strip-unneeded
+	#$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
 # CVA6 tests are written in assembly
 $(foreach extension, $(CVA6_EXTENSIONS), $(eval $(call rvtest_compile_template,$(extension),S)))
