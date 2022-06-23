@@ -1019,7 +1019,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       // Request is fulfilled, set valid bit to 0
                       ara_req_valid_d     = 1'b0;
                     end
-                    
+
                     case (insn.varith_type.rs1)
                       // 5'b00000: vmv.x.s
                       5'b10001: begin       // ara_pkg::VFIRST
@@ -1030,6 +1030,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b10000: begin
                         ara_req_d.op        = ara_pkg::VCPOP;
+                        ara_req_d.eew_vd_op = eew_q[insn.vmem_type.rs2];
                         // raise an illegal instruction exception if vstart is non-zero
                         if (ara_req_d.vstart != '0) begin
                           illegal_insn     = 1'b1;
