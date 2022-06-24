@@ -16,7 +16,7 @@ void TEST_CASE1(void) {
   VSET(128, e32, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0};
-  __asm__ volatile("vpopc.m %[A], v2, v0.t \n"
+  __asm__ volatile("vcpop.m %[A], v2, v0.t \n"
                    "sw %[A], (%1) \n"
                    :
                    : [A] "r"(scalar), "r"(OUP));
@@ -30,7 +30,7 @@ void TEST_CASE2(void) {
   VSET(128, e32, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0};
-  __asm__ volatile("vpopc.m %[A], v2 \n"
+  __asm__ volatile("vcpop.m %[A], v2 \n"
                    "sw %[A], (%1) \n"
                    :
                    : [A] "r"(scalar), "r"(OUP));
@@ -45,7 +45,7 @@ void TEST_CASE3(void) {
   VSET(48, e8, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0, 0, 0};
-  __asm__ volatile("vpopc.m %[A], v2, v0.t \n"
+  __asm__ volatile("vcpop.m %[A], v2, v0.t \n"
                    "sw %[A], (%1) \n"
                    :
                    : [A] "r"(scalar), "r"(OUP));
@@ -59,7 +59,7 @@ void TEST_CASE4(void) {
   VSET(48, e8, m1);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0, 0, 0};
-  __asm__ volatile("vpopc.m %[A], v2 \n"
+  __asm__ volatile("vcpop.m %[A], v2 \n"
                    "sw %[A], (%1) \n"
                    :
                    : [A] "r"(scalar), "r"(OUP));
@@ -73,7 +73,7 @@ void TEST_CASE5(void) {
   VSET(64, e32, m1);
   volatile uint32_t scalar = 1234;
   volatile uint32_t OUP[] = {0, 0};
-  __asm__ volatile("vpopc.m %[A], v2 \n"
+  __asm__ volatile("vcpop.m %[A], v2 \n"
                    "sw %[A], (%1) \n"
                    :
                    : [A] "r"(scalar), "r"(OUP));
