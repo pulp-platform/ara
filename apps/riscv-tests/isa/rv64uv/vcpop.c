@@ -37,7 +37,7 @@ void TEST_CASE2(void) {
   XCMP(1, OUP[0], 9);
 }
 
-// more elements, smaller elements, masked
+// number of elements that does not fill lanes, masked
 void TEST_CASE3(void) {
   VSET(6, e8, m1);
   VLOAD_8(v2, 0xf, 0x0, 0xf, 0x0, 0x3, 0x0);
