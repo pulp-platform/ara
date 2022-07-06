@@ -634,7 +634,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // vd_scalar              : send vs2 to the MaskB channel 
           // all other instructions : send vd  to the MaskB channel
-          operand_request_i[MaskB] = {
+          operand_request_i[MaskB] = '{
             id      : pe_req.id,
             vs      : vd_scalar(pe_req.op) ? pe_req.vs2     : pe_req.vd,
             eew     : vd_scalar(pe_req.op) ? pe_req.eew_vs2 : pe_req.eew_vd_op,
