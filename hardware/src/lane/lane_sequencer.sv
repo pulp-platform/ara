@@ -632,33 +632,21 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           operand_request_i[MulFPUB].vl = vfu_operation_d.vl;
           operand_request_push[MulFPUB] = pe_req.use_vs2 && pe_req.op inside {[VMFEQ:VMFGE]};
 
-          // these instructions send vs2 to the MaskB channel
-          operand_request_i[MaskB] = pe_req.op inside {[VFIRST:VCPOP]} ?
-          '{
+          // [VFIRST:VCPOP]         : send vs2 to the MaskB channel 
+          // all other instructions : send vd  to the MaskB channel
+          operand_request_i[MaskB] = {
             id      : pe_req.id,
-            vs      : pe_req.vs2,
-            eew     : pe_req.eew_vs2,
+            vs      : pe_req.op inside {[VFIRST:VCPOP]} ? pe_req.vs2     : pe_req.vd,
+            eew     : pe_req.op inside {[VFIRST:VCPOP]} ? pe_req.eew_vs2 : pe_req.eew_vd_op,
             scale_vl: pe_req.scale_vl,
             vtype   : pe_req.vtype,
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
-            vl      : (pe_req.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req.eew_vs2)),
+            vl      : pe_req.op inside {[VFIRST:VCPOP]} ?
+                      (pe_req.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req.eew_vs2)) :
+                      (pe_req.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req.vtype.vsew)),
             vstart  : vfu_operation_d.vstart,
-            hazard  : pe_req.hazard_vs2,
-            default : '0
-          } :
-          // all other instrutions: send vd to MaskB channel
-          '{
-            id      : pe_req.id,
-            vs      : pe_req.vd,
-            eew     : pe_req.eew_vd_op,
-            scale_vl: pe_req.scale_vl,
-            vtype   : pe_req.vtype,
-            // Since this request goes outside of the lane, we might need to request an
-            // extra operand regardless of whether it is valid in this lane or not.
-            vl      : (pe_req.vl / NrLanes / ELEN) << (int'(EW64) - int'(pe_req.vtype.vsew)),
-            vstart  : vfu_operation_d.vstart,
-            hazard  : pe_req.hazard_vd,
+            hazard  : pe_req.op inside {[VFIRST:VCPOP]} ? pe_req.hazard_vs2 : pe_req.hazard_vd,
             default : '0
           };
           if (((pe_req.vl / NrLanes / ELEN) * NrLanes * ELEN) !=
