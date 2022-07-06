@@ -2631,7 +2631,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // This operation is costly when occurs, so avoid it if the whole vector is overwritten
       // or if the register is empty or the destination register is a scalar register
       if (ara_req_valid_d && ara_req_d.use_vd && !acc_resp_o.error &&
-          !(ara_req_d.op inside {[VFIRST:VCPOP]}) &&
+          !(vd_scalar(ara_req_d.op)) &&
           ara_req_d.vtype.vsew != eew_q[ara_req_d.vd] && eew_valid_q[ara_req_d.vd] &&
           vl_q != VLENB >> ara_req_d.vtype.vsew) begin
         // Instruction is of one of the RVV types

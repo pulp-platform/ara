@@ -498,7 +498,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     /////////////////////
 
     // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid && !(vinsn_issue.op inside {[VFIRST:VCPOP]})) begin
+    if (vinsn_issue_valid && !(vd_scalar(vinsn_issue.op))) begin
 
       // Is there place in the mask queue to write the mask operands?
       // Did we receive the mask bits on the MaskM channel?
@@ -674,7 +674,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid && vinsn_issue.op inside {[VFIRST:VCPOP]}) begin
+    if (vinsn_issue_valid && vd_scalar(vinsn_issue.op)) begin
       if (masku_operand_b_valid_i && (masku_operand_m_valid_i || vinsn_issue.vm)) begin
         // accumulate popcounts in the popcount register
         for (int lane = 0; lane < NrLanes; lane++) begin
@@ -723,9 +723,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Send operands to the VFUs  // : commit stage, mask path
     /////////////////////////////////
 
-    // [VFIRST:VCPOP] instructions don't use the mask queue,
+    // vd_scalar() instructions don't use the mask queue,
     // but this section interferes with the commit_cnt
-    if (!(vinsn_commit.op inside {[VFIRST:VCPOP]})) begin
+    if (!(vd_scalar(vinsn_commit.op))) begin
 
       for (int lane = 0; lane < NrLanes; lane++) begin: send_operand
         mask_valid_o[lane] = mask_queue_valid_q[mask_queue_read_pnt_q][lane];
