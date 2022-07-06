@@ -12,3 +12,5 @@ def_args_jacobi2d    = "130 130 0"
 def_args_dropout     = "1024"
 # Vector size, data-type
 def_args_fft         = "64 float32"
+# Vector size
+def_args_dwt         = "512"
