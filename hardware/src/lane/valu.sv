@@ -428,7 +428,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
               // Narrowing instructions might need an extra cycle before acknowledging the mask operands
               // If the results are being sent to the Mask Unit, it is up to it to acknowledge the operands.
-              if (!narrowing(vinsn_issue_q.op) && vinsn_issue_q != VFU_MaskUnit)
+              if (!narrowing(vinsn_issue_q.op))
                 mask_ready_o = !vinsn_issue_q.vm;
 
               // Store the result in the result queue
@@ -457,8 +457,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                   result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
 
                   // Acknowledge the mask operand, if needed
-                  if (vinsn_issue_q != VFU_MaskUnit)
-                    mask_ready_o = !vinsn_issue_q.vm;
+                  mask_ready_o = !vinsn_issue_q.vm;
 
                   // Bump pointers and counters of the result queue
                   result_queue_cnt_d += 1;
