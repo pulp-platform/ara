@@ -490,7 +490,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                   vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
                 if (vinsn_queue_d.issue_cnt != 0)
-                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+                  if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
+                    issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+                  else begin
+                    // Operations between mask vectors operate on bits
+                    issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
+                      vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
+                    issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
+                  end
               end
             end
           end
@@ -560,7 +567,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                   vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
                 if (vinsn_queue_d.issue_cnt != 0)
-                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+                  if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
+                    issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+                  else begin
+                    issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
+                      vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
+                    issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
+                  end
               end
             end
           end else begin
@@ -643,7 +656,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                 vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
               if (vinsn_queue_d.issue_cnt != 0)
-                issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+                if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
+                  issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+                else begin
+                  issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
+                    vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;;
+                  issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
+                end
 
               alu_state_d = is_reduction(vinsn_issue_d.op) && (vinsn_queue_d.issue_cnt != 0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
               // The next will be the first operation of this instruction
@@ -719,8 +738,16 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       else vinsn_queue_d.commit_pnt += 1;
 
       // Update the commit counter for the next instruction
-      if (vinsn_queue_d.commit_cnt != '0) commit_cnt_d =
-        vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+      if (vinsn_queue_d.commit_cnt != '0)
+        if (!(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {[VMANDNOT:VMXNOR]}))
+          commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+        else begin
+          // We are asking for bits, and we want at least one chunk of bits if
+          // vl > 0. Therefore, commit_cnt = ceil((vl / 8) >> sew)
+          commit_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl / 8) >>
+            vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew;
+          commit_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl[2:0];
+        end
 
       // Initialize counters and alu state if needed by the next instruction
       // After a reduction, the next instructions starts after the reduction commits
@@ -762,7 +789,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         red_hs_synch_d = 1'b1;
         issue_cnt_d    = vfu_operation_i.vl;
       end
-      if (vinsn_queue_d.commit_cnt == '0) commit_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.commit_cnt == '0)
+        if (!(vfu_operation_i.op inside {[VMANDNOT:VMXNOR]}))
+          commit_cnt_d = vfu_operation_i.vl;
+        else begin
+          // Operations between mask vectors operate on bits
+          commit_cnt_d  = (vfu_operation_i.vl / 8) >> vfu_operation_i.vtype.vsew;
+          commit_cnt_d += |vfu_operation_i.vl[2:0];
+        end
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
