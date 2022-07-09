@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Avoid losing hazard-related information in the pipeline between the main sequencer and the operand requesters
  - Fix anticipated grant bug from operand requester to LDU, SLDU, MASKU, because of the stream registers. Now, the three units wait for a final true grant before commiting
  - The mask unit does not require synchronized lanes anymore to commit an instruction
+ - MASKU does not wait anymore for valid incoming data from inactive lanes
+ - Fix corner-case comparison in MASKU to provide the expected behavior
+ - Fix MaskB-queue vector length in the lane sequencer
 
 ## Added
 
