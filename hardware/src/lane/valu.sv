@@ -409,7 +409,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     if (vinsn_issue_valid || alu_state_q != NO_REDUCTION) begin
       case (alu_state_q)
         NO_REDUCTION: begin
-          if (!result_queue_full) begin
+          // Do not accept operands if the result queue is full!
+          // Do not accept operands from this state if the current instruction is a reduction
+          if (!result_queue_full && !is_reduction(vinsn_issue_q.op)) begin
             // Do we have all the operands necessary for this instruction?
             if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
                 (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
@@ -683,6 +685,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     alu_result_id_o   = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_be_o   = result_queue_q[result_queue_read_pnt_q].be;
 
+    // Clear the accumulator after a partial reduction
+    if (alu_state_q == WAIT_STATE && alu_state_d == NO_REDUCTION)
+      result_queue_d[result_queue_read_pnt_q] = '0;
+
     // Received a grant from the VRF.
     // Deactivate the request.
     if (alu_result_gnt_i || mask_operand_gnt) begin
@@ -716,6 +722,21 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0) commit_cnt_d =
         vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+
+      // Initialize counters and alu state if needed by the next instruction
+      // After a reduction, the next instructions starts after the reduction commits
+      if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
+        alu_state_d = INTRA_LANE_REDUCTION;
+        // The next will be the first operation of this instruction
+        // This information is useful for reduction operation
+        first_op_d         = 1'b1;
+        reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+
+        sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+        // Allow the first valid
+        red_hs_synch_d = 1'b1;
+        issue_cnt_d    = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+      end
     end
 
     //////////////////////////////
