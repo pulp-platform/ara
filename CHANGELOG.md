@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - MASKU does not wait anymore for valid incoming data from inactive lanes
  - Fix corner-case comparison in MASKU to provide the expected behavior
  - Fix MaskB-queue vector length in the lane sequencer
+ - VALU cleans up the partial result of a reduction when no more needed
+ - VALU can step from normalOp->reduction and vice-versa without issues
+ - VALU's counters can now count bits when operating on mask vectors
+ - Fix the vector length for mask instructions that run on the VALU/VMFPU
 
 ### Added
 
