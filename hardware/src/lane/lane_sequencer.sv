@@ -211,10 +211,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
       // Mute request if the instruction runs in the lane and the vl is zero.
       // During a reduction, all the lanes must cooperate anyway.
-      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM]})) begin
+      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM]})) begin
         vfu_operation_valid_d = 1'b0;
         // We are already done with this instruction
         vinsn_done_d[pe_req.id] |= 1'b1;
+        vinsn_running_d[pe_req.id] = 1'b0;
       end
 
       // Vector start calculation
@@ -558,7 +559,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // This is an operation that runs normally on the ALU, and then gets *condensed* and
           // reshuffled at the Mask Unit.
           if (pe_req.op inside {[VMSEQ:VMSBC]}) begin
-            operand_request_i[AluA].vl = (pe_req.vl + NrLanes - 1) / NrLanes;
+            operand_request_i[AluA].vl = vfu_operation_d.vl;
           end
           // This is an operation that runs normally on the ALU, and then gets reshuffled at the
           // Mask Unit.
@@ -585,7 +586,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // This is an operation that runs normally on the ALU, and then gets *condensed* and
           // reshuffled at the Mask Unit.
           if (pe_req.op inside {[VMSEQ:VMSBC]}) begin
-            operand_request_i[AluB].vl = (pe_req.vl + NrLanes - 1) / NrLanes;
+            operand_request_i[AluB].vl = vfu_operation_d.vl;
           end
           // This is an operation that runs normally on the ALU, and then gets reshuffled at the
           // Mask Unit.
@@ -612,7 +613,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // This is an operation that runs normally on the ALU, and then gets *condensed* and
           // reshuffled at the Mask Unit.
-          operand_request_i[MulFPUA].vl = (pe_req.vl + NrLanes - 1) / NrLanes;
+          operand_request_i[MulFPUA].vl = vfu_operation_d.vl;
           operand_request_push[MulFPUA] = pe_req.use_vs1 && pe_req.op inside {[VMFEQ:VMFGE]};
 
           operand_request_i[MulFPUB] = '{
@@ -627,7 +628,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           // This is an operation that runs normally on the ALU, and then gets *condensed* and
           // reshuffled at the Mask Unit.
-          operand_request_i[MulFPUB].vl = (pe_req.vl + NrLanes - 1) / NrLanes;
+          operand_request_i[MulFPUB].vl = vfu_operation_d.vl;
           operand_request_push[MulFPUB] = pe_req.use_vs2 && pe_req.op inside {[VMFEQ:VMFGE]};
 
           operand_request_i[MaskB] = '{
