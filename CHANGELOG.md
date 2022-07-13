@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - VALU's counters can now count bits when operating on mask vectors
  - Fix the vector length for mask instructions that run on the VALU/VMFPU
  - Don't let indexed memory operations interfere with the reductions in MASKU
+ - Enforce strict in-order execution of FPU operations in VMFPU
 
 ### Added
 
