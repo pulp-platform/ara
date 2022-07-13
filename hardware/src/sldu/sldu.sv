@@ -166,9 +166,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   logic [idx_width(NrLanes)-1:0] red_stride_cnt_d, red_stride_cnt_q;
   logic [idx_width(NrLanes):0] red_stride_cnt_d_wide;
 
+  logic is_issue_reduction;
+
+  assign is_issue_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu);
+
   always_comb begin
     sldu_mux_sel_o = NO_RED;
-    if ((vinsn_issue_valid_q && vinsn_issue_q.vfu == VFU_Alu && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
+    if ((is_issue_reduction && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
       sldu_mux_sel_o = ALU_RED;
     end
   end
@@ -292,7 +296,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
         // During a reduction (vinsn_issue_q.vfu == VFU_Alu) don't wait for mask bits
-        if (&sldu_operand_valid_i && (sldu_operand_target_fu_i[0] == SLDU) && !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_Alu || (|mask_valid_i)))
+        if (&sldu_operand_valid_i && (sldu_operand_target_fu_i[0] == SLDU || is_issue_reduction) && !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu == VFU_Alu || (|mask_valid_i)))
         begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
           automatic int in_byte_count = NrLanes * 8 - in_pnt_q;
