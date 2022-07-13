@@ -70,6 +70,8 @@ package ara_pkg;
   localparam int unsigned LatFDivSqrt     = 'd3;
   localparam int unsigned LatFNonComp     = 'd1;
   localparam int unsigned LatFConv        = 'd2;
+  // Define the maximum FPU latency
+  localparam int unsigned LatFMax = LatFCompEW64;
 
   // Define the maximum instruction queue depth
   localparam MaxVInsnQueueDepth = 4;
@@ -109,9 +111,9 @@ package ara_pkg;
     // Div
     VDIVU, VDIV, VREMU, VREM,
     // FPU
-    VFADD, VFSUB, VFRSUB, VFMUL, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB, VFNMSUB,
-    VFMIN, VFMAX, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX, VFCVTRTZXUF, VFCVTRTZXF,
-    VFCVTFF,
+    VFADD, VFSUB, VFRSUB, VFMUL, VFDIV, VFRDIV, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB,
+    VFNMSUB, VFSQRT, VFMIN, VFMAX, VFCLASS, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX,
+    VFCVTRTZXUF, VFCVTRTZXF, VFCVTFF,
     // Floating-point comparison instructions
     VMFEQ, VMFLE, VMFLT, VMFNE, VMFGT, VMFGE,
     // Integer comparison instructions
