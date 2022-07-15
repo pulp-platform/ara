@@ -173,6 +173,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         VFU_MaskUnit : begin
           pe_req_ready = !(operand_request_valid_o[AluA] ||
             operand_request_valid_o [AluB] ||
+            operand_request_valid_o [MulFPUA] ||
+            operand_request_valid_o [MulFPUB] ||
             operand_request_valid_o[MaskB] ||
             operand_request_valid_o[MaskM]);
         end
