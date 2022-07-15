@@ -14,3 +14,7 @@ def_args_dropout     = "1024"
 def_args_fft         = "64 float32"
 # Vector size
 def_args_dwt         = "512"
+# Vector size
+def_args_exp         = "512"
+def_args_cos         = "512"
+def_args_log         = "512"
