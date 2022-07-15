@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Don't let indexed memory operations interfere with the reductions in MASKU
  - Enforce strict in-order execution of FPU operations in VMFPU
  - Fixed AXI-inval-filter policy for D$ lines invalidation upon vector stores that are misaligned w.r.t. the D$ line width
+ - Fix lane sequencer checks for floating-point comparisons
 
 ### Added
 
