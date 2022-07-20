@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Enforce strict in-order execution of FPU operations in VMFPU
  - Fixed AXI-inval-filter policy for D$ lines invalidation upon vector stores that are misaligned w.r.t. the D$ line width
  - Fix lane sequencer checks for floating-point comparisons
- - Fix synthesis error occuring due to the continuous assignmnet in the always block of mask unit 
+ - Fix synthesis error occuring due to the continuous assignmnet in the always block of mask unit
 
 ### Added
 
