@@ -219,6 +219,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .BufferDepth(1         ),
     .FPUSupport (FPUSupport),
+    .SupportIntExt2(1'b1),
+    .SupportIntExt4(1'b1),
+    .SupportIntExt8(1'b1),
     .NrLanes    (NrLanes   )
   ) i_operand_queue_mask_b (
     .clk_i                    (clk_i                           ),

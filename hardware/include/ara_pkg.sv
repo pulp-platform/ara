@@ -81,6 +81,7 @@ package ara_pkg;
   localparam int unsigned VlduInsnQueueDepth = 4;
   localparam int unsigned VstuInsnQueueDepth = 4;
   localparam int unsigned SlduInsnQueueDepth = 2;
+  localparam int unsigned NoneInsnQueueDepth = 1;
   // Ara supports MaskuInsnQueueDepth = 1 only.
   localparam int unsigned MaskuInsnQueueDepth = 1;
 
@@ -104,6 +105,8 @@ package ara_pkg;
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
     VMERGE,
+    // Scalar moves to VRF
+    VMVSX, VFMVSF,
     // Integer Reductions
     VREDSUM, VREDAND, VREDOR, VREDXOR, VREDMINU, VREDMIN, VREDMAXU, VREDMAX, VWREDSUMU, VWREDSUM,
     // Mul/Mul-Add
@@ -122,6 +125,8 @@ package ara_pkg;
     VMADC, VMSBC,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
+    // Scalar moves from VRF
+    VMVXS, VFMVFS,
     // Slide instructions
     VSLIDEUP, VSLIDEDOWN,
     // Load instructions
@@ -298,9 +303,9 @@ package ara_pkg;
   // It is important that all the VFUs that can write back to the VRF
   // are grouped towards the beginning of the enumeration. The store unit
   // cannot do so, therefore it is at the end of the enumeration.
-  localparam int unsigned NrVFUs = 6;
+  localparam int unsigned NrVFUs = 7;
   typedef enum logic [$clog2(NrVFUs)-1:0] {
-    VFU_Alu, VFU_MFpu, VFU_SlideUnit, VFU_MaskUnit, VFU_LoadUnit, VFU_StoreUnit
+    VFU_Alu, VFU_MFpu, VFU_SlideUnit, VFU_MaskUnit, VFU_LoadUnit, VFU_StoreUnit, VFU_None
   } vfu_e;
 
   // Internally, each lane is treated as a processing element, between indexes
