@@ -509,7 +509,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Write results to the lanes  //
     //////////////////////////////////
 
-    assign unbalanced_a = (|commit_cnt_q[idx_width(NrLanes)-1:0] != 1'b0) ? 1'b1 : 1'b0;
+    unbalanced_a = (|commit_cnt_q[idx_width(NrLanes)-1:0] != 1'b0) ? 1'b1 : 1'b0;
     last_incoming_a = ((commit_cnt_q - vrf_pnt_q) < NrLanes) ? 1'b1 : 1'b0;
     for (int unsigned i = 1; i < NrLanes; i++)
       if (i >= {1'b0, commit_cnt_q[idx_width(NrLanes)-1:0]})
