@@ -82,8 +82,9 @@ int test_case;
 
 // Check the result against a scalar golden value
 #define XCMP(casenum,act,exp)                                           \
+  printf("Checking the results of the test case %d:\n", casenum);       \
   if (act != exp) {                                                     \
-    printf("FAILED. Got %d, expected %d.\n", casenum, act, exp);        \
+    printf("Index %d FAILED. Got %d, expected %d.\n", casenum, act, exp);\
     num_failed++;                                                       \
     return;                                                             \
   }                                                                     \
@@ -92,7 +93,7 @@ int test_case;
 // Check the result against a floating-point scalar golden value
 #define FCMP(casenum,act,exp)                                           \
   if(act != exp) {                                                      \
-    printf("FAILED. Got %lf, expected %lf.\n",casenum, act, exp);       \
+    printf("Index %d FAILED. Got %lf, expected %lf.\n",casenum, act, exp);       \
     num_failed++;                                                       \
     return;                                                             \
   }                                                                     \
@@ -126,9 +127,18 @@ int test_case;
   printf("PASSED.\n");
 
 // Macros to set vector length, type and multiplier
+// Don't use this to set VL == 0 since the compiler puts rs1 == x0
 #define VSET(VLEN,VTYPE,LMUL)                                                          \
   do {                                                                                 \
   asm volatile ("vsetvli t0, %[A]," #VTYPE "," #LMUL ", ta, ma \n" :: [A] "r" (VLEN)); \
+  } while(0)
+
+// Macros to set vector length equal to zero
+#define VSET_ZERO(VTYPE,LMUL)                                                              \
+  do {                                                                                     \
+    int vset_zero_buf;                                                                     \
+    asm volatile("li %0, 0" : "=r" (vset_zero_buf));                                       \
+    asm volatile("vsetvli x0, %0," #VTYPE "," #LMUL ", ta, ma \n" :: "r" (vset_zero_buf)); \
   } while(0)
 
 #define VSETMAX(VTYPE,LMUL)                                                            \
