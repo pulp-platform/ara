@@ -127,11 +127,14 @@ riscv-isa-sim: ${ISA_SIM_INSTALL_DIR}
 ${ISA_SIM_INSTALL_DIR}: Makefile
 	# There are linking issues with the standard libraries when using newer CC/CXX versions to compile Spike.
 	# Therefore, here we resort to older versions of the compilers.
+	# Spike was compiled successfully using gcc and g++ 7.2.0.
 	cd toolchain/riscv-isa-sim && mkdir -p build && cd build; \
 	[ -d dtc ] || git clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git && cd dtc; \
 	make install SETUP_PREFIX=$(ISA_SIM_INSTALL_DIR) PREFIX=$(ISA_SIM_INSTALL_DIR) && \
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:$$PATH; cd ..; \
-	../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
+	../configure --prefix=$(ISA_SIM_INSTALL_DIR) \
+	--without-boost --without-boost-asio --without-boost-regex && \
+	make -j32 && make install
 
 # Verilator
 .PHONY: verilator
