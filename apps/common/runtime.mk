@@ -66,7 +66,7 @@ DEFINES += $(ENV_DEFINES) $(MAKE_DEFINES)
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argument # -Werror
 
 # LLVM Flags
-LLVM_FLAGS     ?= -march=rv64gcv0p10 -mabi=$(RISCV_ABI) -menable-experimental-extensions -mno-relax -fuse-ld=lld
+LLVM_FLAGS     ?= -march=rv64gcv -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
 RISCV_FLAGS    ?= $(LLVM_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
 RISCV_CXXFLAGS ?= $(RISCV_FLAGS)
@@ -81,7 +81,7 @@ RISCV_LDFLAGS_GCC  ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS_GCC)
 ifeq ($(COMPILER),gcc)
 	RISCV_OBJDUMP_FLAGS ?=
 else
-	RISCV_OBJDUMP_FLAGS ?= --mattr=+experimental-v
+	RISCV_OBJDUMP_FLAGS ?= --mattr=v
 endif
 
 # Compile two different versions of the runtime, since we cannot link code compiled with two different toolchains
