@@ -34,6 +34,6 @@ void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
 
 // Threshold for FP numbers comparison during the final check
 #define THRESHOLD 0.000000000001
-//#define THRESHOLD 0
+// #define THRESHOLD 0
 
 #endif
