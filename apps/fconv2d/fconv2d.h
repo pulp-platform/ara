@@ -36,6 +36,6 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
 
 // Threshold for FP numbers comparison during the final check
 #define THRESHOLD 0.000000000001
-//#define THRESHOLD 0
+// #define THRESHOLD 0
 
 #endif

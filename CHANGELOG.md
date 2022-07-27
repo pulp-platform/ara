@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fixed AXI-inval-filter policy for D$ lines invalidation upon vector stores that are misaligned w.r.t. the D$ line width
  - Fix lane sequencer checks for floating-point comparisons
  - Fix synthesis error occuring due to the continuous assignmnet in the always block of mask unit
+ - Fix wrong variable in `vmerge` and `vmv` `riscv-tests`
 
 ### Added
 
@@ -47,6 +48,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Double the testbench memory size
 - Update the `python-requirements` list
 - Remove the assign keyword from the always block of masku.sv
+- Update LLVM to version `15.0.0` (RVV 1.0)
+- Update Spike to version `1.1.1-dev` (RVV 1.0)
+- Update `newlib` from commit 84d068 to 5192d5
 
 ## 2.2.0 - 2021-11-02
 

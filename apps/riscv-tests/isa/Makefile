@@ -41,9 +41,9 @@ RISCV_GCC_OPTS_C ?= -O2
 # Added LLVM variables
 RISCV_LLVM ?= clang -fuse-ld=lld
 RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax -nostdlib -nostartfiles
-RISCV_CC_OPTS_C ?= -O2 -menable-experimental-extensions -mno-relax -nostdlib -nostartfiles
+RISCV_CC_OPTS_C ?= -O2 -mno-relax -nostdlib -nostartfiles
 RISCV_CC_DEFS_C ?= $(ARA_DEFINES)
-LLVM_V_VERSION ?= v0p10
+LLVM_V_VERSION ?= v
 
 # Original objdump + spike variables
 RISCV_OBJDUMP ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
@@ -58,13 +58,13 @@ vpath %.S $(src_dir)
 	$(RISCV_OBJDUMP) $< > $@
 
 %.out: %
-	$(RISCV_SIM) --isa=rv64gcv --varch="vlen:4096,elen:64,slen:4096" $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv --varch="vlen:4096,elen:64" $< 2> $@
 
 %.out32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
 
 %.cout: %
-	$(RISCV_SIM) --isa=rv64gcv_zfh --varch="vlen:4096,elen:64,slen:4096" $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv_zfh --varch="vlen:4096,elen:64" $< 2> $@
 
 %.cout32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@

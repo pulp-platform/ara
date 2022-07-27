@@ -96,8 +96,8 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 #else
 #define N 32
 #define TSTEPS 1
-//#define N 64
-//#define TSTEPS 4
+// #define N 64
+// #define TSTEPS 4
 #endif
 
 #define FABS(x) ((x < 0) ? -x : x)
@@ -107,8 +107,8 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 #define DATA_TYPE double
 // Threshold for FP numbers comparison during the final check
 #define THRESHOLD 0.000000000001
-//#define SOURCE_PRINT
-//#define RESULT_PRINT
+// #define SOURCE_PRINT
+// #define RESULT_PRINT
 
 static void init_array(uint32_t n, DATA_TYPE A[N][N], DATA_TYPE B[N][N]);
 void kernel_jacobi_2d_vector(uint32_t n, DATA_TYPE A[N][N], DATA_TYPE B[N][N]);

@@ -33,7 +33,7 @@ void TEST_CASE1() {
 }
 
 void TEST_CASE2() {
-  const uint32_t scalar = 0xdeadbeef;
+  const uint64_t scalar = 0x00000000deadbeef;
 
   VSET(16, e8, m1);
   VLOAD_8(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);

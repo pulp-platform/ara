@@ -84,7 +84,7 @@ toolchain-llvm-newlib: Makefile
 	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	../configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
-	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany" \
+	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany -Wno-error-implicit-function-declaration" \
 	AS_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-as \
 	AR_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ar \
 	LD_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ld \
@@ -118,7 +118,7 @@ toolchain-llvm-rt: Makefile toolchain-llvm-main toolchain-llvm-newlib
 	-DLLVM_CONFIG_PATH=$(LLVM_INSTALL_DIR)/bin/llvm-config
 	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && \
 	$(CMAKE) --build build --target install && \
-	ln -s $(LLVM_INSTALL_DIR)/lib/linux $(LLVM_INSTALL_DIR)/lib/clang/13.0.0/lib
+	ln -s $(LLVM_INSTALL_DIR)/lib/linux $(LLVM_INSTALL_DIR)/lib/clang/15.0.0/lib
 
 # Spike
 .PHONY: riscv-isa-sim
@@ -127,11 +127,16 @@ riscv-isa-sim: ${ISA_SIM_INSTALL_DIR}
 ${ISA_SIM_INSTALL_DIR}: Makefile
 	# There are linking issues with the standard libraries when using newer CC/CXX versions to compile Spike.
 	# Therefore, here we resort to older versions of the compilers.
+	# If there are problems with dynamic linking, use:
+	# make riscv-isa-sim LDFLAGS="-static-libstdc++"
+	# Spike was compiled successfully using gcc and g++ version 7.2.0.
 	cd toolchain/riscv-isa-sim && mkdir -p build && cd build; \
 	[ -d dtc ] || git clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git && cd dtc; \
 	make install SETUP_PREFIX=$(ISA_SIM_INSTALL_DIR) PREFIX=$(ISA_SIM_INSTALL_DIR) && \
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:$$PATH; cd ..; \
-	../configure --prefix=$(ISA_SIM_INSTALL_DIR) && make -j4 && make install
+	../configure --prefix=$(ISA_SIM_INSTALL_DIR) \
+	--without-boost --without-boost-asio --without-boost-regex && \
+	make -j32 && make install
 
 # Verilator
 .PHONY: verilator
