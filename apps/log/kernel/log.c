@@ -16,8 +16,9 @@
 //
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
-void log_1xf64_bmark(double* args, double* results, size_t len) {
 #include "log.h"
+
+void log_1xf64_bmark(double *args, double *results, size_t len) {
 
   size_t avl = len;
   vfloat64m1_t log_vec, res_vec;
@@ -33,11 +34,11 @@ void log_1xf64_bmark(double* args, double* results, size_t len) {
     vse64_v_f64m1(results, res_vec, vl);
     // Bump pointers
     args += vl;
-    results   += vl;
+    results += vl;
   }
 }
 
-void log_2xf32_bmark(float* args, float* results, size_t len) {
+void log_2xf32_bmark(float *args, float *results, size_t len) {
 
   size_t avl = len;
   vfloat32m1_t log_vec, res_vec;
@@ -53,6 +54,6 @@ void log_2xf32_bmark(float* args, float* results, size_t len) {
     vse32_v_f32m1(results, res_vec, vl);
     // Bump pointers
     args += vl;
-    results   += vl;
+    results += vl;
   }
 }

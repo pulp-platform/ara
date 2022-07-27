@@ -16,8 +16,9 @@
 //
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
-void cos_1xf64_bmark(double* angles, double* results, size_t len) {
 #include "cos.h"
+
+void cos_1xf64_bmark(double *angles, double *results, size_t len) {
 
   size_t avl = len;
   vfloat64m1_t cos_vec, res_vec;
@@ -33,11 +34,11 @@ void cos_1xf64_bmark(double* angles, double* results, size_t len) {
     vse64_v_f64m1(results, res_vec, vl);
     // Bump pointers
     angles += vl;
-    results   += vl;
+    results += vl;
   }
 }
 
-void cos_2xf32_bmark(float* angles, float* results, size_t len) {
+void cos_2xf32_bmark(float *angles, float *results, size_t len) {
 
   size_t avl = len;
   vfloat32m1_t cos_vec, res_vec;
@@ -53,6 +54,6 @@ void cos_2xf32_bmark(float* angles, float* results, size_t len) {
     vse32_v_f32m1(results, res_vec, vl);
     // Bump pointers
     angles += vl;
-    results   += vl;
+    results += vl;
   }
 }
