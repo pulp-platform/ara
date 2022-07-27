@@ -1,11 +1,12 @@
 // Modified version of:
-// "RISC-V VECTOR EXP FUNCTION Version by Cristóbal Ramírez Lazo, "Barcelona 2019""
-// Find details on the original version below
-// Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
+// "RISC-V VECTOR EXP FUNCTION Version by Cristóbal Ramírez Lazo, "Barcelona
+// 2019"" Find details on the original version below Author: Matteo Perotti
+// <mperotti@iis.ee.ethz.ch>
 
 //
-// RISC-V VECTOR EXP FUNCTION Version by Cristóbal Ramírez Lazo, "Barcelona 2019"
-// This RISC-V Vector implementation is based on the original code presented by Julien Pommier
+// RISC-V VECTOR EXP FUNCTION Version by Cristóbal Ramírez Lazo, "Barcelona
+// 2019" This RISC-V Vector implementation is based on the original code
+// presented by Julien Pommier
 
 /*
    AVX implementation of sin, cos, sincos, exp and log
@@ -34,7 +35,7 @@
 
 #include "exp.h"
 
-void exp_1xf64_bmark(double* exponents, double* results, size_t len) {
+void exp_1xf64_bmark(double *exponents, double *results, size_t len) {
 
   size_t avl = len;
   vfloat64m1_t exp_vec, res_vec;
@@ -50,11 +51,11 @@ void exp_1xf64_bmark(double* exponents, double* results, size_t len) {
     vse64_v_f64m1(results, res_vec, vl);
     // Bump pointers
     exponents += vl;
-    results   += vl;
+    results += vl;
   }
 }
 
-void exp_2xf32_bmark(float* exponents, float* results, size_t len) {
+void exp_2xf32_bmark(float *exponents, float *results, size_t len) {
 
   size_t avl = len;
   vfloat32m1_t exp_vec, res_vec;
@@ -70,6 +71,6 @@ void exp_2xf32_bmark(float* exponents, float* results, size_t len) {
     vse32_v_f32m1(results, res_vec, vl);
     // Bump pointers
     exponents += vl;
-    results   += vl;
+    results += vl;
   }
 }

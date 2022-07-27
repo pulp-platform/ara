@@ -19,10 +19,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "util.h"
 #include "kernel/cos.h"
 #include "printf.h"
 #include "runtime.h"
+#include "util.h"
 
 extern size_t N_f64;
 extern double angles_f64[] __attribute__((aligned(4 * NR_LANES)));
@@ -72,13 +72,15 @@ int main() {
   for (uint64_t i = 0; i < N_f64; ++i) {
     if (!similarity_check(results_f64[i], gold_results_f64[i], THRESHOLD)) {
       error = 1;
-      printf("64-bit error at index %d. %f != %f\n", i, results_f64[i], gold_results_f64[i]);
+      printf("64-bit error at index %d. %f != %f\n", i, results_f64[i],
+             gold_results_f64[i]);
     }
   }
   for (uint64_t i = 0; i < N_f32; ++i) {
     if (!similarity_check(results_f32[i], gold_results_f32[i], THRESHOLD)) {
       error = 1;
-      printf("32-bit error at index %d. %f != %f\n", i, results_f32[i], gold_results_f32[i]);
+      printf("32-bit error at index %d. %f != %f\n", i, results_f32[i],
+             gold_results_f32[i]);
     }
   }
 #endif
