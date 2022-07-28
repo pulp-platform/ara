@@ -1,1 +1,1 @@
-../../deps/cva6/tb/dpi/elfloader.cc
+../../deps/cva6/corev_apu/tb/dpi/elfloader.cc
