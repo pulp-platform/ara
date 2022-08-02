@@ -1,0 +1,296 @@
+CAPI=2:
+name : ::ara:0
+description: Ara is a 64-bit Vector Unit, compatible with the RISC-V Vector Extension Version 0.10, working as a coprocessor to CORE-V's CVA6 core
+
+filesets:
+    rtl:
+        file_type: systemVerilogSource
+        files:
+            - hardware/deps/axi/src/axi_pkg.sv
+            - hardware/deps/axi/src/axi_intf.sv
+            - hardware/deps/axi/include/axi/assign.svh: {is_include_file: true, include_path: hardware/deps/axi/include}
+            - hardware/deps/axi/include/axi/typedef.svh: {is_include_file: true, include_path: hardware/deps/axi/include}
+            - hardware/deps/axi/src/axi_xbar.sv
+            - hardware/deps/axi/src/axi_atop_filter.sv
+            - hardware/deps/axi/src/axi_dw_converter.sv
+            - hardware/deps/axi/src/axi_to_axi_lite.sv
+            - hardware/deps/axi/src/axi_lite_regs.sv
+            - hardware/deps/axi/src/axi_burst_splitter.sv
+            - hardware/deps/axi/src/axi_cut.sv
+            - hardware/deps/axi/src/axi_mux.sv
+            - hardware/deps/axi/src/axi_demux.sv
+            - hardware/deps/axi/src/axi_err_slv.sv
+            - hardware/deps/axi/src/axi_dw_upsizer.sv
+            - hardware/deps/axi/src/axi_cdc.sv
+            - hardware/deps/axi/src/axi_cdc_dst.sv
+            - hardware/deps/axi/src/axi_cdc_src.sv
+            - hardware/deps/axi/src/axi_cut.sv
+            - hardware/deps/axi/src/axi_delayer.sv
+            - hardware/deps/axi/src/axi_dw_converter.sv
+            - hardware/deps/axi/src/axi_id_prepend.sv
+            - hardware/deps/axi/src/axi_isolate.sv
+            - hardware/deps/axi/src/axi_join.sv
+            - hardware/deps/axi/src/axi_lite_demux.sv
+            - hardware/deps/axi/src/axi_lite_join.sv
+            - hardware/deps/axi/src/axi_lite_mailbox.sv
+            - hardware/deps/axi/src/axi_lite_mux.sv
+            - hardware/deps/axi/src/axi_lite_to_apb.sv
+            - hardware/deps/axi/src/axi_lite_to_axi.sv
+            - hardware/deps/axi/src/axi_lite_xbar.sv
+            - hardware/deps/axi/src/axi_modify_address.sv
+            - hardware/deps/axi/src/axi_multicut.sv
+            - hardware/deps/axi/src/axi_serializer.sv
+            - hardware/deps/axi/src/axi_sim_mem.sv
+            - hardware/deps/axi/src/axi_dw_downsizer.sv
+
+            - hardware/deps/cva6/include/riscv_pkg.sv
+            - hardware/deps/cva6/include/instr_tracer_pkg.sv
+
+            - hardware/deps/cva6/src/riscv-dbg/src/dm_pkg.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_pkg.sv
+            - hardware/deps/cva6/include/ariane_pkg.sv
+            - hardware/deps/cva6/include/std_cache_pkg.sv
+            - hardware/deps/cva6/include/wt_cache_pkg.sv
+            - hardware/deps/cva6/src/register_interface/src/reg_intf.sv
+            - hardware/deps/cva6/src/register_interface/src/reg_intf_pkg.sv
+            - hardware/deps/cva6/include/ariane_axi_pkg.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
+            - hardware/deps/cva6/src/ariane.sv
+            - hardware/deps/cva6/src/serdiv.sv
+            - hardware/deps/cva6/src/ariane_regfile_ff.sv
+            - hardware/deps/cva6/src/amo_buffer.sv
+            - hardware/deps/cva6/src/id_stage.sv
+            - hardware/deps/cva6/src/branch_unit.sv
+            - hardware/deps/cva6/src/instr_realign.sv
+            - hardware/deps/cva6/src/load_store_unit.sv
+            - hardware/deps/cva6/src/controller.sv
+            - hardware/deps/cva6/src/issue_stage.sv
+            - hardware/deps/cva6/src/re_name.sv
+            - hardware/deps/cva6/src/csr_buffer.sv
+            - hardware/deps/cva6/src/tlb.sv
+            - hardware/deps/cva6/src/decoder.sv
+            - hardware/deps/cva6/src/scoreboard.sv
+            - hardware/deps/cva6/src/perf_counters.sv
+            - hardware/deps/cva6/src/store_unit.sv
+            - hardware/deps/cva6/src/axi_adapter.sv
+            - hardware/deps/cva6/src/fpu_wrap.sv
+            - hardware/deps/cva6/src/csr_regfile.sv
+            - hardware/deps/cva6/src/commit_stage.sv
+            - hardware/deps/cva6/src/alu.sv
+            - hardware/deps/cva6/src/multiplier.sv
+            - hardware/deps/cva6/src/store_buffer.sv
+            - hardware/deps/cva6/src/compressed_decoder.sv
+            - hardware/deps/cva6/src/axi_shim.sv
+            - hardware/deps/cva6/src/ex_stage.sv
+            - hardware/deps/cva6/src/mmu.sv
+            - hardware/deps/cva6/src/ptw.sv
+            - hardware/deps/cva6/src/mult.sv
+            - hardware/deps/cva6/src/load_unit.sv
+            - hardware/deps/cva6/src/issue_read_operands.sv
+            - hardware/deps/cva6/src/acc_dispatcher.sv
+            - hardware/deps/cva6/src/pmp/src/pmp_entry.sv
+            - hardware/deps/cva6/src/pmp/src/pmp.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_fma.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_opgroup_fmt_slice.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_divsqrt_multi.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_fma_multi.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_opgroup_multifmt_slice.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_classifier.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_noncomp.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_cast_multi.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_opgroup_block.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_rounding.sv
+            - hardware/deps/cva6/src/fpu/src/fpnew_top.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/iteration_div_sqrt_mvp.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/nrbd_nrsc_mvp.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/div_sqrt_top_mvp.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/preprocess_mvp.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/control_mvp.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/norm_div_sqrt_mvp.sv
+            - hardware/deps/cva6/src/fpu/src/fpu_div_sqrt_mvp/hdl/div_sqrt_mvp_wrapper.sv
+            - hardware/deps/cva6/src/frontend/frontend.sv
+            - hardware/deps/cva6/src/frontend/instr_scan.sv
+            - hardware/deps/cva6/src/frontend/instr_queue.sv
+            - hardware/deps/cva6/src/frontend/bht.sv
+            - hardware/deps/cva6/src/frontend/btb.sv
+            - hardware/deps/cva6/src/frontend/ras.sv
+            - hardware/deps/cva6/src/cache_subsystem/tag_cmp.sv
+            - hardware/deps/cva6/src/cache_subsystem/cache_ctrl.sv
+            - hardware/deps/cva6/src/cache_subsystem/amo_alu.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_axi_adapter.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_dcache_ctrl.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_cache_subsystem.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_dcache_missunit.sv
+            - hardware/deps/cva6/src/cache_subsystem/cva6_icache.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_dcache_wbuffer.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_l15_adapter.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_dcache_mem.sv
+            - hardware/deps/cva6/src/cache_subsystem/cva6_icache_axi_wrapper.sv
+            - hardware/deps/cva6/src/cache_subsystem/std_cache_subsystem.sv
+            - hardware/deps/cva6/src/cache_subsystem/wt_dcache.sv
+            - hardware/deps/cva6/src/cache_subsystem/std_nbdcache.sv
+            - hardware/deps/cva6/src/cache_subsystem/miss_handler.sv
+            - hardware/deps/cva6/src/clint/axi_lite_interface.sv
+            - hardware/deps/cva6/src/clint/clint.sv
+            - hardware/deps/cva6/fpga/src/axi2apb/src/axi2apb_wrap.sv
+            - hardware/deps/cva6/fpga/src/axi2apb/src/axi2apb.sv
+            - hardware/deps/cva6/fpga/src/axi2apb/src/axi2apb_64_32.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_w_buffer.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_b_buffer.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_slice_wrap.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_slice.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_single_slice.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_ar_buffer.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_r_buffer.sv
+            - hardware/deps/cva6/fpga/src/axi_slice/src/axi_aw_buffer.sv
+            - hardware/deps/cva6/fpga/src/apb_timer/apb_timer.sv
+            - hardware/deps/cva6/fpga/src/apb_timer/timer.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_regs_top.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_BR_allocator.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_BW_allocator.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_address_decoder_BR.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_DW_allocator.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_address_decoder_BW.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_address_decoder_DW.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_node_arbiter.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_response_block.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_request_block.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_AR_allocator.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_AW_allocator.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_address_decoder_AR.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_address_decoder_AW.sv
+            - hardware/deps/cva6/src/axi_node/src/apb_regs_top.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_node_intf_wrap.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_node.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_node_wrap_with_slices.sv
+            - hardware/deps/cva6/src/axi_node/src/axi_multiplexer.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_riscv_amos.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_riscv_atomics.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_res_tbl.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_riscv_lrsc_wrap.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_riscv_amos_alu.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_riscv_lrsc.sv
+            - hardware/deps/cva6/src/axi_riscv_atomics/src/axi_riscv_atomics_wrap.sv
+            - hardware/deps/cva6/src/axi_mem_if/src/axi2mem.sv
+            - hardware/deps/cva6/src/rv_plic/rtl/rv_plic_target.sv
+            - hardware/deps/cva6/src/rv_plic/rtl/rv_plic_gateway.sv
+            - hardware/deps/cva6/src/rv_plic/rtl/plic_regmap.sv
+            - hardware/deps/cva6/src/rv_plic/rtl/plic_top.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dmi_cdc.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dmi_jtag.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dmi_jtag_tap.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dm_csrs.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dm_mem.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dm_sba.sv
+            - hardware/deps/cva6/src/riscv-dbg/src/dm_top.sv
+            - hardware/deps/cva6/src/riscv-dbg/debug_rom/debug_rom.sv
+            - hardware/deps/cva6/src/register_interface/src/apb_to_reg.sv
+            - hardware/deps/cva6/src/common_cells/src/deprecated/generic_fifo.sv
+            - hardware/deps/cva6/src/common_cells/src/deprecated/pulp_sync.sv
+            - hardware/deps/cva6/src/common_cells/src/deprecated/find_first_one.sv
+            - hardware/deps/cva6/src/common_cells/src/rstgen_bypass.sv
+            - hardware/deps/cva6/src/common_cells/src/rstgen.sv
+            - hardware/deps/cva6/src/common_cells/src/stream_mux.sv
+            - hardware/deps/cva6/src/common_cells/src/stream_demux.sv
+            - hardware/deps/cva6/src/common_cells/src/stream_arbiter.sv
+            - hardware/deps/cva6/src/common_cells/src/stream_arbiter_flushable.sv
+            - hardware/deps/cva6/src/util/axi_master_connect.sv
+            - hardware/deps/cva6/src/util/axi_slave_connect.sv
+            - hardware/deps/cva6/src/util/axi_master_connect_rev.sv
+            - hardware/deps/cva6/src/util/axi_slave_connect_rev.sv
+            - hardware/deps/cva6/src/util/instr_tracer_if.sv
+            - hardware/deps/cva6/src/fpga-support/rtl/SyncSpRamBeNx64.sv
+            - hardware/deps/cva6/src/common_cells/src/popcount.sv
+            - hardware/deps/cva6/src/common_cells/src/unread.sv
+            - hardware/deps/cva6/src/common_cells/src/cdc_2phase.sv
+            - hardware/deps/cva6/src/common_cells/src/spill_register.sv
+            - hardware/deps/cva6/src/common_cells/src/edge_detect.sv
+            - hardware/deps/cva6/src/common_cells/src/fifo_v3.sv
+            - hardware/deps/cva6/src/common_cells/src/deprecated/fifo_v2.sv
+            - hardware/deps/cva6/src/common_cells/src/deprecated/fifo_v1.sv
+            - hardware/deps/cva6/src/common_cells/src/lzc.sv
+            - hardware/deps/cva6/src/common_cells/src/rr_arb_tree.sv
+            - hardware/deps/cva6/src/common_cells/src/deprecated/rrarbiter.sv
+            - hardware/deps/cva6/src/common_cells/src/stream_delay.sv
+            - hardware/deps/cva6/src/common_cells/src/lfsr.sv
+            - hardware/deps/cva6/src/common_cells/src/lfsr_8bit.sv
+            - hardware/deps/cva6/src/common_cells/src/lfsr_16bit.sv
+            - hardware/deps/cva6/src/common_cells/src/counter.sv
+            - hardware/deps/cva6/src/common_cells/src/shift_reg.sv
+            - hardware/deps/cva6/src/common_cells/src/exp_backoff.sv
+            - hardware/deps/cva6/src/tech_cells_generic/src/cluster_clock_inverter.sv
+            - hardware/deps/cva6/src/tech_cells_generic/src/pulp_clock_mux2.sv
+            - hardware/deps/cva6/src/util/sram.sv
+            - hardware/deps/cva6/src/util/instr_tracer.sv
+            - hardware/deps/cva6/src/util/ex_trace_item.svh: {is_include_file: true}
+            - hardware/deps/cva6/src/util/instr_trace_item.svh: {is_include_file: true}
+
+            - hardware/include/ara/ara.svh: {is_include_file: true, include_path: hardware/include}
+            - hardware/include/rvv_pkg.sv
+            - hardware/include/ara_pkg.sv
+            - hardware/src/axi_to_mem.sv
+            - hardware/src/ctrl_registers.sv
+            - hardware/src/cva6_accel_first_pass_decoder.sv
+            - hardware/src/ara_dispatcher.sv
+            - hardware/src/ara_sequencer.sv
+            - hardware/src/axi_inval_filter.sv
+            - hardware/src/lane/lane_sequencer.sv
+            - hardware/src/lane/operand_queue.sv
+            - hardware/src/lane/operand_requester.sv
+            - hardware/src/lane/simd_alu.sv
+            - hardware/src/lane/simd_div.sv
+            - hardware/src/lane/simd_mul.sv
+            - hardware/src/lane/vector_regfile.sv
+            - hardware/src/masku/masku.sv
+            - hardware/src/sldu/sldu.sv
+            - hardware/src/vlsu/addrgen.sv
+            - hardware/src/vlsu/vldu.sv
+            - hardware/src/vlsu/vstu.sv
+            - hardware/src/lane/operand_queues_stage.sv
+            - hardware/src/lane/valu.sv
+            - hardware/src/lane/vmfpu.sv
+            - hardware/src/vlsu/vlsu.sv
+            - hardware/src/lane/vector_fus_stage.sv
+            - hardware/src/lane/lane.sv
+            - hardware/src/ara.sv
+            - hardware/src/ara_system.sv
+            - hardware/src/ara_soc.sv
+        depend:
+            - pulp-platform.org::common_cells
+
+    behav_sram:
+        file_type : systemVerilogSource
+        files:
+            - hardware/deps/tech_cells_generic/src/rtl/tc_sram.sv
+    xilinx_sram:
+        file_type : systemVerilogSource
+        files:
+            - hardware/deps/tech_cells_generic/src/rtl/tc_sram.sv
+
+    svtb:
+        file_type: systemVerilogSource
+        files:
+            - hardware/tb/ara_testharness.sv
+            - hardware/tb/ara_tb.sv
+            - hardware/deps/cva6/tb/common/mock_uart.sv
+
+    verilator_tb:
+        files:
+            - hardware/tb/ara_testharness.sv
+            - hardware/tb/ara_tb_verilator.sv
+targets:
+    xsim:
+        default_tool: xsim 
+        filesets: [behav_sram, rtl, svtb]
+        description: Simulate the design
+        tools: 
+            xsim:
+                xelab_options: [--debug, typical, -L, secureip, -L, unisims_ver, -L, unimacro_ver, -L, work.glbl, --timescale, 1ns/1ps, --define, NR_LANES=4, --define, RVV_ARIANE=1, --define, TARGET_ARA_TEST, --define, TARGET_ASIC, --define, TARGET_CVA6_TEST, --define, TARGET_RTL, --define, TARGET_SIMULATION, --define, TARGET_VSIM, --define, VLEN=4096, --define, WT_DCACHE=1]
+        parameters: [PRELOAD]
+        toplevel: [ara_tb]
+parameters:
+    PRELOAD:
+        datatype  : file
+        default   : apps/bin/helloworld_2
+        paramtype : plusarg
+    
