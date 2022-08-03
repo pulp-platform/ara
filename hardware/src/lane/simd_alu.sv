@@ -207,6 +207,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
             EW64: for (int b = 0; b < 1; b++) res.w64[b] = mask_i[8*b] ? opa.w64[b] : opb.w64[b];
           endcase
 
+        // Scalar move
+        VMVSX, VFMVSF: res = opa;
+
         // Comparison instructions
         VMIN, VMINU, VMAX, VMAXU,
         VREDMINU, VREDMIN, VREDMAXU, VREDMAX: unique case (vew_i)

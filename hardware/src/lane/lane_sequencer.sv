@@ -178,6 +178,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_valid_o[MaskB] ||
             operand_request_valid_o[MaskM]);
         end
+        VFU_None : begin
+          pe_req_ready = !(operand_request_valid_o[MaskB]);
+        end
         default:;
       endcase
     end
@@ -204,7 +207,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         vtype          : pe_req.vtype,
         default        : '0
       };
-      vfu_operation_valid_d = 1'b1;
+      vfu_operation_valid_d = (vfu_operation_d.vfu != VFU_None) ? 1'b1 : 1'b0;
 
       // Vector length calculation
       vfu_operation_d.vl = pe_req.vl / NrLanes;
@@ -226,7 +229,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       if (lane_id_i < pe_req.vstart[idx_width(NrLanes)-1:0]) vfu_operation_d.vstart -= 1;
 
       // Mark the vector instruction as running
-      vinsn_running_d[pe_req.id] = 1'b1;
+      vinsn_running_d[pe_req.id] = (vfu_operation_d.vfu != VFU_None) ? 1'b1 : 1'b0;
 
       ////////////////////////
       //  Operand requests  //
@@ -666,6 +669,22 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_i[MaskM].vl += 1;
           end
           operand_request_push[MaskM] = !pe_req.vm;
+        end
+        VFU_None: begin
+          operand_request_i[MaskB] = '{
+            id         : pe_req.id,
+            vs         : pe_req.vs2,
+            eew        : pe_req.eew_vs2,
+            conv       : pe_req.conversion_vs2,
+            scale_vl   : pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
+            vtype      : pe_req.vtype,
+            vl         : vfu_operation_d.vl,
+            vstart     : vfu_operation_d.vstart,
+            hazard     : pe_req.hazard_vs2,
+            default    : '0
+          };
+          operand_request_push[MaskB] = 1'b1;
         end
         default:;
       endcase

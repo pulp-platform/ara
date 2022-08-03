@@ -304,6 +304,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               ntr_red  : operand_request_i[requester].cvt_resize,
               target_fu: operand_request_i[requester].target_fu
             };
+            // The length should be at least one after the rescaling
+            if (operand_queue_cmd_o[requester].vl == '0)
+              operand_queue_cmd_o[requester].vl = 1;
             operand_queue_cmd_valid_o[requester] = 1'b1;
 
             // Store the request
@@ -326,6 +329,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               is_widening : operand_request_i[requester].cvt_resize == CVT_WIDE,
               default: '0
             };
+            // The length should be at least one after the rescaling
+            if (requester_d.len == '0)
+              requester_d.len = 1;
 
             // Mute the requisition if the vl is zero
             if (operand_request_i[requester].vl == '0) begin
@@ -387,6 +393,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   target_fu: operand_request_i[requester].target_fu
                 };
                 operand_queue_cmd_valid_o[requester] = 1'b1;
+                // The length should be at least one after the rescaling
+                if (operand_queue_cmd_o[requester].vl == '0)
+                  operand_queue_cmd_o[requester].vl = 1;
 
                 // Store the request
                 requester_d = '{
@@ -403,6 +412,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   hazard : operand_request_i[requester].hazard,
                   default: '0
                 };
+                // The length should be at least one after the rescaling
+                if (requester_d.len == '0)
+                  requester_d.len = 1;
               end
             end
           end

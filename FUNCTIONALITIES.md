@@ -64,4 +64,6 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 
 ## Vector permutation instructions
 
+- Integer Scalar Move instructions: `vmv.x.s`, `vmv.s.x`
+- Floating-Point Scalar Move instructions: `vfmv.f.s`, `vfmv.s.f`
 - Vector slide instructions: `vslideup`, `vslidedown`, `vslide1up`, `vfslide1up`, `vslide1down`, `vfslide1down`

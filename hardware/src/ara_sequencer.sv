@@ -37,6 +37,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Only the slide unit can answer with a scalar response
     input  elen_t                           pe_scalar_resp_i,
     input  logic                            pe_scalar_resp_valid_i,
+    output logic                            pe_scalar_resp_ready_o,
     // Interface with the Address Generation
     input  logic                            addrgen_ack_i,
     input  logic                            addrgen_error_i,
@@ -157,6 +158,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VLE:VLXE]           : vfu = VFU_LoadUnit;
       [VSE:VSXE]           : vfu = VFU_StoreUnit;
       [VSLIDEUP:VSLIDEDOWN]: vfu = VFU_SlideUnit;
+      [VMVXS:VFMVFS]       : vfu = VFU_None;
     endcase
   endfunction : vfu
 
@@ -166,7 +168,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   function automatic logic [NrVFUs-1:0] target_vfus(ara_op_e op);
     target_vfus = '0;
     unique case (op) inside
-      [VADD:VMERGE]:
+      [VADD:VFMVSF]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu) target_vfus[i] = 1'b1;
       [VREDSUM:VWREDSUM]:
@@ -190,6 +192,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VSLIDEUP:VSLIDEDOWN]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_SlideUnit) target_vfus[i] = 1'b1;
+      [VMVXS:VFMVFS]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_None) target_vfus[i] = 1'b1;
     endcase
   endfunction : target_vfus
 
@@ -199,7 +204,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     SlduInsnQueueDepth,
     MaskuInsnQueueDepth,
     VlduInsnQueueDepth,
-    VstuInsnQueueDepth
+    VstuInsnQueueDepth,
+    NoneInsnQueueDepth
   };
 
   logic ara_req_token_d, ara_req_token_q;
@@ -228,6 +234,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic [NrVFUs-1:0] gold_ticket_d, gold_ticket_q;
   logic [NrVFUs-1:0] priority_pass;
 
+  // Signal to know if there is a mask instruction being executed by the MASKU
+  // that can use the MaskB operand queue. If there is a running MASKU instruction,
+  // we cannot sample the scalar operand.
+  // Since the scalar move uses the MaskB opqueue, we need to wait to finish
+  // the MASKU insn to be sure that the forwarded value is the scalar one
+  logic running_mask_insn_d, running_mask_insn_q;
+
   // pe_req_ready_i comes from all the lanes
   // It is deasserted if the current request is stuck
   // because the target operand requesters are not ready in that lane
@@ -255,6 +268,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
     // Always ready to receive a new request
     ara_req_ready_o = 1'b1;
+
+    // Not ready by default
+    pe_scalar_resp_ready_o = 1'b0;
 
     // Update vector register's access list
     for (int unsigned v = 0; v < 32; v++) begin
@@ -369,6 +385,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
                 VFU_StoreUnit: pe_vinsn_running_d[NrLanes + OffsetStore][vinsn_id_n] = 1'b1;
                 VFU_SlideUnit: pe_vinsn_running_d[NrLanes + OffsetSlide][vinsn_id_n] = 1'b1;
                 VFU_MaskUnit : pe_vinsn_running_d[NrLanes + OffsetMask][vinsn_id_n]  = 1'b1;
+                VFU_None     : ;
                 default: for (int l = 0; l < NrLanes; l++)
                     // Instruction is running on the lanes
                     pe_vinsn_running_d[l][vinsn_id_n] = 1'b1;
@@ -407,6 +424,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         pe_req_d       = pe_req_o;
         pe_req_valid_d = pe_req_valid_o;
 
+        // Consume the request if acknowledged
+        if (pe_req_valid_o && pe_req_ready_i)
+          pe_req_valid_d = 1'b0;
+
         // Wait for the address translation
         if ((is_load(pe_req_d.op) || is_store(pe_req_d.op)) && addrgen_ack_i) begin
           state_d             = IDLE;
@@ -419,10 +440,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         // Wait for the scalar result
         if (!ara_req_i.use_vd && pe_scalar_resp_valid_i) begin
           // Acknowledge the request
-          state_d          = IDLE;
-          ara_req_ready_o  = 1'b1;
-          ara_resp_o.resp  = pe_scalar_resp_i;
-          ara_resp_valid_o = 1'b1;
+          state_d                = IDLE;
+          ara_req_ready_o        = 1'b1;
+          ara_resp_o.resp        = pe_scalar_resp_i;
+          ara_resp_valid_o       = 1'b1;
+          pe_scalar_resp_ready_o = pe_scalar_resp_valid_i & ~running_mask_insn_q;
         end
       end
     endcase
@@ -445,6 +467,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       gold_ticket_q   <= 1'b0;
 
       global_hazard_table_o <= '0;
+
+      running_mask_insn_q <= 1'b0;
     end else begin
       state_q <= state_d;
 
@@ -458,7 +482,28 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       gold_ticket_q   <= gold_ticket_d;
 
       global_hazard_table_o <= global_hazard_table_d;
+
+      running_mask_insn_q <= running_mask_insn_d;
     end
+  end
+
+  /////////////////
+  // Scalar Move //
+  /////////////////
+
+  // This signal detects only instructions that produce
+  // a mask vector, to reduce latency of scalar moves
+  // if a masked vector instruction is ongoing
+
+  // This works only if MASKU insn queue has width == 1
+  always_comb begin
+    running_mask_insn_d = running_mask_insn_q;
+
+    if (|pe_resp_i[NrLanes+OffsetMask].vinsn_done)
+      running_mask_insn_d = 1'b0;
+
+    if (pe_req_valid_o && pe_req_ready_i && pe_req_o.vfu == VFU_MaskUnit)
+      running_mask_insn_d = 1'b1;
   end
 
   //////////////
@@ -474,6 +519,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   assign insn_queue_done[VFU_StoreUnit] = |pe_resp_i[NrLanes+OffsetStore].vinsn_done;
   assign insn_queue_done[VFU_MaskUnit]  = |pe_resp_i[NrLanes+OffsetMask].vinsn_done;
   assign insn_queue_done[VFU_SlideUnit] = |pe_resp_i[NrLanes+OffsetSlide].vinsn_done;
+  // Dummy counter, just for compatibility
+  assign insn_queue_done[VFU_None]      = insn_queue_cnt_up[VFU_None];
 
   // Register the incoming instruction if it is valid
   assign accepted_insn = ara_req_valid_i & (ara_req_token_q != ara_req_i.token);
@@ -486,6 +533,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
   // One counter per VFU
   for (genvar i = 0; i < NrVFUs; i++) begin : gen_seq_fu_cnt
+    // The width can be optimized for each counter
     localparam CNT_WIDTH = idx_width(MaxVInsnQueueDepth + 1);
 
     counter #(
