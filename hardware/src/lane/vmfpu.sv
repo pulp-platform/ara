@@ -197,9 +197,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   typedef logic [idx_width(LatFMax)-1:0] fpu_latency_t;
   function automatic fpu_latency_t fpu_latency(vew_e sew, ara_op_e op);
     case (op) inside
-      VFDIV, VFRDIV, VFSQRT: fpu_latency = LatFDivSqrt;
-      [VFCVTXUF:VFCVTFF]:    fpu_latency = LatFConv;
-      [VFMIN:VFSGNJX]:       fpu_latency = LatFNonComp;
+      VFDIV, VFRDIV, VFSQRT:  fpu_latency = LatFDivSqrt;
+      [VFREDMIN:VFREDMAX]:    fpu_latency = LatFNonComp;
+      [VFCVTXUF:VFCVTFF]:     fpu_latency = LatFConv;
+      [VFMIN:VFSGNJX]:        fpu_latency = LatFNonComp;
       default: begin
         case (sew)
           EW64:    fpu_latency = LatFCompEW64;
@@ -1140,7 +1141,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         end
 
         // Select the correct valid, result, and mask, to write in the result queue
-        case (vinsn_processing.op) inside
+        case (vinsn_processing_q.op) inside
           [VMUL:VNMSUB]: begin
             unit_out_valid  = vmul_out_valid;
             unit_out_result = vmul_result;
@@ -1159,7 +1160,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         endcase
 
         // Narrowing FPU results need to be shuffled before being saved for storing
-        unique case (vinsn_processing.vtype.vsew)
+        unique case (vinsn_processing_q.vtype.vsew)
           EW16: begin
             narrowing_shuffled_result[63:48] = unit_out_result[31:16];
             narrowing_shuffled_result[47:32] = unit_out_result[31:16];
@@ -1274,8 +1275,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           // the operation issuing.
           if (vfpu_out_valid && !result_queue_full) begin
             // How many elements have we processed?
-
-            automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing.vtype.vsew)));
+            automatic logic [3:0] processed_element_cnt = (1 << (int'(EW64) - int'(vinsn_processing_q.vtype.vsew)));
             // Update the number of elements still to be processed
             if (processed_element_cnt > to_process_cnt_q)
               processed_element_cnt = to_process_cnt_q;
