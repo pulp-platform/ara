@@ -124,8 +124,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // operations, or injecting a reshuffling uop.
   // IDLE can happen, for example, once the vlmul has changed.
   // RESHUFFLE can happen when an instruction writes a register with != EEW
-  typedef enum logic {
+  typedef enum logic [1:0] {
     NORMAL_OPERATION,
+    WAIT_IDLE,
     RESHUFFLE
   } state_e;
   state_e state_d, state_q;
@@ -245,6 +246,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Special states
     case (state_q)
+      // Is Ara idle?
+      WAIT_IDLE: begin
+        if (ara_idle_i) state_d = NORMAL_OPERATION;
+      end
+
       // Inject a reshuffle instruction
       RESHUFFLE: begin
         // Instruction is of one of the RVV types
@@ -357,6 +363,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Return the new vl
                 acc_resp_o.result = vl_d;
+
+                // If the vtype has changed, wait for the backend before issuing any new instructions.
+                // This is to avoid hazards on implicit register labels when LMUL_old > LMUL_new
+                // and both the LMULs are greater then LMUL_1 (i.e., lmul[2] == 1'b0)
+                // Checking only lmul_q is a trick: we want to stall only if both lmuls have
+                // zero MSB. If lmul_q has zero MSB, it's greater than lmul_d only if also
+                // lmul_d has zero MSB since the slice comparison is intrinsically unsigned
+                if (!vtype_q.vlmul[2] && (vtype_d.vlmul[2:0] < vtype_q.vlmul[2:0]))
+                  state_d = WAIT_IDLE;
               end
 
               OPIVV: begin: opivv

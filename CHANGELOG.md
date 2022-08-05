@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix lane sequencer checks for floating-point comparisons
  - Fix synthesis error occuring due to the continuous assignmnet in the always block of mask unit
  - Fix wrong variable in `vmerge` and `vmv` `riscv-tests`
+ - Re-introduce WAIT_STATE to avoid hazards when changin LMUL
+ - Fix the PEs-ready signals related conditions in the main sequencer
 
 ### Added
 
@@ -52,6 +54,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Update LLVM to version `15.0.0` (RVV 1.0)
 - Update Spike to version `1.1.1-dev` (RVV 1.0)
 - Update `newlib` from commit 84d068 to 5192d5
+- Ara's dispatcher goes to WAIT_STATE only when the new LMUL is lower than the old one
 
 ## 2.2.0 - 2021-11-02
 

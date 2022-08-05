@@ -424,8 +424,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         pe_req_d       = pe_req_o;
         pe_req_valid_d = pe_req_valid_o;
 
-        // Consume the request if acknowledged
-        if (pe_req_valid_o && pe_req_ready_i)
+        // Consume the request if acknowledged during a scalar move
+        if (pe_req_valid_o && &operand_requester_ready)
           pe_req_valid_d = 1'b0;
 
         // Wait for the address translation
@@ -502,7 +502,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     if (|pe_resp_i[NrLanes+OffsetMask].vinsn_done)
       running_mask_insn_d = 1'b0;
 
-    if (pe_req_valid_o && pe_req_ready_i && pe_req_o.vfu == VFU_MaskUnit)
+    if (pe_req_valid_o && &operand_requester_ready && pe_req_o.vfu == VFU_MaskUnit)
       running_mask_insn_d = 1'b1;
   end
 
