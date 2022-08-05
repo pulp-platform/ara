@@ -580,4 +580,3 @@ jobs:
             compile-ara-${{ matrix.ara_config }}
             compile-apps-${{ matrix.ara_config }}
             compile-riscv-tests-${{ matrix.ara_config }}
-            benchmark-${{ matrix.ara_config }}

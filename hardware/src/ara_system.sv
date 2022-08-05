@@ -84,7 +84,16 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   logic                                 inval_ready;
 
   ariane #(
-    .ArianeCfg(ArianeCfg)
+    .ArianeCfg     (ArianeCfg            ),
+    .AxiAddrWidth  (AxiAddrWidth         ),
+    .AxiDataWidth  (AxiNarrowDataWidth   ),
+    .AxiIdWidth    (AxiIdWidth           ),
+    .AxiUserWidth  (ariane_axi::UserWidth),
+    .axi_ar_chan_t (ariane_axi_ar_t      ),
+    .axi_aw_chan_t (ariane_axi_aw_t      ),
+    .axi_w_chan_t  (ariane_axi_w_t       ),
+    .axi_req_t     (ariane_axi_req_t     ),
+    .axi_rsp_t     (ariane_axi_resp_t    )
   ) i_ariane (
     .clk_i            (clk_i                 ),
     .rst_ni           (rst_ni                ),
