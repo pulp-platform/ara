@@ -228,7 +228,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   //  Reductions  //
   //////////////////
 
-  // Cut the path between the SLDU and the ALU. This increase latency
+  // Cut the path between the SLDU and the ALU. This increases latency
   // but does has negligible impact on long vectors
   elen_t sldu_operand_q;
   logic  sldu_alu_valid_q, sldu_alu_ready_d;
@@ -316,7 +316,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   // This signal is used to cut a in2reg bad path
   // This works since the signal is never checked
   // twice in two consecutive cycles
-  logic  alu_red_ready_q;
+  logic alu_red_ready_q;
+
+  // Reductions commit by zeroing the commit counter
+  // When the workload is unbalanced, some lanes can start the operation with a zeroed commit counter
+  // In this case, the ALU should NOT commit until the inter-lanes phase is over
+  logic prevent_commit;
 
   // Input multiplexers.
   elen_t simd_red_operand;
@@ -401,6 +406,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     // Do not acknowledge any operands
     alu_operand_ready_o = '0;
     mask_ready_o        = '0;
+
+    // Don't prevent commit by default
+    prevent_commit = 1'b0;
 
     ////////////////////////////////////////
     //  Write data into the result queue  //
@@ -489,20 +497,24 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                 else
                   vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
-                if (vinsn_queue_d.issue_cnt != 0)
+                // Assign vector length for next instruction in the instruction queue
+                if (vinsn_queue_d.issue_cnt != 0) begin
                   if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
                     issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
                   else begin
-                    // Operations between mask vectors operate on bits
                     issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
                       vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
                     issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
                   end
+                end
               end
             end
           end
         end
         INTRA_LANE_REDUCTION: begin
+          // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+          // delay the commit until we are over with the inter-lanes phase
+          prevent_commit = 1'b1;
           // Stall only if this is the first operation for this reduction instruction and the result queue is full
           if (!(first_op_q && result_queue_full)) begin
             // Do we have all the operands necessary for this instruction?
@@ -551,6 +563,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           end
         end
         INTER_LANES_REDUCTION: begin
+          // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+          // delay the commit until we are over with the inter-lanes phase
+          prevent_commit = 1'b1;
           if (reduction_rx_cnt_q == '0) begin
             // This unit has finished processing data for this reduction instruction, send the partial result to the sliding unit
             alu_red_valid_o = 1'b1;
@@ -558,23 +573,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             // so, no risk to re-sample alu_red_ready_i with side effects
             if (alu_red_ready_q) begin
               alu_state_d = WAIT_STATE;
-                if (lane_id_i != '0) begin
-                // Bump issue counter and pointers
-                vinsn_queue_d.issue_cnt -= 1;
-                if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
-                  vinsn_queue_d.issue_pnt = '0;
-                else
-                  vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
-
-                if (vinsn_queue_d.issue_cnt != 0)
-                  if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
-                    issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
-                  else begin
-                    issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
-                      vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
-                    issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
-                  end
-              end
             end
           end else begin
             // This unit should still process data for the inter-lane reduction.
@@ -596,6 +594,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           if (sldu_alu_valid_q && sldu_alu_ready_d) red_hs_synch_d = 1'b1;
         end
         WAIT_STATE: begin
+          // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+          // delay the commit until we are over with the inter-lanes phase
+          prevent_commit = 1'b1;
           // Acknowledge the sliding unit even if it is not forwarding anything useful
           sldu_alu_ready_d = sldu_alu_valid_q;
           alu_red_valid_o  = red_hs_synch_q;
@@ -604,7 +605,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             if (sldu_alu_valid_q) begin
               if (sldu_transactions_cnt_q == 1) begin
                 result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
-                unique case (vinsn_issue_q.vtype.vsew)
+                unique case (vinsn_commit.vtype.vsew)
                   EW8 : simd_red_cnt_max_d = 2'd3;
                   EW16: simd_red_cnt_max_d = 2'd2;
                   EW32: simd_red_cnt_max_d = 2'd1;
@@ -615,15 +616,28 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               end
             end
           end else if (sldu_transactions_cnt_q == '0) begin
-            // If not lane 0, wait for the completion of the reduction
-            alu_state_d = is_reduction(vinsn_issue_q.op) && vinsn_issue_valid ? INTRA_LANE_REDUCTION : NO_REDUCTION;
-            // The next will be the first operation of this instruction
-            // This information is useful for reduction operation
-            first_op_d         = 1'b1;
-            reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-            sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
-            // Allow the first valid
-            red_hs_synch_d = 1'b1;
+            // We can finally commit now even if we are not lane 0 and we had nothing to do
+            // except for inter-lanes communication
+            prevent_commit = 1'b0;
+
+            // Bump issue counter and pointers
+            vinsn_queue_d.issue_cnt -= 1;
+            if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+              vinsn_queue_d.issue_pnt = '0;
+            else
+              vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+            // Assign vector length for next instruction in the instruction queue
+            if (vinsn_queue_d.issue_cnt != 0) begin
+              if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
+                issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+              else begin
+                issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
+                  vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
+                issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
+              end
+            end
+
             // Give the done to the main sequencer
             commit_cnt_d = '0;
           end
@@ -655,24 +669,18 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               else
                 vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
 
-              if (vinsn_queue_d.issue_cnt != 0)
+              // Assign vector length for next instruction in the instruction queue
+              if (vinsn_queue_d.issue_cnt != 0) begin
                 if (!(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op inside {[VMANDNOT:VMXNOR]}))
                   issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
                 else begin
                   issue_cnt_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl / 8) >>
-                    vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;;
+                    vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
                   issue_cnt_d += |vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl[2:0];
                 end
+              end
 
-              alu_state_d = is_reduction(vinsn_issue_d.op) && (vinsn_queue_d.issue_cnt != 0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
-              // The next will be the first operation of this instruction
-              // This information is useful for reduction operation
-              first_op_d         = 1'b1;
-              reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-              sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
-              // Allow the first valid
-              red_hs_synch_d = 1'b1;
-              // Give the done to the main sequencer
+              // Commit and give the done to the main sequencer
               commit_cnt_d = '0;
 
               // Bump pointers and counters of the result queue
@@ -682,7 +690,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                 result_queue_write_pnt_d = 0;
               else
                 result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
-              end
+            end
           end
         end
         default:;
@@ -728,7 +736,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     end
 
     // Finished committing the results of a vector instruction
-    if (vinsn_commit_valid && commit_cnt_d == '0) begin
+    if (vinsn_commit_valid && (commit_cnt_d == '0) && !prevent_commit) begin
       // Mark the vector instruction as being done
       alu_vinsn_done_o[vinsn_commit.id] = 1'b1;
 
@@ -752,16 +760,15 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // Initialize counters and alu state if needed by the next instruction
       // After a reduction, the next instructions starts after the reduction commits
       if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
-        alu_state_d = INTRA_LANE_REDUCTION;
-        // The next will be the first operation of this instruction
-        // This information is useful for reduction operation
-        first_op_d         = 1'b1;
-        reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-
+        // Initialize reduction-related sequential elements
+        first_op_d              = 1'b1;
+        reduction_rx_cnt_d      = reduction_rx_cnt_init(NrLanes, lane_id_i);
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
-        // Allow the first valid
-        red_hs_synch_d = 1'b1;
-        issue_cnt_d    = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+        red_hs_synch_d = 1'b1; // Allow the first valid
+
+        alu_state_d = INTRA_LANE_REDUCTION;
+      end else begin
+        alu_state_d = NO_REDUCTION;
       end
     end
 
@@ -776,18 +783,19 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // The only valid instructions here with vl == '0 are reductions
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.vm | (vfu_operation_i.vl == '0);
 
-      // Initialize counters and alu state if this is the instruction queue was empty
-      if (vinsn_queue_d.issue_cnt == '0) begin
+      // Initialize counters and alu state if the instruction queue was empty
+      // and the lane is not reducing
+      if ((vinsn_queue_d.issue_cnt == '0) && !prevent_commit) begin
         alu_state_d = is_reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
         // The next will be the first operation of this instruction
         // This information is useful for reduction operation
-        first_op_d         = 1'b1;
-        reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
-
+        // Initialize reduction-related sequential elements
+        first_op_d              = 1'b1;
+        reduction_rx_cnt_d      = reduction_rx_cnt_init(NrLanes, lane_id_i);
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
-        // Allow the first valid
-        red_hs_synch_d = 1'b1;
-        issue_cnt_d    = vfu_operation_i.vl;
+        red_hs_synch_d = 1'b1; // Allow the first valid
+
+        issue_cnt_d = vfu_operation_i.vl;
       end
       if (vinsn_queue_d.commit_cnt == '0)
         if (!(vfu_operation_i.op inside {[VMANDNOT:VMXNOR]}))
