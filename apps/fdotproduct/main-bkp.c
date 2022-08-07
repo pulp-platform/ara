@@ -38,15 +38,15 @@ void dotp_16b(uint64_t avl, int16_t *v0, int16_t *v1, int16_t *result);
 void dotp_16b_scalar(uint64_t avl, int16_t *v0, int16_t *v1, int16_t *result);
 
 // Vectors for benchmarks
-double  v64a[SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-double  v64b[SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-float   v32a[SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-float   v32b[SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+double v64a[SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+double v64b[SIZE_64B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+float v32a[SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+float v32b[SIZE_32B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 int16_t v16a[SIZE_16B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 int16_t v16b[SIZE_16B] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
-double  v_result64, s_result64;
-float   v_result32, s_result32;
+double v_result64, s_result64;
+float v_result32, s_result32;
 int16_t v_result16, s_result16;
 
 int main() {
@@ -72,7 +72,8 @@ int main() {
       printf("Scalar runtime: %ld\n", runtime_s);
 
       if (CHECK) {
-        if ((v_result64 - s_result64 > 0.001) || (v_result64 - s_result64 < -0.001))
+        if ((v_result64 - s_result64 > 0.001) ||
+            (v_result64 - s_result64 < -0.001))
           return -1;
       }
     }
@@ -91,7 +92,8 @@ int main() {
       printf("Scalar runtime: %ld\n", runtime_s);
 
       if (CHECK) {
-        if ((v_result32 - s_result32 > 0.001) || (v_result32 - s_result32 < -0.001))
+        if ((v_result32 - s_result32 > 0.001) ||
+            (v_result32 - s_result32 < -0.001))
           return -1;
       }
     }

@@ -235,7 +235,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           endcase
         end
       end
-      
+
       // Floating-point neutral value
       // pinf -> positive infinity, ninf -> negative infinity
       OpQueueFloatReductionZExt: begin
@@ -294,7 +294,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         end
       end
 
-      // Widening floating-point reduction 
+      // Widening floating-point reduction
       OpQueueFloatReductionWideZExt: begin
         if (lane_id_0) begin
           unique case (cmd.ntr_red)
