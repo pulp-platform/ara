@@ -74,7 +74,7 @@ DEFINES += $(ENV_DEFINES) $(MAKE_DEFINES)
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argument # -Werror
 
 # LLVM Flags
-LLVM_FLAGS     ?= -march=rv64gcv -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
+LLVM_FLAGS     ?= -march=rv64gcv_zfh_zvfh0p1 -menable-experimental-extensions -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
 RISCV_FLAGS    ?= $(LLVM_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
 RISCV_CCFLAGS_SPIKE  ?= $(RISCV_FLAGS) $(SPIKE_CCFLAGS)
