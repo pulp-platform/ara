@@ -1,21 +1,9 @@
-/*=================================================================================================
-Project Name:    Ara
-Author:          Xiaorui Yin <yinx@student.ethz.ch>
-Organization:    ETH Zürich
-File Name:       vfredusum.c
-Created On:      2022/04/06
-
-Description:     Naive tests for floating-point unordered reduction instruction
-(vfredusum)
-
-CopyRight Notice
-All Rights Reserved
-===================================================================================================
-Modification    History:
-Date            By              Version         Change Description
----------------------------------------------------------------------------------------------------
-
-=================================================================================================*/
+// Copyright 2022 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Xiaorui Yin <yinx@student.ethz.ch>
+// Date: 2022/05/03
 
 #include "float_macros.h"
 #include "vector_macros.h"
