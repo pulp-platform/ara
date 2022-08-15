@@ -486,10 +486,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // the memory interface.
           aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, $clog2(AxiDataWidth/8));
           // The final address can be found similarly...
-          if (axi_addrgen_d.len << int'(axi_addrgen_d.vew) > (256 << $clog2(AxiDataWidth/8))) begin
+          if (axi_addrgen_d.len << int'(axi_addrgen_d.vew) >= (256 << $clog2(AxiDataWidth/8))) begin
             aligned_end_addr_d =
-            aligned_addr(axi_addrgen_d.addr + (256 << $clog2(AxiDataWidth/8)) - 1,
-              $clog2(AxiDataWidth/8)) + AxiDataWidth/8 - 1;
+            aligned_addr(axi_addrgen_d.addr + (256 << $clog2(AxiDataWidth/8)),
+              $clog2(AxiDataWidth/8)) - 1;
           end else begin
             aligned_end_addr_d =
             aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
@@ -508,10 +508,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // the memory interface.
         aligned_start_addr_d = aligned_addr(axi_addrgen_q.addr, eff_axi_dw_log_q);
         // The final address can be found similarly...
-        if (axi_addrgen_q.len << int'(axi_addrgen_q.vew) > (256 << eff_axi_dw_log_q)) begin
+        if (axi_addrgen_q.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q)) begin
           aligned_end_addr_d =
-            aligned_addr(axi_addrgen_q.addr + (256 << eff_axi_dw_log_q) - 1, eff_axi_dw_log_q)
-            + eff_axi_dw_q - 1;
+            aligned_addr(axi_addrgen_q.addr + (256 << eff_axi_dw_log_q), eff_axi_dw_log_q) - 1;
         end else begin
           aligned_end_addr_d =
             aligned_addr(axi_addrgen_q.addr + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
@@ -613,11 +612,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               aligned_start_addr_d = axi_addrgen_d.addr;
               // The final address can be found similarly.
               // How many B we requested? No more than (256 << burst_size)
-              if (axi_addrgen_d.len << int'(axi_addrgen_q.vew) > (256 << eff_axi_dw_log_q))
+              if (axi_addrgen_d.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q))
               begin
                 aligned_end_addr_d =
-                  aligned_addr(aligned_start_addr_d + (256 << eff_axi_dw_log_q) - 1,
-                    eff_axi_dw_log_q) + eff_axi_dw_q - 1;
+                  aligned_addr(aligned_start_addr_d + (256 << eff_axi_dw_log_q),
+                    eff_axi_dw_log_q) - 1;
               end else begin
                 aligned_end_addr_d =
                   aligned_addr(aligned_start_addr_d + (axi_addrgen_d.len << int'(axi_addrgen_q.vew))
