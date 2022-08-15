@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix wrong variable in `vmerge` and `vmv` `riscv-tests`
  - Re-introduce WAIT_STATE to avoid hazards when changin LMUL
  - Fix the PEs-ready signals related conditions in the main sequencer
+ - Fix misaligned memory operations with more than 255 beats (>= 256 beats)
 
 ### Added
 
