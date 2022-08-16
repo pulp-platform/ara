@@ -65,7 +65,8 @@ module xilinx_ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .AxiAddrWidth(AxiAddrWidth ),
     .AxiDataWidth(AxiDataWidth ),
     .AxiIdWidth  (AxiIdWidth   ),
-    .AxiUserWidth(AxiUserWidth )
+    .AxiUserWidth(AxiUserWidth ),
+    .L2NumWords  (L2NumWords   )
   ) i_ara_soc (
     .clk_i         (clk_i       ),
     .rst_ni        (rst_ni      ),
