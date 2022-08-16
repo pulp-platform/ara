@@ -356,7 +356,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       vl_d = vlmax;
                     end else begin
                       // Normal stripmining
-                      vl_d = (vlen_t'(acc_req_i.rs1) > vlmax) ? vlmax : vlen_t'(acc_req_i.rs1);
+                      vl_d = ((|acc_req_i.rs1[$bits(acc_req_i.rs1)-1:$bits(vl_d)]) ||
+                        (vlen_t'(acc_req_i.rs1) > vlmax)) ? vlmax : vlen_t'(acc_req_i.rs1);
                     end
                   end
                 end
