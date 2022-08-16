@@ -6,6 +6,7 @@ filesets:
     rtl:
         file_type: systemVerilogSource
         files:
+            - fpga/src/xcvu9p.svh
             - hardware/deps/axi/src/axi_pkg.sv
             - hardware/deps/axi/src/axi_intf.sv
             - hardware/deps/axi/include/axi/assign.svh: {is_include_file: true, include_path: hardware/deps/axi/include}
@@ -224,6 +225,20 @@ filesets:
             - hardware/deps/cva6/src/util/instr_tracer.sv
             - hardware/deps/cva6/src/util/ex_trace_item.svh: {is_include_file: true}
             - hardware/deps/cva6/src/util/instr_trace_item.svh: {is_include_file: true}
+            
+            - hardware/deps/apb_uart/src/slib_clock_div.sv
+            - hardware/deps/apb_uart/src/slib_counter.sv
+            - hardware/deps/apb_uart/src/slib_edge_detect.sv
+            - hardware/deps/apb_uart/src/slib_fifo.sv
+            - hardware/deps/apb_uart/src/slib_input_filter.sv
+            - hardware/deps/apb_uart/src/slib_input_sync.sv
+            - hardware/deps/apb_uart/src/slib_mv_filter.sv
+            - hardware/deps/apb_uart/src/uart_baudgen.sv
+            - hardware/deps/apb_uart/src/uart_interrupt.sv
+            - hardware/deps/apb_uart/src/uart_receiver.sv
+            - hardware/deps/apb_uart/src/uart_transmitter.sv
+            - hardware/deps/apb_uart/src/apb_uart.sv
+            - hardware/deps/apb_uart/src/apb_uart_wrap.sv
 
             - hardware/include/ara/ara.svh: {is_include_file: true, include_path: hardware/include}
             - hardware/include/rvv_pkg.sv
@@ -265,7 +280,16 @@ filesets:
     xilinx_sram:
         file_type : systemVerilogSource
         files:
-            - hardware/deps/tech_cells_generic/src/rtl/tc_sram.sv
+            - fpga/scripts/xpm_rams.tcl: {file_type: tclSource}
+            - hardware/deps/tech_cells_generic/src/fpga/tc_sram_xilinx.sv: {file_type : systemVerilogSource}
+    xilinx_synth:
+        files:
+            - fpga/scripts/run.tcl: {file_type: tclSource}
+
+    xcvu9p:
+        files:
+            - fpga/constraints/ara.xdc: {file_type: xdc}
+            - fpga/src/xilinx_ara_soc.sv: {file_type : systemVerilogSource}
 
     svtb:
         file_type: systemVerilogSource
@@ -275,9 +299,11 @@ filesets:
             - hardware/deps/cva6/tb/common/mock_uart.sv
 
     verilator_tb:
+        file_type: systemVerilogSource
         files:
             - hardware/tb/ara_testharness.sv
             - hardware/tb/ara_tb_verilator.sv
+
 targets:
     xsim:
         default_tool: xsim 
@@ -288,6 +314,18 @@ targets:
                 xelab_options: [--debug, typical, -L, secureip, -L, unisims_ver, -L, unimacro_ver, -L, work.glbl, --timescale, 1ns/1ps, --define, NR_LANES=4, --define, RVV_ARIANE=1, --define, TARGET_ARA_TEST, --define, TARGET_ASIC, --define, TARGET_CVA6_TEST, --define, TARGET_RTL, --define, TARGET_SIMULATION, --define, TARGET_VSIM, --define, VLEN=4096, --define, WT_DCACHE=1]
         parameters: [PRELOAD]
         toplevel: [ara_tb]
+    synth:
+        description: Synthesize the design for an FPGA board
+        filesets:
+            - xilinx_sram
+            - rtl
+            - xilinx_synth
+            - xcvu9p
+        default_tool: vivado
+        tools:
+          vivado:
+            part: xcvu9p-flgb2104-2-e
+        toplevel: [xilinx_ara_soc]
 parameters:
     PRELOAD:
         datatype  : file
