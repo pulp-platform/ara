@@ -16,6 +16,7 @@ void TEST_CASE1(void) {
   VCMP_U32(1, v3, 0x80000000, 0x7fffffff, 12, -5);
   read_vxsat(vxsat)
   check_vxsat(1, vxsat, 1);
+  reset_vxsat;
 }
 
 void TEST_CASE2(void) {
@@ -29,6 +30,7 @@ void TEST_CASE2(void) {
   VCMP_U32(1, v3, 0, 0x7fffffff, 0, -5);
   read_vxsat(vxsat)
   check_vxsat(2, vxsat, 1);
+  reset_vxsat;
 }
 
 void TEST_CASE3(void) {
@@ -40,6 +42,7 @@ void TEST_CASE3(void) {
   VCMP_U32(3, v3, 0, 0x80000000, 10, 15);
   read_vxsat(vxsat)
   check_vxsat(3, vxsat, 1);
+  reset_vxsat;
 }
 
 void TEST_CASE4(void) {
@@ -50,6 +53,7 @@ void TEST_CASE4(void) {
   VCLEAR(v3);
   __asm__ volatile("vssub.vx v3, v1, %[A], v0.t" ::[A] "r"(scalar));
   VCMP_U32(4, v3, 0, 0x80000000, 0, 15);
+  reset_vxsat;
 }
 
 int main(void) {
