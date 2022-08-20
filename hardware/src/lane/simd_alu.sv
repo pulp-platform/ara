@@ -109,7 +109,8 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_comb begin: p_alu
     // Default assignment
-    res = '0;
+    res   = '0;
+    vxsat = 1'b0;
 
     if (valid_i)
       unique case (op_i)
