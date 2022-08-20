@@ -454,12 +454,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
                 result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
 
-                // Did Alu saturated when computing any elemnts?
+              // Did Alu saturated when computing any elemnts?
               vxsat_flag_o = |(alu_vxsat & result_queue_d[result_queue_write_pnt_q].be);
-
-                // Did Alu saturated when computing any elemnts?
-              vxsat_flag_o = alu_vxsat & result_queue_d[result_queue_write_pnt_q].be;
-
               // Is this a narrowing instruction?
               if (narrowing(vinsn_issue_q.op)) begin
                 // How many elements did we calculate in this iteration?
