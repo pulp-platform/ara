@@ -2203,10 +2203,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             unique case (insn.vmem_type.mop)
               2'b00: begin
                 ara_req_d.op = VLE;
+                //The segmented LOAD can't use more than 8 Registers.
+                if (ara_req_d.nf) begin
+                   illegal_insn = (ara_req_d.emul inside {LMUL_1_8, LMUL_1_4, LMUL_1_2}) || ( ((ara_req_d.nf + 1) * (ara_req_d.emul << 1)) > 8);
+                end
 
                 // Decode the lumop field
                 case (insn.vmem_type.rs2)
-                  5'b00000:;      // Unit-strided
+                  5'b00000: begin      // Unit-strided
+                     ara_req_d.nf = insn.vmem_type.nf;
+                     ara_req_d.vl = vl_q * (ara_req_d.nf + 1'b1);
+                  end
                   5'b01000:;      // Unit-strided, whole registers
                   5'b01011: begin // Unit-strided, mask load, EEW=1
                     // We operate ceil(vl/8) bytes
@@ -2712,26 +2719,58 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Update the EEW
     if (((ara_req_valid_d && ara_req_d.use_vd) || state_d == RESHUFFLE)
        && state_q != RESHUFFLE) begin
-      unique case (ara_req_d.emul)
-        LMUL_1: begin
+      automatic logic [3:0] vrf_utilization;
+
+      if ((ara_req_d.emul inside {LMUL_1_8, LMUL_1_4, LMUL_1_2}) || ( (1 << ara_req_d.emul) * (ara_req_d.nf + 1) > 8)) begin
+         vrf_utilization = '0;
+      end else begin
+         vrf_utilization = (1 << ara_req_d.emul) * (ara_req_d.nf + 1);
+      end
+
+      unique case (vrf_utilization)
+        4'd1: begin
           for (int i = 0; i < 1; i++) begin
             eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
             eew_valid_d[ara_req_d.vd + i] = 1'b1;
           end
         end
-        LMUL_2: begin
+        4'd2: begin
           for (int i = 0; i < 2; i++) begin
             eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
             eew_valid_d[ara_req_d.vd + i] = 1'b1;
           end
         end
-        LMUL_4: begin
+        4'd3: begin
+          for (int i = 0; i < 3; i++) begin
+            eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
+        end
+        4'd4: begin
           for (int i = 0; i < 4; i++) begin
             eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
             eew_valid_d[ara_req_d.vd + i] = 1'b1;
           end
         end
-        LMUL_8: begin
+        4'd5: begin
+          for (int i = 0; i < 5; i++) begin
+            eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
+        end
+        4'd6: begin
+          for (int i = 0; i < 6; i++) begin
+            eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
+        end
+        4'd7: begin
+          for (int i = 0; i < 7; i++) begin
+            eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
+            eew_valid_d[ara_req_d.vd + i] = 1'b1;
+          end
+        end
+        4'd8: begin
           for (int i = 0; i < 8; i++) begin
             eew_d[ara_req_d.vd + i]       = ara_req_d.vtype.vsew;
             eew_valid_d[ara_req_d.vd + i] = 1'b1;

@@ -223,7 +223,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   tc_sram #(
     .NumWords (L2NumWords  ),
     .NumPorts (1           ),
-    .DataWidth(AxiDataWidth)
+    .DataWidth(AxiDataWidth),
+    .SimInit ("zeros")
   ) i_dram (
     .clk_i  (clk_i                                                                      ),
     .rst_ni (rst_ni                                                                     ),
