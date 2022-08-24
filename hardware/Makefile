@@ -121,7 +121,7 @@ $(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shel
 .PHONY: sim
 sim: compile
 	cd $(buildpath) && \
-	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do ../scripts/run.tcl
+	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do $(ROOT_DIR)/scripts/run.tcl
 	./scripts/return_status.sh $(buildpath)/transcript
 
 .PHONY: simc
