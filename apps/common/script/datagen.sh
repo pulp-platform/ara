@@ -34,6 +34,12 @@ then
   args="${@:2}"
   # Use default values if args is not set
   [ -z "$args" ] && args="512"
+elif [[ $1 == *"jacobi2d"* ]]
+then
+  # Convolutions need args to be passed along
+  args="${@:2}"
+  # Arg1: rows, Arg2: columns. The values refer to the already padded img
+  [ -z "$args" ] && args="130 130"
 else
   # Other program datagens do not need any arguments
   args=
