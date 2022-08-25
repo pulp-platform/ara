@@ -73,111 +73,36 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 // Porting to Ara SW environment
 // Author: Matteo Perotti, ETH Zurich, <mperotti@iis.ee.ethz.ch>
 
+#ifndef _JACOBI2D_H_
+
+#define _JACOBI2D_H_
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "kernel/jacobi2d.h"
-#include "runtime.h"
+#include <riscv_vector.h>
+
 #include "util.h"
 
-#ifndef SPIKE
-#include "printf.h"
+// The vector algorithm seems not to be parametrized on the data type
+// So, don't change this parameter if also the vector implementation is used
+#define DATA_TYPE double
+
+// Threshold for FP numbers comparison during the final check
+#define THRESHOLD 0.000001
+
+// #define SOURCE_PRINT
+// #define RESULT_PRINT
+
+void j2d_s(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B, uint64_t tsteps);
+void j2d_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B, uint64_t tsteps);
+void j2d_kernel_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B);
+void j2d_kernel_opt_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B);
+void j2d_kernel_asm_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B);
+
+int check_result(uint64_t r, uint64_t c, DATA_TYPE *A_s, DATA_TYPE *B_s,
+                 DATA_TYPE *A_v, DATA_TYPE *B_v);
+void output_printfile(uint64_t r, uint64_t c, DATA_TYPE *A);
+
 #endif
-
-// The padded matrices should be aligned in SW not on the padding,
-// but on the actual data.
-// R and C contain the padding as well.
-extern uint64_t R;
-extern uint64_t C;
-
-extern uint64_t TSTEPS;
-
-extern DATA_TYPE A_s[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern DATA_TYPE B_s[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern DATA_TYPE A_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern DATA_TYPE B_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-
-int main() {
-  printf("\n");
-  printf("==============\n");
-  printf("=  JACOBI2D  =\n");
-  printf("==============\n");
-  printf("\n");
-  printf("\n");
-
-  int error = 0;
-
-  // Align the matrices so that the vector store will also be aligned
-  size_t mtx_offset = ((4 * NR_LANES) / sizeof(DATA_TYPE)) - 1;
-  DATA_TYPE *A_fixed_s = A_s + mtx_offset;
-  DATA_TYPE *A_fixed_v = A_v + mtx_offset;
-  DATA_TYPE *B_fixed_s = B_s + mtx_offset;
-  DATA_TYPE *B_fixed_v = B_v + mtx_offset;
-
-  // Check that the matrices are aligned on the actual output data
-  // NR_LANES can be maximum 16 here
-  if (((uint64_t)(B_fixed_v + 1) & (0x3f / (16 / NR_LANES))) != 0) {
-    printf("Fatal warning: the matrices are not correctly aligned.\n");
-    return -1;
-  } else {
-    printf("The store address 0x%lx is correctly aligned.\n",
-           (uint64_t)(B_fixed_v + 1));
-  }
-
-#ifdef SOURCE_PRINT
-  printf("Scalar A mtx:\n");
-  output_printfile(R, C, A_fixed_s);
-  printf("Vector A mtx:\n");
-  output_printfile(R, C, A_fixed_v);
-  printf("Scalar B mtx:\n");
-  output_printfile(R, C, B_fixed_s);
-  printf("Vector B mtx:\n");
-  output_printfile(R, C, B_fixed_v);
-#endif
-
-  // Measure scalar kernel execution
-  printf("Processing the scalar benchmark\n");
-  start_timer();
-  j2d_s(R, C, A_fixed_s, B_fixed_s, TSTEPS);
-  stop_timer();
-  printf("Scalar jacobi2d cycle count: %d\n", get_timer());
-
-  // Measure vector kernel execution
-  printf("Processing the vector benchmark\n");
-  start_timer();
-  j2d_v(R, C, A_fixed_v, B_fixed_v, TSTEPS);
-  stop_timer();
-  int64_t runtime = get_timer();
-  // 2* since we have 2 jacobi kernels, one on A_fixed_v, one on B_fixed_v
-  // TSTEPS*5*N*N is the number of DPFLOP to compute
-  float performance = (2.0 * TSTEPS * 5.0 * (R - 1) * (C - 1) / runtime);
-  float utilization = 100.0 * performance / NR_LANES;
-  printf("Vector jacobi2d cycle count: %d\n", runtime);
-  printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n",
-         performance, utilization);
-
-#ifdef RESULT_PRINT
-  printf("Scalar A mtx:\n");
-  output_printfile(R, C, A_fixed_s);
-  printf("Vector A mtx:\n");
-  output_printfile(R, C, A_fixed_v);
-  printf("Scalar B mtx:\n");
-  output_printfile(R, C, B_fixed_s);
-  printf("Vector B mtx:\n");
-  output_printfile(R, C, B_fixed_v);
-#endif
-
-  printf("Checking the results:\n");
-  for (uint32_t i = 0; i < R; i++)
-    for (uint32_t j = 0; j < C; j++)
-      if (!similarity_check(A_fixed_s[i * C + j], A_fixed_v[i * C + j],
-                            THRESHOLD)) {
-        printf("Error: [%d, %d], %f, %f\n", i, j, A_fixed_s[i * C + j],
-               A_fixed_v[i * C + j]);
-        error = 1;
-      }
-  if (!error)
-    printf("Check successful: no errors.\n");
-
-  return error;
-}
