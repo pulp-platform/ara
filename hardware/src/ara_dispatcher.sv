@@ -854,8 +854,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     automatic int unsigned vlmax;
                     // Execute also if vl == 0
                     ignore_zero_vl_check = 1'b1;
-                    // Maximum vector length. VLMAX = simm[2:0] * VLEN / SEW.
-                    vlmax = VLENB;
+                    // The number of elements depends on the EEW we will consider
+                    vlmax = VLENB >> eew_q[insn.varith_type.rs2];
+                    // Rescale the maximum vector length depending on how many
+                    // registers we should copy (VLMAX = simm[2:0] * VLEN / SEW).
                     unique case (insn.varith_type.rs1[17:15])
                       3'd0 : begin
                         vlmax <<= 0;
@@ -885,8 +887,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.use_vs1       = 1'b1;
                     ara_req_d.use_vs2       = 1'b0;
                     ara_req_d.vs1           = insn.varith_type.rs2;
-                    ara_req_d.vtype.vsew    = EW8;
-                    ara_req_d.scale_vl      = 1'b1;
+                    ara_req_d.eew_vs1       = eew_q[insn.varith_type.rs2];
+                    // Copy the encoding information to the new register
+                    ara_req_d.vtype.vsew    = eew_q[insn.varith_type.rs2];
                     ara_req_d.vl            = vlmax; // whole register move
                   end
                   6'b101000: ara_req_d.op = ara_pkg::VSRL;
