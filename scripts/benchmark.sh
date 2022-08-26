@@ -157,3 +157,33 @@ for kernel in fconv3d; do
         done
     done
 done
+
+##############
+## Jacobi2d ##
+##############
+
+# Measure the runtime of the following kernels
+for kernel in jacobi2d; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+
+    for msize_unpadded in 4 8 16 32 64 128 256; do
+        msize=$(($msize_unpadded + 2))
+
+        tempfile=`mktemp`
+
+        # Clean, and then generate the correct matrix and filter
+        rm -f apps/benchmarks/data/*.S.o apps/benchmarks/kernels/*.S.o apps/benchmarks/kernels/*.c.o
+		make -C apps/ clean
+
+		mkdir -p apps/benchmarks/data
+		${PYTHON} apps/$kernel/script/gen_data.py $msize $msize > apps/benchmarks/data/data.S
+        ENV_DEFINES="-D${kernel^^}=1" \
+               make -C apps/ bin/benchmarks
+        make -C hardware/ simv app=benchmarks > $tempfile || exit
+
+        # Extract the performance
+        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+    done
+done
