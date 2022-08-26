@@ -165,3 +165,38 @@ plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
      'fconv3d_16.benchmark'       w p lw 2 lc 7 pt 5 notitle,                                 \
      'fconv3d_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+#############
+## JACOBI2D ##
+#############
+
+# Title
+set title "jacobi2d performance, (matrices of size #elements x #elements)"
+
+# Set the range
+set xrange [2:512]
+set yrange [0.5:35]
+
+# Set axis labels
+set xlabel 'Matrix size (#elements)'
+set ylabel 'Performance (DPFLOP/cycle)'
+
+# Output png
+set term png
+set out "jacobi2d.png"
+
+# Plot the rooflines for 64-bit double
+# No VMACC, so maximum performance is halved
+# Always performance bound under these hypotheses
+plot roof_cpu(x, 2,  2) w l lw 2 lc 1 t  '2 Lanes',            \
+     'jacobi2d_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'jacobi2d_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 4,  4) w l lw 2 lc 2 t  '4 Lanes',            \
+     'jacobi2d_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'jacobi2d_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 8,  8) w l lw 2 lc 3 t  '8 Lanes',            \
+     'jacobi2d_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'jacobi2d_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 16, 16) w l lw 2 lc 7 t '16 Lanes',           \
+     'jacobi2d_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'jacobi2d_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
