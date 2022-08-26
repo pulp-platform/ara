@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix stripmining condition in dispatcher
  - CVA6 tracks writes to floating-point scalar registers by the accelerator
  - Fixed de-synch bug in vector-FPU
+ - Fix masked VSLIDEUP. Use only the mask bits with index higher than the stride
+ - Fix SLDU issue_counter modification upon new VSLIDEUP incoming instruction
+ - Fix whole-register-move destination register re-encoding
 
 ### Added
 
@@ -61,6 +64,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Ara's dispatcher goes to WAIT_STATE only when the new LMUL is lower than the old one
  - Halve CVA6's L1 caches to ease backend timing closure
  - Remove CVA6's cache patch from `hardware/patches` (CVA6 is now updated)
+ - Increase addrgen queue depth to four, to better hide memory latency
 
 ## 2.2.0 - 2021-11-02
 
