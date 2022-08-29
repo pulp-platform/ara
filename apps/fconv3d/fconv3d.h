@@ -28,8 +28,6 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
 void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
                           int64_t n_, int64_t C, int64_t F);
 
-#define FABS(x) ((x < 0) ? -x : x)
-
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 // Threshold for FP numbers comparison during the final check
