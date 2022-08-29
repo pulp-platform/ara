@@ -22,6 +22,7 @@
 
 #include "fconv3d.h"
 #include "runtime.h"
+#include "util.h"
 
 #ifndef SPIKE
 #include "printf.h"
@@ -42,16 +43,6 @@ extern int64_t M;
 extern int64_t N;
 extern int64_t CH;
 extern int64_t F;
-
-// Return 0 if the two FP numbers differ by more than a threshold
-int similarity_check(double a, double b, double threshold) {
-  double diff = a - b;
-  if (FABS(diff) > threshold) {
-    printf("fabs(diff): %lf, threshold: %lf\n", diff, threshold);
-    return 0;
-  } else
-    return 1;
-}
 
 // Verify the matrices
 int verify_matrix(double *matrix, double *golden_matrix, int64_t R, int64_t C,

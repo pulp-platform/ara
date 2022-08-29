@@ -55,9 +55,6 @@ def convolve2D(kernel, image, padding):
 
     return output
 
-def rand_matrix(N, M, seed):
-	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
-
 def emit(name, array, alignment='8'):
 	print(".global %s" % name)
 	print(".balign " + alignment)
@@ -81,6 +78,9 @@ else:
 	matrix_width = 64
 	filter_size = 3
 
+# 64-bit data
+dtype = np.float64
+
 # Input image. Take a square image
 M = matrix_width
 N = matrix_width
@@ -95,25 +95,23 @@ assert(N % 4 == 0), "Output image dimension must be divisible by 4, pad the inpu
 image = list()
 # Generate a random float64 input padded image
 for ch in range(CH):
-        image += [np.around(rand_matrix(M_pad, N_pad, ch)).astype(np.float64)]
-        np.random.shuffle(image[ch].flat)
+        image += [np.random.rand(M_pad, N_pad).astype(dtype)]
 
 gen_filter = list()
 # Generate a random float64 filter
 for ch in range(CH):
-        gen_filter += [np.around(rand_matrix(filter_size, filter_size, CH + ch)).astype(np.float64)]
-        np.random.shuffle(gen_filter[ch].flat)
+        gen_filter += [np.random.rand(filter_size, filter_size).astype(dtype)]
 
 # Create the empty o matrix
-empty_o = np.zeros((M, N)).astype(np.float64)
+empty_o = np.zeros((M, N)).astype(dtype)
 
 # Calculate the output matrix
-result = np.zeros((M, N)).astype(np.float64)
+result = np.zeros((M, N)).astype(dtype)
 for ch in range(CH):
-        result += np.around(convolve2D(gen_filter[ch], image[ch], padding)).astype(np.float64)
+        result += convolve2D(gen_filter[ch], image[ch], padding).astype(dtype)
 
 # Calculate a checksum
-checksum = np.sum(result, dtype=np.float64)
+checksum = np.sum(result, dtype=dtype)
 
 # Print information on display
 #print("Image:\n")
