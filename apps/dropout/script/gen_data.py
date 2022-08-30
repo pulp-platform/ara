@@ -18,17 +18,14 @@
 # arg1: image size, arg2: filter size
 
 import numpy as np
+import random
 import sys
 
-def rand_array(N, type, seed):
-  np.random.seed(seed)
-  if   type == 'float32_t':
-    return np.ndarray.astype(np.random.rand(N) * 3.141, np.float32)
-  elif type == 'int32_t':
-    return np.ndarray.astype(np.random.rand(N) * 3.141, np.int32)
+def rand_array(N, dtype):
+  return np.random.rand(N).astype(dtype);
 
-def rand_matrix(N, M, seed):
-	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
+def rand_sel(N, dtype):
+  return np.random.randint(0, 256, N, dtype)
 
 def emit(name, array, alignment='8'):
 	print(".global %s" % name)
@@ -41,18 +38,15 @@ def emit(name, array, alignment='8'):
 			s += "%02x" % bs[i+3-n]
 		print("    .word 0x%s" % s)
 
-# Variables
-Seed = 3
-
 if len(sys.argv) > 1:
-  N = sys.argv[1]
+  N = int(sys.argv[1])
 else:
   N = 1024
 
 # Generate inputs
-I     = rand_array(N, 'float32_t', Seed)
-SCALE = rand_array(1, 'float32_t', Seed+1)[0]
-SEL   = rand_array(N, 'int32_t', Seed)
+I     = rand_array(N, np.float32)
+SCALE = rand_array(1, np.float32)[0]
+SEL   = rand_sel(N, np.uint8)
 
 # Create the empty o matrix
 o = np.zeros(N).astype(np.float32)

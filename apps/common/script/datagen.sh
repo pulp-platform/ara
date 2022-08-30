@@ -40,6 +40,12 @@ then
   args="${@:2}"
   # Arg1: rows, Arg2: columns. The values refer to the already padded img
   [ -z "$args" ] && args="130 130 0"
+elif [[ $1 == *"dropout"* ]]
+then
+  # Dropout needs only one argument
+  args="${@:2}"
+  # 1024 numbers by default
+  [ -z "$args" ] && args="1024"
 else
   # Other program datagens do not need any arguments
   args=

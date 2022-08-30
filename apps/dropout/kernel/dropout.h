@@ -16,7 +16,25 @@
 
 // Author: Matteo Perotti
 
+#ifndef _DROPOUT_H_
+#define _DROPOUT_H_
+
+#include <stdio.h>
+
+#include <riscv_vector.h>
+
+#define INTRINSICS
+// Use asm, by default
+#undef INTRINSICS
+
+#ifndef SPIKE
+#include "printf.h"
+#include "runtime.h"
+#endif
+
 void dropout_gold(const unsigned int n, const float *i, const float scale,
-                  const int32_t *sel, float *o);
+                  const uint8_t *sel_ptr, float *o);
 void dropout_vec(const unsigned int n, const float *i, const float scale,
-                 const int32_t *sel, float *o);
+                 const uint8_t *sel_ptr, float *o);
+
+#endif
