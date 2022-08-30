@@ -50,6 +50,10 @@ def jacobi2d(args, cycles):
   size        = int(args[0])
   performance = 2 * 5 * (size-1) * (size-1) / cycles
   return [size, performance]
+def dropout(args, cycles):
+  size        = int(args[0])
+  performance = size / cycles
+  return [size, performance]
 
 perfExtr = {
   'imatmul' : imatmul,
@@ -57,7 +61,8 @@ perfExtr = {
   'iconv2d' : iconv2d,
   'fconv2d' : fconv2d,
   'fconv3d' : fconv3d,
-  'jacobi2d' : jacobi2d,
+  'jacobi2d': jacobi2d,
+  'dropout' : dropout,
 }
 
 def main():
