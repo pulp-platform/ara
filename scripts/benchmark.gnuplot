@@ -200,3 +200,36 @@ plot roof_cpu(x, 2,  2) w l lw 2 lc 1 t  '2 Lanes',            \
      roof_cpu(x, 16, 16) w l lw 2 lc 7 t '16 Lanes',           \
      'jacobi2d_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'jacobi2d_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+#############
+## DROPOUT ##
+#############
+
+# Title
+set title "dropout performance, (32-bit float elements)"
+
+# Set the range
+set xrange [2:2050]
+set yrange [0.125:8]
+
+# Set axis labels
+set xlabel 'Matrix size (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "dropout.png"
+
+# Plot the rooflines
+plot roof_cpu(x, 0.96,  0.96) w l lw 2 lc 1 t  '2 Lanes',\
+     'dropout_2.benchmark' w p lw 2 lc 1 pt 5 notitle,   \
+     'dropout_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,   \
+     roof_cpu(x, 1.92,  1.92) w l lw 2 lc 2 t  '4 Lanes',\
+     'dropout_4.benchmark' w p lw 2 lc 2 pt 5 notitle,   \
+     'dropout_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,   \
+     roof_cpu(x, 3.84, 3.84) w l lw 2 lc 3 t  '8 Lanes', \
+     'dropout_8.benchmark' w p lw 2 lc 3 pt 5 notitle,   \
+     'dropout_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,   \
+     roof_cpu(x, 7.68, 7.68) w l lw 2 lc 7 t '16 Lanes', \
+     'dropout_16.benchmark' w p lw 2 lc 7 pt 5 notitle,  \
+     'dropout_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
