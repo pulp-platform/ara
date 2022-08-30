@@ -41,7 +41,7 @@ def fconv2d(args, cycles):
   size        = int(args[0])
   filter      = int(args[1])
   performance = 2 * filter * filter * size * size / cycles
-  return [args, performance]
+  return [size, performance]
 def fconv3d(args, cycles):
   size        = int(args[0])
   filter      = int(args[1])
@@ -59,6 +59,13 @@ def fft(args, cycles):
   size        = int(args[0])
   performance = 10 * size * np.log2(size) / cycles
   return [size, performance]
+def dwt(args, cycles):
+  size        = int(args[0])
+  k           = 0
+  for den in range(0, int(np.log2(size))):
+    k += 1/(2**den)
+  performance = 3 * k * size / cycles
+  return [size, performance]
 
 perfExtr = {
   'imatmul' : imatmul,
@@ -69,6 +76,7 @@ perfExtr = {
   'jacobi2d': jacobi2d,
   'dropout' : dropout,
   'fft'     : fft,
+  'dwt'     : dwt,
 }
 
 def main():
