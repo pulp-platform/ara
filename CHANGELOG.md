@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for ideal-dispatcher simulation
  - Add compile-time garbage-collection to strip unused functions out and decrease the memory footprint of the binary
  - Add benchmarking capability with the ideal-dispatcher system + performance plotting. The support is limited to simluation with QuestaSim only
+ - Plot jacobi2d performance
 
 ### Changed
 
@@ -89,6 +90,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Performance metrics are now calculated by an external performance.py script, instead of during the program simulation, which just prints out the cycle count
  - 7x7 kernel 2dconvs now support arbitrary vector lengths
  - Default con vlen in the config files is now NR_LANES*1024
+ - Optimize jacobi2d in ASM, +align store address
 
 ## 2.2.0 - 2021-11-02
 
