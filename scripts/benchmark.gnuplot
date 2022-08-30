@@ -266,3 +266,40 @@ plot roof_cpu(x, 4.8,  4.8) w l lw 2 lc 1 t  '2 Lanes',   \
      roof_cpu(x, 38.4, 38.4) w l lw 2 lc 7 t '16 Lanes',  \
      'fft_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'fft_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+#########
+## DWT ##
+#########
+
+# Set the range
+set xrange [2:520]
+set yrange [0.125:50]
+
+# Title
+set title "dwt performance, (vector of size #elements)"
+
+# Set axis labels
+set xlabel 'Vector size (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "dwt.png"
+
+# Plot the rooflines
+# 32-bit float
+# Max perf = 1.5 * Lanes * 2^(EW64-SEW) = 1.5 * Lanes * 2 = 3 * Lanes
+# Arith intensity = 1/2^(SEW) = 0.25
+# Real BW = (4*Lanes + 2^(SEW+1)) / 3 = (4*Lanes + 8) / 3
+plot roof_cpu(x, 1.7, 1.7) w l lw 2 lc 1 t '2 Lanes',     \
+     'dwt_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'dwt_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 3.0, 3.0) w l lw 2 lc 2 t '4 Lanes',     \
+     'dwt_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'dwt_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 5.7, 5.7) w l lw 2 lc 3 t '8 Lanes',     \
+     'dwt_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'dwt_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 11, 11) w l lw 2 lc 7 t '16 Lanes',      \
+     'dwt_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'dwt_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
