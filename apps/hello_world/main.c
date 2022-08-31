@@ -19,7 +19,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifndef SPIKE
 #include "printf.h"
+#else
+#include "util.h"
+#include <stdio.h>
+#endif
 
 int main() {
   printf("Ariane says Hello!\n");

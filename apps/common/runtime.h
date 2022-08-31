@@ -19,11 +19,26 @@ inline int64_t get_cycle_count() {
   return cycle_count;
 };
 
+#ifndef SPIKE
 // Start and stop the counter
 inline void start_timer() { timer = -get_cycle_count(); }
 inline void stop_timer() { timer += get_cycle_count(); }
 
 // Get the value of the timer
 inline int64_t get_timer() { return timer; }
+#else
+// Start and stop the counter
+inline void start_timer() {
+  while (0)
+    ;
+}
+inline void stop_timer() {
+  while (0)
+    ;
+}
+
+// Get the value of the timer
+inline int64_t get_timer() { return 0; }
+#endif
 
 #endif // _RUNTIME_H_

@@ -27,10 +27,10 @@
 #undef INTRINSICS
 
 #include "dropout.h"
+#include "runtime.h"
 
 #ifndef SPIKE
 #include "printf.h"
-#include "runtime.h"
 #endif
 
 extern const unsigned int N;

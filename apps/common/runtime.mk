@@ -57,6 +57,14 @@ RISCV_STRIP   ?= $(RISCV_PREFIX)llvm-strip
 # Use gcc to compile scalar riscv-tests
 RISCV_CC_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-gcc
 
+# Benchmark with spike
+spike_env_dir ?= $(ARA_DIR)/apps/riscv-tests
+SPIKE_INC     ?= -I$(spike_env_dir)/env -I$(spike_env_dir)/benchmarks/common
+SPIKE_CCFLAGS ?= -DPREALLOCATE=1 -DSPIKE=1 $(SPIKE_INC)
+SPIKE_LDFLAGS ?= -nostdlib -T$(spike_env_dir)/benchmarks/common/test.ld
+RISCV_SIM     ?= $(ISA_SIM_INSTALL_DIR)/bin/spike
+RISCV_SIM_OPT ?= --isa=rv64gcv_zfh --varch="vlen:4096,elen:64"
+
 # Defines
 ENV_DEFINES ?=
 MAKE_DEFINES = -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
@@ -69,8 +77,10 @@ RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argum
 LLVM_FLAGS     ?= -march=rv64gcv -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
 RISCV_FLAGS    ?= $(LLVM_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 RISCV_CCFLAGS  ?= $(RISCV_FLAGS)
+RISCV_CCFLAGS_SPIKE  ?= $(RISCV_FLAGS) $(SPIKE_CCFLAGS)
 RISCV_CXXFLAGS ?= $(RISCV_FLAGS)
 RISCV_LDFLAGS  ?= -static -nostartfiles -lm
+RISCV_LDFLAGS_SPIKE  ?= $(RISCV_LDFLAGS) $(SPIKE_LDFLAGS)
 
 # GCC Flags
 RISCV_FLAGS_GCC    ?= -mcmodel=medany -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
@@ -85,8 +95,9 @@ else
 endif
 
 # Compile two different versions of the runtime, since we cannot link code compiled with two different toolchains
-RUNTIME_GCC  ?= common/crt0-gcc.S.o common/printf-gcc.c.o common/string-gcc.c.o common/serial-gcc.c.o
-RUNTIME_LLVM ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c.o common/serial-llvm.c.o
+RUNTIME_GCC   ?= common/crt0-gcc.S.o common/printf-gcc.c.o common/string-gcc.c.o common/serial-gcc.c.o
+RUNTIME_LLVM  ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c.o common/serial-llvm.c.o
+RUNTIME_SPIKE ?= $(spike_env_dir)/benchmarks/common/crt.S.o.spike $(spike_env_dir)/benchmarks/common/syscalls.c.o.spike
 
 .INTERMEDIATE: $(RUNTIME_GCC) $(RUNTIME_LLVM)
 
@@ -107,6 +118,12 @@ RUNTIME_LLVM ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c
 
 %.c.o: %.c
 	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
+
+%.S.o.spike: %.S patch-spike-crt0
+	$(RISCV_CC) $(RISCV_CCFLAGS_SPIKE) -c $< -o $@
+
+%.c.o.spike: %.c
+	$(RISCV_CC) $(RISCV_CCFLAGS_SPIKE) -c $< -o $@
 
 %.cpp.o: %.cpp
 	$(RISCV_CXX) $(RISCV_CXXFLAGS) -c $< -o $@

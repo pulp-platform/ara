@@ -76,9 +76,12 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 
-#include "printf.h"
 #include "riscv_vector.h"
 #include "runtime.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#endif
 
 // Define vector size
 #if defined(SIMTINY)

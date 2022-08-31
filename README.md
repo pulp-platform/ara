@@ -76,6 +76,16 @@ cd apps
 make bin/hello_world
 ```
 
+### SPIKE Simulation
+
+All the applications can be simulated with SPIKE. Run the following command to build and run an application. E.g., `hello_world`:
+
+```bash
+cd apps
+make bin/hello_world.spike
+make spike-run-hello_world
+```
+
 ### RISC-V Tests
 
 The `apps` folder also contains the RISC-V tests repository, including a few unit tests for the vector instructions. Run the following command to build the unit tests:
