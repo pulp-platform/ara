@@ -49,6 +49,12 @@ linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/$
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
 .PHONY: $(BINARIES)
 
+# Patch spike crt0 to enable vector extension before execution
+.PHONY: patch-spike-crt0
+patch-spike-crt0: $(spike_env_dir)/benchmarks/common/crt.S
+	sed -i s/"li t0, MSTATUS_FS | MSTATUS_XS$$"/"li t0, MSTATUS_FS | MSTATUS_XS | MSTATUS_VS"/ $<
+	git update-index --assume-unchanged $<
+
 # Only some applications need to generate and then compile the data file
 # Generate a dummy data file for applications that do not need it
 define app_gen_data_template
@@ -57,6 +63,14 @@ $1/data.S:
 	cd $1 && if [ -d script ]; then source $$(COMMON_DIR)/script/datagen.sh $1 $$(OUT_MTX_SIZE) $$(F_SIZE); else touch data.S; fi
 endef
 $(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
+
+define app_compile_template_spike
+bin/$1.spike: $1/data.S.o $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE)
+	mkdir -p bin/
+	$$(RISCV_CC) -Iinclude $$(RISCV_CCFLAGS_SPIKE) -o $$@ $$(addsuffix .o.spike, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $$(RISCV_LDFLAGS_SPIKE) -DSPIKE
+	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+endef
+$(foreach app,$(APPS),$(eval $(call app_compile_template_spike,$(app))))
 
 define app_compile_template
 bin/$1: $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
@@ -107,6 +121,17 @@ riscv_tests_spike:
 format:
 	$(LLVM_INSTALL_DIR)/bin/clang-format -style=file -i $$(find . | grep -E "\.[h,c,cpp]$$" | grep -v riscv-tests)
 	$(LLVM_INSTALL_DIR)/bin/clang-format -style=file -i $$(find riscv-tests/isa/rv64uv | grep -E "\.[h,c,cpp]$$")
+
+# Run benchmarks on Spike
+define run_benchmark_spike
+spike-run-$1: bin/$1.spike
+	mkdir -p spike_runs
+	@echo
+	@echo "Simulating $1 with SPIKE:"
+	@echo
+	$(RISCV_SIM) $(RISCV_SIM_OPT) $$< | tee spike_runs/$$@
+endef
+$(foreach app,$(APPS),$(eval $(call run_benchmark_spike,$(app))))
 
 # Clean Spike simulation
 .PHONY: riscv_tests_spike_clean

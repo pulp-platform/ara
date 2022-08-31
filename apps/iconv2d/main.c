@@ -21,10 +21,10 @@
 #include <string.h>
 
 #include "iconv2d.h"
+#include "runtime.h"
 
 #ifndef SPIKE
 #include "printf.h"
-#include "runtime.h"
 #endif
 
 // Define Matrix dimensions:
