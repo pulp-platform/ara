@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Vector integer reductions (`vredsum`, `vredmaxu`, `vredmax`, `vredminu`, `vredmin`, `vredand`, `vredor`, `vredxor`, `vwredsumu`, `vwredsum`)
  - Introduce the global hazard table in the main sequencer, to provide up-to-date information to the operand requesters about the status of the different dependant instructions
  - Integer and Floating-Point scalar move instructions (`vmv.x.s`, `vmv.s.x`, `vmv.f.s`, `vmv.s.f`)
+ - Add support for `apps` simulation with `spike`
 
 ### Changed
 
