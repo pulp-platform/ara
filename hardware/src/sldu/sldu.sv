@@ -602,7 +602,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                      ? pe_req_i.vl << int'(pe_req_i.vtype.vsew)
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
         // Trim vector elements which are not written by the slide unit
-        if (pe_req_i.op == VSLIDEUP)
+        // VSLIDE1UP always writes at least 1 element
+        if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op)
           issue_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride;
       end
       if (vinsn_queue_d.commit_cnt == '0) begin
@@ -610,8 +611,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                      ? pe_req_i.vl << int'(pe_req_i.vtype.vsew)
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
         // Trim vector elements which are not written by the slide unit
-        if (pe_req_i.op == VSLIDEUP)
+        // VSLIDE1UP always writes at least 1 element
+        if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op) begin
           commit_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride;
+        end
       end
 
       // Bump pointers and counters of the vector instruction queue
