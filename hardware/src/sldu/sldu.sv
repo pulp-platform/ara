@@ -166,15 +166,17 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   logic [idx_width(NrLanes)-1:0] red_stride_cnt_d, red_stride_cnt_q;
   logic [idx_width(NrLanes):0] red_stride_cnt_d_wide;
 
-  logic is_issue_reduction;
+  logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
-  assign is_issue_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu});
+  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu);
+  assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
+  assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
-    if ((is_issue_reduction && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
+    if ((is_issue_alu_reduction && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
       sldu_mux_sel_o = ALU_RED;
-    end else if ((vinsn_issue_valid_q && vinsn_issue_q.vfu == VFU_MFpu && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_MFpu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_MFpu)) begin
+    end else if ((is_issue_vmfpu_reduction && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_MFpu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_MFpu)) begin
       sldu_mux_sel_o = MFPU_RED;
     end
   end
