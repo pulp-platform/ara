@@ -56,17 +56,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     output logic                         mask_ready_o
   );
 
-  /////////////
-  // Lane ID //
-  /////////////
-
-  // Lane 0 has different logic than Lanes != 0
-  // A parameter would be perfect to save HW, but our hierarchical
-  // synth/pnr flow needs that all lanes are the same
-  // False path this for better timing results
-  logic lane_id_0;
-  assign lane_id_0 = lane_id_i == '0;
-
   ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
@@ -811,27 +800,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         end
         default:;
       endcase
-
-      // Moved to control block
-      //// Sign injection
-      //unique case (vinsn_issue_q.vtype.vsew)
-      //  EW16: for (int b = 0; b < 4; b++) begin
-      //      operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
-      //      operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
-      //      operand_c[16*b+15] = operand_c[16*b+15] ^ fp_sign[2];
-      //    end
-      //  EW32: for (int b = 0; b < 2; b++) begin
-      //      operand_a[32*b+31] = operand_a[32*b+31] ^ fp_sign[0];
-      //      operand_b[32*b+31] = operand_b[32*b+31] ^ fp_sign[1];
-      //      operand_c[32*b+31] = operand_c[32*b+31] ^ fp_sign[2];
-      //    end
-      //  EW64: for (int b = 0; b < 1; b++) begin
-      //      operand_a[64*b+63] = operand_a[64*b+63] ^ fp_sign[0];
-      //      operand_b[64*b+63] = operand_b[64*b+63] ^ fp_sign[1];
-      //      operand_c[64*b+63] = operand_c[64*b+63] ^ fp_sign[2];
-      //    end
-      //  default:;
-      //endcase
     end : fpu_operand_preprocessing_p
 
     // FPU signals
@@ -1459,7 +1427,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         sldu_mfpu_ready_d = sldu_mfpu_valid_q;
         mfpu_red_valid_o  = red_hs_synch_q;
         // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
-        if (lane_id_0) begin
+        if (lane_id_i == '0) begin
           if (sldu_mfpu_valid_q) begin
             if (sldu_transactions_cnt_q == 1) begin
               result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
@@ -1535,13 +1503,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       OSUM_REDUCTION: begin
         // Short Note: Only one lane is allowed to be active (only one lane has all operands valid)
         operand_c = processed_osum_operand(mfpu_operand_i[2], osum_issue_cnt_q, vinsn_issue_q.vtype.vsew, ~vinsn_issue_q.vm, mask_i, ntr_val);
-        operand_b = (first_op_q && lane_id_0) ?
+        operand_b = (first_op_q && (lane_id_i == '0)) ?
                     (vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0]) :
                     sldu_operand_q;
 
         if (mfpu_operand_valid_i[2] && (mask_valid_i || vinsn_issue_q.vm)) begin
           if (first_op_q) begin
-            if (lane_id_0)
+            if (lane_id_i == '0)
               operands_valid = mfpu_operand_valid_i[0];
             else
               // Also check op_b, because it needs to be acknowledged
@@ -1616,11 +1584,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
         // Finish this instruction if the last result is acknowledged
         // In the case of vl=0, wait until the redundant data is acknowledged
-        if (!lane_id_0 && to_process_cnt_d == '0 && ((vinsn_processing_q.vl == '0) ? !first_op_q : red_hs_synch_q)) begin
+        if (!(lane_id_i == '0) && to_process_cnt_d == '0 && ((vinsn_processing_q.vl == '0) ? !first_op_q : red_hs_synch_q)) begin
           // Give the done to the main sequencer
           commit_cnt_d = '0;
           mfpu_state_d = MFPU_WAIT;
-        end else if (lane_id_0 && sldu_mfpu_valid_q && to_process_cnt_d == '0) begin
+        end else if ((lane_id_i == '0) && sldu_mfpu_valid_q && to_process_cnt_d == '0) begin
           // Lane 0 should wait for the final result
           result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes);
           result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
@@ -1683,7 +1651,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     // Send result information to the VRF
     // Use mfpu_result_gnt register instead of mfpu_state, because the state could be changed
-    if (mfpu_state_q inside {NO_REDUCTION, MFPU_WAIT} || (lane_id_0 && commit_cnt_d == '0))
+    if (mfpu_state_q inside {NO_REDUCTION, MFPU_WAIT} || ((lane_id_i == '0) && commit_cnt_d == '0))
       mfpu_result_req_o = (result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask) ? 1'b1 : 1'b0;
     else
       mfpu_result_req_o = 1'b0;
