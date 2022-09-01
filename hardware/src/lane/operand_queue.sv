@@ -41,16 +41,6 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     input  logic               [NrSlaves-1:0] operand_ready_i
   );
 
-  /////////////
-  // Lane ID //
-  /////////////
-
-  // Lane 0 has different logic than Lanes != 0
-  // A parameter would be perfect to save HW, but our hierarchical
-  // synth/pnr flow needs that all lanes are the same
-  logic lane_id_0;
-  assign lane_id_0 = lane_id_i == '0;
-
   //////////////////////
   //  Command Buffer  //
   //////////////////////
@@ -239,7 +229,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       // Floating-point neutral value
       // pinf -> positive infinity, ninf -> negative infinity
       OpQueueFloatReductionZExt: begin
-        if (lane_id_0) begin
+        if (lane_id_i == '0) begin
           unique case (cmd.ntr_red)
             2'b00: begin
               unique case (cmd.eew)
@@ -296,7 +286,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
       // Widening floating-point reduction
       OpQueueFloatReductionWideZExt: begin
-        if (lane_id_0) begin
+        if (lane_id_i == '0) begin
           unique case (cmd.ntr_red)
             2'b00: begin
               unique case (cmd.eew)
