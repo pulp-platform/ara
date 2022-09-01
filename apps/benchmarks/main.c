@@ -49,6 +49,9 @@
 #elif defined(DROPOUT)
 #include "benchmark/dropout.bmark"
 
+#elif defined(FFT)
+#include "benchmark/fft.bmark"
+
 #else
 #error                                                                         \
     "Error, no kernel was specified. Please, run 'make bin/benchmarks ENV_DEFINES=-D${KERNEL}', where KERNEL contains the kernel to benchmark. For example: 'make bin/benchmarks ENV_DEFINES=-DIMATMUL'."

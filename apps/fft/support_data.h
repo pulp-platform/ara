@@ -16,85 +16,73 @@
 
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
-// #include <stdint.h>
-
-#define SAMPLES_256
-
-#ifdef SAMPLES_4
+#if FFT_SAMPLES == 4
 
 uint8_t mask_addr_0[1]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA, 0xAA};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA};
 const uint8_t *mask_addr_vec[2] = {mask_addr_0};
 uint32_t index_ptr[4]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0, 1};
 
-#elif SAMPLES_8
+#elif FFT_SAMPLES == 8
 
 uint8_t mask_addr_0[1]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xCC, 0xCC};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xCC};
 uint8_t mask_addr_1[1]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA, 0xAA};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA};
 const uint8_t *mask_addr_vec[2] = {mask_addr_0, mask_addr_1};
 uint32_t index_ptr[4]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0, 2, 1, 3};
 
-#elif SAMPLES_16
+#elif FFT_SAMPLES == 16
 
 uint8_t mask_addr_0[2]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xF0, 0xF0, 0xF0,
-                                                               0xF0};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xF0, 0xF0};
 uint8_t mask_addr_1[2]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xCC, 0xCC, 0xCC,
-                                                               0xCC};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xCC, 0xCC};
 uint8_t mask_addr_2[2]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA, 0xAA, 0xAA,
-                                                               0xAA};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA, 0xAA};
 const uint8_t *mask_addr_vec[3] = {mask_addr_0, mask_addr_1, mask_addr_2};
 uint32_t index_ptr[8]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0, 4, 2, 6,
                                                                1, 5, 3, 7};
 
-#elif SAMPLES_32
+#elif FFT_SAMPLES == 32
 
 uint8_t mask_addr_0[4]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0x00, 0xFF, 0x00,
+                                                               0xFF};
 uint8_t mask_addr_1[4]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xF0, 0xF0, 0xF0,
+                                                               0xF0};
 uint8_t mask_addr_2[4]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xCC, 0xCC, 0xCC,
+                                                               0xCC};
 uint8_t mask_addr_3[4]
-    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
+    __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {0xAA, 0xAA, 0xAA,
+                                                               0xAA};
 const uint8_t *mask_addr_vec[4] = {mask_addr_0, mask_addr_1, mask_addr_2,
                                    mask_addr_3};
 uint32_t index_ptr[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
         0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15};
 
-#elif SAMPLES_64
+#elif FFT_SAMPLES == 64
 
 uint8_t mask_addr_0[8]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF,
         0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF};
 uint8_t mask_addr_1[8]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
         0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
 uint8_t mask_addr_2[8]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0,
         0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0};
 uint8_t mask_addr_3[8]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
         0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
 uint8_t mask_addr_4[8]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
         0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
 const uint8_t *mask_addr_vec[5] = {mask_addr_0, mask_addr_1, mask_addr_2,
                                    mask_addr_3, mask_addr_4};
@@ -103,38 +91,32 @@ uint32_t index_ptr[32]
         0, 16, 8, 24, 4, 20, 12, 28, 2, 18, 10, 26, 6, 22, 14, 30,
         1, 17, 9, 25, 5, 21, 13, 29, 3, 19, 11, 27, 7, 23, 15, 31};
 
-#elif SAMPLES_128
+#elif FFT_SAMPLES == 128
 
 uint8_t mask_addr_0[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-        0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF,
-        0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
+        0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t mask_addr_1[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF,
-        0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00,
-        0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF};
+        0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF,
+        0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF};
 uint8_t mask_addr_2[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00,
-        0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
-        0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
+        0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
+        0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
 uint8_t mask_addr_3[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0,
-        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0,
-        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0};
+        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0,
+        0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0};
 uint8_t mask_addr_4[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
-        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
+        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+        0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC};
 uint8_t mask_addr_5[16]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
-        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
+        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
+        0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
 const uint8_t *mask_addr_vec[6] = {mask_addr_0, mask_addr_1, mask_addr_2,
                                    mask_addr_3, mask_addr_4, mask_addr_5};
 uint32_t index_ptr[64]
@@ -144,7 +126,7 @@ uint32_t index_ptr[64]
         1, 33, 17, 49, 9,  41, 25, 57, 5, 37, 21, 53, 13, 45, 29, 61,
         3, 35, 19, 51, 11, 43, 27, 59, 7, 39, 23, 55, 15, 47, 31, 63};
 
-#elif defined(SAMPLES_256)
+#elif FFT_SAMPLES == 256
 
 uint8_t mask_addr_0[32]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
@@ -195,7 +177,7 @@ uint32_t index_ptr[128]
         3, 67, 35, 99,  19, 83, 51, 115, 11, 75, 43, 107, 27, 91, 59, 123,
         7, 71, 39, 103, 23, 87, 55, 119, 15, 79, 47, 111, 31, 95, 63, 127};
 
-#elif defined(SAMPLES_512)
+#elif FFT_SAMPLES == 512
 
 uint8_t mask_addr_0[64]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
@@ -283,7 +265,7 @@ uint32_t index_ptr[256] __attribute__((aligned(32 * NR_LANES),
     7,  135, 71, 199, 39, 167, 103, 231, 23, 151, 87, 215, 55, 183, 119, 247,
     15, 143, 79, 207, 47, 175, 111, 239, 31, 159, 95, 223, 63, 191, 127, 255};
 
-#elif defined(SAMPLES_1024)
+#elif FFT_SAMPLES == 1024
 
 uint8_t mask_addr_0[128]
     __attribute__((aligned(32 * NR_LANES), section(".l2"))) = {
@@ -442,5 +424,10 @@ uint32_t index_ptr[256] __attribute__((aligned(32 * NR_LANES),
     15,  271, 143, 399, 79,  335, 207, 463, 47,  303, 175, 431, 111, 367, 239,
     495, 31,  287, 159, 415, 95,  351, 223, 479, 63,  319, 191, 447, 127, 383,
     255, 511};
+
+#else
+
+#error                                                                         \
+    "Error. Please define the FFT_SAMPLES macro. Accepted values: 4, 8, 16, 32, 64, 128, 256, 512, 1024."
 
 #endif
