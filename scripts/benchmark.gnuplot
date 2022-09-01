@@ -233,3 +233,36 @@ plot roof_cpu(x, 0.96,  0.96) w l lw 2 lc 1 t  '2 Lanes',\
      roof_cpu(x, 7.68, 7.68) w l lw 2 lc 7 t '16 Lanes', \
      'dropout_16.benchmark' w p lw 2 lc 7 pt 5 notitle,  \
      'dropout_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+#########
+## FFT ##
+#########
+
+# Title
+set title "fft performance (32-bit float data)"
+
+# Set axis labels
+set xlabel 'Vector size (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Set the range
+set xrange [1:260]
+set yrange [0.5:40]
+
+# Output png
+set term png
+set out "fft.png"
+
+# Plot the rooflines
+plot roof_cpu(x, 4.8,  4.8) w l lw 2 lc 1 t  '2 Lanes',   \
+     'fft_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'fft_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 9.6,  9.6) w l lw 2 lc 2 t  '4 Lanes',   \
+     'fft_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'fft_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 19.2, 19.2) w l lw 2 lc 3 t  '8 Lanes',  \
+     'fft_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'fft_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 38.4, 38.4) w l lw 2 lc 7 t '16 Lanes',  \
+     'fft_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'fft_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
