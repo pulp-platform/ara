@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix masked VSLIDEUP. Use only the mask bits with index higher than the stride
  - Fix SLDU issue_counter modification upon new VSLIDEUP incoming instruction
  - Fix whole-register-move destination register re-encoding
+ - `vslide1up` always writes the scalar element in `vd`
+ - Don't trim `vslide1up` counters since it always writes the scalar element
 
 ### Added
 
