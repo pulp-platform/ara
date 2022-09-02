@@ -147,6 +147,30 @@ Alternatively, you can also use the `riscv_tests` target at Ara's top-level Make
 Add `trace=1` to the `verilate`, `simv`, and `riscv_tests_simv` commands to generate waveform traces in the `fst` format.
 You can use `gtkwave` to open such waveforms.
 
+### Ideal Dispatcher mode
+
+CVA6 can be replaced by an ideal FIFO that dispatches the vector instructions to Ara with the maximum issue-rate possible.
+In this mode, only Ara and its memory system affect performance.
+This mode has some limitations:
+ - The dispatcher is a simple FIFO. Ara and the dispatcher cannot have complex interactions.
+ - Therefore, the vector program should be fire-and-forget. There cannot be runtime dependencies from the vector to the scalar code.
+ - Not all the vector instructions are supported, e.g., the ones that use the `rs2` register.
+
+To compile a program and generate its vector trace:
+
+```bash
+cd apps
+make bin/${program}.ideal
+```
+
+This command will generate the `ideal` binary to be loaded in the L2 memory for the simulation (data accessed by the vector code).
+To run the system in Ideal Dispatcher mode:
+
+```bash
+cd hardware
+make sim app=${program} ideal_dispatcher=1
+```
+
 ## Publication
 
 If you want to use Ara, you can cite us:

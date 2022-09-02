@@ -55,6 +55,15 @@ questa_cmd     ?= questa-$(questa_version)
 questa_args    ?=
 # Path to the binaries
 app_path       ?= $(abspath $(ROOT_DIR)/../apps/bin)
+# Path to ideal dispatcher vtraces
+vtrace_path    ?= $(abspath $(ROOT_DIR)/../apps/ideal_dispatcher/vtrace)
+
+ideal          ?=
+ifeq ($(ideal_dispatcher), 1)
+  vtrace       = $(vtrace_path)/$(app).vtrace
+  bender_defs += --define IDEAL_DISPATCHER=1 --define VTRACE="$(vtrace)"
+  ideal        = "_ideal"
+endif
 
 # Check if the specified QuestaSim version exists
 ifeq (, $(shell which $(questa_cmd)))
@@ -65,7 +74,11 @@ endif
 
 questa_args += +UVM_NO_RELNOTES
 ifdef app
+ifeq ($(ideal_dispatcher), 1)
+	preload ?= "$(app_path)/$(app).ideal"
+else
 	preload ?= "$(app_path)/$(app)"
+endif
 endif
 ifdef preload
 	questa_args += +PRELOAD=$(preload)
@@ -120,7 +133,7 @@ $(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shel
 .PHONY: sim
 sim: compile
 	cd $(buildpath) && \
-	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do ../scripts/run.tcl
+	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do ../scripts/run$(ideal).tcl
 	./scripts/return_status.sh $(buildpath)/transcript
 
 .PHONY: simc

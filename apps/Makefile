@@ -64,6 +64,21 @@ $1/data.S:
 endef
 $(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
 
+define vector_trace_template
+ideal_dispatcher/vtrace/$1.vtrace: bin/$1.spike $(VTRACE_SCRIPTS)
+	mkdir -p ideal_dispatcher/vtrace ideal_dispatcher/log ideal_dispatcher/temp
+	echo "run" | $(RISCV_SIM_MOD) $(RISCV_SIM_MOD_OPT) $$< 2> ideal_dispatcher/temp/$1.temp 1> ideal_dispatcher/log/$1.log
+	cd ideal_dispatcher && scripts/vtrace.sh temp/$1.temp vtrace/$1.vtrace
+endef
+$(foreach app,$(APPS),$(eval $(call vector_trace_template,$(app))))
+
+define app_compile_template_ideal
+bin/$1.ideal: bin/$1.spike ideal_dispatcher/vtrace/$1.vtrace
+	mkdir -p bin/
+	cp bin/$1.spike bin/$1.ideal
+endef
+$(foreach app,$(APPS),$(eval $(call app_compile_template_ideal,$(app))))
+
 define app_compile_template_spike
 bin/$1.spike: $1/data.S.o $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE)
 	mkdir -p bin/
