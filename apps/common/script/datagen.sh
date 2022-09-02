@@ -39,7 +39,7 @@ then
   # Convolutions need args to be passed along
   args="${@:2}"
   # Arg1: rows, Arg2: columns. The values refer to the already padded img
-  [ -z "$args" ] && args="130 130"
+  [ -z "$args" ] && args="130 130 0"
 else
   # Other program datagens do not need any arguments
   args=

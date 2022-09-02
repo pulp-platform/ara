@@ -164,11 +164,13 @@ done
 
 # Measure the runtime of the following kernels
 for kernel in jacobi2d; do
+    OnlyVec=1
 
     # Log the performance results
     > ${kernel}_${nr_lanes}.benchmark
 
-    for msize_unpadded in 4 8 16 32 64 128 256; do
+    # 238 since 256 overflows the memory
+    for msize_unpadded in 4 8 16 32 64 128 238; do
         msize=$(($msize_unpadded + 2))
 
         tempfile=`mktemp`
@@ -178,7 +180,7 @@ for kernel in jacobi2d; do
 		make -C apps/ clean
 
 		mkdir -p apps/benchmarks/data
-		${PYTHON} apps/$kernel/script/gen_data.py $msize $msize > apps/benchmarks/data/data.S
+		${PYTHON} apps/$kernel/script/gen_data.py $msize $msize $OnlyVec > apps/benchmarks/data/data.S
         ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
