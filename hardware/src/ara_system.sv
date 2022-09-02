@@ -83,6 +83,19 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   logic                                 inval_valid;
   logic                                 inval_ready;
 
+`ifdef IDEAL_DISPATCHER
+  // Perfect dispatcher to Ara
+  accel_dispatcher_ideal i_accel_dispatcher_ideal (
+    .clk_i            (clk_i                 ),
+    .rst_ni           (rst_ni                ),
+    .acc_req_o        (acc_req               ),
+    .acc_req_valid_o  (acc_req_valid         ),
+    .acc_req_ready_i  (acc_req_ready         ),
+    .acc_resp_i       (acc_resp              ),
+    .acc_resp_valid_i (acc_resp_valid        ),
+    .acc_resp_ready_o (acc_resp_ready        )
+  );
+`else
   ariane #(
     .ArianeCfg(ArianeCfg)
   ) i_ariane (
@@ -108,6 +121,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .inval_valid_i    (inval_valid           ),
     .inval_ready_o    (inval_ready           )
   );
+`endif
 
   axi_dw_converter #(
     .AxiSlvPortDataWidth(AxiNarrowDataWidth),
@@ -129,7 +143,11 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   ) i_ariane_axi_dwc (
     .clk_i     (clk_i                 ),
     .rst_ni    (rst_ni                ),
+`ifdef IDEAL_DISPATCHER
+    .slv_req_i ('0                    ),
+`else
     .slv_req_i (ariane_narrow_axi_req ),
+`endif
     .slv_resp_o(ariane_narrow_axi_resp),
     .mst_req_o (ariane_axi_req        ),
     .mst_resp_i(ariane_axi_resp       )
@@ -145,14 +163,22 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   ) i_axi_inval_filter (
     .clk_i        (clk_i             ),
     .rst_ni       (rst_ni            ),
+`ifdef IDEAL_DISPATCHER
+    .en_i         (1'b0              ),
+`else
     .en_i         (acc_cons_en       ),
+`endif
     .slv_req_i    (ara_axi_req       ),
     .slv_resp_o   (ara_axi_resp      ),
     .mst_req_o    (ara_axi_req_inval ),
     .mst_resp_i   (ara_axi_resp_inval),
     .inval_addr_o (inval_addr        ),
     .inval_valid_o(inval_valid       ),
+`ifdef IDEAL_DISPATCHER
+    .inval_ready_i(1'b0              )
+`else
     .inval_ready_i(inval_ready       )
+`endif
   );
 
   ara #(

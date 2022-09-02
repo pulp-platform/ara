@@ -33,10 +33,11 @@ endif
 # Include configuration
 include $(ARA_DIR)/config/$(config).mk
 
-INSTALL_DIR         ?= $(ARA_DIR)/install
-GCC_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-gcc
-LLVM_INSTALL_DIR    ?= $(INSTALL_DIR)/riscv-llvm
-ISA_SIM_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim
+INSTALL_DIR             ?= $(ARA_DIR)/install
+GCC_INSTALL_DIR         ?= $(INSTALL_DIR)/riscv-gcc
+LLVM_INSTALL_DIR        ?= $(INSTALL_DIR)/riscv-llvm
+ISA_SIM_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-isa-sim
+ISA_SIM_MOD_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim-mod
 
 RISCV_XLEN    ?= 64
 RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv
@@ -63,7 +64,9 @@ SPIKE_INC     ?= -I$(spike_env_dir)/env -I$(spike_env_dir)/benchmarks/common
 SPIKE_CCFLAGS ?= -DPREALLOCATE=1 -DSPIKE=1 $(SPIKE_INC)
 SPIKE_LDFLAGS ?= -nostdlib -T$(spike_env_dir)/benchmarks/common/test.ld
 RISCV_SIM     ?= $(ISA_SIM_INSTALL_DIR)/bin/spike
+RISCV_SIM_MOD ?= $(ISA_SIM_MOD_INSTALL_DIR)/bin/spike
 RISCV_SIM_OPT ?= --isa=rv64gcv_zfh --varch="vlen:4096,elen:64"
+RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh --varch="vlen:4096,elen:64" -d
 
 # Defines
 ENV_DEFINES ?=

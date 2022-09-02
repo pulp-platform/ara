@@ -67,6 +67,8 @@ sources:
         - hardware/tb/ara_testharness.sv
         # Level 2
         - hardware/tb/ara_tb.sv
+        # Level 3
+        - hardware/src/accel_dispatcher_ideal.sv
 
         - target: verilator
           files:

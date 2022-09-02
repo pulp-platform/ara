@@ -21,8 +21,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "printf.h"
 #include "runtime.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#endif
 
 #if defined(IMATMUL)
 #include "benchmark/imatmul.bmark"
