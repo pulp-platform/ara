@@ -33,9 +33,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes
     input  logic              [NrLanes-1:0][4:0] fflags_ex_i,
     input  logic              [NrLanes-1:0]      fflags_ex_valid_i,
+    // Rounding mode is shared between all lanes
     input  logic              [NrLanes-1:0]      vxsat_flag_i,
     output vxrm_t             [NrLanes-1:0]      alu_vxrm_o,
-    // Rounding mode is shared between all lanes
     // Interface with the Vector Store Unit
     output logic                                 core_st_pending_o,
     input  logic                                 load_complete_i,
