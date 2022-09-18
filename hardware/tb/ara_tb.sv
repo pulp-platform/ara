@@ -124,7 +124,7 @@ module ara_tb;
         end
       end
     end else begin
-        $error("Expecting a firmware to run, non was provided!");
+        $error("Expecting a firmware to run, none was provided!");
         $finish;
     end
   end : dram_init
