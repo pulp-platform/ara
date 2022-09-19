@@ -48,21 +48,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Introduce the global hazard table in the main sequencer, to provide up-to-date information to the operand requesters about the status of the different dependant instructions
  - Integer and Floating-Point scalar move instructions (`vmv.x.s`, `vmv.s.x`, `vmv.f.s`, `vmv.s.f`)
  - Add support for `apps` simulation with `spike`
+ - Support for vector single-width floating-point reduction instructions: `vfredusum`, `vfredosum`, `vfredmin`, `vfredmax`
+ - Support for Vector widening floating-point reductions: `vfwredusum`, `vfwredosum`
+ - fdotproduct benchmark to evaluate dot products with reductions
+ - fredsum benchmark to evaluate fp-reductions
+ - riscv-tests for `vfredusum`, `vfredosum`, `vfredmin`, `vfredmax`, `vfwredusum`, `vfwredosum`
 
 ### Changed
 
  - The main sequencer issues instructions every time the target unit has a non-full instruction queue
  - The main sequencer stalls if the instructions target a lane, and its operand requesters are not ready
  - New instructions enter the main sequencer with a token that marks them as new, and the related counter is updated upon arrival
-- Update `README` with instructions on how to compile convolutions
-- Refactor `benchmark` app
-- Double the testbench memory size
-- Update the `python-requirements` list
-- Remove the assign keyword from the always block of masku.sv
-- Update LLVM to version `15.0.0` (RVV 1.0)
-- Update Spike to version `1.1.1-dev` (RVV 1.0)
-- Update `newlib` from commit 84d068 to 5192d5
-- Ara's dispatcher goes to WAIT_STATE only when the new LMUL is lower than the old one
+ - Update `README` with instructions on how to compile convolutions
+ - Refactor `benchmark` app
+ - Double the testbench memory size
+ - Update the `python-requirements` list
+ - Remove the assign keyword from the always block of masku.sv
+ - Update LLVM to version `15.0.0` (RVV 1.0)
+ - Update Spike to version `1.1.1-dev` (RVV 1.0)
+ - Update `newlib` from commit 84d068 to 5192d5
+ - Ara's dispatcher goes to WAIT_STATE only when the new LMUL is lower than the old one
+ - Updated target -march to rv64gcv_zfh_zvfh0p1 to enable half-floats support
  - Halve CVA6's L1 caches to ease backend timing closure
  - Remove CVA6's cache patch from `hardware/patches` (CVA6 is now updated)
  - Increase addrgen queue depth to four, to better hide memory latency
