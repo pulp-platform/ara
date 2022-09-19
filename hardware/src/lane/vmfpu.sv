@@ -445,7 +445,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   reduction_rx_cnt_t reduction_rx_cnt_d, reduction_rx_cnt_q;
   reduction_rx_cnt_t simd_red_cnt_max_d, simd_red_cnt_max_q;
 
-
+  // Reductions commit by zeroing the commit counter
+  // When the workload is unbalanced, some lanes can start the operation with a zeroed commit counter
+  // In this case, the ALU should NOT commit until the inter-lanes phase is over
+  logic prevent_commit;
 
   // Count how many transactions we must do in total to complete the reduction operation
   logic [idx_width($clog2(NrLanes)+1):0] sldu_transactions_cnt_d, sldu_transactions_cnt_q;
@@ -1020,6 +1023,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     osum_issue_cnt_d        = osum_issue_cnt_q;
 
+    // Don't prevent commit by default
+    prevent_commit = 1'b0;
+
     //////////////////////////////////////////////////////////////////
     //  Issue the instruction and Write data into the result queue  //
     //////////////////////////////////////////////////////////////////
@@ -1049,7 +1055,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         endcase
 
         // Is there a vector instruction ready to be issued and do we have all the operands necessary for this instruction?
-        if (operands_valid && vinsn_issue_valid &&  issue_cnt_q != '0 && !latency_stall) begin
+        if (operands_valid && vinsn_issue_valid && !is_reduction(vinsn_issue_q.op) && issue_cnt_q != '0 && !latency_stall) begin
           // Valiudate the inputs of the correct unit
           vmul_in_valid = vinsn_issue_mul;
           vdiv_in_valid = vinsn_issue_div;
@@ -1104,6 +1110,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             if (issue_cnt_d == '0) begin
               // Reset the input narrowing pointer
               narrowing_select_in_d = 1'b0;
+
+              // Bump issue counter and pointers
+              vinsn_queue_d.issue_cnt -= 1;
+              if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
+              else vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+              if (vinsn_queue_d.issue_cnt != 0) issue_cnt_d =
+                vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
             end
           end
         end
@@ -1214,19 +1228,31 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           // Finished issuing the micro-operations of this vector instruction
           if (to_process_cnt_d == '0) begin
             narrowing_select_out_d = 1'b0;
-            mfpu_state_d = MFPU_WAIT;
+
+            vinsn_queue_d.processing_cnt -= 1;
+            // Bump issue processing pointers
+            if (vinsn_queue_q.processing_pnt == VInsnQueueDepth-1) vinsn_queue_d.processing_pnt = '0;
+            else vinsn_queue_d.processing_pnt = vinsn_queue_q.processing_pnt + 1;
+
+            if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
+              vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
           end
         end
       end
       INTRA_LANE_REDUCTION: begin
+        // Update the element issue counter and the related issue_be signal for the divider
+        // How many elements are we issuing?
+        automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+
+        // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+        // delay the commit until we are over with the inter-lanes phase
+        prevent_commit = 1'b1;
+
         // Short Note:
         // 1. If the vector length for this lane is 0, the operand queue still gives one data
         // to make it compatible with the normal procedure
         // 2. Mask is processed in input stage
 
-        // Update the element issue counter and the related issue_be signal for the divider
-        // How many elements are we issuing?
-        automatic logic [3:0] issue_element_cnt = (1 << (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         // Update the number of elements still to be issued
         if (issue_element_cnt > issue_cnt_q) issue_element_cnt = issue_cnt_q;
 
@@ -1374,6 +1400,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         end
       end
       INTER_LANES_REDUCTION: begin
+        // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+        // delay the commit until we are over with the inter-lanes phase
+        prevent_commit = 1'b1;
         if (reduction_rx_cnt_q == '0) begin
           // Wait until the operand is valid in the result queue
           if (result_queue_valid_q[result_queue_write_pnt_q]) begin
@@ -1423,6 +1452,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         end
       end
       WAIT_STATE: begin
+        // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+        // delay the commit until we are over with the inter-lanes phase
+        prevent_commit = 1'b1;
         // Acknowledge the sliding unit even if it is not forwarding anything useful
         sldu_mfpu_ready_d = sldu_mfpu_valid_q;
         mfpu_red_valid_o  = red_hs_synch_q;
@@ -1687,7 +1719,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     end
 
     // Finished committing the results of a vector instruction
-    if (vinsn_commit_valid && commit_cnt_d == '0) begin
+    if (vinsn_commit_valid && (commit_cnt_d == '0) && !prevent_commit) begin
       // Mark the vector instruction as being done
       mfpu_vinsn_done_o[vinsn_commit.id] = 1'b1;
 
@@ -1698,8 +1730,32 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0)
-        commit_cnt_d = is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op) ? 1 :
-                       vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+        commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+
+      // If we are reducing now, we will change state in MFPU_WAIT state during the next cycle
+      if (mfpu_state_q == NO_REDUCTION) begin
+        // Initialize counters and vmfpu state if needed by the next instruction
+        // After a reduction, the next instructions starts after the reduction commits
+        if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
+          // The next will be the first operation of this instruction
+          // This information is useful for reduction operation
+          first_op_d         = 1'b1;
+          reduction_rx_cnt_d = reduction_rx_cnt_init(NrLanes, lane_id_i);
+          sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
+          // Allow the first valid
+          red_hs_synch_d = !(vinsn_issue_d.op inside {VFREDOSUM, VFWREDOSUM}) & is_reduction(vinsn_issue_d.op);
+
+          ntr_filling_d           = 1'b0;
+          intra_issued_op_cnt_d   = '0;
+          first_result_op_valid_d = 1'b0;
+          intra_op_rx_cnt_d       = '0;
+          osum_issue_cnt_d        = '0;
+
+          mfpu_state_d = next_mfpu_state(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op);
+        end else begin
+          mfpu_state_d = NO_REDUCTION;
+        end
+      end
     end
 
     //////////////////////////////
@@ -1711,7 +1767,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
 
       // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0) begin
+      if (vinsn_queue_d.issue_cnt == '0 && !prevent_commit) begin
         mfpu_state_d = next_mfpu_state(vfu_operation_i.op);
         // The next will be the first operation of this instruction
         // This information is useful for reduction operation
