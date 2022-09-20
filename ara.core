@@ -43,10 +43,8 @@ filesets:
             - hardware/deps/axi/src/axi_serializer.sv
             - hardware/deps/axi/src/axi_sim_mem.sv
             - hardware/deps/axi/src/axi_dw_downsizer.sv
-
             - hardware/deps/cva6/include/riscv_pkg.sv
             - hardware/deps/cva6/include/instr_tracer_pkg.sv
-
             - hardware/deps/cva6/src/riscv-dbg/src/dm_pkg.sv
             - hardware/deps/cva6/src/fpu/src/fpnew_pkg.sv
             - hardware/deps/cva6/include/ariane_pkg.sv
@@ -225,7 +223,6 @@ filesets:
             - hardware/deps/cva6/src/util/instr_tracer.sv
             - hardware/deps/cva6/src/util/ex_trace_item.svh: {is_include_file: true}
             - hardware/deps/cva6/src/util/instr_trace_item.svh: {is_include_file: true}
-            
             - hardware/deps/apb_uart/src/slib_clock_div.sv
             - hardware/deps/apb_uart/src/slib_counter.sv
             - hardware/deps/apb_uart/src/slib_edge_detect.sv
@@ -306,10 +303,10 @@ filesets:
 
 targets:
     xsim:
-        default_tool: xsim 
+        default_tool: xsim
         filesets: [behav_sram, rtl, svtb]
         description: Simulate the design
-        tools: 
+        tools:
             xsim:
                 xelab_options: [--debug, typical, -L, secureip, -L, unisims_ver, -L, unimacro_ver, -L, work.glbl, --timescale, 1ns/1ps, --define, NR_LANES=4, --define, RVV_ARIANE=1, --define, TARGET_ARA_TEST, --define, TARGET_ASIC, --define, TARGET_CVA6_TEST, --define, TARGET_RTL, --define, TARGET_SIMULATION, --define, TARGET_VSIM, --define, VLEN=4096, --define, WT_DCACHE=1]
         parameters: [PRELOAD]
@@ -331,4 +328,3 @@ parameters:
         datatype  : file
         default   : apps/bin/helloworld_2
         paramtype : plusarg
-    

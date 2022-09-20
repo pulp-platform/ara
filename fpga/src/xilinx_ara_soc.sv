@@ -14,8 +14,8 @@
 //          - jtag (wip)
 
 module xilinx_ara_soc import axi_pkg::*; import ara_pkg::*; #(
-    // RVV Parameters
-    parameter  int           unsigned NrLanes      = 4,                          // Number of parallel vector lanes.
+    // Number of parallel vector lanes.
+    parameter  int           unsigned NrLanes      = 4,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // AXI Interface
@@ -37,8 +37,8 @@ module xilinx_ara_soc import axi_pkg::*; import ara_pkg::*; #(
     output logic [63:0] exit_o,
     // Scan chain
     // UART
-    input  logic       rx_i            ,
-    output logic       tx_o              
+    input  logic       rx_i,
+    output logic       tx_o
     );
 
 
@@ -102,11 +102,11 @@ module xilinx_ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .PRDATA  ( uart_prdata     ),
     .PREADY  ( uart_pready     ),
     .PSLVERR ( uart_pslverr    ),
-    .INT     (                 ), // no interrupts 
-    .OUT1N   (                 ), // keep open
-    .OUT2N   (                 ), // keep open
-    .RTSN    (                 ), // no flow control
-    .DTRN    (                 ), // no flow control
+    .INT     (                 ),
+    .OUT1N   (                 ),
+    .OUT2N   (                 ),
+    .RTSN    (                 ),
+    .DTRN    (                 ),
     .CTSN    ( 1'b0            ),
     .DSRN    ( 1'b0            ),
     .DCDN    ( 1'b0            ),
