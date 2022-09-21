@@ -19,6 +19,7 @@
 //         Matteo Perotti, ETH Zurich
 
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "runtime.h"
