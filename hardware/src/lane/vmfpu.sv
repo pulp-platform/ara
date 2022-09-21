@@ -538,13 +538,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           4'd1: processed_osum_operand = (is_masked & ~mask[4]) ? {48'd0, ntr_val[47:32]} : {48'd0, mfpu_operand[47:32]};
           4'd2: processed_osum_operand = (is_masked & ~mask[2]) ? {48'd0, ntr_val[31:16]} : {48'd0, mfpu_operand[31:16]};
           4'd3: processed_osum_operand = (is_masked & ~mask[6]) ? {48'd0, ntr_val[63:48]} : {48'd0, mfpu_operand[63:48]};
-          default:;
+          // Default case, no meaning
+          default: processed_osum_operand = (is_masked & ~mask[6]) ? {48'd0, ntr_val[63:48]} : {48'd0, mfpu_operand[63:48]};
         endcase
       end
       EW32: begin
         case (osum_issue_cnt)
           4'd0: processed_osum_operand = (is_masked & ~mask[0]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[31:0] };
           4'd1: processed_osum_operand = (is_masked & ~mask[4]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[63:32]};
+          // Default case, no meaning
+          default: processed_osum_operand = (is_masked & ~mask[4]) ? {32'd0, ntr_val[31:0]} : {32'd0, mfpu_operand[63:32]};
         endcase
       end
       //EW32: processed_osum_operand = (is_masked & ~mask[osum_issue_cnt * 4]) ?

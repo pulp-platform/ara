@@ -477,7 +477,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           operand_request_push[SlideAddrGenA] = pe_req.use_vs2;
 
-          case (pe_req.op)
+          unique case (pe_req.op)
             VSLIDEUP: begin
               // We need to trim full words from the end of the vector that are not used
               // as operands by the slide unit.
@@ -520,6 +520,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               if (operand_request_i[SlideAddrGenA].vl * NrLanes != vl_tot)
                 operand_request_i[SlideAddrGenA].vl += 1;
             end
+            default:;
           endcase
 
           // This vector instruction uses masks
