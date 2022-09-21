@@ -51,7 +51,7 @@ int main() {
 
   int64_t runtime = get_timer();
   float performance = 2.0 * F * F * M * N / (runtime);
-  printf("[performance]: %d %f\n", M, performance);
+  printf("[cycles]: %ld\n", runtime);
 
   return 0;
 }

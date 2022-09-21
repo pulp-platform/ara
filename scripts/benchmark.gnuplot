@@ -36,13 +36,18 @@ set out "imatmul.png"
 
 # Plot the rooflines
 plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
-     'imatmul_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     'imatmul_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,                                  \
+     'imatmul_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,                                  \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
-     'imatmul_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     'imatmul_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,                                  \
+     'imatmul_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,                                  \
      roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
-     'imatmul_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     'imatmul_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,                                  \
+     'imatmul_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,                                  \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
-     'imatmul_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+     'imatmul_16.benchmark'       w p lw 2 lc 7 pt 5 notitle,                                 \
+     'imatmul_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
 unset out
 
 #############
@@ -62,13 +67,17 @@ set out "fmatmul.png"
 
 # Plot the rooflines
 plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
-     'fmatmul_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     'fmatmul_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,                                  \
+     'fmatmul_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,                                  \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
-     'fmatmul_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     'fmatmul_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,                                  \
+     'fmatmul_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,                                  \
      roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
-     'fmatmul_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     'fmatmul_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,                                  \
+     'fmatmul_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,                                  \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
-     'fmatmul_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+     'fmatmul_16.benchmark'       w p lw 2 lc 7 pt 5 notitle,                                 \
+     'fmatmul_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
 
 #############
 ## ICONV2D ##
@@ -87,13 +96,17 @@ set out "iconv2d.png"
 
 # Plot the rooflines
 plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
-     'iconv2d_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     'iconv2d_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,                                  \
+     'iconv2d_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,                                  \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
-     'iconv2d_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     'iconv2d_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,                                  \
+     'iconv2d_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,                                  \
      roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
-     'iconv2d_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     'iconv2d_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,                                  \
+     'iconv2d_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,                                  \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
-     'iconv2d_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+     'iconv2d_16.benchmark'       w p lw 2 lc 7 pt 5 notitle,                                 \
+     'iconv2d_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
 
 #############
 ## FCONV2D ##
@@ -112,13 +125,17 @@ set out "fconv2d.png"
 
 # Plot the rooflines
 plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
-     'fconv2d_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     'fconv2d_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,                                  \
+     'fconv2d_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,                                  \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
-     'fconv2d_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     'fconv2d_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,                                  \
+     'fconv2d_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,                                  \
      roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
-     'fconv2d_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     'fconv2d_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,                                  \
+     'fconv2d_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,                                  \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
-     'fconv2d_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+     'fconv2d_16.benchmark'       w p lw 2 lc 7 pt 5 notitle,                                 \
+     'fconv2d_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
 
 #############
 ## FCONV3D ##
@@ -137,10 +154,14 @@ set out "fconv3d.png"
 
 # Plot the rooflines
 plot roof_mem(x, 1,  4) w l lw 2 lc 1 notitle, roof_cpu(x, 1,  4) w l lw 2 lc 1 t  '2 Lanes', \
-     'fconv3d_2.benchmark' w p lw 2 lc 1 pt 2 notitle,                                        \
+     'fconv3d_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,                                  \
+     'fconv3d_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,                                  \
      roof_mem(x, 2,  8) w l lw 2 lc 2 notitle, roof_cpu(x, 2,  8) w l lw 2 lc 2 t  '4 Lanes', \
-     'fconv3d_4.benchmark' w p lw 2 lc 2 pt 2 notitle,                                        \
+     'fconv3d_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,                                  \
+     'fconv3d_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,                                  \
      roof_mem(x, 4, 16) w l lw 2 lc 3 notitle, roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes', \
-     'fconv3d_8.benchmark' w p lw 2 lc 3 pt 2 notitle,                                        \
+     'fconv3d_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,                                  \
+     'fconv3d_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,                                  \
      roof_mem(x, 8, 32) w l lw 2 lc 7 notitle, roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes', \
-     'fconv3d_16.benchmark' w p lw 2 lc 7 pt 2 notitle
+     'fconv3d_16.benchmark'       w p lw 2 lc 7 pt 5 notitle,                                 \
+     'fconv3d_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle

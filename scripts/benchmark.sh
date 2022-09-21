@@ -25,19 +25,28 @@ for kernel in imatmul fmatmul; do
 
     # Log the performance results
     > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
 
     # Measure the following matrix sizes
     for size in 4 8 16 32 64 128; do
 
         tempfile=`mktemp`
 
+        # Standard system
         ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
+        # Extract the cycle count and calculate performance
+	    cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
-        # Extract the performance
-        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
-
+        # System with ideal dispatcher
+        ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+               make -C apps/ bin/benchmarks.ideal
+        make -C hardware/ simv app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+        # Extract the cycle count and calculate performance
+	    cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
     done
 done
 
@@ -50,6 +59,7 @@ for kernel in iconv2d fconv2d; do
 
     # Log the performance results
     > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
 
     # Measure the following matrix and filter sizes
     # The input image is also padded, and the max vl is 128
@@ -65,13 +75,22 @@ for kernel in iconv2d fconv2d; do
 
 			mkdir -p apps/benchmarks/data
 			${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
+
+            # Standard System
             ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile || exit
-
             # Extract the performance
-            cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+            performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
+            # System with ideal dispatcher
+            ENV_DEFINES="-D${kernel^^}=1" \
+                   make -C apps/ bin/benchmarks.ideal
+            make -C hardware/ simv app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+            # Extract the performance
+	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+            performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         done
     done
 done
@@ -85,6 +104,7 @@ for kernel in fconv3d; do
 
     # Log the performance results
     > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
 
     # Measure the following matrix and filter sizes
     # The input image is also padded, and the max vl is 128
@@ -100,13 +120,22 @@ for kernel in fconv3d; do
 
 			mkdir -p apps/benchmarks/data
             ${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
+
+            # Standard System
             ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile || exit
-
             # Extract the performance
-            cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+            performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
+            # System with ideal dispatcher
+            ENV_DEFINES="-D${kernel^^}=1" \
+                   make -C apps/ bin/benchmarks.ideal
+            make -C hardware/ simv app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+            # Extract the performance
+	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+            performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         done
     done
 done

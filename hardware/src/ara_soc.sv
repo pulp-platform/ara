@@ -497,7 +497,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     @(i_system.i_ara.ara_idle);
     $display("Stop counting.");
     perf_cnt_d = perf_cnt_q;
-    $display("The cycle count is: %d", int'(perf_cnt_q));
+    $display("[cycles]: %d", int'(perf_cnt_q));
 
     $finish;
   end
