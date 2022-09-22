@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix whole-register-move destination register re-encoding
  - `vslide1up` always writes the scalar element in `vd`
  - Don't trim `vslide1up` counters since it always writes the scalar element
+ - Wait for the current reduction to be over to execute the next VALU instruction, also when reduction workload is unbalanced and some lanes are only a pass-through
 
 ### Added
 
