@@ -80,7 +80,7 @@ endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template_ideal,$(app))))
 
 define app_compile_template_spike
-bin/$1.spike: $1/data.S.o $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE)
+bin/$1.spike: $1/data.S.o.spike $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE)
 	mkdir -p bin/
 	$$(RISCV_CC) -Iinclude $$(RISCV_CCFLAGS_SPIKE) -o $$@ $$(addsuffix .o.spike, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $$(RISCV_LDFLAGS_SPIKE) -DSPIKE
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
@@ -153,8 +153,15 @@ $(foreach app,$(APPS),$(eval $(call run_benchmark_spike,$(app))))
 riscv_tests_spike_clean:
 	make -C riscv-tests/isa clean
 
+.PHONY: benchmarks_clean
+benchmarks_clean:
+	cd $(APPS_DIR)/benchmarks && \
+	rm -vf *.S.* *.c.*        && \
+	rm -vf data/*.S.*         && \
+	rm -vf kernel/*.c.*
+
 .PHONY: clean
-clean: riscv_tests_spike_clean
+clean: riscv_tests_spike_clean benchmarks_clean
 	rm -vf $(BINARIES)
 	rm -vf $(CVA6_BINARIES)
 	rm -vf $(ARA_BINARIES)
@@ -164,6 +171,7 @@ clean: riscv_tests_spike_clean
 	rm -vf $(addsuffix /main.c.o,$(APPS))
 	rm -vf $(RUNTIME_GCC)
 	rm -vf $(RUNTIME_LLVM)
-	for app in $(APPS); do cd $${app} && rm -f ./*.c.o && rm -f ./*.S* && cd .. ; done
+	rm -vf $(RUNTIME_SPIKE)
+	for app in $(APPS); do cd $(APPS_DIR)/$${app} && rm -f ./*.c.o* && rm -f ./*.S* && cd .. ; done
 
 .INTERMEDIATE: $(addsuffix /main.c.o,$(APPS))
