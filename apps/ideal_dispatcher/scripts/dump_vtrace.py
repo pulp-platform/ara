@@ -157,5 +157,5 @@ with open(infile, "r") as fin, open(outfile, "w") as fout:
       for reg in frf:
         if (reg in insn['regs']):
           insn['vals'] = "{}".format(frf[reg])
-    insn_out = ' '
+    insn_out = ''
     fout.write(insn_out.join([insn['asm'], insn['vals'], addRs2(insn['name'], insn['regs'])]) + '\n')

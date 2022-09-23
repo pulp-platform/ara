@@ -61,7 +61,7 @@ vtrace_path    ?= $(abspath $(ROOT_DIR)/../apps/ideal_dispatcher/vtrace)
 ideal          ?=
 ifeq ($(ideal_dispatcher), 1)
   vtrace       = $(vtrace_path)/$(app).vtrace
-  bender_defs += --define IDEAL_DISPATCHER=1 --define VTRACE="$(vtrace)"
+  bender_defs += --define IDEAL_DISPATCHER=1 --define VTRACE="$(vtrace)" --define N_VINSN=$(shell wc -l $(vtrace) | cut -d " " -f 1)
   ideal        = "_ideal"
 endif
 

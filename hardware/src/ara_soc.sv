@@ -478,39 +478,6 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .axi_resp_i   (system_axi_resp  )
   );
 
-`ifdef IDEAL_DISPATCHER
-  // Ideal performance counter
-  logic [63:0] perf_cnt_d, perf_cnt_q;
-
-  initial begin
-    $display("Ideal performance counter is initialized.");
-    perf_cnt_d = '0;
-    // Start the counter when the first instruction is dispatched
-    @(posedge i_system.acc_req_valid);
-    $display("Start counting...");
-    // Loop until the last instruction is dispatched
-    while (i_system.acc_req_valid) begin
-	  perf_cnt_d = perf_cnt_q + 1;
-      @(negedge clk_i);
-	end
-    // Stop the timer when the last instruction is executed
-    @(i_system.i_ara.ara_idle);
-    $display("Stop counting.");
-    perf_cnt_d = perf_cnt_q;
-    $display("[cycles]: %d", int'(perf_cnt_q));
-
-    $finish;
-  end
-
-  always_ff @(posedge clk_i, negedge rst_ni) begin : p_perf_cnt_ideal
-    if (!rst_ni) begin
-      perf_cnt_q <= '0;
-	end else begin
-      perf_cnt_q <= perf_cnt_d;
-    end
-  end
-`endif
-
   //////////////////
   //  Assertions  //
   //////////////////
