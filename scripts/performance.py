@@ -40,7 +40,7 @@ def fconv2d(args, cycles):
   size        = int(args[0])
   filter      = int(args[1])
   performance = 2 * filter * filter * size * size / cycles
-  return [size, performance]
+  return [args, performance]
 def fconv3d(args, cycles):
   size        = int(args[0])
   filter      = int(args[1])
