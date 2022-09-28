@@ -77,3 +77,6 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 
 - Vector single-width saturating add and subtract: `vsaddu`, `vsadd`, `vssubu`,`vssub`
 - Vector single-width averaging add and subtract: `vaadd`, `vaaddu`, `vasub`, `vasubu`
+- Vector single-width fractional multiply with rounding and saturation instruction: `vsmul`
+- Vector single-width scaling shift instructions: `vssra`, `vssrl`
+- Vector narrowing fixed-point clip instructions: `vnclip`, `vnclipu`
