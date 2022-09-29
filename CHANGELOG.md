@@ -73,6 +73,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - fdotproduct benchmark to evaluate dot products with reductions
  - fredsum benchmark to evaluate fp-reductions
  - riscv-tests for `vfredusum`, `vfredosum`, `vfredmin`, `vfredmax`, `vfwredusum`, `vfwredosum`
+ - Support for vector single-width fractional multiply with rounding and saturation instruction: `vsmul`
+ - Support for vector single-width scaling shift instructions: `vssra`, `vssrl`
+ - Support for vector narrowing fixed-point clip instructions: `vnclip`, `vnclipu`
  - Vector floating-point classify instruction (`vfclass`)
  - Vector floating-point divide instructions (`vfdiv`, `vfrdiv`)
  - Vector floating-point square-root instruction (`vfsqrt`)
