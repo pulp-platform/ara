@@ -677,10 +677,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         VFMUL : fp_op = MUL;
         VFDIV,
         VFRDIV: fp_op = DIV;
-        VFSQRT: begin
-          fp_op     = SQRT;
-          operand_b = operand_a;
-        end
+        VFSQRT: fp_op = SQRT;
         VFMACC,
         VFMADD,
         VFMSAC,
@@ -998,7 +995,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     operand_a = (vinsn_issue_q.op == VFRDIV) ? scalar_op : mfpu_operand_i[1]; // vs2
     operand_b = (vinsn_issue_q.use_scalar_op && vinsn_issue_q.op != VFRDIV)
               ? scalar_op
-              : (vinsn_issue_q.op == VFRDIV) ? mfpu_operand_i[1] : mfpu_operand_i[0]; // vs1, rs1
+              : (vinsn_issue_q.op == VFRDIV || vinsn_issue_q.op == VFSQRT)
+                ? mfpu_operand_i[1]
+                : mfpu_operand_i[0]; // vs1, rs1
     operand_c = mfpu_operand_i[2]; // vd, or vs2 if we are performing a VFADD/VFSUB/VFRSUB
 
     // If vs2 and vd were swapped, re-route the handshake signals to/from the operand queues
