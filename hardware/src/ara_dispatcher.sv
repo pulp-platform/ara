@@ -137,20 +137,30 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // If the reg was not written, the content is unknown. No need to reshuffle
   // when writing with != EEW
   logic [31:0] eew_valid_d, eew_valid_q;
-  // Save eew_q[vd] before reshuffling
-  rvv_pkg::vew_e eew_buffer_d, eew_buffer_q;
+  // Save eew information before reshuffling
+  rvv_pkg::vew_e eew_old_buffer_d, eew_old_buffer_q, eew_new_buffer_d, eew_new_buffer_q;
+  // Save vreg to be reshuffled before reshuffling
+  logic [4:0] vs_buffer_d, vs_buffer_q;
+  // Keep track of the registers to be reshuffled |vs1|vs2|vd|
+  logic [2:0] reshuffle_req_d, reshuffle_req_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q        <= NORMAL_OPERATION;
-      eew_q          <= '{default: rvv_pkg::EW8};
-      eew_valid_q    <= '0;
-      eew_buffer_q   <= rvv_pkg::EW8;
+      state_q          <= NORMAL_OPERATION;
+      eew_q            <= '{default: rvv_pkg::EW8};
+      eew_valid_q      <= '0;
+      eew_old_buffer_q <= rvv_pkg::EW8;
+      eew_new_buffer_q <= rvv_pkg::EW8;
+      vs_buffer_q      <= '0;
+      reshuffle_req_q  <= '0;
     end else begin
-      state_q        <= state_d;
-      eew_q          <= eew_d;
-      eew_valid_q    <= eew_valid_d;
-      eew_buffer_q   <= eew_buffer_d;
+      state_q          <= state_d;
+      eew_q            <= eew_d;
+      eew_valid_q      <= eew_valid_d;
+      eew_old_buffer_q <= eew_old_buffer_d;
+      eew_new_buffer_q <= eew_new_buffer_d;
+      vs_buffer_q      <= vs_buffer_d;
+      reshuffle_req_q  <= reshuffle_req_d;
     end
   end
 
@@ -175,6 +185,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic skip_lmul_checks;
   // Are we decoding?
   logic is_decoding;
+  // Is this an in-lane operation?
+  logic in_lane_op;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete_q;
@@ -196,9 +208,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     state_d      = state_q;
     eew_d        = eew_q;
     eew_valid_d  = eew_valid_q;
-    eew_buffer_d = eew_buffer_q;
     lmul_vs2     = vtype_q.vlmul;
     lmul_vs1     = vtype_q.vlmul;
+
+    reshuffle_req_d  = reshuffle_req_q;
+    eew_old_buffer_d = eew_old_buffer_q;
+    eew_new_buffer_d = eew_new_buffer_q;
+    vs_buffer_d      = vs_buffer_q;
+
     illegal_insn = 1'b0;
 
     is_vload      = 1'b0;
@@ -209,6 +226,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     skip_lmul_checks = 1'b0;
 
     is_decoding = 1'b0;
+    in_lane_op  = 1'b0;
 
     acc_req_ready_o  = 1'b0;
     acc_resp_valid_o = 1'b0;
@@ -263,10 +281,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // These generate a reshuffle request to Ara's backend
         ara_req_valid_d         = 1'b1;
         ara_req_d.use_scalar_op = 1'b1;
-        ara_req_d.vs2           = insn.varith_type.rd;
-        ara_req_d.eew_vs2       = eew_buffer_q;
+        ara_req_d.vs2           = vs_buffer_q;
+        ara_req_d.eew_vs2       = eew_old_buffer_q;
         ara_req_d.use_vs2       = 1'b1;
-        ara_req_d.vd            = insn.varith_type.rd;
+        ara_req_d.vd            = vs_buffer_q;
         ara_req_d.use_vd        = 1'b1;
         ara_req_d.op            = ara_pkg::VSLIDEDOWN;
         ara_req_d.stride        = '0;
@@ -274,11 +292,43 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Unmasked: reshuffle everything
         ara_req_d.vm            = 1'b1;
         // Shuffle the whole reg
+        ara_req_d.vtype.vsew    = eew_new_buffer_q;
         ara_req_d.vl            = VLENB >> ara_req_d.vtype.vsew;
-        // Request will need reshuffling
+        // Request vl refers now to the new vl
         ara_req_d.scale_vl      = 1'b1;
 
-        if (ara_req_ready_i) state_d = NORMAL_OPERATION;
+        if (ara_req_ready_i) begin
+          // Delete the already processed vector register from the notebook -> |vs1|vs2|vd|
+          unique casez (reshuffle_req_q)
+            3'b??1: reshuffle_req_d = {reshuffle_req_q[2:1], 1'b0};
+            3'b?10: reshuffle_req_d = {reshuffle_req_q[2  ], 2'b0};
+            3'b100: reshuffle_req_d =                        3'b0 ;
+            default:;
+          endcase
+
+          // Prepare the information to reshuffle the vector registers during the next cycles
+          // Reshuffle in the following order: vd, v2, v1. The order is arbitrary.
+          unique casez (reshuffle_req_d)
+            3'b??1: begin
+              eew_old_buffer_d = eew_q[insn.vmem_type.rd];
+              eew_new_buffer_d = ara_req_d.vtype.vsew;
+              vs_buffer_d      = insn.varith_type.rd;
+            end
+            3'b?10: begin
+              eew_old_buffer_d = eew_q[insn.vmem_type.rs2];
+              eew_new_buffer_d = ara_req_d.eew_vs2;
+              vs_buffer_d      = insn.varith_type.rs2;
+            end
+            3'b100: begin
+              eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
+              eew_new_buffer_d = ara_req_d.eew_vs1;
+              vs_buffer_d      = insn.varith_type.rs1;
+            end
+            default:;
+          endcase
+
+          if (reshuffle_req_d == 3'b0) state_d = NORMAL_OPERATION;
+        end
       end
     endcase
 
@@ -1819,6 +1869,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                       ara_req_d.conversion_vs1 = OpQueueFloatReductionWideZExt;
                       ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.next();
                       ara_req_d.cvt_resize     = resize_e'(2'b00);
                     end
                     6'b110010: begin // VFWSUB
@@ -1836,6 +1887,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                       ara_req_d.conversion_vs1 = OpQueueFloatReductionWideZExt;
                       ara_req_d.conversion_vs2 = OpQueueConversionWideFP2;
+                      ara_req_d.eew_vs1        = vtype_q.vsew.next();
                       ara_req_d.cvt_resize     = resize_e'(2'b00);
                     end
                     6'b110100: begin // VFWADD.W
@@ -2739,13 +2791,44 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         endcase
       end
 
-      // When a write occurs and the EEW is different, re-shuffle the content of the register
-      // on the new EEW
-      // This operation is costly when occurs, so avoid it if the whole vector is overwritten
-      // or if the register is empty
-      if (ara_req_valid_d && ara_req_d.use_vd && !acc_resp_o.error &&
-          ara_req_d.vtype.vsew != eew_q[ara_req_d.vd] && eew_valid_q[ara_req_d.vd] &&
-          vl_q != VLENB >> ara_req_d.vtype.vsew) begin
+      // Check if we need to reshuffle our vector registers involved in the operation
+      // This operation is costly when occurs, so avoid it if possible
+      if (ara_req_valid_d && !acc_resp_o.error) begin
+        automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+
+        // Is the instruction an in-lane one and could it be subject to reshuffling?
+        in_lane_op = ara_req_d.op inside {[VADD:VNSRA]} || ara_req_d.op inside {[VREDSUM:VMSBC]};
+        // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
+        // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
+        // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
+        reshuffle_req_d = {ara_req_d.use_vs1 && (ara_req_d.eew_vs1    != eew_q[ara_req_d.vs1]) && eew_valid_q[ara_req_d.vs1] && in_lane_op,
+                           ara_req_d.use_vs2 && (ara_req_d.eew_vs2    != eew_q[ara_req_d.vs2]) && eew_valid_q[ara_req_d.vs2] && in_lane_op,
+                           ara_req_d.use_vd  && (ara_req_d.vtype.vsew != eew_q[ara_req_d.vd ]) && eew_valid_q[ara_req_d.vd ] && vl_q != (VLENB >> ara_req_d.vtype.vsew)};
+
+        // Prepare the information to reshuffle the vector registers during the next cycles
+        // Reshuffle in the following order: vd, v2, v1. The order is arbitrary.
+        unique casez (reshuffle_req_d)
+          3'b??1: begin
+            eew_old_buffer_d = eew_q[insn.vmem_type.rd];
+            eew_new_buffer_d = ara_req_d.vtype.vsew;
+            vs_buffer_d      = insn.varith_type.rd;
+          end
+          3'b?10: begin
+            eew_old_buffer_d = eew_q[insn.vmem_type.rs2];
+            eew_new_buffer_d = ara_req_d.eew_vs2;
+            vs_buffer_d      = insn.varith_type.rs2;
+          end
+          3'b100: begin
+            eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
+            eew_new_buffer_d = ara_req_d.eew_vs1;
+            vs_buffer_d      = insn.varith_type.rs1;
+          end
+          default:;
+        endcase
+      end
+
+      // Reshuffle if at least one of the three registers need a reshuffle
+      if (|reshuffle_req_d) begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
@@ -2754,8 +2837,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_valid_o = 1'b0;
         ara_req_valid_d  = 1'b0;
 
-        eew_buffer_d = eew_q[insn.vmem_type.rd];
-
+        // Reshuffle
         state_d = RESHUFFLE;
       end
     end
@@ -2767,8 +2849,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Update the EEW
-    if (((ara_req_valid_d && ara_req_d.use_vd) || state_d == RESHUFFLE)
-       && state_q != RESHUFFLE) begin
+    if (ara_req_valid_d && ara_req_d.use_vd && ara_req_ready_i) begin
       unique case (ara_req_d.emul)
         LMUL_1: begin
           for (int i = 0; i < 1; i++) begin
