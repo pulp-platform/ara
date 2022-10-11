@@ -46,12 +46,36 @@
 
 #include "fconv2d.h"
 
-void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
+void fconv2d_7x7(double *o, double *i, double *f, int64_t M, int64_t N,
                  int64_t F) {
+
+  unsigned long int block_size_n;
+
+  // Set the vector configuration
+  asm volatile("vsetvli %0, %1, e64, m2, ta, ma" : "=r"(block_size_n) : "r"(N));
+
+  // Slice the matrix into a manageable number of columns n_
+  for (unsigned long int n = 0; n < N; n += block_size_n) {
+    // Set the vector length
+    const unsigned long int n_ = MIN(N - n, block_size_n);
+
+    // Find pointers to the submatrices
+    const double *i_ = i + n;
+    double *o_ = o + n;
+
+    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_));
+
+    fconv2d_7x7_block(o_, i_, f, M, N, n_, F);
+  }
+}
+void fconv2d_7x7_block(double *o, double *i, double *f, int64_t R, int64_t C,
+                       int64_t n_, int64_t F) {
 
   // Helper variables
   int64_t ldo = C << 3;
   int64_t ldi_pad = (C + F - 1) << 3;
+
+  double *i_ = i;
 
   double f6, f13, f20, f27, f34, f41, f48;
 
@@ -72,23 +96,20 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
   f48 = f[48];
 
   // Point to the scalar elements to insert during a slide
-  i_slide_ptr_0 = i + C + 0 * (C + F - 1);
-  i_slide_ptr_1 = i + C + 1 * (C + F - 1);
-  i_slide_ptr_2 = i + C + 2 * (C + F - 1);
-  i_slide_ptr_3 = i + C + 3 * (C + F - 1);
-
-  // Compute on C elements
-  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
+  i_slide_ptr_0 = i_ + n_ + 0 * (C + F - 1);
+  i_slide_ptr_1 = i_ + n_ + 1 * (C + F - 1);
+  i_slide_ptr_2 = i_ + n_ + 2 * (C + F - 1);
+  i_slide_ptr_3 = i_ + n_ + 3 * (C + F - 1);
 
   ////////////////
   // Row 0 -> 3 //
   ////////////////
 
   // Load one input row
-  asm volatile("vle64.v v0, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
-  asm volatile("vle64.v v4, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
-  asm volatile("vle64.v v8, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
-  asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v0, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
+  asm volatile("vle64.v v4, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
+  asm volatile("vle64.v v8, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
+  asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
 
   // Main kernel, unrolled by 2
   for (int k = 0; k < F / 2; ++k) {
@@ -136,22 +157,22 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
   }
 
   // Start calculating the next pointers to the elements to be slided in
-  i_slide_ptr_0 = i + C + 0 * (C + F - 1);
-  i_slide_ptr_1 = i + C + 1 * (C + F - 1);
-  i_slide_ptr_2 = i + C + 2 * (C + F - 1);
+  i_slide_ptr_0 = i_ + n_ + 0 * (C + F - 1);
+  i_slide_ptr_1 = i_ + n_ + 1 * (C + F - 1);
+  i_slide_ptr_2 = i_ + n_ + 2 * (C + F - 1);
 
   // Main kernel, last iteration with filter coefficients reuse
   // Start loading next rows, from 4 to 6
   asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f6));
-  asm volatile("vle64.v v2, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v2, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
   asm volatile("vfmacc.vf v18, %0, v4" ::"f"(f6));
   asm volatile("vfmacc.vf v22, %0, v12" ::"f"(f6));
   asm volatile("vfmacc.vf v16, %0, v4" ::"f"(f13));
-  asm volatile("vle64.v v6, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v6, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
   asm volatile("vfmacc.vf v18, %0, v8" ::"f"(f13));
   asm volatile("vfmacc.vf v20, %0, v8" ::"f"(f6));
   asm volatile("vfmacc.vf v16, %0, v8" ::"f"(f20));
-  asm volatile("vle64.v v10, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v10, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
   asm volatile("vfmacc.vf v18, %0, v12" ::"f"(f20));
   asm volatile("vfmacc.vf v20, %0, v12" ::"f"(f13));
   asm volatile("vfmacc.vf v16, %0, v12" ::"f"(f27));
@@ -266,9 +287,9 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
   ////////////
 
   // Start calculating the next pointers to the elements to be slided in
-  i_slide_ptr_0 = i + C;
+  i_slide_ptr_0 = i_ + n_;
 
-  asm volatile("vle64.v v0, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v0, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
 
   // The following loop is unrolled by 2
   // The input matrix has R + F - 1 rows
@@ -311,7 +332,7 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
     }
 
     // Start calculating the next pointers to the elements to be slided in
-    i_slide_ptr_1 = i + C;
+    i_slide_ptr_1 = i_ + n_;
 
     // The last iteration is used to mask the latency of the store and the moves
     // Use buffered coefficients not to stall CVA6 for coherency
@@ -320,7 +341,7 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
     asm volatile("vfmacc.vf v18, %0, v0" ::"f"(f41));
     asm volatile("vmv.v.v v16, v18");
     asm volatile("vfmacc.vf v20, %0, v0" ::"f"(f34));
-    asm volatile("vle64.v v2, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+    asm volatile("vle64.v v2, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
     asm volatile("vmv.v.v v18, v20");
     asm volatile("vfmacc.vf v22, %0, v0" ::"f"(f27));
     asm volatile("vfmacc.vf v24, %0, v0" ::"f"(f20));
@@ -368,14 +389,14 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
     }
 
     // Start calculating the next pointers to the elements to be slided in
-    i_slide_ptr_0 = i + C;
+    i_slide_ptr_0 = i_ + n_;
 
     asm volatile("vfmacc.vf v16, %0, v2" ::"f"(f48));
     asm volatile("vse64.v  v16, (%0); add %0, %0, %1" : "+&r"(o) : "r"(ldo));
     asm volatile("vfmacc.vf v18, %0, v2" ::"f"(f41));
     asm volatile("vmv.v.v v16, v18");
     asm volatile("vfmacc.vf v20, %0, v2" ::"f"(f34));
-    asm volatile("vle64.v v0, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+    asm volatile("vle64.v v0, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
     asm volatile("vmv.v.v v18, v20");
     asm volatile("vfmacc.vf v22, %0, v2" ::"f"(f27));
     asm volatile("vmv.v.v v20, v22");
@@ -393,14 +414,14 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
 
   // Point to the scalar elements to insert during a slide
   // i_slide_ptr_0 has already been computed
-  i_slide_ptr_1 = i + C + 0 * (C + F - 1);
-  i_slide_ptr_2 = i + C + 1 * (C + F - 1);
-  i_slide_ptr_3 = i + C + 2 * (C + F - 1);
+  i_slide_ptr_1 = i_ + n_ + 0 * (C + F - 1);
+  i_slide_ptr_2 = i_ + n_ + 1 * (C + F - 1);
+  i_slide_ptr_3 = i_ + n_ + 2 * (C + F - 1);
 
   // Load other three input rows (one was already loaded)
-  asm volatile("vle64.v v4, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
-  asm volatile("vle64.v v8, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
-  asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v4, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
+  asm volatile("vle64.v v8, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
+  asm volatile("vle64.v v12, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
 
   // Main kernel, unrolled by 2
   // Process 4 input rows
@@ -464,11 +485,11 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
   }
 
   // Start calculating the next pointers to the elements to be slided in
-  i_slide_ptr_0 = i + C + 0 * (C + F - 1);
-  i_slide_ptr_1 = i + C + 1 * (C + F - 1);
-  i_slide_ptr_2 = i + C + 2 * (C + F - 1);
+  i_slide_ptr_0 = i_ + n_ + 0 * (C + F - 1);
+  i_slide_ptr_1 = i_ + n_ + 1 * (C + F - 1);
+  i_slide_ptr_2 = i_ + n_ + 2 * (C + F - 1);
 
-  asm volatile("vle64.v v2, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v2, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
   asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f48));
   asm volatile("vfmacc.vf v18, %0, v0" ::"f"(f41));
   asm volatile("vfmacc.vf v20, %0, v0" ::"f"(f34));
@@ -476,7 +497,7 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
   asm volatile("vfmacc.vf v22, %0, v0" ::"f"(f27));
   asm volatile("vfmacc.vf v24, %0, v0" ::"f"(f20));
   asm volatile("vfmacc.vf v26, %0, v0" ::"f"(f13));
-  asm volatile("vle64.v v6, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v6, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
   asm volatile("vfmacc.vf v28, %0, v0" ::"f"(f6));
   asm volatile("vfmacc.vf v18, %0, v4" ::"f"(f48));
   asm volatile("vfmacc.vf v20, %0, v4" ::"f"(f41));
@@ -484,7 +505,7 @@ void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
   asm volatile("vfmacc.vf v22, %0, v4" ::"f"(f34));
   asm volatile("vfmacc.vf v24, %0, v4" ::"f"(f27));
   asm volatile("vfmacc.vf v26, %0, v4" ::"f"(f20));
-  asm volatile("vle64.v v10, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi_pad));
+  asm volatile("vle64.v v10, (%0); add %0, %0, %1" : "+&r"(i_) : "r"(ldi_pad));
   asm volatile("vfmacc.vf v28, %0, v4" ::"f"(f13));
   asm volatile("vfmacc.vf v20, %0, v8" ::"f"(f48));
   asm volatile("vfmacc.vf v22, %0, v8" ::"f"(f41));
