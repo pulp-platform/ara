@@ -66,6 +66,10 @@ def dwt(args, cycles):
     k += 1/(2**den)
   performance = 3 * k * size / cycles
   return [size, performance]
+def exp(args, cycles):
+  size        = int(args[0])
+  performance = 30 * size / cycles
+  return [size, performance]
 
 perfExtr = {
   'imatmul' : imatmul,
@@ -77,6 +81,7 @@ perfExtr = {
   'dropout' : dropout,
   'fft'     : fft,
   'dwt'     : dwt,
+  'exp'     : exp,
 }
 
 def main():

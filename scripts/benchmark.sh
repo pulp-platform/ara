@@ -325,3 +325,42 @@ for kernel in dwt; do
         fi
     done
 done
+
+#########
+## EXP ##
+#########
+
+# Measure the runtime of the following kernels
+for kernel in exp; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
+
+    for vsize in 8 16 32 64 128 256 512; do
+        tempfile=`mktemp`
+
+        # Clean
+        make -C apps/ clean
+
+        mkdir -p apps/benchmarks/data
+        ${PYTHON} apps/$kernel/script/gen_data.py $vsize > apps/benchmarks/data/data.S
+        ENV_DEFINES="-D${kernel^^}=1" \
+               make -C apps/ bin/benchmarks
+        make -C hardware/ simv app=benchmarks > $tempfile || exit
+        # Extract the performance
+        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
+
+        if [ "$ci" == 0 ]; then
+          # System with ideal dispatcher
+          ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
+                 make -C apps/ bin/benchmarks.ideal
+          touch -a hardware/build
+          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          # Extract the performance
+           cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+          ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+       fi
+    done
+done

@@ -277,13 +277,6 @@ set yrange [0.125:50]
 
 # Title
 set title "dwt performance, (vector of size #elements)"
-
-# Set axis labels
-set xlabel 'Vector size (#elements)'
-set ylabel 'Performance (OP/cycle)'
-
-# Output png
-set term png
 set out "dwt.png"
 
 # Plot the rooflines
@@ -303,3 +296,32 @@ plot roof_cpu(x, 1.7, 1.7) w l lw 2 lc 1 t '2 Lanes',     \
      roof_cpu(x, 11, 11) w l lw 2 lc 7 t '16 Lanes',      \
      'dwt_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'dwt_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+#########
+## EXP ##
+#########
+
+# Title
+set title "exp performance, (Vector of size #elements)"
+
+# Set axis labels
+set xlabel 'Vector size (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "exp.png"
+
+# Plot the rooflines for 64-bit data
+plot roof_cpu(x, 1,  1.3*2) w l lw 2 lc 1 t  '2 Lanes',   \
+     'exp_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'exp_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 2,  1.3*4) w l lw 2 lc 2 t  '4 Lanes',   \
+     'exp_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'exp_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 4, 1.3*8) w l lw 2 lc 3 t  '8 Lanes',    \
+     'exp_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'exp_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 8, 1.3*16) w l lw 2 lc 7 t '16 Lanes',   \
+     'exp_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'exp_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
