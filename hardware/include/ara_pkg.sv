@@ -231,7 +231,16 @@ package ara_pkg;
   typedef struct packed {
     ara_op_e op; // Operation
 
-    // Rescale vl taking into account the new and old EEW
+    // Stores and slides do not re-shuffle the
+    // source registers. In these two cases, vl refers
+    // to the target EEW and vtype.vsew, respectively.
+    // Since operand requesters work with the old
+    // eew of the source registers, we should rescale
+    // vl to the old eew to fetch the correct number of Bytes.
+    //
+    // Another solution would be to pass directly the target
+    // eew (vstores) or the vtype.vsew (vslides), but this would
+    // create confusion with the current naming convention
     logic scale_vl;
 
     // Mask vector register operand
