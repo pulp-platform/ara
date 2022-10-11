@@ -474,7 +474,7 @@ jobs:
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Benchmark Ara
-      run: config=${{ matrix.ara_config }} ./scripts/benchmark.sh
+      run: config=${{ matrix.ara_config }} ./scripts/benchmark.sh ci
     - name: Tar runtime results
       run: |
         tar -cvf benchmarks-${{ matrix.ara_config }}.tar *.benchmark
