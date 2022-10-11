@@ -3,14 +3,12 @@
 # Python in use
 PYTHON=python3
 
-# Command to compile ideal dispatcher system
-# If questa is not installed, the ideal dispatcher
-# metrics will be the copy of the default system
-if [ "$1" == "questa" ]
+# Is this exectued by the CI?
+if [ "$1" == "ci" ]
 then
-    ID_SIMULATOR=simc
+    ci=1
 else
-    ID_SIMULATOR=simv
+    ci=0
 fi
 
 # Include Ara's configuration
@@ -53,14 +51,16 @@ for kernel in imatmul fmatmul; do
 	    cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
-        # System with ideal dispatcher
-        ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
-               make -C apps/ bin/benchmarks.ideal
-        touch -a hardware/build
-        make -C hardware/ -B $ID_SIMULATOR app=benchmarks ideal_dispatcher=1 > $tempfile || exit
-        # Extract the cycle count and calculate performance
-	    cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
-        ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        if [ "$ci" == 0 ]; then
+          # System with ideal dispatcher
+          ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+                 make -C apps/ bin/benchmarks.ideal
+          touch -a hardware/build
+          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          # Extract the cycle count and calculate performance
+	      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+          ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        fi
     done
 done
 
@@ -97,14 +97,16 @@ for kernel in iconv2d fconv2d; do
 	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
             ./scripts/performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
-            # System with ideal dispatcher
-            ENV_DEFINES="-D${kernel^^}=1" \
-                   make -C apps/ bin/benchmarks.ideal
-            touch -a hardware/build
-            make -C hardware/ -B $ID_SIMULATOR app=benchmarks ideal_dispatcher=1 > $tempfile || exit
-            # Extract the performance
-	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
-            ./scripts/performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+            if [ "$ci" == 0 ]; then
+              # System with ideal dispatcher
+              ENV_DEFINES="-D${kernel^^}=1" \
+                     make -C apps/ bin/benchmarks.ideal
+              touch -a hardware/build
+              make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+              # Extract the performance
+	          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+              ./scripts/performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+            fi
         done
     done
 done
@@ -142,14 +144,16 @@ for kernel in fconv3d; do
 	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
             ./scripts/performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
-            # System with ideal dispatcher
-            ENV_DEFINES="-D${kernel^^}=1" \
-                   make -C apps/ bin/benchmarks.ideal
-            touch -a hardware/build
-            make -C hardware/ -B $ID_SIMULATOR app=benchmarks ideal_dispatcher=1 > $tempfile || exit
-            # Extract the performance
-	        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
-            ./scripts/performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+            if [ "$ci" == 0 ]; then
+              # System with ideal dispatcher
+              ENV_DEFINES="-D${kernel^^}=1" \
+                     make -C apps/ bin/benchmarks.ideal
+              touch -a hardware/build
+              make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+              # Extract the performance
+	          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+              ./scripts/performance.py $kernel "$size $filter" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+            fi
         done
     done
 done
