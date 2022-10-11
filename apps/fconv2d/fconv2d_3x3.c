@@ -18,8 +18,6 @@
 
 #include "fconv2d.h"
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
                  int64_t F) {
   // We work on 4 rows of the output matrix at once

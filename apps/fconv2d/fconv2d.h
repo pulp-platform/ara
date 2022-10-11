@@ -31,8 +31,11 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C, int64_t F);
 
 void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
                  int64_t F);
+void fconv2d_7x7_block(double *o, double *i, double *f, int64_t R, int64_t C,
+                       int64_t n_, int64_t F);
 
 #define FABS(x) ((x < 0) ? -x : x)
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 // Threshold for FP numbers comparison during the final check
 #define THRESHOLD 0.000000000001
