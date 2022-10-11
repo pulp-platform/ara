@@ -291,10 +291,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         ara_req_d.use_scalar_op = 1'b0;
         // Unmasked: reshuffle everything
         ara_req_d.vm            = 1'b1;
-        // Shuffle the whole reg
+        // Shuffle the whole reg (vl refers to current vsew)
         ara_req_d.vtype.vsew    = eew_new_buffer_q;
         ara_req_d.vl            = VLENB >> ara_req_d.vtype.vsew;
-        // Request vl refers now to the new vl
+        // Vl refers to current system vsew but operand requesters
+        // will fetch from a register with a different eew
         ara_req_d.scale_vl      = 1'b1;
 
         if (ara_req_ready_i) begin
@@ -645,7 +646,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2       = vtype_q.vsew;
                     // Encode vslideup/vslide1up on the use_scalar_op field
                     ara_req_d.use_scalar_op = 1'b0;
-                    // Request will need reshuffling
+                    // Vl refers to current system vsew, but operand requesters
+                    // will fetch bytes from a vreg with a different eew
+                    // i.e., request will need reshuffling
                     ara_req_d.scale_vl      = 1'b1;
                   end
                   6'b001111: begin
@@ -2448,6 +2451,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           //  Vector Stores  //
           /////////////////////
 
+          // Vector stores encode:
+          //  - The target EEW in ara_req_d.vtype.vsew
+          //  - The EEW of the source register in ara_req_d.eew_vs1
+          // The current vector length refers to the target EEW!
+          // Vector stores never re-shuffle the source register!
+
           riscv::OpcodeStoreFp: begin
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
@@ -2458,13 +2467,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Wait before acknowledging this instruction
             acc_req_ready_o = 1'b0;
 
-            // vl depends on the EEW in the instruction
+            // vl depends on the EEW encoded in the instruction.
+            // Ara does not reshuffle source vregs upon vector stores,
+            // thus the operand requesters will fetch Bytes referring
+            // to the encoding of the source register
             ara_req_d.scale_vl = 1'b1;
 
             // These generate a request to Ara's backend
             ara_req_d.vs1       = insn.vmem_type.rd; // vs3 is encoded in the same position as rd
             ara_req_d.use_vs1   = 1'b1;
-            ara_req_d.eew_vs1   = eew_q[insn.vmem_type.rd];
+            ara_req_d.eew_vs1   = eew_q[insn.vmem_type.rd]; // This is the vs1 EEW
             ara_req_d.vm        = insn.vmem_type.vm;
             ara_req_d.scalar_op = acc_req_i.rs1;
             ara_req_valid_d     = 1'b1;
@@ -2474,7 +2486,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             unique case ({insn.vmem_type.mew, insn.vmem_type.width})
               4'b0000: begin
                   if (insn.vmem_type.mop != 2'b01 && insn.vmem_type.mop != 2'b11) begin
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.vtype.vsew = EW8; // ara_req_d.vtype.vsew is the target EEW!
                   end else begin
                     ara_req_d.vtype.vsew = vtype_q.vsew;
                     ara_req_d.eew_vs2    = EW8;
@@ -2827,7 +2839,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         endcase
       end
 
-      // Reshuffle if at least one of the three registers need a reshuffle
+      // Reshuffle if at least one of the three registers needs a reshuffle
       if (|reshuffle_req_d) begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
