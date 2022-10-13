@@ -87,6 +87,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Increase addrgen queue depth to four, to better hide memory latency
  - The RESHUFFLE state is now iterative and reshuffles all the vector registers that need this operation
  - Performance metrics are now calculated by an external performance.py script, instead of during the program simulation, which just prints out the cycle count
+ - 7x7 kernel 2dconvs now support arbitrary vector lengths
+ - Default con vlen in the config files is now NR_LANES*1024
 
 ## 2.2.0 - 2021-11-02
 
