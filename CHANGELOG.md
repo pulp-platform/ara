@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `vslide1up` always writes the scalar element in `vd`
  - Don't trim `vslide1up` counters since it always writes the scalar element
  - Wait for the current reduction to be over to execute the next VALU instruction, also when reduction workload is unbalanced and some lanes are only a pass-through
+ - Reshuffle the source registers vs when an in-lane operation operates on element with vsew != eew_q[vs]
 
 ### Added
 
@@ -59,6 +60,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Vector floating-point classify instruction (`vfclass`)
  - Vector floating-point divide instructions (`vfdiv`, `vfrdiv`)
  - Vector floating-point square-root instruction (`vfsqrt`)
+ - Add simple test for source registers reshuffle, when VSEW != EEW_vs
 
 ### Changed
 
@@ -78,6 +80,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Halve CVA6's L1 caches to ease backend timing closure
  - Remove CVA6's cache patch from `hardware/patches` (CVA6 is now updated)
  - Increase addrgen queue depth to four, to better hide memory latency
+ - The RESHUFFLE state is now iterative and reshuffles all the vector registers that need this operation
 
 ## 2.2.0 - 2021-11-02
 
