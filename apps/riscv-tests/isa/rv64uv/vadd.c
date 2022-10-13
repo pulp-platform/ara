@@ -175,6 +175,17 @@ void TEST_CASE6(void) {
   VCMP_U64(24, v3, 0, 7, 0, 9, 0, 11, 0, 13, 0, 7, 0, 9, 0, 11, 0, 13);
 }
 
+// Check that the addition also works when source register EEWs are changed
+void TEST_CASE7(void) {
+  VSET(16, e8, m1);
+  VLOAD_8(v1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+  VLOAD_8(v2, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
+  VSET(8, e16, m1);
+  asm volatile("vadd.vv v3, v1, v2");
+  VSET(16, e8, m1);
+  VCMP_U8(25, v3, 2, 4, 6, 8, 10, 12, 14, 16, 2, 4, 6, 8, 10, 12, 14, 16);
+}
+
 int main(void) {
   INIT_CHECK();
   enable_vec();
@@ -185,6 +196,7 @@ int main(void) {
   TEST_CASE4();
   TEST_CASE5();
   TEST_CASE6();
+  TEST_CASE7();
 
   EXIT_CHECK();
 }
