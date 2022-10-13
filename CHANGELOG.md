@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Don't trim `vslide1up` counters since it always writes the scalar element
  - Wait for the current reduction to be over to execute the next VALU instruction, also when reduction workload is unbalanced and some lanes are only a pass-through
  - Reshuffle the source registers vs when an in-lane operation operates on element with vsew != eew_q[vs]
+ - Fix the data target for `.spike` app compilations
+ - `make -C apps clean` performs a deeper clean of the temporary object files
 
 ### Added
 
@@ -61,6 +63,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Vector floating-point divide instructions (`vfdiv`, `vfrdiv`)
  - Vector floating-point square-root instruction (`vfsqrt`)
  - Add simple test for source registers reshuffle, when VSEW != EEW_vs
+ - Add support for ideal-dispatcher simulation
+ - Add compile-time garbage-collection to strip unused functions out and decrease the memory footprint of the binary
+ - Add benchmarking capability with the ideal-dispatcher system + performance plotting. The support is limited to simluation with QuestaSim only
 
 ### Changed
 
@@ -81,6 +86,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Remove CVA6's cache patch from `hardware/patches` (CVA6 is now updated)
  - Increase addrgen queue depth to four, to better hide memory latency
  - The RESHUFFLE state is now iterative and reshuffles all the vector registers that need this operation
+ - Performance metrics are now calculated by an external performance.py script, instead of during the program simulation, which just prints out the cycle count
 
 ## 2.2.0 - 2021-11-02
 
