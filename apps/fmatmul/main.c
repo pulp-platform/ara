@@ -23,6 +23,7 @@
 
 #include "kernel/fmatmul.h"
 #include "runtime.h"
+#include "util.h"
 
 #ifndef SPIKE
 #include "printf.h"
@@ -30,71 +31,30 @@
 
 // Define Matrix dimensions:
 // C = AB with A=[MxN], B=[NxP], C=[MxP]
-#define M 128
-#define N 128
-#define P 128
-// Specify how the matrices A and B should be initialized
-// The entries will follow this format:
-// a(i,j) = A_a*i + A_b*j + A_c
-// b(i,j) = B_a*i + B_b*j + B_c
-// The result will be the following matrix
-// c(i,j) = (A_a*B_b*i*j + A_a*B_c*i + A_c*B_b*j + A_c*B_c) * N
-//        + (A_a*B_a*i + A_b*B_b*j + A_b*B_c + B_a*A_c) * (N*(N-1))/2
-//        + (A_b*B_a) * (N*(N-1)*(2*N-1))/6
-// Note: To keep the code simpler, we use indices that go from 0 to N-1 instead
-// of 1 to N as the mathematicians do. Hence, for A, i=[0,M-1] j=[0,M-1]
-#define A_a 1
-#define A_b 1
-#define A_c -32
-#define B_a 2
-#define B_b 1
-#define B_c 16
+extern uint64_t M;
+extern uint64_t N;
+extern uint64_t P;
 
-double a[M * N] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-double b[N * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-double c[M * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern double a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern double b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern double c[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+// Gold results
+extern double g[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
-// Define half of the range for FP comparison on the results
-#define DELTA 0.001
+#define THRESHOLD 0.001
 
-// Initialize the matrices
-void init_matrix(double *matrix, uint64_t num_rows, uint64_t num_columns,
-                 double a, double b, double c) {
-  for (uint64_t i = 0; i < num_rows; ++i) {
-    for (uint64_t j = 0; j < num_columns; ++j) {
-      matrix[i * num_columns + j] = a * (double)i + b * (double)j + c;
-    }
-  }
-}
-
-// Verify the matrices
-int verify_matrix(double *matrix, int64_t m, int64_t n, int64_t p, double aa,
-                  double ab, double ac, double ba, double bb, double bc) {
-  for (int64_t i = 0; i < (int64_t)m; ++i) {
-    for (int64_t j = 0; j < (int64_t)p; ++j) {
-      double lin = (aa * bb * i * j + aa * bc * i + ac * bb * j + ac * bc) * n;
-      double qua =
-          ((aa * ba * i + ab * bb * j + ab * bc + ba * ac) * (n * (n - 1))) / 2;
-      double cub = ((ab * ba) * (n * (n - 1) * (2 * n - 1))) / 6;
-      double golden = lin + qua + cub;
-      if (matrix[i * (int64_t)p + j] != golden) {
-        return (i + j) == 0 ? -1 : i * (int64_t)p + j;
+// Verify the matrix
+int verify_matrix(double *result, double *gold, size_t R, size_t C,
+                  double threshold) {
+  for (uint64_t i = 0; i < R; ++i) {
+    for (uint64_t j = 0; j < C; ++j) {
+      uint64_t idx = i * C + j;
+      if (!similarity_check(result[idx], gold[idx], threshold)) {
+        return (i + j) == 0 ? -1 : idx;
       }
-      matrix[i * (int64_t)p + j] = 0;
     }
   }
   return 0;
-}
-
-void print_matrix(double const *matrix, uint64_t num_rows,
-                  uint64_t num_columns) {
-  printf("0x%8X\n", (uint64_t)matrix);
-  for (uint64_t i = 0; i < num_rows; ++i) {
-    for (uint64_t j = 0; j < num_columns; ++j) {
-      printf("%5.1lf ", matrix[i * num_columns + j]);
-    }
-    printf("\n");
-  }
 }
 
 int main() {
@@ -113,11 +73,6 @@ int main() {
     printf("------------------------------------------------------------\n");
     printf("\n");
 
-    // Initialize Matrices
-    printf("Initializing matrices...\n");
-    init_matrix(a, s, s, A_a, A_b, A_c);
-    init_matrix(b, s, s, B_a, B_b, B_c);
-
     // Matrices are initialized --> Start calculating
     printf("Calculating fmatmul...\n");
     start_timer();
@@ -133,15 +88,17 @@ int main() {
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
 
-    // Verify the result
-    printf("Verifying result...\n");
-    int error = verify_matrix(c, s, s, s, A_a, A_b, A_c, B_a, B_b, B_c);
-    if (error != 0) {
-      printf("Error code %d\n", error);
-      printf("c[%d]=%d\n", error, c[error]);
-      return error;
-    } else {
-      printf("Passed.\n");
+    // Verify the result only for s == M (to keep it simple)
+    if (s == M) {
+      printf("Verifying result...\n");
+      int error = verify_matrix(c, g, s, s, THRESHOLD);
+      if (error != 0) {
+        printf("Error code %d\n", error);
+        printf("c[%d]=%d\n", error, c[error]);
+        return error;
+      } else {
+        printf("Passed.\n");
+      }
     }
   }
 

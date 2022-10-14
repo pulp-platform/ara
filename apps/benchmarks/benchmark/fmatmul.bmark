@@ -26,22 +26,19 @@
 #define WARM_CACHES_ITER 1
 #endif
 
-#define M 128
-#define N 128
-#define P 128
+// Define Matrix dimensions:
+// C = AB with A=[MxN], B=[NxP], C=[MxP]
+extern uint64_t M;
+extern uint64_t N;
+extern uint64_t P;
 
-double a[M * N] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-double b[N * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-double c[M * P] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-
-// Define the size of the matrix, and the kernel to call
-#ifndef SIZE
-#define SIZE 16
-#endif
+extern double a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern double b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern double c[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
-    fmatmul(c, a, b, SIZE, SIZE, SIZE);
+    fmatmul(c, a, b, M, N, P);
 }
 
 int main() {
@@ -54,11 +51,11 @@ int main() {
   // Measure runtime with a hot cache
   HW_CNT_READY;
   start_timer();
-  fmatmul(c, a, b, SIZE, SIZE, SIZE);
+  fmatmul(c, a, b, M, N, P);
   stop_timer();
 
   int64_t runtime = get_timer();
-  float performance = 2.0 * SIZE * SIZE * SIZE / runtime;
+  float performance = 2.0 * M * N * P / runtime;
   printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;
