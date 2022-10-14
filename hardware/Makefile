@@ -47,8 +47,12 @@ veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
 veril_top      ?= ara_tb_verilator
 # Top level module to compile
 top_level      ?= ara_tb
-# QuestaSim Version
-questa_version ?= 2021.2
+# Questa version
+ifeq ($(vcd_dump), 1)
+  questa_version ?= 2019.3
+else
+  questa_version ?= 2021.2
+endif
 # QuestaSim command
 questa_cmd     ?= questa-$(questa_version)
 # QuestaSim arguments
