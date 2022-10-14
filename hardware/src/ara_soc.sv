@@ -227,7 +227,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   tc_sram #(
     .NumWords (L2NumWords  ),
     .NumPorts (1           ),
-    .DataWidth(AxiDataWidth)
+    .DataWidth(AxiDataWidth),
+    .SimInit("random")
   ) i_dram (
     .clk_i  (clk_i                                                                      ),
     .rst_ni (rst_ni                                                                     ),
@@ -348,6 +349,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   soc_narrow_lite_req_t  axi_lite_ctrl_registers_req;
   soc_narrow_lite_resp_t axi_lite_ctrl_registers_resp;
 
+  logic [63:0] event_trigger;
+
   axi_to_axi_lite #(
     .AxiAddrWidth   (AxiAddrWidth          ),
     .AxiDataWidth   (AxiNarrowDataWidth    ),
@@ -385,7 +388,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .hw_cnt_en_o          (hw_cnt_en_o                 ),
     .dram_base_addr_o     (/* Unused */                ),
     .dram_end_addr_o      (/* Unused */                ),
-    .exit_o               (exit_o                      )
+    .exit_o               (exit_o                      ),
+    .event_trigger_o      (event_trigger)
   );
 
   axi_dw_converter #(
