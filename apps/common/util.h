@@ -18,8 +18,31 @@
 //
 // Utility functions for Ara software environment (header file)
 
-#ifndef _UTIL_H_
-#define _UTIL_H_
+#ifndef __UTIL_H__
+#define __UTIL_H__
+
+#ifdef GATE_SIM
+#define NO_PRINTF
+#endif
+
+#ifdef VCD_DUMP
+#define NO_PRINTF
+#define NO_TIMER
+#endif
+
+// Don't measure performance
+#ifdef NO_TIMER
+#define start_timer()
+#define stop_timer()
+#define get_timer() 0
+#endif
+
+// Don't print anything
+#ifdef NO_PRINTF
+#define printf_(...)
+#endif
+
+#define FABS(x) ((x < 0) ? -x : x)
 
 #define FABS(x) ((x < 0) ? -x : x)
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
