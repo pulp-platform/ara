@@ -16,8 +16,8 @@
 
 // Author: Matheus Cavalcante, ETH Zurich
 //         Samuel Riedel, ETH Zurich
+//         Matteo Perotti, ETH Zurich
 
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -65,7 +65,12 @@ int main() {
   printf("\n");
   printf("\n");
 
-  for (int s = 4; s <= M; s *= 2) {
+#ifdef VCD_DUMP
+  // Measure only the full-size matmul
+  for (uint64_t s = M; s <= M; s *= 2) {
+#else
+  for (uint64_t s = 4; s <= M; s *= 2) {
+#endif
     printf("\n");
     printf("------------------------------------------------------------\n");
     printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", s,

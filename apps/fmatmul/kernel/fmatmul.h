@@ -44,4 +44,8 @@ void fmatmul_vec_16x16_slice_init();
 void fmatmul_vec_16x16(double *c, const double *a, const double *b,
                        unsigned long int n, unsigned long int p);
 
+#define DELTA 0.000001
+
+extern int64_t event_trigger;
+
 #endif
