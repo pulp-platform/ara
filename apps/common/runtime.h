@@ -7,6 +7,7 @@
   asm volatile(                                                                \
       "csrs mstatus, %[bits];" ::[bits] "r"(0x00000600 & (0x00000600 >> 1)))
 
+extern int64_t event_trigger;
 extern int64_t timer;
 // SoC-level CSR
 extern uint64_t hw_cnt_en_reg;
