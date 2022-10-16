@@ -1,5 +1,5 @@
 diff --git a/riscv/execute.cc b/riscv/execute.cc
-index ee8257f9..a9459a26 100644
+index f0bb9463..8d31a51c 100644
 --- a/riscv/execute.cc
 +++ b/riscv/execute.cc
 @@ -273,6 +273,10 @@ void processor_t::step(size_t n)
@@ -14,25 +14,28 @@ index ee8257f9..a9459a26 100644
            pc = execute_insn(this, pc, fetch);
            advance_pc();
 diff --git a/riscv/interactive.cc b/riscv/interactive.cc
-index 22929d43..5406e3ee 100644
+index ffc706bd..95b391a6 100644
 --- a/riscv/interactive.cc
 +++ b/riscv/interactive.cc
-@@ -86,7 +86,7 @@ void sim_t::interactive()
-   while (!done())
-   {
-     std::cerr << ": " << std::flush;
--    std::string s = readline(2);
-+    std::string s = readline(0);
+@@ -274,7 +274,7 @@ std::string sim_t::rin(boost::asio::streambuf *bout_ptr) {
+     // output goes to socket
+     sout_.rdbuf(bout_ptr);
+   } else { // if we are not listening on a socket, get commands from terminal
+-    s = readline(2); // 2 is stderr, but when doing reads it reverts to stdin
++    s = readline(0); // 2 is stderr, but when doing reads it reverts to stdin
+     // output goes to stderr
+     sout_.rdbuf(std::cerr.rdbuf());
+   }
+@@ -343,7 +343,7 @@ void sim_t::interactive()
+ #ifdef HAVE_BOOST_ASIO
+       s = rin(&bout); // get command string from socket or terminal
+ #else
+-      s = readline(2); // 2 is stderr, but when doing reads it reverts to stdin
++      s = readline(0); // 2 is stderr, but when doing reads it reverts to stdin
+ #endif
+     }
  
-     std::stringstream ss(s);
-     std::string cmd, tmp;
-@@ -154,13 +154,29 @@ void sim_t::interactive_run_silent(const std::string& cmd, const std::vector<std
-   interactive_run(cmd,args,false);
- }
- 
-+// mp-17: modify this function to print the whole internal scalar RF state upon a vector instruction
- void sim_t::interactive_run(const std::string& cmd, const std::vector<std::string>& args, bool noisy)
- {
+@@ -432,8 +432,23 @@ void sim_t::interactive_run(const std::string& cmd, const std::vector<std::strin
    size_t steps = args.size() ? atoll(args[0].c_str()) : -1;
    ctrlc_pressed = false;
    set_procs_debug(noisy);
@@ -54,11 +57,11 @@ index 22929d43..5406e3ee 100644
 +      p->is_vec_insn = 0;
 +    }
 +  }
- }
  
- void sim_t::interactive_quit(const std::string& cmd, const std::vector<std::string>& args)
-@@ -311,6 +327,30 @@ void sim_t::interactive_freg(const std::string& cmd, const std::vector<std::stri
-   fprintf(stderr, "0x%016" PRIx64 "%016" PRIx64 "\n", r.v[1], r.v[0]);
+   std::ostream out(sout_.rdbuf());
+   if (!noisy) out << ":" << std::endl;
+@@ -614,6 +629,30 @@ void sim_t::interactive_freg(const std::string& cmd, const std::vector<std::stri
+   out << std::hex << "0x" << std::setfill ('0') << std::setw(16) << r.v[1] << std::setw(16) << r.v[0] << std::endl;
  }
  
 +// mp-17: modified function to print all the scalar registers
@@ -88,47 +91,29 @@ index 22929d43..5406e3ee 100644
  void sim_t::interactive_fregh(const std::string& cmd, const std::vector<std::string>& args)
  {
    fpr f;
-@@ -424,7 +464,7 @@ void sim_t::interactive_until(const std::string& cmd, const std::vector<std::str
-   // mask bits above max_xlen
-   int max_xlen = procs[strtol(args[1].c_str(),NULL,10)]->get_max_xlen();
-   if (max_xlen == 32) val &= 0xFFFFFFFF;
--  
-+
-   std::vector<std::string> args2;
-   args2 = std::vector<std::string>(args.begin()+1,args.end()-1);
- 
 diff --git a/riscv/processor.h b/riscv/processor.h
-index ad6e8929..03ea4cf7 100644
+index fc80914e..d43bc96f 100644
 --- a/riscv/processor.h
 +++ b/riscv/processor.h
-@@ -272,6 +272,8 @@ public:
-               FILE *log_file);
-   ~processor_t();
+@@ -239,6 +239,8 @@ public:
+ 
+   const isa_parser_t &get_isa() { return *isa; }
  
 +  // mp-17: register a vector instruction
 +  int is_vec_insn = 0;
    void set_debug(bool value);
    void set_histogram(bool value);
  #ifdef RISCV_ENABLE_COMMITLOG
-@@ -444,7 +446,7 @@ private:
-   bool halt_on_reset;
-   std::vector<bool> extension_table;
-   std::vector<bool> impl_table;
--  
-+
-   entropy_source es; // Crypto ISE Entropy source.
- 
-   std::vector<insn_desc_t> instructions;
 diff --git a/riscv/sim.h b/riscv/sim.h
-index 1c47ce75..201c3917 100644
+index 5787d5d7..48d6e40b 100644
 --- a/riscv/sim.h
 +++ b/riscv/sim.h
-@@ -108,6 +108,8 @@ private:
-   void interactive_vreg(const std::string& cmd, const std::vector<std::string>& args);
-   void interactive_reg(const std::string& cmd, const std::vector<std::string>& args);
-   void interactive_freg(const std::string& cmd, const std::vector<std::string>& args);
-+  // mp-17: print all the scalar registers
-+  void interactive_fregd_all(const std::string& cmd, const std::vector<std::string>& args);
+@@ -133,6 +133,8 @@ private:
    void interactive_fregh(const std::string& cmd, const std::vector<std::string>& args);
    void interactive_fregs(const std::string& cmd, const std::vector<std::string>& args);
    void interactive_fregd(const std::string& cmd, const std::vector<std::string>& args);
++  // mp-17: print all the scalar registers
++  void interactive_fregd_all(const std::string& cmd, const std::vector<std::string>& args);
+   void interactive_pc(const std::string& cmd, const std::vector<std::string>& args);
+   void interactive_mem(const std::string& cmd, const std::vector<std::string>& args);
+   void interactive_str(const std::string& cmd, const std::vector<std::string>& args);

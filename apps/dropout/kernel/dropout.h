@@ -27,9 +27,10 @@
 // Use asm, by default
 #undef INTRINSICS
 
+#include "runtime.h"
+
 #ifndef SPIKE
 #include "printf.h"
-#include "runtime.h"
 #endif
 
 void dropout_gold(const unsigned int n, const float *i, const float scale,

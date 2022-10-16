@@ -38,12 +38,6 @@ int main() {
   printf("\n");
   printf("\n");
 
-#ifdef SPIKE
-  // Enable V extension
-  ENABLE_VEC;
-#endif
-
-#ifndef SPIKE
   printf("Running Dropout with %d elements.\n", N);
 
   // Call the main kernel, and measure cycles
@@ -64,10 +58,6 @@ int main() {
   printf("The performance is %f SPFLOP/cycle. Max achievable is %f "
          "SPFLOP/cycle. (%f%% on max). With %f%% FPU utilization.\n",
          performance, max_perf, 100 * performance / max_perf, utilization);
-#else
-  // Call the main kernel
-  dropout_vec(N, I, SCALE, SEL, o);
-#endif
 
   // Verify correctness
   dropout_gold(N, I, SCALE, SEL, o_gold);
