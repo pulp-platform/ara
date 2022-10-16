@@ -168,24 +168,35 @@ for kernel in jacobi2d; do
 
     # Log the performance results
     > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
 
-    # 238 since 256 overflows the memory
-    for msize_unpadded in 4 8 16 32 64 128 238; do
-        msize=$(($msize_unpadded + 2))
+    for vsize_unpadded in 4 8 16 32 64 128 238; do
+        vsize=$(($vsize_unpadded + 2))
 
         tempfile=`mktemp`
 
         # Clean, and then generate the correct matrix and filter
-        rm -f apps/benchmarks/data/*.S.o apps/benchmarks/kernels/*.S.o apps/benchmarks/kernels/*.c.o
-		make -C apps/ clean
+               make -C apps/ clean
 
-		mkdir -p apps/benchmarks/data
-		${PYTHON} apps/$kernel/script/gen_data.py $msize $msize $OnlyVec > apps/benchmarks/data/data.S
+               mkdir -p apps/benchmarks/data
+
+               ${PYTHON} apps/$kernel/script/gen_data.py $vsize $vsize $OnlyVec > apps/benchmarks/data/data.S
         ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
-
         # Extract the performance
-        cat $tempfile | grep "\[performance\]" | cut -d: -f2 >> ${kernel}_${nr_lanes}.benchmark
+           cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
+
+        if [ "$ci" == 0 ]; then
+          # System with ideal dispatcher
+          ENV_DEFINES="-D${kernel^^}=1" \
+                 make -C apps/ bin/benchmarks.ideal
+          touch -a hardware/build
+          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          # Extract the performance
+             cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+          ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        fi
     done
 done
