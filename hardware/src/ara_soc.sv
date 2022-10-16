@@ -18,6 +18,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  int           unsigned AxiAddrWidth = 64,
     parameter  int           unsigned AxiUserWidth = 1,
     parameter  int           unsigned AxiIdWidth   = 5,
+    // AXI Resp Delay [ps] for gate-level simulation
+    parameter                         AxiRespDelay = 200ps,
     // Main memory
     parameter  int           unsigned L2NumWords   = 2**20,
     // Dependant parameters. DO NOT CHANGE!
@@ -106,6 +108,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   `AXI_LITE_TYPEDEF_ALL(soc_narrow_lite, axi_addr_t, axi_narrow_data_t, axi_narrow_strb_t)
 
   // Buses
+  system_req_t  system_axi_req_spill;
+  system_resp_t system_axi_resp_spill;
+  system_resp_t system_axi_resp_spill_del;
   system_req_t  system_axi_req;
   system_resp_t system_axi_resp;
 
@@ -481,15 +486,43 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   ara_system
 `endif
   i_system (
-    .clk_i        (clk_i            ),
-    .rst_ni       (rst_ni           ),
-    .boot_addr_i  (DRAMBase         ), // start fetching from DRAM
-    .scan_enable_i(1'b0             ),
-    .scan_data_i  (1'b0             ),
-    .scan_data_o  (/* Unconnected */),
-    .axi_req_o    (system_axi_req   ),
-    .axi_resp_i   (system_axi_resp  )
+    .clk_i        (clk_i                    ),
+    .rst_ni       (rst_ni                   ),
+    .boot_addr_i  (DRAMBase                 ), // start fetching from DRAM
+    .scan_enable_i(1'b0                     ),
+    .scan_data_i  (1'b0                     ),
+    .scan_data_o  (/* Unconnected */        ),
+`ifndef TARGET_GATESIM
+    .axi_req_o    (system_axi_req           ),
+    .axi_resp_i   (system_axi_resp          )
   );
+`else
+    .axi_req_o    (system_axi_req_spill     ),
+    .axi_resp_i   (system_axi_resp_spill_del)
+  );
+`endif
+
+
+`ifdef TARGET_GATESIM
+  assign #(AxiRespDelay) system_axi_resp_spill_del = system_axi_resp_spill;
+
+  axi_cut #(
+    .ar_chan_t   (system_ar_chan_t     ),
+    .aw_chan_t   (system_aw_chan_t     ),
+    .b_chan_t    (system_b_chan_t      ),
+    .r_chan_t    (system_r_chan_t      ),
+    .w_chan_t    (system_w_chan_t      ),
+    .req_t       (system_req_t         ),
+    .resp_t      (system_resp_t        )
+  ) i_system_cut (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .slv_req_i   (system_axi_req_spill),
+    .slv_resp_o  (system_axi_resp_spill),
+    .mst_req_o   (system_axi_req),
+    .mst_resp_i  (system_axi_resp)
+  );
+`endif
 
   //////////////////
   //  Assertions  //
