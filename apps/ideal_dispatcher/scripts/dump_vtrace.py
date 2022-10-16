@@ -27,7 +27,7 @@ outfile = sys.argv[2]
 # 32 registers, with 4 registers per row
 RegRows  = 8
 # String width of a single register in the rf, "label: value"
-RegWidth = 26
+RegWidth = 24
 
 xrf = {
   'zero' : '0',
