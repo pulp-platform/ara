@@ -19,28 +19,26 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "kernel/fft.h"
+#include "../kernel/fft.h"
 #include "printf.h"
 #include "runtime.h"
 
-#include "support_data.h"
+#include "../kernel/support_data.h"
 #include "util.h"
+
+#define MAX_NFFT 256
 
 extern unsigned long int NFFT;
 
 extern cmplxtype twiddle_vec[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-cmplxtype samples_vec[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern cmplxtype     samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 dtype buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 // Threshold for FP numbers comparison during the final check
-#define MAX_NFFT 256
 #define THRESHOLD 1
 
 int main() {
-  memcpy((void*) samples_copy, (void*) samples, 2 * NFFT * sizeof(dtype));
-  memcpy((void*) samples_vec, (void*) samples, 2 * NFFT * sizeof(dtype));
-
-  float* samples_reim = cmplx2reim(samples_vec, buf, NFFT);
+  float* samples_reim = cmplx2reim(samples, buf, NFFT);
 
   float* twiddle_reim = cmplx2reim(twiddle_vec, buf, ((NFFT >> 1) * (31 - __builtin_clz(NFFT))));
 
@@ -51,8 +49,7 @@ int main() {
   stop_timer();
 
   int64_t runtime = get_timer();
-  float perf = (float) 10.0 * NFFT * (31 - __builtin_clz(NFFT)) / runtime;
-  printf("[performance]: %d %f\n", NFFT, perf);
+  printf("[cycles]: %ld\n", runtime);
 
   return 0;
 }

@@ -265,7 +265,7 @@ for kernel in fft; do
 
         mkdir -p apps/benchmarks/data
         ${PYTHON} apps/$kernel/script/gen_data.py $vsize $dtype > apps/benchmarks/data/data.S
-        ENV_DEFINES="-D${kernel^^}=1" \
+        ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
@@ -274,7 +274,7 @@ for kernel in fft; do
 
         if [ "$ci" == 0 ]; then
           # System with ideal dispatcher
-          ENV_DEFINES="-D${kernel^^}=1" \
+          ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
                  make -C apps/ bin/benchmarks.ideal
           touch -a hardware/build
           make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit

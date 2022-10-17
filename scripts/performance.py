@@ -21,6 +21,7 @@
 # and environment conditions
 
 import sys
+import numpy as np
 
 # Performance extractors: returns problem size and performance (throughput)
 def imatmul(args, cycles):
@@ -54,6 +55,10 @@ def dropout(args, cycles):
   size        = int(args[0])
   performance = size / cycles
   return [size, performance]
+def fft(args, cycles):
+  size        = int(args[0])
+  performance = 10 * size * np.log2(size) / cycles
+  return [size, performance]
 
 perfExtr = {
   'imatmul' : imatmul,
@@ -63,6 +68,7 @@ perfExtr = {
   'fconv3d' : fconv3d,
   'jacobi2d': jacobi2d,
   'dropout' : dropout,
+  'fft'     : fft,
 }
 
 def main():
