@@ -64,7 +64,7 @@ int main() {
 
   for (unsigned int k = 0; k < N; ++k) {
     if (o[k] != o_gold[k]) {
-      printf("Error: o[%d] = %f\n != %f", k, o[k], o_gold[k]);
+      printf("Error: o[%d] = %f != %f\n", k, o[k], o_gold[k]);
       return k ? k : -1;
     }
   }
