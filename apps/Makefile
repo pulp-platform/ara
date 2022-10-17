@@ -24,6 +24,7 @@ TESTS_DIR := $(ROOT_DIR)/riscv-tests/isa
 # This will overwrite the ROOT_DIR variable from the included makefile
 include $(COMMON_DIR)/runtime.mk
 include $(COMMON_DIR)/riscv_tests.mk
+include $(COMMON_DIR)/default_args.mk
 
 APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -name "main.c"))
 # Don't automatically compile the benchmark app, which is only a wrapper around the other apps
@@ -35,6 +36,12 @@ CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si
 CVA6_BINARIES := $(addprefix bin/, $(cva6_tests))
 ARA_EXTENSIONS := rv64uv
 ARA_BINARIES := $(addprefix bin/, $(ara_tests))
+
+# FFT requires special treatment because of its header files
+ifeq ($(ENV_DEFINES),)
+bin/fft:  ENV_DEFINES += -DFFT_SAMPLES=$(subst ",,$(firstword $(def_args_fft)))
+bin/fft%: ENV_DEFINES += -DFFT_SAMPLES=$(subst ",,$(firstword $(def_args_fft)))
+endif
 
 all: $(BINARIES)
 
@@ -60,7 +67,7 @@ patch-spike-crt0: $(spike_env_dir)/benchmarks/common/crt.S
 define app_gen_data_template
 .PHONY: $1/data.S
 $1/data.S:
-	cd $1 && if [ -d script ]; then source $$(COMMON_DIR)/script/datagen.sh $1 $$(app_args); else touch data.S; fi
+	cd $1 && if [ -d script ]; then ${PYTHON} script/gen_data.py $(subst ",,$(def_args_$1)) > data.S ; else touch data.S; fi
 endef
 $(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
 

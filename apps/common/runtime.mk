@@ -68,6 +68,9 @@ RISCV_SIM_MOD ?= $(ISA_SIM_MOD_INSTALL_DIR)/bin/spike
 RISCV_SIM_OPT ?= --isa=rv64gcv_zfh --varch="vlen:4096,elen:64"
 RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh --varch="vlen:4096,elen:64" -d
 
+# Python
+PYTHON ?= python3
+
 # Defines
 ENV_DEFINES ?=
 MAKE_DEFINES = -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
