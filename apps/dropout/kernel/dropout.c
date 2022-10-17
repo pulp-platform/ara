@@ -51,7 +51,7 @@ void dropout_vec(const unsigned int n, const float *i, const float scale,
     vse32_v_f32m8(o, vo, vl);
     // Bump pointers
     i += vl;
-    sel_ptr += vl;
+    sel_ptr += vl >> 3;
     o += vl;
   }
 }
@@ -80,7 +80,7 @@ void dropout_vec(const unsigned int n, const float *i, const float scale,
     asm volatile("vse32.v v24, (%[o])" ::[o] "r"(o));
     // Bump pointers
     i += vl;
-    sel_ptr += vl;
+    sel_ptr += vl >> 3;
     o += vl;
   }
 }
