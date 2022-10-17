@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Reshuffle the source registers vs when an in-lane operation operates on element with vsew != eew_q[vs]
  - Fix the data target for `.spike` app compilations
  - `make -C apps clean` performs a deeper clean of the temporary object files
+ - Fix riscv-isa-sim patch and bump pointer to riscv-isa-sim submodule
 
 ### Added
 
@@ -67,6 +68,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add compile-time garbage-collection to strip unused functions out and decrease the memory footprint of the binary
  - Add benchmarking capability with the ideal-dispatcher system + performance plotting. The support is limited to simluation with QuestaSim only
  - Plot jacobi2d performance
+ - Plot dropout performance
 
 ### Changed
 
