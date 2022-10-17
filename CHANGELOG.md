@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix the data target for `.spike` app compilations
  - `make -C apps clean` performs a deeper clean of the temporary object files
  - Fix riscv-isa-sim patch and bump pointer to riscv-isa-sim submodule
+ - Fix VALU issue_counter initialization for mask logical operations
+ - `vslideup` instructions that have `stride >= vl_q` have no effect
 
 ### Added
 
@@ -69,6 +71,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add benchmarking capability with the ideal-dispatcher system + performance plotting. The support is limited to simluation with QuestaSim only
  - Plot jacobi2d performance
  - Plot dropout performance
+ - Add FFT benchmark and print its performance
 
 ### Changed
 
@@ -93,6 +96,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - 7x7 kernel 2dconvs now support arbitrary vector lengths
  - Default con vlen in the config files is now NR_LANES*1024
  - Optimize jacobi2d in ASM, +align store address
+ - Replace `apps/common/script/datagen.sh` with new input data source-of-truth (`apps/common/default_arguments.mk`) during app compilation
 
 ## 2.2.0 - 2021-11-02
 
