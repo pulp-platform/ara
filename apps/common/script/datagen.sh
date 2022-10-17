@@ -51,7 +51,7 @@ then
   # FFT needs to initialize input data and twiddle factors
   args="${@:2}"
   # Use default values if args is not set
-  [ -z "$args" ] && args="256 float32"
+  [ -z "$args" ] && args="64 float32"
 else
   # Other program datagens do not need any arguments
   args=

@@ -187,7 +187,7 @@ jobs:
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
     - name: Compile applications
-      run: config=${{ matrix.ara_config }} make -C apps
+      run: config=${{ matrix.ara_config }} make -C apps ENV_DEFINES="-DFFT_SAMPLES=64"
     - name: Upload applications
       uses: actions/upload-artifact@v2
       with:

@@ -60,7 +60,7 @@ patch-spike-crt0: $(spike_env_dir)/benchmarks/common/crt.S
 define app_gen_data_template
 .PHONY: $1/data.S
 $1/data.S:
-	cd $1 && if [ -d script ]; then source $$(COMMON_DIR)/script/datagen.sh $1 $$(OUT_MTX_SIZE) $$(F_SIZE); else touch data.S; fi
+	cd $1 && if [ -d script ]; then source $$(COMMON_DIR)/script/datagen.sh $1 $$(app_args); else touch data.S; fi
 endef
 $(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
 
