@@ -796,6 +796,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         red_hs_synch_d = 1'b1; // Allow the first valid
 
         issue_cnt_d = vfu_operation_i.vl;
+        if (!(vfu_operation_i.op inside {[VMANDNOT:VMXNOR]}))
+          issue_cnt_d = vfu_operation_i.vl;
+        else begin
+          issue_cnt_d = (vfu_operation_i.vl / 8) >>
+            vfu_operation_i.vtype.vsew;
+          issue_cnt_d += |vfu_operation_i.vl[2:0];
+        end
       end
       if (vinsn_queue_d.commit_cnt == '0)
         if (!(vfu_operation_i.op inside {[VMANDNOT:VMXNOR]}))
