@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix riscv-isa-sim patch and bump pointer to riscv-isa-sim submodule
  - Fix VALU issue_counter initialization for mask logical operations
  - `vslideup` instructions that have `stride >= vl_q` have no effect
+ - `benchmark.sh` keeps into account the number of lanes during program compilation
+ - Fix typo in `performance.py` related to `fconv2d`
 
 ### Added
 
@@ -72,6 +74,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Plot jacobi2d performance
  - Plot dropout performance
  - Add FFT benchmark and print its performance
+ - Add DWT benchmark and print its performance
 
 ### Changed
 
