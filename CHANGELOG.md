@@ -75,6 +75,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Plot dropout performance
  - Add FFT benchmark and print its performance
  - Add DWT benchmark and print its performance
+ - Add fp-exp, fp-cos, fp-log benchmarks from rivec bmark suite + print performance
+ - Ideal Dispatcher tracer now supports strided memory operations
 
 ### Changed
 
@@ -100,6 +102,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Default con vlen in the config files is now NR_LANES*1024
  - Optimize jacobi2d in ASM, +align store address
  - Replace `apps/common/script/datagen.sh` with new input data source-of-truth (`apps/common/default_arguments.mk`) during app compilation
+ - benchmark.sh can now also benchmark just one app at a time via an input argument
 
 ## 2.2.0 - 2021-11-02
 
