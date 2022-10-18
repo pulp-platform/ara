@@ -123,11 +123,11 @@ def updateRf(regline, reg_width, rf):
 def addRs2(disasm, args):
   rs2 = ''
   if (disasm == 'vsetvl'):
-    #rs2 =
-    print('ERROR: vsetvl found, implement addRs2 function!')
-  if ('vlse' in disasm or 'vsse' in disasm):
-    #rs2 =
     print('ERROR: vlse or vsse found, implement addRs2 function!')
+  if ('vlse' in disasm or 'vsse' in disasm):
+    for reg in xrf:
+      if (reg == args[-1]):
+        rs2 = "{}".format(xrf[reg])
   return rs2
 
 # If an instruction needs a register value, fetch it from the next XRF/FRF state
@@ -150,7 +150,13 @@ with open(infile, "r") as fin, open(outfile, "w") as fout:
       for row in range(RegRows):
         regline = fin.readline()
         frf = updateRf(regline, RegWidth, frf)
-      # Fetch the values to be forwarded to Ara
+      # Check for Rs2 and delete its entry if present
+      rs2 = addRs2(insn['name'], insn['regs'])
+      if rs2 != '':
+        del insn['regs'][-1]
+      else:
+        rs2 = '0000000000000000'
+      # Fetch the rs1 value to be forwarded to Ara
       for reg in xrf:
         if (reg in insn['regs']):
           insn['vals'] = "{}".format(xrf[reg])
@@ -158,4 +164,4 @@ with open(infile, "r") as fin, open(outfile, "w") as fout:
         if (reg in insn['regs']):
           insn['vals'] = "{}".format(frf[reg])
     insn_out = ''
-    fout.write(insn_out.join([insn['asm'], insn['vals'], addRs2(insn['name'], insn['regs'])]) + '\n')
+    fout.write(insn_out.join([insn['asm'], insn['vals'], rs2]) + '\n')

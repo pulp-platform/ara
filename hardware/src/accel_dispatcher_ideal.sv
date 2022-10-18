@@ -39,12 +39,13 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   //////////
 
   // Width and number of vector instructions in the ideal dispatcher
-  localparam integer unsigned DATA_WIDTH  = 32 + 64; // vinsn + scalar reg
+  localparam integer unsigned DATA_WIDTH  = 32 + 64 + 64; // vinsn + scalar reg + scalar reg
   localparam integer unsigned N_VINSN   = `N_VINSN;
 
   typedef struct packed {
     riscv::instruction_t insn;
     riscv::xlen_t rs1;
+    riscv::xlen_t rs2;
   } fifo_payload_t;
 
   logic [DATA_WIDTH-1:0] fifo_data_raw;
@@ -102,6 +103,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   assign acc_req_o = '{
     insn    : fifo_data.insn,
     rs1     : fifo_data.rs1,
+    rs2     : fifo_data.rs2,
     default : '0
   };
 
