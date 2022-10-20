@@ -71,7 +71,7 @@ index ffc706bd..95b391a6 100644
 +    throw trap_interactive();
 +
 +  processor_t *p = get_core(args[0]);
-+  int max_xlen = p->get_max_xlen();
++  int max_xlen = p->get_isa().get_max_xlen();
 +
 +  std::ostream out(sout_.rdbuf());
 +  out << std::hex;
