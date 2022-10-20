@@ -187,6 +187,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic is_decoding;
   // Is this an in-lane operation?
   logic in_lane_op;
+  // If the vslideup offset is greater than vl_q, the vslideup has no effects
+  logic null_vslideup;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete_q;
@@ -224,6 +226,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     store_zero_vl = 1'b0;
 
     skip_lmul_checks = 1'b0;
+
+    null_vslideup = 1'b0;
 
     is_decoding = 1'b0;
     in_lane_op  = 1'b0;
@@ -650,6 +654,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     // will fetch bytes from a vreg with a different eew
                     // i.e., request will need reshuffling
                     ara_req_d.scale_vl      = 1'b1;
+                    // If stride > vl, the vslideup has no effects
+                    if (|ara_req_d.stride[$bits(ara_req_d.stride)-1:$bits(vl_q)] ||
+                      (vlen_t'(ara_req_d.stride) >= vl_q)) null_vslideup = 1'b1;
                   end
                   6'b001111: begin
                     ara_req_d.op            = ara_pkg::VSLIDEDOWN;
@@ -837,6 +844,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.use_scalar_op = 1'b0;
                     // Request will need reshuffling
                     ara_req_d.scale_vl      = 1'b1;
+                    // If stride > vl, the vslideup has no effects
+                    if (|ara_req_d.stride[$bits(ara_req_d.stride)-1:$bits(vl_q)] ||
+                      (vlen_t'(ara_req_d.stride) >= vl_q)) null_vslideup = 1'b1;
                   end
                   6'b001111: begin
                     ara_req_d.op            = ara_pkg::VSLIDEDOWN;
@@ -1404,6 +1414,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2 = vtype_q.vsew;
                     // Request will need reshuffling
                     ara_req_d.scale_vl = 1'b1;
+                    // If stride > vl, the vslideup has no effects
+                    if (|ara_req_d.stride[$bits(ara_req_d.stride)-1:$bits(vl_q)] ||
+                      (vlen_t'(ara_req_d.stride) >= vl_q)) null_vslideup = 1'b1;
                   end
                   6'b001111: begin // vslide1down
                     ara_req_d.op      = ara_pkg::VSLIDEDOWN;
@@ -2047,6 +2060,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2  = vtype_q.vsew;
                     // Request will need reshuffling
                     ara_req_d.scale_vl = 1'b1;
+                    // If stride > vl, the vslideup has no effects
+                    if (|ara_req_d.stride[$bits(ara_req_d.stride)-1:$bits(vl_q)] ||
+                      (vlen_t'(ara_req_d.stride) >= vl_q)) null_vslideup = 1'b1;
                     end
                     6'b001111: begin // vfslide1down
                       ara_req_d.op     = ara_pkg::VSLIDEDOWN;
@@ -2898,7 +2914,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
     // e.g. whole vector memory operations / whole vector register move
-    if (is_decoding && vl_q == '0 && !is_config && !ignore_zero_vl_check && !acc_resp_o.error) begin
+    if (is_decoding && (vl_q == '0 || null_vslideup) && !is_config &&
+      !ignore_zero_vl_check && !acc_resp_o.error) begin
       // If we are acknowledging a memory operation, we must tell Ariane that the memory
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must
