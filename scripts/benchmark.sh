@@ -44,7 +44,7 @@ for kernel in imatmul fmatmul; do
 		make -C apps/ clean
 
         # Standard system
-        ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+        config=${config} ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the cycle count and calculate performance
@@ -53,10 +53,10 @@ for kernel in imatmul fmatmul; do
 
         if [ "$ci" == 0 ]; then
           # System with ideal dispatcher
-          ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
+          config=${config} ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
                  make -C apps/ bin/benchmarks.ideal
           touch -a hardware/build
-          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the cycle count and calculate performance
 	      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
@@ -90,7 +90,7 @@ for kernel in iconv2d fconv2d; do
 			${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
 
             # Standard System
-            ENV_DEFINES="-D${kernel^^}=1" \
+            config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile || exit
             # Extract the performance
@@ -99,10 +99,10 @@ for kernel in iconv2d fconv2d; do
 
             if [ "$ci" == 0 ]; then
               # System with ideal dispatcher
-              ENV_DEFINES="-D${kernel^^}=1" \
+              config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                      make -C apps/ bin/benchmarks.ideal
               touch -a hardware/build
-              make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+              config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
               # Extract the performance
 	          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
               ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
@@ -137,7 +137,7 @@ for kernel in fconv3d; do
             ${PYTHON} apps/$kernel/script/gen_data.py $msize $fsize > apps/benchmarks/data/data.S
 
             # Standard System
-            ENV_DEFINES="-D${kernel^^}=1" \
+            config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                    make -C apps/ bin/benchmarks
             make -C hardware/ simv app=benchmarks > $tempfile || exit
             # Extract the performance
@@ -146,10 +146,10 @@ for kernel in fconv3d; do
 
             if [ "$ci" == 0 ]; then
               # System with ideal dispatcher
-              ENV_DEFINES="-D${kernel^^}=1" \
+              config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                      make -C apps/ bin/benchmarks.ideal
               touch -a hardware/build
-              make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+              config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
               # Extract the performance
 	          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
               ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
@@ -181,7 +181,7 @@ for kernel in jacobi2d; do
         mkdir -p apps/benchmarks/data
 
         ${PYTHON} apps/$kernel/script/gen_data.py $vsize $vsize $OnlyVec > apps/benchmarks/data/data.S
-        ENV_DEFINES="-D${kernel^^}=1" \
+        config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
@@ -190,10 +190,10 @@ for kernel in jacobi2d; do
 
         if [ "$ci" == 0 ]; then
           # System with ideal dispatcher
-          ENV_DEFINES="-D${kernel^^}=1" \
+          config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                  make -C apps/ bin/benchmarks.ideal
           touch -a hardware/build
-          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
              cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
@@ -222,7 +222,7 @@ for kernel in dropout; do
         ${PYTHON} apps/$kernel/script/gen_data.py $vsize > apps/benchmarks/data/data.S
 
         # Standard System
-        ENV_DEFINES="-D${kernel^^}=1" \
+        config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
@@ -231,10 +231,10 @@ for kernel in dropout; do
 
         if [ "$ci" == 0 ]; then
           # System with ideal dispatcher
-          ENV_DEFINES="-D${kernel^^}=1" \
+          config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                  make -C apps/ bin/benchmarks.ideal
           touch -a hardware/build
-          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
              cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
@@ -266,7 +266,7 @@ for kernel in fft; do
 
         mkdir -p apps/benchmarks/data
         ${PYTHON} apps/$kernel/script/gen_data.py $vsize $dtype > apps/benchmarks/data/data.S
-        ENV_DEFINES="-D${kernel^^}=1 -DFFT_SAMPLES=${vsize}" \
+        config=${config} ENV_DEFINES="-D${kernel^^}=1 -DFFT_SAMPLES=${vsize}" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
@@ -275,10 +275,10 @@ for kernel in fft; do
 
         if [ "$ci" == 0 ]; then
           # System with ideal dispatcher
-          ENV_DEFINES="-D${kernel^^}=1 -DFFT_SAMPLES=${vsize}" \
+          config=${config} ENV_DEFINES="-D${kernel^^}=1 -DFFT_SAMPLES=${vsize}" \
                  make -C apps/ bin/benchmarks.ideal
           touch -a hardware/build
-          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
              cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
@@ -306,7 +306,7 @@ for kernel in dwt; do
 
         mkdir -p apps/benchmarks/data
         ${PYTHON} apps/$kernel/script/gen_data.py $vsize > apps/benchmarks/data/data.S
-        ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
+        config=${config} ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
@@ -315,12 +315,12 @@ for kernel in dwt; do
 
         if [ "$ci" == 0 ]; then
           # System with ideal dispatcher
-          ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
+          config=${config} ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
                  make -C apps/ bin/benchmarks.ideal
           touch -a hardware/build
-          make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
-             cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         fi
     done
