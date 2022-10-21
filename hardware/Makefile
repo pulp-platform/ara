@@ -126,7 +126,8 @@ sim: compile
 .PHONY: simc
 simc: compile
 	cd $(buildpath) && \
-	$(questa_cmd) vsim -c $(questa_args) $(library).$(top_level) -do "run -a"
+	$(questa_cmd) vsim -c $(questa_args) $(library).$(top_level) -do ../scripts/run.tcl
+# -do "run -a"
 	./scripts/return_status.sh $(buildpath)/transcript
 
 # RISC-V Tests simulation
