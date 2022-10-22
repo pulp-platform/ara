@@ -71,9 +71,10 @@ def exp(args, cycles):
   performance = 30 * size / cycles
   return [size, performance]
 def softmax(args, cycles):
-  size        = int(args[0])
-  performance = 25 * size / cycles
-  return [size, performance]
+  channels    = int(args[0])
+  insize      = int(args[1])
+  performance = 25 * channels * insize / cycles
+  return [insize, performance]
 
 perfExtr = {
   'imatmul' : imatmul,

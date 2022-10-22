@@ -18,3 +18,5 @@ def_args_dwt         = "512"
 def_args_exp         = "512"
 def_args_cos         = "512"
 def_args_log         = "512"
+# Channels and Inner size
+def_args_softmax     = "3 256"
