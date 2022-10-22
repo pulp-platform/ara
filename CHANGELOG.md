@@ -77,6 +77,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add DWT benchmark and print its performance
  - Add fp-exp, fp-cos, fp-log benchmarks from rivec bmark suite + print performance
  - Ideal Dispatcher tracer now supports strided memory operations
+ - Add Softmax benchmark and print its performance
 
 ### Changed
 
