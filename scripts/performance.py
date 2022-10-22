@@ -70,6 +70,10 @@ def exp(args, cycles):
   size        = int(args[0])
   performance = 30 * size / cycles
   return [size, performance]
+def softmax(args, cycles):
+  size        = int(args[0])
+  performance = 25 * size / cycles
+  return [size, performance]
 
 perfExtr = {
   'imatmul' : imatmul,
@@ -82,6 +86,7 @@ perfExtr = {
   'fft'     : fft,
   'dwt'     : dwt,
   'exp'     : exp,
+  'softmax' : softmax,
 }
 
 def main():
