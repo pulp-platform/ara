@@ -20,9 +20,14 @@
 #include <string.h>
 
 #include "kernel/softmax.h"
-#include "printf.h"
 #include "runtime.h"
 #include "util.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
 
 // Check the results using a threshold
 #define CHECK

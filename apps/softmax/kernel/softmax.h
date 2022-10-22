@@ -16,8 +16,13 @@
 //
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
+#ifndef _SOFTMAX_H_
+#define _SOFTMAX_H_
+
 void softmax(const float *i, const float *o, const float *buf,
              uint64_t channels, uint64_t innerSize);
 
 void softmax_vec(const float *i, const float *o, uint64_t channels,
                  uint64_t innerSize);
+
+#endif
