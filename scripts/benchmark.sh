@@ -326,7 +326,7 @@ dwt() {
 
       mkdir -p apps/benchmarks/data
       ${PYTHON} apps/$kernel/script/gen_data.py $vsize > apps/benchmarks/data/data.S
-      config=${config} ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
+      config=${config} ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
@@ -335,7 +335,7 @@ dwt() {
 
       if [ "$ci" == 0 ]; then
         # System with ideal dispatcher
-        config=${config} ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
+        config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks.ideal
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
@@ -376,7 +376,7 @@ exp() {
 
       if [ "$ci" == 0 ]; then
         # System with ideal dispatcher
-        ENV_DEFINES="-D${kernel^^}=1 -DSAMPLES=${vsize}" \
+        ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks.ideal
         touch -a hardware/build
         make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
