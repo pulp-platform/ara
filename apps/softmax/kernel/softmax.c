@@ -21,7 +21,7 @@
 
 #include "riscv_vector.h"
 
-#include "../lib/exp.h"
+#include "../softmax/lib/exp.h"
 
 // Our fdiv cannot receive any X in input
 // The following macro is just a trick and should NOT be used

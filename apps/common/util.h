@@ -18,5 +18,13 @@
 //
 // Utility functions for Ara software environment (header file)
 
+#ifndef _UTIL_H_
+#define _UTIL_H_
+
 // Floating-point similarity check with threshold
 int similarity_check(double a, double b, double threshold);
+
+// Dummy declaration for libm exp
+int *__errno(void);
+
+#endif
