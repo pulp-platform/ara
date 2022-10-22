@@ -18,7 +18,11 @@
 //
 // Utility functions for Ara software environment
 
+#include "util.h"
+
 #define FABS(x) ((x < 0) ? -x : x)
+
+int *__dummy__errno__ptr__;
 
 // Floating-point similarity check with threshold
 int similarity_check(double a, double b, double threshold) {
@@ -28,3 +32,6 @@ int similarity_check(double a, double b, double threshold) {
   else
     return 1;
 }
+
+// Dummy declaration for libm exp
+int *__errno(void) { return __dummy__errno__ptr__; }
