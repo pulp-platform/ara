@@ -16,6 +16,9 @@
 
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
+#ifndef _FDOTPRODUCT_H_
+#define _FDOTPRODUCT_H_
+
 #include <stdint.h>
 #include <string.h>
 
@@ -28,3 +31,5 @@ _Float16 fdotp_v16b(const _Float16 *a, const _Float16 *b, size_t avl);
 double fdotp_s64b(const double *a, const double *b, size_t avl);
 float fdotp_s32b(const float *a, const float *b, size_t avl);
 _Float16 fdotp_s16b(const _Float16 *a, const _Float16 *b, size_t avl);
+
+#endif
