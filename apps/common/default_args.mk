@@ -6,6 +6,8 @@ def_args_fconv2d     = "112 7"
 def_args_fconv3d     = "112 7"
 # Vector size
 def_args_fdotproduct = "512"
+# Vector size
+def_args_dotproduct  = "512"
 # Matrix padded size 0, matrix padded size 1, onlyvec
 def_args_jacobi2d    = "130 130 0"
 # Vector size
