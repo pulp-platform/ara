@@ -19,10 +19,16 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "printf.h"
 #include "runtime.h"
+#include "util.h"
 
 #include "kernel/fdotproduct.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
 
 // Threshold for FP comparisons
 #define THRESHOLD_64b 0.0000000001
@@ -61,12 +67,9 @@ extern double gold64;
 extern float gold32;
 extern _Float16 gold16;
 // Output vectors
-extern double res64_v;
-extern float res32_v;
-extern _Float16 res16_v;
-extern double res64_s;
-extern float res32_s;
-extern _Float16 res16_s;
+extern double res64_v, res64_s;
+extern float res32_v, res32_s;
+extern _Float16 res16_v, res16_s;
 
 int main() {
   printf("\n");
@@ -98,14 +101,14 @@ int main() {
       if (SCALAR) {
         printf("Checking results: v = %f, s = %f, g = %f\n", res64_v, res64_s,
                gold64);
-        if (!fp_check(res64_v, gold64, THRESHOLD_64b) ||
-            !fp_check(res64_s, gold64, THRESHOLD_64b)) {
+        if (!similarity_check(res64_v, gold64, THRESHOLD_64b) ||
+            !similarity_check(res64_s, gold64, THRESHOLD_64b)) {
           printf("Error: v = %f, s = %f, g = %f\n", res64_v, res64_s, gold64);
           return -1;
         }
       } else {
         printf("Checking results: v = %f, g = %f\n", res64_v, gold64);
-        if (!fp_check(res64_v, gold64, THRESHOLD_64b)) {
+        if (!similarity_check(res64_v, gold64, THRESHOLD_64b)) {
           printf("Error: v = %f, g = %f\n", res64_v, gold64);
           return -1;
         }
@@ -133,14 +136,14 @@ int main() {
       if (SCALAR) {
         printf("Checking results: v = %f, s = %f, g = %f\n", res32_v, res32_s,
                gold32);
-        if (!fp_check(res32_v, gold32, THRESHOLD_32b) ||
-            !fp_check(res32_s, gold32, THRESHOLD_32b)) {
+        if (!similarity_check(res32_v, gold32, THRESHOLD_32b) ||
+            !similarity_check(res32_s, gold32, THRESHOLD_32b)) {
           printf("Error: v = %f, s = %f, g = %f\n", res32_v, res32_s, gold32);
           return -1;
         }
       } else {
         printf("Checking results: v = %f, g = %f\n", res32_v, gold32);
-        if (!fp_check(res32_v, gold32, THRESHOLD_32b)) {
+        if (!similarity_check(res32_v, gold32, THRESHOLD_32b)) {
           printf("Error: v = %f, g = %f\n", res32_v, gold32);
           return -1;
         }
@@ -170,8 +173,8 @@ int main() {
         printf("Checking results: v = %x, s = %x, g = %x\n",
                *((uint16_t *)&res16_v), *((uint16_t *)&res16_s),
                *((uint16_t *)&gold16));
-        if (!fp_check(res16_v, gold16, THRESHOLD_16b) ||
-            !fp_check(res16_s, gold16, THRESHOLD_16b)) {
+        if (!similarity_check(res16_v, gold16, THRESHOLD_16b) ||
+            !similarity_check(res16_s, gold16, THRESHOLD_16b)) {
           printf("Error: v = %x, s = %x, g = %x\n", *((uint16_t *)&res16_v),
                  *((uint16_t *)&res16_s), *((uint16_t *)&gold16));
           return -1;
@@ -179,7 +182,7 @@ int main() {
       } else {
         printf("Checking results: v = %x, g = %x\n", *((uint16_t *)&res16_v),
                *((uint16_t *)&gold16));
-        if (!fp_check(res16_v, gold16, THRESHOLD_16b)) {
+        if (!similarity_check(res16_v, gold16, THRESHOLD_16b)) {
           printf("Error: v = %x, g = %x\n", *((uint16_t *)&res16_v),
                  *((uint16_t *)&gold16));
           return -1;
