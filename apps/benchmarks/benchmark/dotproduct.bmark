@@ -1,0 +1,110 @@
+// Copyright 2022 ETH Zurich and University of Bologna.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
+
+#include <stdint.h>
+#include <string.h>
+
+#include "runtime.h"
+#include "util.h"
+
+#include "../kernel/dotproduct.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
+
+// data type
+#ifndef dtype
+#error "Define a dtype to benchmark dotproduct! [int64_t|int32_t|int16_t|int8_t]"
+#endif
+
+// Vector size in bytes
+extern uint64_t vsize;
+// Input vectors
+extern int64_t v64a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int64_t v64b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int32_t v32a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int32_t v32b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int16_t v16a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int16_t v16b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int8_t   v8a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern int8_t   v8b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+// Output scalar
+extern int64_t res64_v;
+extern int32_t res32_v;
+extern int16_t res16_v;
+extern int8_t  res8_v;
+// Dummy scalar to check the datatype
+dtype r;
+
+int main() {
+/*
+  printf("\n");
+  printf("==========\n");
+  printf("=  DOTP  =\n");
+  printf("==========\n");
+  printf("\n");
+  printf("\n");
+*/
+
+  uint64_t v_sw_runtime;
+
+  // This benchmark is executed for one dtype only to ensure the same initial conditions.
+  // If not, Ara would reshuffle some registers because of different EEWs and this would
+  // lead to artificial slow-down
+  if (sizeof(r) == 8) {
+    size_t avl = vsize >> 3;
+    start_timer();
+    res64_v = dotp_v64b(v64a, v64b, avl);
+    stop_timer();
+    v_sw_runtime = get_timer();
+    // [kernel]: lanes vsize vsew cycles
+    printf("[dotproduct]: %u %u %u\n", NR_LANES, vsize, 8);
+  } else
+  if (sizeof(r) == 4) {
+    size_t avl = vsize >> 2;
+    start_timer();
+    res32_v = dotp_v32b(v32a, v32b, avl);
+    stop_timer();
+    v_sw_runtime = get_timer();
+    // [kernel]: lanes vsize vsew cycles
+    printf("[dotproduct]: %u %u %u\n", NR_LANES, vsize, 4);
+  } else
+  if (sizeof(r) == 2) {
+    size_t avl = vsize >> 1;
+    start_timer();
+    res16_v = dotp_v16b(v16a, v16b, avl);
+    stop_timer();
+    v_sw_runtime = get_timer();
+    // [kernel]: lanes vsize vsew cycles
+    printf("[dotproduct]: %u %u %u\n", NR_LANES, vsize, 2);
+  } else
+  if (sizeof(r) == 1) {
+    size_t avl = vsize >> 0;
+    start_timer();
+    res8_v = dotp_v8b(v8a, v8b, avl);
+    stop_timer();
+    v_sw_runtime = get_timer();
+    // [kernel]: lanes vsize vsew cycles
+    printf("[dotproduct]: %u %u %u\n", NR_LANES, vsize, 1);
+  }
+
+  return 0;
+}

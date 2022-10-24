@@ -24,10 +24,10 @@
 
 #include <riscv_vector.h>
 
-int64_t dotp_64b(int64_t *a, int64_t *b, uint64_t avl);
-int32_t dotp_32b(int32_t *a, int32_t *b, uint64_t avl);
-int16_t dotp_16b(int16_t *a, int16_t *b, uint64_t avl);
-int8_t dotp_8b(int8_t *a, int8_t *b, uint64_t avl);
+int64_t dotp_v64b(int64_t *a, int64_t *b, uint64_t avl);
+int32_t dotp_v32b(int32_t *a, int32_t *b, uint64_t avl);
+int16_t dotp_v16b(int16_t *a, int16_t *b, uint64_t avl);
+int8_t dotp_v8b(int8_t *a, int8_t *b, uint64_t avl);
 
 int64_t dotp_s64b(int64_t *a, int64_t *b, uint64_t avl);
 int32_t dotp_s32b(int32_t *a, int32_t *b, uint64_t avl);

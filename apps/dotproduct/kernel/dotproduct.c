@@ -18,7 +18,7 @@
 
 #include "dotproduct.h"
 
-int64_t dotp_64b(int64_t *a, int64_t *b, uint64_t avl) {
+int64_t dotp_v64b(int64_t *a, int64_t *b, uint64_t avl) {
 
   size_t orig_avl = avl;
   size_t vl = vsetvl_e64m8(avl);
@@ -53,7 +53,7 @@ int64_t dotp_64b(int64_t *a, int64_t *b, uint64_t avl) {
   return vmv_x_s_i64m1_i64(red);
 }
 
-int32_t dotp_32b(int32_t *a, int32_t *b, uint64_t avl) {
+int32_t dotp_v32b(int32_t *a, int32_t *b, uint64_t avl) {
 
   size_t orig_avl = avl;
   size_t vl = vsetvl_e32m8(avl);
@@ -88,7 +88,7 @@ int32_t dotp_32b(int32_t *a, int32_t *b, uint64_t avl) {
   return vmv_x_s_i32m1_i32(red);
 }
 
-int16_t dotp_16b(int16_t *a, int16_t *b, uint64_t avl) {
+int16_t dotp_v16b(int16_t *a, int16_t *b, uint64_t avl) {
 
   size_t orig_avl = avl;
   size_t vl = vsetvl_e16m8(avl);
@@ -123,7 +123,7 @@ int16_t dotp_16b(int16_t *a, int16_t *b, uint64_t avl) {
   return vmv_x_s_i16m1_i16(red);
 }
 
-int8_t dotp_8b(int8_t *a, int8_t *b, uint64_t avl) {
+int8_t dotp_v8b(int8_t *a, int8_t *b, uint64_t avl) {
 
   size_t orig_avl = avl;
   size_t vl = vsetvl_e8m8(avl);
