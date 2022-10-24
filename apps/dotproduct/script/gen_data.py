@@ -35,20 +35,25 @@ def emit(name, array, alignment='8'):
 
 # Vector length
 if len(sys.argv) > 1:
-  N = int(sys.argv[1])
+  vsize = int(sys.argv[1])
 else:
   # Default: no stripmine
-  N = 64
+  vsize = 64
+
+avl64 = int(vsize / 8)
+avl32 = int(vsize / 4)
+avl16 = int(vsize / 2)
+avl8  = int(vsize / 1)
 
 # Create the vectors
-v64a = np.random.randint(-2**(63), high=2**(63)-1, size=N, dtype=np.int64)
-v64b = np.random.randint(-2**(63), high=2**(63)-1, size=N, dtype=np.int64)
-v32a = np.random.randint(-2**(31), high=2**(31)-1, size=N, dtype=np.int32)
-v32b = np.random.randint(-2**(31), high=2**(31)-1, size=N, dtype=np.int32)
-v16a = np.random.randint(-2**(15), high=2**(15)-1, size=N, dtype=np.int16)
-v16b = np.random.randint(-2**(15), high=2**(15)-1, size=N, dtype=np.int16)
-v8a  = np.random.randint( -2**(7), high=2**(7)-1, size=N, dtype=np.int8)
-v8b  = np.random.randint( -2**(7), high=2**(7)-1, size=N, dtype=np.int8)
+v64a = np.random.randint(-2**(63), high=2**(63)-1, size=avl64, dtype=np.int64)
+v64b = np.random.randint(-2**(63), high=2**(63)-1, size=avl64, dtype=np.int64)
+v32a = np.random.randint(-2**(31), high=2**(31)-1, size=avl32, dtype=np.int32)
+v32b = np.random.randint(-2**(31), high=2**(31)-1, size=avl32, dtype=np.int32)
+v16a = np.random.randint(-2**(15), high=2**(15)-1, size=avl16, dtype=np.int16)
+v16b = np.random.randint(-2**(15), high=2**(15)-1, size=avl16, dtype=np.int16)
+v8a  = np.random.randint( -2**(7), high=2**(7)-1,  size=avl8,  dtype=np.int8)
+v8b  = np.random.randint( -2**(7), high=2**(7)-1,  size=avl8,  dtype=np.int8)
 
 # Create the golden output
 gold64 = reduce(lambda a, b: a+b, np.multiply(v64a, v64b))
@@ -66,7 +71,7 @@ res8  = 0
 
 # Print information on file
 print(".section .data,\"aw\",@progbits")
-emit("N", np.array(N, dtype=np.uint64))
+emit("vsize", np.array(vsize, dtype=np.uint64))
 emit("v64a", v64a, 'NR_LANES*4')
 emit("v64b", v64b, 'NR_LANES*4')
 emit("v32a", v32a, 'NR_LANES*4')
