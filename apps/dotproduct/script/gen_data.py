@@ -46,14 +46,14 @@ avl16 = int(vsize / 2)
 avl8  = int(vsize / 1)
 
 # Create the vectors
-v64a = np.random.randint(-2**(63), high=2**(63)-1, size=avl64, dtype=np.int64)
-v64b = np.random.randint(-2**(63), high=2**(63)-1, size=avl64, dtype=np.int64)
-v32a = np.random.randint(-2**(31), high=2**(31)-1, size=avl32, dtype=np.int32)
-v32b = np.random.randint(-2**(31), high=2**(31)-1, size=avl32, dtype=np.int32)
-v16a = np.random.randint(-2**(15), high=2**(15)-1, size=avl16, dtype=np.int16)
-v16b = np.random.randint(-2**(15), high=2**(15)-1, size=avl16, dtype=np.int16)
-v8a  = np.random.randint( -2**(7), high=2**(7)-1,  size=avl8,  dtype=np.int8)
-v8b  = np.random.randint( -2**(7), high=2**(7)-1,  size=avl8,  dtype=np.int8)
+v64a = np.random.randint(-2**(50), high=2**(50)-1, size=avl64, dtype=np.int64)
+v64b = np.random.randint(-2**(50), high=2**(50)-1, size=avl64, dtype=np.int64)
+v32a = np.random.randint(-2**(20), high=2**(20)-1, size=avl32, dtype=np.int32)
+v32b = np.random.randint(-2**(20), high=2**(20)-1, size=avl32, dtype=np.int32)
+v16a = np.random.randint(-2**(10), high=2**(10)-1, size=avl16, dtype=np.int16)
+v16b = np.random.randint(-2**(10), high=2**(10)-1, size=avl16, dtype=np.int16)
+v8a  = np.random.randint( -2**(2), high=2**(2)-1,  size=avl8,  dtype=np.int8)
+v8b  = np.random.randint( -2**(2), high=2**(2)-1,  size=avl8,  dtype=np.int8)
 
 # Create the golden output
 gold64 = reduce(lambda a, b: a+b, np.multiply(v64a, v64b))
@@ -80,10 +80,10 @@ emit("v16a", v16a, 'NR_LANES*4')
 emit("v16b", v16b, 'NR_LANES*4')
 emit("v8a",  v8a,  'NR_LANES*4')
 emit("v8b",  v8b,  'NR_LANES*4')
-emit("gold64", np.array(gold64, dtype=np.int64));
-emit("gold32", np.array(gold32, dtype=np.int32));
-emit("gold16", gold16, 'NR_LANES*4');
-emit("gold8",  gold8,  'NR_LANES*4');
+#emit("gold64", np.array(gold64, dtype=np.int64));
+#emit("gold32", np.array(gold32, dtype=np.int32));
+#emit("gold16", gold16, 'NR_LANES*4');
+#emit("gold8",  gold8,  'NR_LANES*4');
 emit("res64_v", np.array(res64, dtype=np.int64));
 emit("res32_v", np.array(res32, dtype=np.int32));
 emit("res16_v", np.array(res16, dtype=np.int32));

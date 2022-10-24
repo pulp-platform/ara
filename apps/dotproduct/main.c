@@ -35,17 +35,8 @@
 // Check the vector results against golden vectors
 #define CHECK 1
 
-// Run the program with maximum AVL only (AVL == N)
-#define MAX_AVL_ONLY
-
-#ifdef MAX_AVL_ONLY
-#define START_AVL N
-#else
-#define START_AVL 1
-#endif
-
-// Vector size (#elements)
-extern uint64_t N;
+// Vector size (Byte)
+extern uint64_t vsize;
 // Vectors for benchmarks
 extern int64_t v64a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern int64_t v64b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
@@ -55,11 +46,6 @@ extern int16_t v16a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern int16_t v16b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern int8_t v8a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern int8_t v8b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-// Golden outputs
-extern int64_t gold64;
-extern int32_t gold32;
-extern int16_t gold16;
-extern int8_t gold8;
 // Output vectors
 extern int64_t res64_v, res64_s;
 extern int32_t res32_v, res32_s;
@@ -76,11 +62,11 @@ int main() {
 
   int64_t runtime_s, runtime_v;
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 3); avl *= 8) {
     // Dotp
     printf("Calulating 64b dotp with vectors with length = %lu\n", avl);
     start_timer();
-    res64_v = dotp_64b(v64a, v64b, avl);
+    res64_v = dotp_v64b(v64a, v64b, avl);
     stop_timer();
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
@@ -101,11 +87,11 @@ int main() {
     }
   }
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 2); avl *= 8) {
     // Dotp
     printf("Calulating 32b dotp with vectors with length = %lu\n", avl);
     start_timer();
-    res32_v = dotp_32b(v32a, v32b, avl);
+    res32_v = dotp_v32b(v32a, v32b, avl);
     stop_timer();
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
@@ -126,11 +112,11 @@ int main() {
     }
   }
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 1); avl *= 8) {
     // Dotp
     printf("Calulating 16b dotp with vectors with length = %lu\n", avl);
     start_timer();
-    res16_v = dotp_16b(v16a, v16b, avl);
+    res16_v = dotp_v16b(v16a, v16b, avl);
     stop_timer();
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
@@ -151,11 +137,11 @@ int main() {
     }
   }
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 0); avl *= 8) {
     // Dotp
     printf("Calulating 8b dotp with vectors with length = %lu\n", avl);
     start_timer();
-    res8_v = dotp_8b(v8a, v8b, avl);
+    res8_v = dotp_v8b(v8a, v8b, avl);
     stop_timer();
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
