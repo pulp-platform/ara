@@ -43,7 +43,7 @@ int main() {
 
   int64_t runtime = get_timer();
   float performance = 2.0 * SIZE * SIZE * SIZE / runtime;
-  printf("[cycles]: %ld\n", runtime);
+  printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;
 }

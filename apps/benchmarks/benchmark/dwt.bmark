@@ -64,7 +64,7 @@ int main() {
   for (int n = DWT_LEN; n >= 2; n >>= 1) {
     num_bytes += 2 * sizeof(float) * n + sizeof(float) * n;
   }
-  printf("[cycles]: %ld\n", runtime);
+  printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;
 }

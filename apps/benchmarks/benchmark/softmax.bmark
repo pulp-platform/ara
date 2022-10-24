@@ -45,7 +45,7 @@ int main() {
 
   runtime = get_timer();
 
-  printf("[cycles]: %ld\n", runtime);
+  printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;
 }

@@ -49,7 +49,7 @@ int main() {
   stop_timer();
 
   int64_t runtime = get_timer();
-  printf("[cycles]: %ld\n", runtime);
+  printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;
 }
