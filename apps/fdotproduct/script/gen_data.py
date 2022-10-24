@@ -35,18 +35,22 @@ def emit(name, array, alignment='8'):
 
 # Vector length
 if len(sys.argv) > 1:
-  N = int(sys.argv[1])
+  vsize = int(sys.argv[1])
 else:
   # Default: no stripmine
-  N = 64
+  vsize = 64
+
+avl64 = int(vsize / 8)
+avl32 = int(vsize / 4)
+avl16 = int(vsize / 2)
 
 # Create the vectors
-v64a = np.random.randn(N).astype(np.float64)
-v64b = np.random.randn(N).astype(np.float64)
-v32a = np.random.randn(N).astype(np.float32)
-v32b = np.random.randn(N).astype(np.float32)
-v16a = np.random.randn(N).astype(np.float16)
-v16b = np.random.randn(N).astype(np.float16)
+v64a = np.random.randn(avl64).astype(np.float64)
+v64b = np.random.randn(avl64).astype(np.float64)
+v32a = np.random.randn(avl32).astype(np.float32)
+v32b = np.random.randn(avl32).astype(np.float32)
+v16a = np.random.randn(avl16).astype(np.float16)
+v16b = np.random.randn(avl16).astype(np.float16)
 
 # Create the golden output
 gold64 = reduce(lambda a, b: a+b, np.multiply(v64a, v64b))
@@ -61,7 +65,7 @@ res16 = 0
 
 # Print information on file
 print(".section .data,\"aw\",@progbits")
-emit("N", np.array(N, dtype=np.uint64))
+emit("vsize", np.array(vsize, dtype=np.uint64))
 emit("v64a", v64a, 'NR_LANES*4')
 emit("v64b", v64b, 'NR_LANES*4')
 emit("v32a", v32a, 'NR_LANES*4')
