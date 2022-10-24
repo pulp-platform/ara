@@ -44,17 +44,8 @@
 // Macro to check similarity between two fp-values, wrt a threshold
 #define fp_check(a, b, threshold) ((((a - b) < 0) ? b - a : a - b) < threshold)
 
-// Run the program with maximum AVL only (AVL == N)
-#define MAX_AVL_ONLY
-
-#ifdef MAX_AVL_ONLY
-#define START_AVL N
-#else
-#define START_AVL 1
-#endif
-
-// Vector size (#elements)
-extern uint64_t N;
+// Vector size (Byte)
+extern uint64_t vsize;
 // Input vectors
 extern double v64a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern double v64b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
@@ -81,7 +72,7 @@ int main() {
 
   uint64_t runtime_s, runtime_v;
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 3); avl *= 8) {
     printf("Calulating 64b dotp with vectors with length = %lu\n", avl);
     start_timer();
     res64_v = fdotp_v64b(v64a, v64b, avl);
@@ -99,24 +90,16 @@ int main() {
 
     if (CHECK) {
       if (SCALAR) {
-        printf("Checking results: v = %f, s = %f, g = %f\n", res64_v, res64_s,
-               gold64);
-        if (!similarity_check(res64_v, gold64, THRESHOLD_64b) ||
-            !similarity_check(res64_s, gold64, THRESHOLD_64b)) {
-          printf("Error: v = %f, s = %f, g = %f\n", res64_v, res64_s, gold64);
-          return -1;
-        }
-      } else {
-        printf("Checking results: v = %f, g = %f\n", res64_v, gold64);
-        if (!similarity_check(res64_v, gold64, THRESHOLD_64b)) {
-          printf("Error: v = %f, g = %f\n", res64_v, gold64);
+        printf("Checking results: v = %f, s = %f\n", res64_v, res64_s);
+        if (!similarity_check(res64_v, res64_s, THRESHOLD_64b)) {
+          printf("Error: v = %f, s = %f\n", res64_v, res64_s);
           return -1;
         }
       }
     }
   }
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 2); avl *= 8) {
     printf("Calulating 32b dotp with vectors with length = %lu\n", avl);
     start_timer();
     res32_v = fdotp_v32b(v32a, v32b, avl);
@@ -134,24 +117,16 @@ int main() {
 
     if (CHECK) {
       if (SCALAR) {
-        printf("Checking results: v = %f, s = %f, g = %f\n", res32_v, res32_s,
-               gold32);
-        if (!similarity_check(res32_v, gold32, THRESHOLD_32b) ||
-            !similarity_check(res32_s, gold32, THRESHOLD_32b)) {
-          printf("Error: v = %f, s = %f, g = %f\n", res32_v, res32_s, gold32);
-          return -1;
-        }
-      } else {
-        printf("Checking results: v = %f, g = %f\n", res32_v, gold32);
-        if (!similarity_check(res32_v, gold32, THRESHOLD_32b)) {
-          printf("Error: v = %f, g = %f\n", res32_v, gold32);
+        printf("Checking results: v = %f, s = %f\n", res32_v, res32_s);
+        if (!similarity_check(res32_v, res32_s, THRESHOLD_32b)) {
+          printf("Error: v = %f, s = %f\n", res32_v, res32_s);
           return -1;
         }
       }
     }
   }
 
-  for (uint64_t avl = START_AVL; avl <= N; avl *= 8) {
+  for (uint64_t avl = 8; avl <= (vsize >> 2); avl *= 8) {
     // Dotp
     printf("Calulating 16b dotp with vectors with length = %lu\n", avl);
     start_timer();
@@ -170,21 +145,11 @@ int main() {
 
     if (CHECK) {
       if (SCALAR) {
-        printf("Checking results: v = %x, s = %x, g = %x\n",
-               *((uint16_t *)&res16_v), *((uint16_t *)&res16_s),
-               *((uint16_t *)&gold16));
-        if (!similarity_check(res16_v, gold16, THRESHOLD_16b) ||
-            !similarity_check(res16_s, gold16, THRESHOLD_16b)) {
-          printf("Error: v = %x, s = %x, g = %x\n", *((uint16_t *)&res16_v),
-                 *((uint16_t *)&res16_s), *((uint16_t *)&gold16));
-          return -1;
-        }
-      } else {
-        printf("Checking results: v = %x, g = %x\n", *((uint16_t *)&res16_v),
-               *((uint16_t *)&gold16));
-        if (!similarity_check(res16_v, gold16, THRESHOLD_16b)) {
-          printf("Error: v = %x, g = %x\n", *((uint16_t *)&res16_v),
-                 *((uint16_t *)&gold16));
+        printf("Checking results: v = %x, s = %x\n", *((uint16_t *)&res16_v),
+               *((uint16_t *)&res16_s));
+        if (!similarity_check(res16_v, res16_s, THRESHOLD_16b)) {
+          printf("Error: v = %x, s = %x\n", *((uint16_t *)&res16_v),
+                 *((uint16_t *)&res16_s));
           return -1;
         }
       }
