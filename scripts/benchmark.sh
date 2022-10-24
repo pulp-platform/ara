@@ -475,9 +475,6 @@ fdotproduct() {
       done
     done
   done
-  # Plot the performance
-  ${PYTHON} ./scripts/process_dotp.py ${kernel}_${nr_lanes}.benchmark       ${kernel}_${nr_lanes}
-  ${PYTHON} ./scripts/process_dotp.py ${kernel}_${nr_lanes}_ideal.benchmark ${kernel}_${nr_lanes}_ideal
 }
 
 ################
@@ -525,9 +522,6 @@ dotproduct() {
       done
     done
   done
-  # Plot the performance
-  ${PYTHON} ./scripts/process_dotp.py ${kernel}_${nr_lanes}.benchmark       ${kernel}_${nr_lanes}
-  ${PYTHON} ./scripts/process_dotp.py ${kernel}_${nr_lanes}_ideal.benchmark ${kernel}_${nr_lanes}_ideal
 }
 
 case $1 in
