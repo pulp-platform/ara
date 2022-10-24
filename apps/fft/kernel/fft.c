@@ -175,12 +175,12 @@ void SetupTwiddlesLUT(signed short *Twiddles, int Nfft, int Inverse) {
 /* Reorder from natural indexes to digitally-reversed one. Uses a pre computed
  * LUT */
 
-void SwapSamples(cmplxtype *__restrict__ Data, short *__restrict__ SwapTable,
+void SwapSamples(v2f *__restrict__ Data, short *__restrict__ SwapTable,
                  int Ni) {
   int i;
 
   for (i = 0; i < Ni; i++) {
-    cmplxtype S = Data[i];
+    v2f S = Data[i];
     int SwapIndex = SwapTable[i];
     if (i < SwapIndex) {
       Data[i] = Data[SwapIndex];
@@ -233,29 +233,29 @@ SetupInput(signed short *In, int N, int Dyn) {
 // Floating-Point //
 ////////////////////
 
-static inline cmplxtype cplxmuls_float(cmplxtype x, cmplxtype y) {
-  return (cmplxtype){(x)[0] * (y)[0] - (x)[1] * (y)[1],
-                     (x)[0] * (y)[1] + (x)[1] * (y)[0]};
+static inline v2f cplxmuls_float(v2f x, v2f y) {
+  return (v2f){(x)[0] * (y)[0] - (x)[1] * (y)[1],
+               (x)[0] * (y)[1] + (x)[1] * (y)[0]};
 }
 
 /*
    Radix-2 Decimated in Time FFT. Input have to be digitally-reversed, output is
    naturally ordered. First stage uses the fact that twiddles are all (1, 0)
 */
-void Radix2FFT_DIT_float(dtype *__restrict__ Data, dtype *__restrict__ Twiddles,
+void Radix2FFT_DIT_float(float *__restrict__ Data, float *__restrict__ Twiddles,
                          int N_FFT2) {
   // int iLog2N  = log2(N_FFT2);
   int iLog2N = 31 - __builtin_clz(N_FFT2);
   int iCnt1, iCnt2, iCnt3, iQ, iL, iM, iA, iB;
-  cmplxtype *CoeffV = (cmplxtype *)Twiddles;
-  cmplxtype *DataV = (cmplxtype *)Data;
+  v2f *CoeffV = (v2f *)Twiddles;
+  v2f *DataV = (v2f *)Data;
 
   iL = N_FFT2 >> 1;
   iM = 1;
   iA = 0;
   /* First Layer: W = (1, 0) */
   for (iCnt3 = 0; iCnt3 < (N_FFT2 >> 1); iCnt3++) {
-    cmplxtype Tmp;
+    v2f Tmp;
     iB = iA + iM;
     Tmp = DataV[iB];
     DataV[iB] = (DataV[iA] - Tmp);
@@ -268,10 +268,10 @@ void Radix2FFT_DIT_float(dtype *__restrict__ Data, dtype *__restrict__ Twiddles,
   for (iCnt1 = 1; iCnt1 < iLog2N; ++iCnt1) {
     iQ = 0;
     for (iCnt2 = 0; iCnt2 < iM; ++iCnt2) {
-      cmplxtype W = CoeffV[iQ];
+      v2f W = CoeffV[iQ];
       iA = iCnt2;
       for (iCnt3 = 0; iCnt3 < iL; iCnt3++) {
-        cmplxtype Tmp, Tmp1;
+        v2f Tmp, Tmp1;
         iB = iA + iM;
         Tmp = cplxmuls_float(DataV[iB], W);
         Tmp1 = DataV[iA];
@@ -287,12 +287,12 @@ void Radix2FFT_DIT_float(dtype *__restrict__ Data, dtype *__restrict__ Twiddles,
   }
 }
 
-void Radix2FFT_DIF_float(dtype *__restrict__ Data, dtype *__restrict__ Twiddles,
+void Radix2FFT_DIF_float(float *__restrict__ Data, float *__restrict__ Twiddles,
                          int N_FFT2, int n_break) {
   int iLog2N = 31 - __builtin_clz(N_FFT2);
   int iCnt1, iCnt2, iCnt3, iQ, iL, iM, iA, iB;
-  cmplxtype *CoeffV = (cmplxtype *)Twiddles;
-  cmplxtype *DataV = (cmplxtype *)Data;
+  v2f *CoeffV = (v2f *)Twiddles;
+  v2f *DataV = (v2f *)Data;
 
   iL = 1;
   iM = N_FFT2 / 2;
@@ -304,10 +304,10 @@ void Radix2FFT_DIF_float(dtype *__restrict__ Data, dtype *__restrict__ Twiddles,
       break;
     iQ = 0;
     for (iCnt2 = 0; iCnt2 < iM; iCnt2++) {
-      cmplxtype W = CoeffV[iQ];
+      v2f W = CoeffV[iQ];
       iA = iCnt2;
       for (iCnt3 = 0; iCnt3 < iL; iCnt3++) {
-        cmplxtype Tmp;
+        v2f Tmp;
         iB = iA + iM;
         Tmp = DataV[iA] - DataV[iB];
         DataV[iA] = DataV[iA] + DataV[iB];
@@ -324,7 +324,7 @@ void Radix2FFT_DIF_float(dtype *__restrict__ Data, dtype *__restrict__ Twiddles,
   if ((iCnt1) < n_break) {
     /* Last Layer: W = (1, 0) */
     for (iCnt3 = 0; iCnt3 < (N_FFT2 >> 1); iCnt3++) {
-      cmplxtype Tmp;
+      v2f Tmp;
       iB = iA + 1;
       Tmp = (DataV[iA] - DataV[iB]);
       DataV[iA] = (DataV[iA] + DataV[iB]);
@@ -359,10 +359,10 @@ void fft_r2dif_vec(float* samples_re, float* samples_im,
   size_t vl = n_fft/2;
   size_t vl_mask = vl;
   unsigned int log2_nfft= 31 - __builtin_clz(n_fft);
-  vdtype upper_wing_re, upper_wing_im;
-  vdtype lower_wing_re, lower_wing_im;
-  vdtype twiddle_re, twiddle_im;
-  vdtype vbuf_re, vbuf_im;
+  vfloat32m1_t upper_wing_re, upper_wing_im;
+  vfloat32m1_t lower_wing_re, lower_wing_im;
+  vfloat32m1_t twiddle_re, twiddle_im;
+  vfloat32m1_t vbuf_re, vbuf_im;
   vbool32_t mask_vec, mask_vec_buf;
 
   // Use undisturbed policy
@@ -490,17 +490,15 @@ Verify that there is no actual copy of this vector!
 }
 
 // Vector - Scalar
- vdtype cmplx_mul_re_vf(vdtype v0_re, vdtype v0_im, dtype f1_re, dtype f1_im,
- size_t vl) {
-   vdtype vbuf;
+ vfloat32m1_t cmplx_mul_re_vf(vfloat32m1_t v0_re, vfloat32m1_t v0_im, float
+f1_re, float f1_im, size_t vl) { vfloat32m1_t vbuf;
 
    vbuf = vfmul_vf_f32m1(v0_re, f1_re, vl);
    return vfnmsac_vf_f32m1(vbuf, v0_im, f1_im, vl);
  }
 
- vdtype cmplx_mul_im_vf(vdtype v0_re, vdtype v0_im, dtype f1_re, dtype f1_im,
- size_t vl) {
-   vdtype vbuf;
+ vfloat32m1_t cmplx_mul_im_vf(vfloat32m1_t v0_re, vfloat32m1_t v0_im, float
+f1_re, float f1_im, size_t vl) { vfloat32m1_t vbuf;
 
    vbuf = vfmul_vf_f32m1(v0_re, f1_im, vl);
    return vfmacc_vf_f32m1(vbuf, v0_im, f1_re, vl);
@@ -508,25 +506,27 @@ Verify that there is no actual copy of this vector!
 */
 
 //  Vector - Vector
-vdtype cmplx_mul_re_vv(vdtype v0_re, vdtype v0_im, vdtype f1_re, vdtype f1_im,
-                       size_t vl) {
-  vdtype vbuf;
+vfloat32m1_t cmplx_mul_re_vv(vfloat32m1_t v0_re, vfloat32m1_t v0_im,
+                             vfloat32m1_t f1_re, vfloat32m1_t f1_im,
+                             size_t vl) {
+  vfloat32m1_t vbuf;
 
   vbuf = vfmul_vv_f32m1(v0_re, f1_re, vl);
   return vfnmsac_vv_f32m1(vbuf, v0_im, f1_im, vl);
 }
 
-vdtype cmplx_mul_im_vv(vdtype v0_re, vdtype v0_im, vdtype f1_re, vdtype f1_im,
-                       size_t vl) {
-  vdtype vbuf;
+vfloat32m1_t cmplx_mul_im_vv(vfloat32m1_t v0_re, vfloat32m1_t v0_im,
+                             vfloat32m1_t f1_re, vfloat32m1_t f1_im,
+                             size_t vl) {
+  vfloat32m1_t vbuf;
 
   vbuf = vfmul_vv_f32m1(v0_re, f1_im, vl);
   return vfmacc_vv_f32m1(vbuf, v0_im, f1_re, vl);
 }
 
 // Ancillary function to divide real and imaginary parts
-// sizeof(cmplxtype) == 2*sizeof(dtype)
-float *cmplx2reim(cmplxtype *cmplx, dtype *buf, size_t len) {
+// sizeof(v2f) == 2*sizeof(float)
+float *cmplx2reim(v2f *cmplx, float *buf, size_t len) {
 
   float *cmplx_flat_ptr = (float *)cmplx;
 
@@ -564,10 +564,10 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
   size_t vl_mask = vl;
   size_t vl_slamt = vl / 2;
   unsigned int log2_nfft = 31 - __builtin_clz(n_fft);
-  vdtype upper_wing_re, upper_wing_im;
-  vdtype lower_wing_re, lower_wing_im;
-  vdtype twiddle_re, twiddle_im;
-  vdtype vbuf_re, vbuf_im;
+  vfloat32m1_t upper_wing_re, upper_wing_im;
+  vfloat32m1_t lower_wing_re, lower_wing_im;
+  vfloat32m1_t twiddle_re, twiddle_im;
+  vfloat32m1_t vbuf_re, vbuf_im;
   vbool32_t mask_vec, mask_vec_buf;
   vuint32m1_t index, bindex;
 

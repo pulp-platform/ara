@@ -38,20 +38,18 @@
 
 extern unsigned long int NFFT;
 
-extern dtype twiddle[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern cmplxtype twiddle_vec[]
+extern float twiddle[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern v2f twiddle_vec[]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern dtype twiddle_reim[MAX_NFFT]
+extern float twiddle_reim[MAX_NFFT]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern cmplxtype samples[]
+extern v2f samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+v2f samples_copy[MAX_NFFT]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
-cmplxtype samples_copy[MAX_NFFT]
+v2f samples_vec[MAX_NFFT]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
-cmplxtype samples_vec[MAX_NFFT]
-    __attribute__((aligned(32 * NR_LANES), section(".l2")));
-dtype buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern cmplxtype gold_out[]
-    __attribute__((aligned(32 * NR_LANES), section(".l2")));
+float buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern v2f gold_out[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 signed short SwapTable[MAX_NFFT]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
@@ -93,8 +91,8 @@ int main() {
   // Initialize Inputs
   printf("Initializing Inputs for DIT\n");
   // SetupInput(In_DIT, NFFT, FFT2_SAMPLE_DYN);
-  memcpy((void *)samples_copy, (void *)samples, 2 * NFFT * sizeof(dtype));
-  memcpy((void *)samples_vec, (void *)samples, 2 * NFFT * sizeof(dtype));
+  memcpy((void *)samples_copy, (void *)samples, 2 * NFFT * sizeof(float));
+  memcpy((void *)samples_vec, (void *)samples, 2 * NFFT * sizeof(float));
 
   // Print the input
 #ifdef DEBUG
@@ -112,18 +110,18 @@ int main() {
   printf("Intermediate butterfly outputs:\n");
   for (int k = 0; k < (31 - __builtin_clz(NFFT)) + 2; ++k) {
     // Run a partial bmark
-    Radix2FFT_DIF_float((dtype *)samples_copy, twiddle, NFFT, k);
+    Radix2FFT_DIF_float((float *)samples_copy, twiddle, NFFT, k);
     // Print the partial res
     for (unsigned int i = 0; i < NFFT; ++i) {
       printf("Out_DIF_%d[%d] == %f + (%f)j\n", k, i, samples_copy[i][0],
              samples_copy[i][1]);
     }
     // Reset to initial situation
-    memcpy((void *)samples_copy, (void *)samples, 2 * NFFT * sizeof(dtype));
+    memcpy((void *)samples_copy, (void *)samples, 2 * NFFT * sizeof(float));
   }
 #else
   start_timer();
-  Radix2FFT_DIF_float((dtype *)samples_copy, twiddle, NFFT, 10);
+  Radix2FFT_DIF_float((float *)samples_copy, twiddle, NFFT, 10);
   stop_timer();
   SwapSamples(samples_copy, SwapTable, NFFT);
 #endif
@@ -149,7 +147,7 @@ int main() {
 #endif
 
   start_timer();
-  Radix2FFT_DIT_float((dtype *)samples, twiddle, NFFT);
+  Radix2FFT_DIT_float((float *)samples, twiddle, NFFT);
   stop_timer();
 
   // Performance metrics
@@ -196,7 +194,7 @@ int main() {
   runtime = get_timer();
 
   float perf = (float)10.0 * NFFT * (31 - __builtin_clz(NFFT)) / runtime;
-  float max_perf = 6.0 / 5.0 * NR_LANES * 8.0 / sizeof(dtype);
+  float max_perf = 6.0 / 5.0 * NR_LANES * 8.0 / sizeof(float);
 
   printf("Performance: %f. Max perf: %f. Actual performance is %f%% of max.\n",
          perf, max_perf, 100 * perf / max_perf);

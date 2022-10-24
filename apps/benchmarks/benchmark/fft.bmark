@@ -30,9 +30,9 @@
 
 extern unsigned long int NFFT;
 
-extern cmplxtype twiddle_vec[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern cmplxtype     samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-dtype buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern v2f twiddle_vec[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern v2f     samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+float buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 // Threshold for FP numbers comparison during the final check
 #define THRESHOLD 1
