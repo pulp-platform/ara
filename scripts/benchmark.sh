@@ -430,6 +430,56 @@ softmax() {
   done
 }
 
+#################
+## FDOTPRODUCT ##
+#################
+
+fdotproduct() {
+  # Measure the runtime of the following kernels
+  for kernel in fdotproduct; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
+
+    for dtype in double float _Float16; do
+      for bsize in 16 32 64 128 256 512 1024 2048 4096; do
+        tempfile=`mktemp`
+
+        # Clean
+        make -C apps/ clean
+
+        mkdir -p apps/benchmarks/data
+        ${PYTHON} apps/$kernel/script/gen_data.py $bsize > apps/benchmarks/data/data.S
+        config=${config} ENV_DEFINES="-D${kernel^^}=1 -Ddtype=${dtype}" \
+               make -C apps/ bin/benchmarks
+        config=${config} make -C hardware/ simv app=benchmarks > ${tempfile} || exit
+        # Extract the performance (hw counter to be more accurate!)
+        info_0=$(cat $tempfile | grep "\[${kernel}\]")
+        info_1=$(cat $tempfile | grep "\[cycles\]" | tr -s " " | cut -d " " -f 2)
+        info="$info_0 $info_1"
+        echo $info >> ${kernel}_${nr_lanes}.benchmark
+
+        if [ "$ci" == 0 ]; then
+          # System with ideal dispatcher
+          config=${config} ENV_DEFINES="-D${kernel^^}=1 -Ddtype=${dtype}" \
+                 make -C apps/ bin/benchmarks.ideal
+          touch -a hardware/build
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > ${tempfile} || exit
+          # Extract the performance
+          info_0="[${kernel}]: ${nr_lanes} ${bsize}"
+          info_1=$(cat $tempfile | grep "\[cycles\]" | tr -s " " | cut -d " " -f 3)
+          info="$info_0 $info_1"
+          echo $info >> ${kernel}_${nr_lanes}_ideal.benchmark
+        fi
+      done
+    done
+  done
+  # Plot the performance
+  ${PYTHON} ./scripts/process_dotp.py ${kernel}_${nr_lanes}.benchmark       ${kernel}_${nr_lanes}
+  ${PYTHON} ./scripts/process_dotp.py ${kernel}_${nr_lanes}_ideal.benchmark ${kernel}_${nr_lanes}_ideal
+}
+
 case $1 in
   "matmul")
     matmul
@@ -467,6 +517,10 @@ case $1 in
     softmax
     ;;
 
+  "fdotproduct")
+    fdotproduct
+    ;;
+
   *)
     echo "Benchmarking all the apps."
     matmul
@@ -478,5 +532,6 @@ case $1 in
     dwt
     exp
     softmax
+    fdotproduct
     ;;
 esac
