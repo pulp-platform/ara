@@ -56,9 +56,8 @@ int main() {
   stop_timer();
 
   runtime = get_timer();
-  printf("The execution took %d cycles.\n", runtime);
 
-  printf("[cycles]: %ld\n", runtime);
+  printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;
 }
