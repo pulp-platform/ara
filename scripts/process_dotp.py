@@ -78,10 +78,12 @@ def plot_2vars_2const(db, vars_x, unit_x, const_x, const_val, fname, swap=False)
   plt.close()
 
 def main():
+  # kernel
+  kernel    = sys.argv[1]
   # Input file path
-  IN_FPATH  = sys.argv[1]
+  IN_FPATH  = sys.argv[2]
   # Output file name
-  OUT_FNAME = sys.argv[2]
+  OUT_FNAME = sys.argv[3]
 
   # Main database (DB)
   db = list()
@@ -97,9 +99,6 @@ def main():
 
   # Update the database with the information from the input file
   update_db(IN_FPATH, db, template)
-
-  # Plot fdotproduct
-  kernel = 'fdotproduct'
 
   # Plot @constant #Lanes
   for lanes in set([e['lanes'] for e in db]):
