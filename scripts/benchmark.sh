@@ -56,7 +56,7 @@ matmul() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the cycle count and calculate performance
-      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+      cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -66,7 +66,7 @@ matmul() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the cycle count and calculate performance
-        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -104,7 +104,7 @@ conv2d() {
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
         if [ "$ci" == 0 ]; then
@@ -114,7 +114,7 @@ conv2d() {
           touch -a hardware/build
           config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
-          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+          cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         fi
       done
@@ -153,7 +153,7 @@ conv3d() {
                make -C apps/ bin/benchmarks
         make -C hardware/ simv app=benchmarks > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
         if [ "$ci" == 0 ]; then
@@ -163,7 +163,7 @@ conv3d() {
           touch -a hardware/build
           config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
-          cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+          cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         fi
       done
@@ -198,7 +198,7 @@ jacobi2d() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
-         cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+         cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -208,7 +208,7 @@ jacobi2d() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-           cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+           cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -241,7 +241,7 @@ dropout() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
-         cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+         cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -251,7 +251,7 @@ dropout() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-           cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+           cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -288,7 +288,7 @@ fft() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
-      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+      cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -298,7 +298,7 @@ fft() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-           cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+           cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -330,7 +330,7 @@ dwt() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
-      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+      cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -340,7 +340,7 @@ dwt() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -371,7 +371,7 @@ exp() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
-      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+      cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -381,7 +381,7 @@ exp() {
         touch -a hardware/build
         make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -413,7 +413,7 @@ softmax() {
              make -C apps/ bin/benchmarks
       make -C hardware/ simv app=benchmarks > $tempfile || exit
       # Extract the performance
-      cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+      cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$chsize $insize" $cycles >> ${kernel}_${nr_lanes}.benchmark
 
       if [ "$ci" == 0 ]; then
@@ -423,7 +423,7 @@ softmax() {
         touch -a hardware/build
         make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$chsize $insize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -456,7 +456,7 @@ fdotproduct() {
         config=${config} make -C hardware/ simv app=benchmarks > ${tempfile} || exit
         # Extract the performance (hw counter to be more accurate!)
         info_0=$(cat $tempfile | grep "\[${kernel}\]")
-        info_1=$(cat $tempfile | grep "\[cycles\]" | tr -s " " | cut -d " " -f 2)
+        info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d " " -f 2)
         info="$info_0 $info_1"
         echo $info >> ${kernel}_${nr_lanes}.benchmark
 
@@ -468,7 +468,7 @@ fdotproduct() {
           config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > ${tempfile} || exit
           # Extract the performance
           info_0="[${kernel}]: ${nr_lanes} ${bsize}"
-          info_1=$(cat $tempfile | grep "\[cycles\]" | tr -s " " | cut -d " " -f 3)
+          info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d " " -f 3)
           info="$info_0 $info_1"
           echo $info >> ${kernel}_${nr_lanes}_ideal.benchmark
         fi
