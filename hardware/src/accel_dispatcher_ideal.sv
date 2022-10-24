@@ -134,7 +134,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   // Just check that we are after reset
   always_ff @(posedge clk_i) begin
     if (rst_ni && was_reset && !acc_req_valid_o && i_system.i_ara.ara_idle) begin
-      $display("[cycles]: %d", int'(perf_cnt_q));
+      $display("[hw-cycles]: %d", int'(perf_cnt_q));
       $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", 0));
       $finish(0);
     end

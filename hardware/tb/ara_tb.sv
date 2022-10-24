@@ -136,7 +136,7 @@ module ara_tb;
         $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
       end else begin
         // Print vector HW runtime
-        $display("[cycles]: %d", int'(dut.runtime_buf_q));
+        $display("[hw-cycles]: %d", int'(dut.runtime_buf_q));
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end
 
