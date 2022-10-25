@@ -1,0 +1,59 @@
+// Modified version of pathfinder from RODINIA and then RiVEC, adapted to Ara environment.
+// Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
+// Check LICENSE_0 and LICENCE_1 for additional information
+
+/*************************************************************************
+* RISC-V Vectorized Version
+* Author: Cristóbal Ramírez Lazo
+* email: cristobal.ramirez@bsc.es
+* Barcelona Supercomputing Center (2020)
+*************************************************************************/
+
+#include <stdint.h>
+#include <string.h>
+
+#include "runtime.h"
+
+#include "../kernel/pathfinder.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
+
+extern int32_t num_runs;
+extern int32_t rows;
+extern int32_t cols;
+extern int     wall[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern int result_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+
+int main() {
+/*
+  printf("\n");
+  printf("================\n");
+  printf("=  PATHFINDER  =\n");
+  printf("================\n");
+  printf("\n");
+  printf("\n");
+*/
+
+  int error;
+  int* s_ptr;
+
+  int neutral_value = 0x7fffffff; // Max value for int datatype
+
+  if (cols > NR_LANES * 128) {
+    start_timer();
+    run_vector(wall, result_v, cols, rows, num_runs);
+    stop_timer();
+  } else {
+    start_timer();
+    run_vector_short_m4(wall, result_v, cols, rows, num_runs, neutral_value);
+    stop_timer();
+  }
+
+  printf("[sw-cycles]: %ld\n", get_timer());
+
+  return 0;
+}
