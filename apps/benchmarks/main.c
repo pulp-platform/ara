@@ -67,6 +67,9 @@
 #elif defined(FDOTPRODUCT)
 #include "benchmark/fdotproduct.bmark"
 
+#elif defined(PATHFINDER)
+#include "benchmark/pathfinder.bmark"
+
 #else
 #error                                                                         \
     "Error, no kernel was specified. Please, run 'make bin/benchmarks ENV_DEFINES=-D${KERNEL}', where KERNEL contains the kernel to benchmark. For example: 'make bin/benchmarks ENV_DEFINES=-DIMATMUL'."
