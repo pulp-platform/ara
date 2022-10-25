@@ -20,8 +20,6 @@
 
 #include "util.h"
 
-#define FABS(x) ((x < 0) ? -x : x)
-
 int *__dummy__errno__ptr__;
 
 // Floating-point similarity check with threshold

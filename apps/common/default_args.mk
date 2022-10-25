@@ -22,3 +22,5 @@ def_args_cos         = "512"
 def_args_log         = "512"
 # Channels and Inner size
 def_args_softmax     = "3 256"
+# Number of steps and width of the vector
+def_args_pathfinder  = "1 1024 64"

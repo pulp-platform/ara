@@ -21,6 +21,9 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+#define FABS(x) ((x < 0) ? -x : x)
+#define MIN(a, b) ((a) <= (b) ? (a) : (b))
+
 // Floating-point similarity check with threshold
 int similarity_check(double a, double b, double threshold);
 
