@@ -66,7 +66,7 @@ matmul() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the cycle count and calculate performance
-        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -114,7 +114,7 @@ conv2d() {
           touch -a hardware/build
           config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
-          cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+          cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         fi
       done
@@ -163,7 +163,7 @@ conv3d() {
           touch -a hardware/build
           config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
           # Extract the performance
-          cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+          cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
         fi
       done
@@ -208,7 +208,7 @@ jacobi2d() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-           cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+           cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -251,7 +251,7 @@ dropout() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-           cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+           cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -298,7 +298,7 @@ fft() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-           cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+           cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -340,7 +340,7 @@ dwt() {
         touch -a hardware/build
         config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -381,7 +381,7 @@ exp() {
         touch -a hardware/build
         make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -423,7 +423,7 @@ softmax() {
         touch -a hardware/build
         make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
         # Extract the performance
-        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+        cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$chsize $insize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
       fi
     done
@@ -524,6 +524,50 @@ dotproduct() {
   done
 }
 
+################
+## PATHFINDER ##
+################
+
+pathfinder() {
+  # Measure the runtime of the following kernels
+  for kernel in pathfinder; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
+
+    for cols in 16 64 256 1024; do
+      for rows in 64; do
+        runs=1
+        tempfile=`mktemp`
+
+        # Clean
+        make -C apps/ clean
+
+        mkdir -p apps/benchmarks/data
+        ${PYTHON} apps/$kernel/script/gen_data.py $runs $cols $rows > apps/benchmarks/data/data.S
+        config=${config} ENV_DEFINES="-D${kernel^^}=1" \
+               make -C apps/ bin/benchmarks
+        config=${config} make -C hardware/ simv app=benchmarks > $tempfile || exit
+        # Extract the performance
+        cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+        ./scripts/performance.py $kernel "$runs $cols $rows" $cycles >> ${kernel}_${nr_lanes}.benchmark
+
+        if [ "$ci" == 0 ]; then
+          # System with ideal dispatcher
+          config=${config} ENV_DEFINES="-D${kernel^^}=1" \
+                 make -C apps/ bin/benchmarks.ideal
+          touch -a hardware/build
+          config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+          # Extract the performance
+          cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
+          ./scripts/performance.py $kernel "$runs $cols $rows" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        fi
+      done
+    done
+  done
+}
+
 case $1 in
   "matmul")
     matmul
@@ -569,6 +613,10 @@ case $1 in
     dotproduct
     ;;
 
+  "pathfinder")
+    pathfinder
+    ;;
+
   *)
     echo "Benchmarking all the apps."
     matmul
@@ -582,5 +630,6 @@ case $1 in
     softmax
     fdotproduct
     dotproduct
+    pathfinder
     ;;
 esac

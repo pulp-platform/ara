@@ -75,19 +75,26 @@ def softmax(args, cycles):
   insize      = int(args[1])
   performance = 25 * channels * insize / cycles
   return [insize, performance]
+def pathfinder(args, cycles):
+  num_runs = int(args[0])
+  cols     = int(args[1])
+  rows     = int(args[2])
+  performance = 2 * num_runs * (cols - 1) * (rows - 1) / cycles
+  return [cols, performance]
 
 perfExtr = {
-  'imatmul' : imatmul,
-  'fmatmul' : fmatmul,
-  'iconv2d' : iconv2d,
-  'fconv2d' : fconv2d,
-  'fconv3d' : fconv3d,
-  'jacobi2d': jacobi2d,
-  'dropout' : dropout,
-  'fft'     : fft,
-  'dwt'     : dwt,
-  'exp'     : exp,
-  'softmax' : softmax,
+  'imatmul'    : imatmul,
+  'fmatmul'    : fmatmul,
+  'iconv2d'    : iconv2d,
+  'fconv2d'    : fconv2d,
+  'fconv3d'    : fconv3d,
+  'jacobi2d'   : jacobi2d,
+  'dropout'    : dropout,
+  'fft'        : fft,
+  'dwt'        : dwt,
+  'exp'        : exp,
+  'softmax'    : softmax,
+  'pathfinder' : pathfinder,
 }
 
 def main():

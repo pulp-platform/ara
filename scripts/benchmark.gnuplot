@@ -354,3 +354,35 @@ plot roof_cpu(x, 1, 64 * 2 / 25) w l lw 2 lc 1 t  '2 Lanes',   \
      roof_cpu(x, 8, 64 * 16 / 25) w l lw 2 lc 7 t '16 Lanes',   \
      'softmax_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'softmax_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+################
+## PATHFINDER ##
+################
+
+# Title
+set title "pathfinder performance, (Vector of size #elements)"
+
+# Set the range
+set xrange [64:2048]
+
+# Set axis labels
+set xlabel 'Vector size (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "pathfinder.png"
+
+# Plot the rooflines for 64-bit data
+plot roof_cpu(x, 1, 4) w l lw 2 lc 1 t  '2 Lanes',   \
+     'pathfinder_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'pathfinder_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 2, 8) w l lw 2 lc 2 t  '4 Lanes',   \
+     'pathfinder_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'pathfinder_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 4, 16) w l lw 2 lc 3 t  '8 Lanes',    \
+     'pathfinder_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'pathfinder_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes',   \
+     'pathfinder_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'pathfinder_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
