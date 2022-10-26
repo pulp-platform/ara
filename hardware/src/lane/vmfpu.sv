@@ -614,6 +614,20 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // fp_sign is used in control block
   logic [2:0] fp_sign;
+  // vfrec& related signals.
+  logic [6:0] vfrec7_lut_select0,
+              vfrec7_lut_select1, 
+              vfrec7_lut_select2, 
+              vfrec7_lut_select3;
+
+  logic [6:0] vfrec7_lut_out0,
+               vfrec7_lut_out1,
+               vfrec7_lut_out2,
+               vfrec7_lut_out3;
+  logic [7:0] vfrec7_exponent,
+               vfrec7_exponent0,
+               vfrec7_exponent1;
+  
 
   // Is the FPU enabled?
   if (FPUSupport != FPUSupportNone) begin : fpu_gen
@@ -863,8 +877,19 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     );
 
     always_comb begin: fpu_result_processing_p
+      vfrec7_exponent0=operand_a[30:23];
+      vfrec7_exponent1=8'd127;
+      vfrec7_exponent=vfrec7_exponent1 - vfrec7_exponent0;
+      vfrec7_lut_select0=operand_a[22:16];
+                  //Function call for  vfrec7 lookup table
+      vfrec7_lut_out0 = vfrec7_lut(vfrec7_lut_select0);
+
       // Forward the result
-      vfpu_processed_result = vfpu_result;
+      if(vinsn_processing_q.op==VFREC7)  begin
+         vfpu_processed_result = {operand_a[31:31],vfrec7_exponent, vfrec7_lut_out0, 16'b0};
+      end else begin
+           vfpu_processed_result = vfpu_result;
+      end
       // After a comparison, send the mask back to the mask unit
       // 1) Negate the result if op == VMFNE (fpnew does not natively support a not-equal comparison)
       // 2) Encode the mask in the bit after each comparison result

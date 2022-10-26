@@ -143,7 +143,8 @@ rv64uv_sc_tests = vadd \
                   vse1 \
                   vss \
                   vsuxei \
-                  vsetivli
+                  vsetivli \
+                  vfrec7
 
 #rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfirst vid viota vl vlff vl_nocheck vlx vmsbf vmsif vmsof vpopc_m vrgather vsadd vsaddu vsetvl vsetivli vsetvli vsmul vssra vssrl vssub vssubu vsux vsx
 
