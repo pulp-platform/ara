@@ -30,6 +30,13 @@ int similarity_check(double a, double b, double threshold) {
   else
     return 1;
 }
+int similarity_check_32b(float a, float b, float threshold) {
+  float diff = a - b;
+  if (FABS(diff) > threshold)
+    return 0;
+  else
+    return 1;
+}
 
 // Dummy declaration for libm exp
 int *__errno(void) { return __dummy__errno__ptr__; }
