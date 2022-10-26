@@ -24,3 +24,5 @@ def_args_log         = "512"
 def_args_softmax     = "3 256"
 # Number of steps and width of the vector
 def_args_pathfinder  = "1 1024 64"
+# Batch_size, depth, height, width, n_boxes (in total), crop_h, crop_w
+def_args_roi_align   = "1 32 4 4 4 2 2"
