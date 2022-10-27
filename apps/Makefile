@@ -179,6 +179,6 @@ clean: riscv_tests_spike_clean benchmarks_clean
 	rm -vf $(RUNTIME_GCC)
 	rm -vf $(RUNTIME_LLVM)
 	rm -vf $(RUNTIME_SPIKE)
-	for app in $(APPS); do cd $(APPS_DIR)/$${app} && rm -f ./*.c.o* && rm -f ./*.S* && cd .. ; done
+	for app in $(APPS); do cd $(APPS_DIR)/$${app} && rm -f $$(find . -name "*.c.o*" -o -name "*.S.o*") && cd ..; done
 
 .INTERMEDIATE: $(addsuffix /main.c.o,$(APPS))
