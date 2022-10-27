@@ -81,6 +81,16 @@ def pathfinder(args, cycles):
   rows     = int(args[2])
   performance = 2 * num_runs * (cols - 1) * (rows - 1) / cycles
   return [cols, performance]
+def roi_align(args, cycles):
+  batch   = int(args[0])
+  depth   = int(args[1])
+  height  = int(args[2])
+  width   = int(args[3])
+  n_boxes = int(args[4])
+  crop_h  = int(args[5])
+  crop_w  = int(args[6])
+  performance = 9 * batch * depth * n_boxes * crop_h * crop_w / cycles
+  return [depth, performance]
 
 perfExtr = {
   'imatmul'    : imatmul,
@@ -95,6 +105,7 @@ perfExtr = {
   'exp'        : exp,
   'softmax'    : softmax,
   'pathfinder' : pathfinder,
+  'roi_align'  : roi_align,
 }
 
 def main():
