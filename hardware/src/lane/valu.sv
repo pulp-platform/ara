@@ -711,10 +711,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     alu_result_id_o   = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_be_o   = result_queue_q[result_queue_read_pnt_q].be;
 
-    // Clear the accumulator after a partial reduction
-    if (alu_state_q == WAIT_STATE && alu_state_d == NO_REDUCTION)
-      result_queue_d[result_queue_read_pnt_q] = '0;
-
     // Received a grant from the VRF.
     // Deactivate the request.
     if (alu_result_gnt_i || mask_operand_gnt) begin
@@ -818,6 +814,15 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       vinsn_queue_d.issue_cnt += 1;
       vinsn_queue_d.commit_cnt += 1;
     end
+
+    ///////////
+    // Clear //
+    ///////////
+
+    // Clear the accumulator after a partial reduction
+    if (alu_state_q == WAIT_STATE && alu_state_d == NO_REDUCTION)
+      result_queue_d[result_queue_read_pnt_q] = '0;
+
   end : p_valu
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
