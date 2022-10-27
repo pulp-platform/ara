@@ -568,6 +568,56 @@ pathfinder() {
   done
 }
 
+###############
+## ROI-ALIGN ##
+###############
+
+roi_align() {
+  # Measure the runtime of the following kernels
+  for kernel in roi_align; do
+
+    # Log the performance results
+    > ${kernel}_${nr_lanes}.benchmark
+    > ${kernel}_${nr_lanes}_ideal.benchmark
+
+    for depth in 32 64 128 256 512; do
+      batch_size=1
+      height=16
+      width=16
+      n_boxes=4
+      crop_h=4
+      crop_w=4
+
+      args="$batch_size $depth $height $width $n_boxes $crop_h $crop_w"
+
+      tempfile=`mktemp`
+
+      # Clean
+      make -C apps/ clean
+
+      mkdir -p apps/benchmarks/data
+      ${PYTHON} apps/$kernel/script/gen_data.py $args > apps/benchmarks/data/data.S
+      config=${config} ENV_DEFINES="-D${kernel^^}=1" \
+             make -C apps/ bin/benchmarks
+      config=${config} make -C hardware/ simv app=benchmarks > $tempfile || exit
+      # Extract the performance
+      cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
+      ./scripts/performance.py $kernel "$args" $cycles >> ${kernel}_${nr_lanes}.benchmark
+
+      if [ "$ci" == 0 ]; then
+        # System with ideal dispatcher
+        config=${config} ENV_DEFINES="-D${kernel^^}=1" \
+               make -C apps/ bin/benchmarks.ideal
+        touch -a hardware/build
+        config=${config} make -C hardware/ -B simc app=benchmarks ideal_dispatcher=1 > $tempfile || exit
+        # Extract the performance
+        cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
+        ./scripts/performance.py $kernel "$args" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+      fi
+    done
+  done
+}
+
 case $1 in
   "matmul")
     matmul
@@ -617,6 +667,10 @@ case $1 in
     pathfinder
     ;;
 
+  "roi_align")
+    roi_align
+    ;;
+
   *)
     echo "Benchmarking all the apps."
     matmul
@@ -631,5 +685,6 @@ case $1 in
     fdotproduct
     dotproduct
     pathfinder
+    roi_align
     ;;
 esac

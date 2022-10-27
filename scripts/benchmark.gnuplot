@@ -386,3 +386,35 @@ plot roof_cpu(x, 1, 4) w l lw 2 lc 1 t  '2 Lanes',   \
      roof_cpu(x, 8, 32) w l lw 2 lc 7 t '16 Lanes',   \
      'pathfinder_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'pathfinder_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+###############
+## ROI_ALIGN ##
+###############
+
+# Title
+set title "roi_align performance, (depth: #elements)"
+
+# Set the range
+set xrange [32:1024]
+
+# Set axis labels
+set xlabel 'Depth: (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "roi_align.png"
+
+# Plot the rooflines for 32-bit data
+plot roof_cpu(x, 1, 18 / 5) w l lw 2 lc 1 t  '2 Lanes',   \
+     'roi_align_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'roi_align_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 2, 36 / 5) w l lw 2 lc 2 t  '4 Lanes',   \
+     'roi_align_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'roi_align_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 4, 72 / 5) w l lw 2 lc 3 t  '8 Lanes',    \
+     'roi_align_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'roi_align_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 8, 144 / 5) w l lw 2 lc 7 t '16 Lanes',   \
+     'roi_align_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'roi_align_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
