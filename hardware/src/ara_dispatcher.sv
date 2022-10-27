@@ -183,6 +183,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic load_zero_vl, store_zero_vl;
   // Do not checks vregs validity against current LMUL
   logic skip_lmul_checks;
+  logic skip_vs1_lmul_checks;
   // Are we decoding?
   logic is_decoding;
   // Is this an in-lane operation?
@@ -225,7 +226,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     load_zero_vl  = 1'b0;
     store_zero_vl = 1'b0;
 
-    skip_lmul_checks = 1'b0;
+    skip_lmul_checks     = 1'b0;
+    skip_vs1_lmul_checks = 1'b0;
 
     null_vslideup = 1'b0;
 
@@ -586,6 +588,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b110000: begin
                     ara_req_d.op = ara_pkg::VWREDSUMU;
                     ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.eew_vs1        = vtype_q.vsew.next();
                     ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                     ara_req_d.conversion_vs1 = OpQueueIntReductionZExt;
                     ara_req_d.conversion_vs2 = OpQueueConversionZExt2;
@@ -594,6 +597,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b110001: begin
                     ara_req_d.op = ara_pkg::VWREDSUM;
                     ara_req_d.emul           = next_lmul(vtype_q.vlmul);
+                    ara_req_d.eew_vs1        = vtype_q.vsew.next();
                     ara_req_d.vtype.vsew     = vtype_q.vsew.next();
                     ara_req_d.conversion_vs1 = OpQueueIntReductionZExt;
                     ara_req_d.conversion_vs2 = OpQueueConversionSExt2;
@@ -1140,7 +1144,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
-                    ara_req_d.use_vs1       = 1'b0;
+                    ara_req_d.use_vs1    = 1'b0;
+                    skip_vs1_lmul_checks = 1'b1;
                     // They are always encoded as ADDs with zero.
                     ara_req_d.op            = ara_pkg::VADD;
                     ara_req_d.use_scalar_op = 1'b1;
@@ -1717,7 +1722,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     6'b011100: ara_req_d.op = ara_pkg::VMFNE;
                     6'b010010: begin // VFUNARY0
                       // These instructions do not use vs1
-                      ara_req_d.use_vs1 = 1'b0;
+                      ara_req_d.use_vs1    = 1'b0;
+                      skip_vs1_lmul_checks = 1'b1;
 
                       case (insn.varith_type.rs1)
                         5'b00000: ara_req_d.op = VFCVTXUF;
@@ -1819,7 +1825,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     end
                     6'b010011: begin // VFUNARY1
                     // These instructions do not use vs1
-                    ara_req_d.use_vs1 = 1'b0;
+                    ara_req_d.use_vs1    = 1'b0;
+                    skip_vs1_lmul_checks = 1'b1;
 
                     unique case (insn.varith_type.rs1)
                       5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
@@ -1988,13 +1995,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
-                    unique case (lmul_vs1)
-                      LMUL_2   : if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_4   : if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_8   : if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_RSVD: illegal_insn = 1'b1;
-                      default:;
-                    endcase
+                    if (!skip_vs1_lmul_checks) begin
+                      unique case (lmul_vs1)
+                        LMUL_2   : if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                        LMUL_4   : if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                        LMUL_8   : if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                        LMUL_RSVD: illegal_insn = 1'b1;
+                        default:;
+                      endcase
+                    end
                   end
 
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
