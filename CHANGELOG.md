@@ -49,6 +49,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `vslideup` instructions that have `stride >= vl_q` have no effect
  - `benchmark.sh` keeps into account the number of lanes during program compilation
  - Fix typo in `performance.py` related to `fconv2d`
+ - Fix lmul checks on `vs1` for conversion instructions
+ - Fix `eew_vs1` for widening instructions
+ - Fix cleaning of the accumulator after partial reduction in `valu`
 
 ### Added
 
