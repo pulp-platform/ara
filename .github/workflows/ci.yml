@@ -285,7 +285,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax]
+        app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
@@ -479,9 +479,18 @@ jobs:
       run: tar xvf ara.tar
     - name: Benchmark Ara
       run: config=${{ matrix.ara_config }} ./scripts/benchmark.sh ci
+    - name: Tar [f]dotproduct runtime results
+      run: |
+        tar -cvf dotproducts-${{ matrix.ara_config }}.tar *dotproduct*.benchmark
+        rm *dotproduct*.benchmark
     - name: Tar runtime results
       run: |
         tar -cvf benchmarks-${{ matrix.ara_config }}.tar *.benchmark
+    - name: Upload [f]dotproduct runtime results
+      uses: actions/upload-artifact@v2
+      with:
+        name: dotproducts-${{ matrix.ara_config }}
+        path: dotproducts-${{ matrix.ara_config }}.tar
     - name: Upload runtime results
       uses: actions/upload-artifact@v2
       with:
@@ -493,6 +502,28 @@ jobs:
     needs: benchmark
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+    - name: Install Python requirements
+      run: pip install -r python-requirements.txt
+    - uses: actions/checkout@v2
+    - name: Get [f]dotproduct results (2 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: dotproducts-2_lanes
+    - name: Get [f]dotproduct results (4 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: dotproducts-4_lanes
+    - name: Get [f]dotproduct results (8 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: dotproducts-8_lanes
+    - name: Get [f]dotproduct results (16 lanes)
+      uses: actions/download-artifact@v2
+      with:
+        name: dotproducts-16_lanes
     - name: Get benchmark results (2 lanes)
       uses: actions/download-artifact@v2
       with:
@@ -509,6 +540,12 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: benchmark-16_lanes
+    - name: Untar the [f]dotproduct results
+      run: |
+        tar xvf dotproducts-2_lanes.tar
+        tar xvf dotproducts-4_lanes.tar
+        tar xvf dotproducts-8_lanes.tar
+        tar xvf dotproducts-16_lanes.tar
     - name: Untar the results
       run: |
         tar xvf benchmarks-2_lanes.tar
@@ -519,6 +556,16 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install gnuplot
+    - name: Plot [f]dotproduct plots
+      run: |
+        for kernel in fdotproduct dotproduct; do
+          > ${kernel}.benchmark
+          for nr_lanes in 2 4 8 16; do
+            cat ${kernel}_${nr_lanes}.benchmark >> ${kernel}.benchmark
+          done
+          python scripts/process_dotp.py ${kernel} ${kernel}.benchmark ${kernel}
+          tar -cvf ${kernel}.tar $(find . -name "${kernel}_*.png")
+        done
     - name: Plot the rooflines
       run: gnuplot -c scripts/benchmark.gnuplot
     - name: Upload the imatmul roofline
@@ -576,6 +623,16 @@ jobs:
       with:
         name: softmax_roofline
         path: softmax.png
+    - name: Upload the fdotproduct roofline
+      uses: actions/upload-artifact@v2
+      with:
+        name: fdotproduct_plots
+        path: fdotproduct.tar
+    - name: Upload the dotproduct roofline
+      uses: actions/upload-artifact@v2
+      with:
+        name: dotproduct_plots
+        path: dotproduct.tar
 
 ####################
 #  Clean-up stage  #
