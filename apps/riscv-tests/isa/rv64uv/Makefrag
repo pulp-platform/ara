@@ -9,6 +9,11 @@ rv64uv_sc_tests = vaadd \
                   vaaddu\
                   vsadd \
                   vsaddu \
+                  vsmul \
+                  vssra \
+                  vssrl \
+                  vnclip \
+                  vnclipu \
                   vadd \
                   vsub \
                   vrsub \
