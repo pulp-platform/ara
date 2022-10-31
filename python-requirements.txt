@@ -10,3 +10,4 @@ jsonschema
 tabulate
 yamlfmt
 numpy
+matplotlib
