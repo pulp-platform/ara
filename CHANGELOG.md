@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix lmul checks on `vs1` for conversion instructions
  - Fix `eew_vs1` for widening instructions
  - Fix cleaning of the accumulator after partial reduction in `valu`
+ - De-parametrize FFT on the data-type
 
 ### Added
 
@@ -81,6 +82,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add fp-exp, fp-cos, fp-log benchmarks from rivec bmark suite + print performance
  - Ideal Dispatcher tracer now supports strided memory operations
  - Add Softmax benchmark and print its performance
+ - Add [f]dotproduct apps and benchmarks, and plot their performance
+ - Add a specific script to handle [f]dotproduct performance plotting
+ - Add a script to benchmark all the applications together locally
+ - Add HW cycle counter to better measure runtime cycles with short vectors
 
 ### Changed
 
@@ -107,6 +112,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Optimize jacobi2d in ASM, +align store address
  - Replace `apps/common/script/datagen.sh` with new input data source-of-truth (`apps/common/default_arguments.mk`) during app compilation
  - benchmark.sh can now also benchmark just one app at a time via an input argument
+ - Adapt `fdotproduct` to `dotproduct` structure
 
 ## 2.2.0 - 2021-11-02
 
