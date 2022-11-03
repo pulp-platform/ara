@@ -87,6 +87,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add a script to benchmark all the applications together locally
  - Add HW cycle counter to better measure runtime cycles with short vectors
  - Add Pathfinder `app` and `benchmark`, and plot its performance
+ - Add Roi-Align `app` and `benchmark`, and plot its performance
 
 ### Changed
 
