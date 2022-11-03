@@ -35,3 +35,5 @@ def_args_roi_align   ?= "1 32 4 4 4 2 2"
 def_args_spmv        ?= "128 128 0.6"
 # Conjugate gradient size and steps
 def_args_conjugate_gradient	?= "128 0 0.5"
+# n_boxes and alpha
+def_args_lavamd      ?= "2 0.5"
