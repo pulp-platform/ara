@@ -253,10 +253,10 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
         for (j = 0; j < NUMBER_PAR_PER_BOX; j += gvl) {
           gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX - j);
           // coefficients
-          xrB_v = _MM_LOAD_STRIDE_f32(&rB[j].v, 4, gvl);
-          xrB_x = _MM_LOAD_STRIDE_f32(&rB[j].x, 4, gvl);
-          xrB_y = _MM_LOAD_STRIDE_f32(&rB[j].y, 4, gvl);
-          xrB_z = _MM_LOAD_STRIDE_f32(&rB[j].z, 4, gvl);
+          xrB_v = _MM_LOAD_STRIDE_f32(&rB[j].v, 16, gvl);
+          xrB_x = _MM_LOAD_STRIDE_f32(&rB[j].x, 16, gvl);
+          xrB_y = _MM_LOAD_STRIDE_f32(&rB[j].y, 16, gvl);
+          xrB_z = _MM_LOAD_STRIDE_f32(&rB[j].z, 16, gvl);
           // r2 = rA[i].v + rB[j].v - DOT(rA[i],rB[j]);
           xr2 = _MM_ADD_f32(xrA_v, xrB_v, gvl);
           xDOT = _MM_MUL_f32(xrA_x, xrB_x, gvl);
