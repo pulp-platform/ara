@@ -267,12 +267,25 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
           xu2 = _MM_MUL_f32(xa2, xr2, gvl);
           // vij= exp(-u2);
           xvij = __exp_2xf32(_MM_VFSGNJN_f32(xu2, xu2, gvl), gvl);
+
+          if (k && (j + gvl) >= NUMBER_PAR_PER_BOX) {
+            // Accumulate final results
+            xfA_1_v = _MM_LOAD_f32(&fA[i].v, 1);
+            xfA_1_x = _MM_LOAD_f32(&fA[i].x, 1);
+          }
+
           // fs = 2.*vij;
           xfs = _MM_MUL_f32(_MM_SET_f32(2.0f, gvl), xvij, gvl);
           // d.x = rA[i].x  - rB[j].x;
           xd_x = _MM_SUB_f32(xrA_x, xrB_x, gvl);
           // d.y = rA[i].y  - rB[j].y;
           xd_y = _MM_SUB_f32(xrA_y, xrB_y, gvl);
+
+          if (k && (j + gvl) >= NUMBER_PAR_PER_BOX) {
+            xfA_1_y = _MM_LOAD_f32(&fA[i].y, 1);
+            xfA_1_z = _MM_LOAD_f32(&fA[i].z, 1);
+          }
+
           // d.z = rA[i].z  - rB[j].z;
           xd_z = _MM_SUB_f32(xrA_z, xrB_z, gvl);
           // fxij=fs*d.x;
@@ -296,12 +309,6 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
         }
 
         gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX);
-
-        // Accumulate final results
-        xfA_1_v = _MM_LOAD_f32(&fA[i].v, 1);
-        xfA_1_x = _MM_LOAD_f32(&fA[i].x, 1);
-        xfA_1_y = _MM_LOAD_f32(&fA[i].y, 1);
-        xfA_1_z = _MM_LOAD_f32(&fA[i].z, 1);
 
         xfA_1_v = _MM_REDSUM_f32(xfA_1_v, xfA_v, xfA_1_v, gvl);
         xfA_1_x = _MM_REDSUM_f32(xfA_1_x, xfA_x, xfA_1_x, gvl);
