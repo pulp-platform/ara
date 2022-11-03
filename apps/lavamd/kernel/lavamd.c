@@ -293,9 +293,15 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
           xfA_x = _MM_MACC_f32(xfA_x, xqB, xfxij, gvl);
           xfA_y = _MM_MACC_f32(xfA_y, xqB, xfyij, gvl);
           xfA_z = _MM_MACC_f32(xfA_z, xqB, xfzij, gvl);
-        } // for j
+        }
 
         gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX);
+
+        // Accumulate final results
+        xfA_1_v = _MM_LOAD_f32(&fA[i].v, 1);
+        xfA_1_x = _MM_LOAD_f32(&fA[i].x, 1);
+        xfA_1_y = _MM_LOAD_f32(&fA[i].y, 1);
+        xfA_1_z = _MM_LOAD_f32(&fA[i].z, 1);
 
         xfA_1_v = _MM_REDSUM_f32(xfA_1_v, xfA_v, xfA_1_v, gvl);
         xfA_1_x = _MM_REDSUM_f32(xfA_1_x, xfA_x, xfA_1_x, gvl);
