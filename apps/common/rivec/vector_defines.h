@@ -6,6 +6,9 @@
 
 // RISC-V VECTOR intrinsics mapping by Cristóbal Ramírez Lazo, "Barcelona 2019"
 
+#ifndef _RIVEC_VECTOR_DEFINES_H_
+#define _RIVEC_VECTOR_DEFINES_H_
+
 #include "riscv_vector.h"
 
 /*
@@ -123,8 +126,31 @@
 #define _MM_VFLT_f64(op1, op2, vl) vmflt_vv_f64m1_b64(op1, op2, vl)
 #define _MM_VFLT_f32(op1, op2, vl) vmflt_vv_f32m1_b32(op1, op2, vl)
 
+#define _MM_VFSGNJN_f64(op1, op2, vl) vfsgnjn_vv_f64m1(op1, op2, vl)
+#define _MM_VFSGNJN_f32(op1, op2, vl) vfsgnjn_vv_f32m1(op1, op2, vl)
+
+#define _MM_REDSUM_f64(dest, vector, scalar, vl)                               \
+  vfredusum_vs_f64m1_f64m1(dest, vector, scalar, vl)
+#define _MM_REDSUM_f32(dest, vector, scalar, vl)                               \
+  vfredusum_vs_f32m1_f32m1(dest, vector, scalar, vl)
+
+/*
+  Memory Ops Intrinsics
+*/
+
+#define _MM_LOAD_f64(base, vl) vle64_v_f64m1(base, vl)
+#define _MM_LOAD_f32(base, vl) vle32_v_f32m1(base, vl)
+
+#define _MM_STORE_f64(base, value, vl) vse64_v_f64m1(base, value, vl)
+#define _MM_STORE_f32(base, value, vl) vse32_v_f32m1(base, value, vl)
+
+#define _MM_LOAD_STRIDE_f64(base, bstride, vl) vlse64_v_f64m1(base, bstride, vl)
+#define _MM_LOAD_STRIDE_f32(base, bstride, vl) vlse32_v_f32m1(base, bstride, vl)
+
 /*
   Ancillary Defines
 */
 
 #define FENCE() asm volatile("fence");
+
+#endif
