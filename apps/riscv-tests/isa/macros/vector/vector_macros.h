@@ -45,9 +45,17 @@ int test_case;
 
 #define vtype(golden_vtype, vlmul, vsew, vta, vma) (golden_vtype = vlmul << 0 | vsew << 3 | vta << 6 | vma << 7)
 
-#define check_vtype_vl(casenum, vtype, golden_vtype, avl, vl)                                                      \
-  printf("Checking vtype and vl #%d...\n", casenum);                                                               \
-  if (vtype != golden_vtype || avl != vl) {                                                                        \
+// Checking vtype and vl value which is set by configuration setting instructions
+// by comparing with golden_vtype value used as a reference. Also check for
+// illegal values of vlmul and vsew which violtate: ELEN >= SEW/LMUL
+#define check_vtype_vl(casenum, vtype, golden_vtype, avl, vl, vsew, vlmul)                                                     \
+  printf("Checking vtype and vl #%d...\n", casenum); \
+  if((vlmul==5 && (vsew == 1 || vsew == 2 || vsew ==3)) || (vlmul==6 && (vsew == 2 || vsew ==3)) || (vlmul==7 && vsew==3)){   \
+  if((vtype != 0x8000000000000000) || (vl != 0)){    \
+  printf("FAILED. Got vtype = %lx, expected vtype = 8000000000000000. avl = %lx, vl = %lx.\n", vtype,avl, vl);     \
+  return;                                                  \
+  }}                                                        \
+  else if (vtype != golden_vtype || avl != vl) {                                                                        \
     printf("FAILED. Got vtype = %lx, expected vtype = %lx. avl = %lx, vl = %lx.\n", vtype, golden_vtype, avl, vl); \
     num_failed++;                                                                                                  \
     return;                                                                                                        \
