@@ -8,17 +8,17 @@
 #include "vector_macros.h"
 
 void TEST_CASE1() {
-  VSET(8, e8, m1);
+  VSET(16, e8, m1);
   __asm__ volatile("vid.v v1");
-  VEC_CMP_U8(1, v1, 0, 1, 2, 3, 4, 5, 6, 7);
+  VCMP_U8(1, v1, 0, 1, 2, 3, 4, 5, 6, 7);
 }
 
 void TEST_CASE2() {
-  VSET(8, e8, m1);
-  VLOAD_U8(v0, 85, 0, 0, 0, 0, 0, 0, 0);
-  CLEAR(v1);
+  VSET(16, e8, m1);
+  VLOAD_8(v0, 85, 0, 0, 0, 0, 0, 0, 0);
+  VCLEAR(v1);
   __asm__ volatile("vid.v v1, v0.t");
-  VEC_CMP_U8(2, v1, 0, 0, 2, 0, 4, 0, 6, 0);
+  VCMP_U8(2, v1, 0, 0, 2, 0, 4, 0, 6, 0);
 }
 
 int main(void) {
