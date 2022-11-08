@@ -40,11 +40,12 @@ extern float crops_data_vec[];
 // Return 0 if no error is found
 // Return -1 if we have an error on the first element
 // A positive return value indicates the index of the faulty element
-int verify_result(float *s_crops_data, float *v_crops_data, size_t size) {
+int verify_result(float *s_crops_data, float *v_crops_data, size_t size,
+                  float delta) {
   int ret;
 
   for (unsigned long int i = 0; i < size; ++i) {
-    if (similarity_check_32b(s_crops_data[i], v_crops_data[i], DELTA)) {
+    if (!similarity_check_32b(s_crops_data[i], v_crops_data[i], delta)) {
       ret = (!i) ? -1 : i;
       return ret;
     }
@@ -117,6 +118,7 @@ int main() {
     err = (err == -1) ? 0 : err;
     printf("Failed. Index %d: %x != %x\n", err, *((uint32_t *)&crops_data[err]),
            *((uint32_t *)&crops_data_vec[err]));
+    return err;
   } else {
     printf("Passed.\n");
   }

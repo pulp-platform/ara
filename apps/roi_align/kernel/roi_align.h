@@ -21,7 +21,7 @@
 #include <stdio.h>
 #endif
 
-#define DELTA 0.00001
+#define DELTA 0.0001
 
 void printf_fx(float num);
 

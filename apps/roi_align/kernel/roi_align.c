@@ -226,7 +226,12 @@ int64_t CropAndResizePerBox_BCHW_vec(
         ptrdiff_t cstride_crops = channel_elements * sizeof(crops_data[0]);
         size_t avl, vl;
 
-        for (avl = depth; (vl = vsetvl_e32m1(avl)) > 0; avl -= vl) {
+        avl = depth;
+#ifdef INTRINSICS
+        vl = vsetvl_e32m1(avl);
+
+        for (avl = depth; avl > 0; avl -= vl) {
+          vl = vsetvl_e32m1(avl);
           top_left =
               vlse32_v_f32m1(&pimage[top_y_index * image_width + left_x_index],
                              cstride_pimage, vl);
@@ -257,6 +262,49 @@ int64_t CropAndResizePerBox_BCHW_vec(
           pimage += vl * image_channel_elements;
           crops_data += vl * channel_elements;
         }
+#else
+        asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+
+        for (avl = depth; avl > 0; avl -= vl) {
+          asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+          asm volatile("vlse32.v v0, (%0), %1" ::"r"(
+                           &pimage[top_y_index * image_width + left_x_index]),
+                       "r"(cstride_pimage)
+                       : "v0"); // top left
+          asm volatile("vlse32.v v1, (%0), %1" ::"r"(
+                           &pimage[top_y_index * image_width + right_x_index]),
+                       "r"(cstride_pimage)
+                       : "v1"); // top right
+
+          asm volatile("vfsub.vv v2, v1, v0");                // top
+          asm volatile("vfmadd.vf v2, %0, v0" ::"f"(x_lerp)); // top
+
+          asm volatile(
+              "vlse32.v v3, (%0), %1" ::"r"(
+                  &pimage[bottom_y_index * image_width + left_x_index]),
+              "r"(cstride_pimage)
+              : "v3"); // bottom left
+          asm volatile(
+              "vlse32.v v4, (%0), %1" ::"r"(
+                  &pimage[bottom_y_index * image_width + right_x_index]),
+              "r"(cstride_pimage)
+              : "v4"); // bottom right
+
+          asm volatile("vfsub.vv v5, v4, v3");                // bottom
+          asm volatile("vfmadd.vf v5, %0, v3" ::"f"(x_lerp)); // bottom
+
+          asm volatile("vfsub.vv v6, v5, v2");                // bottom
+          asm volatile("vfmadd.vf v6, %0, v2" ::"f"(y_lerp)); // bottom
+
+          asm volatile("vsse32.v v6, (%0), %1" ::"r"(
+                           &crops_data[crop_elements * b + y * crop_width + x]),
+                       "r"(cstride_crops));
+
+          // Bump pointers
+          pimage += vl * image_channel_elements;
+          crops_data += vl * channel_elements;
+        }
+#endif
         pimage = prev_pimage;
 
         crops_data = prev_crops_data;
@@ -349,7 +397,13 @@ int64_t CropAndResizePerBox_BHWC_vec(
             bottom, result;
         size_t avl, vl;
 
-        for (avl = depth; (vl = vsetvl_e32m1(avl)) > 0; avl -= vl) {
+        avl = depth;
+
+#ifdef INTRINSICS
+        vl = vsetvl_e32m1(avl);
+
+        for (avl = depth; avl > 0; avl -= vl) {
+          vl = vsetvl_e32m1(avl);
           top_left = vle32_v_f32m1(
               &pimage[depth * (top_y_index * image_width + left_x_index)], vl);
           top_right = vle32_v_f32m1(
@@ -379,6 +433,43 @@ int64_t CropAndResizePerBox_BHWC_vec(
           pimage += vl;
           crops_data += vl;
         }
+#else
+        asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+
+        for (avl = depth; avl > 0; avl -= vl) {
+          asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+          asm volatile("vle32.v v0, (%0)" ::"r"(
+                           &pimage[top_y_index * image_width + left_x_index])
+                       : "v0"); // top left
+          asm volatile("vle32.v v1, (%0)" ::"r"(
+                           &pimage[top_y_index * image_width + right_x_index])
+                       : "v1"); // top right
+
+          asm volatile("vfsub.vv v2, v1, v0");                // top
+          asm volatile("vfmadd.vf v2, %0, v0" ::"f"(x_lerp)); // top
+
+          asm volatile("vle32.v v3, (%0)" ::"r"(
+                           &pimage[bottom_y_index * image_width + left_x_index])
+                       : "v3"); // bottom left
+          asm volatile(
+              "vle32.v v4, (%0)" ::"r"(
+                  &pimage[bottom_y_index * image_width + right_x_index])
+              : "v4"); // bottom right
+
+          asm volatile("vfsub.vv v5, v4, v3");                // bottom
+          asm volatile("vfmadd.vf v5, %0, v3" ::"f"(x_lerp)); // bottom
+
+          asm volatile("vfsub.vv v6, v5, v2");                // bottom
+          asm volatile("vfmadd.vf v6, %0, v2" ::"f"(y_lerp)); // bottom
+
+          asm volatile("vse32.v v6, (%0)" ::"r"(
+              &crops_data[crop_elements * b + y * crop_width + x]));
+
+          // Bump pointers
+          pimage += vl * image_channel_elements;
+          crops_data += vl * channel_elements;
+        }
+#endif
         pimage = prev_pimage;
 
         crops_data = prev_crops_data;
