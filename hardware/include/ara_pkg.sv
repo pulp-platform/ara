@@ -115,7 +115,7 @@ package ara_pkg;
     VDIVU, VDIV, VREMU, VREM,
     // FPU
     VFADD, VFSUB, VFRSUB, VFMUL, VFDIV, VFRDIV, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB,
-    VFNMSUB, VFSQRT, VFREC7, VFMIN, VFMAX, VFCLASS, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX,
+    VFNMSUB, VFSQRT, VFMIN, VFMAX, VFREC7, VFCLASS, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX,
     VFCVTRTZXUF, VFCVTRTZXF, VFCVTFF,
     // Floating-point reductions
     VFREDUSUM, VFREDOSUM, VFREDMIN, VFREDMAX, VFWREDUSUM, VFWREDOSUM,
@@ -979,8 +979,6 @@ package ara_pkg;
 
 
 
-
-
   ///////////////////////////
   //  VFREC7 Look Up Table //
   //////////////////////////
@@ -1120,4 +1118,135 @@ package ara_pkg;
       return vfrec7_lut_out;
   endfunction : vfrec7_lut
 
+   ////////////////////
+  //  VFREC7 OUTPUT //
+  ////////////////////
+
+ //for SEW=16
+
+  function automatic logic [16:0] vfrec7_fp16(logic [9:0] vfpu_result, logic [15:0] operand_a_delay);
+     logic [15:0] vfrec7_result;
+        unique case (vfpu_result[9:0])
+          fpnew_pkg:: NEGINF, 
+          fpnew_pkg:: POSINF:    vfrec7_result={operand_a_delay [15],15'b0};
+          fpnew_pkg:: NEGZERO:   vfrec7_result=16'hfc00;
+          fpnew_pkg:: POSZERO:   vfrec7_result=16'h7c00;
+          fpnew_pkg:: SNAN,
+          fpnew_pkg:: QNAN :     vfrec7_result=16'h7e00;
+          fpnew_pkg:: NEGSUBNORM,
+          fpnew_pkg:: POSSUBNORM: 
+                        begin
+                                     //Exponent   //exp_o =2*B-1-exp_i = 2*B+(~exp_i)
+                                vfrec7_result[14:10]= 5'd30 +(~operand_a_delay[14:10]);  
+                                    //Significand 7bits
+                                vfrec7_result[9:3]= vfrec7_lut(operand_a_delay[8:2]);
+                                    //Sign
+                                 vfrec7_result[15] =  operand_a_delay [15];
+                        end
+          fpnew_pkg:: POSNORM,
+          fpnew_pkg:: NEGNORM:   
+                       begin
+                                     //Exponent   //exp_o =2*B-1-exp_i = 2*B+(~exp_i)
+                               vfrec7_result[14:10]= 5'd30 +(~operand_a_delay[14:10]);  
+                                   //Significand 7bits
+                               vfrec7_result[9:3]= vfrec7_lut(operand_a_delay[9:3]);
+                                // check for Subnormal output
+                               unique case (vfrec7_result[14:10])
+                                5'b0_0000  :  vfrec7_result[9:2]={1'b1, vfrec7_result[9:3]};   
+                                5'b1_0000  : begin
+                                        vfrec7_result[14:10]=5'b0_0000 ;
+                                        vfrec7_result[9:1]={2'b01, vfrec7_result[9:3]};       
+                                     end
+                               endcase
+                                   //Sign
+                               vfrec7_result[15] = operand_a_delay[15];
+                        end 
+         endcase
+      return vfrec7_result;
+  endfunction : vfrec7_fp16
+//for SEW=32
+  function automatic logic [31:0] vfrec7_fp32(logic [9:0] vfpu_result, logic [31:0] operand_a_delay);
+     logic [31:0] vfrec7_result;
+      unique case (vfpu_result[9:0])
+          fpnew_pkg:: NEGINF, 
+          fpnew_pkg:: POSINF:    vfrec7_result={operand_a_delay [31],31'b0};
+          fpnew_pkg:: SNAN,
+          fpnew_pkg:: QNAN :     vfrec7_result= 32'h7fc00000;
+          fpnew_pkg:: NEGZERO:   vfrec7_result=32'hff800000;
+          fpnew_pkg:: POSZERO:   vfrec7_result=32'h7f800000;
+          fpnew_pkg:: NEGSUBNORM,
+          fpnew_pkg:: POSSUBNORM: 
+                         begin
+                                      //Exponent   //exp_o =2*B-1-exp_i = 2*B+(~exp_i)
+                                 vfrec7_result[30:23]= 8'd254 +(~operand_a_delay[30:23]);  
+                                     //Significand 7bits
+                                 vfrec7_result[22:16]= vfrec7_lut(operand_a_delay[21:15]);
+                                     //Sign
+                                  vfrec7_result[31] =operand_a_delay [31];
+                         end
+          fpnew_pkg:: POSNORM,
+          fpnew_pkg:: NEGNORM:   
+                         begin
+                                      //Exponent   //exp_o =2*B-1-exp_i = 2*B+(~exp_i)
+                                 vfrec7_result[30:23]= 8'd254 +(~operand_a_delay[30:23]);
+                                     //Significand 7bits
+                                 vfrec7_result[22:16]= vfrec7_lut(operand_a_delay[22:16]);
+                                    // check for Subnormal output
+                                    unique case (vfrec7_result[30:23])
+                                     8'h00: vfrec7_result[22:15]={1'b1,vfrec7_result[22:16]}; 
+                                     8'hff: begin
+                                           vfrec7_result[30:23]=8'h00;
+                                           vfrec7_result[22:14]={2'b01,vfrec7_result[22:16]}; 
+                                          end
+                                    endcase
+                                     //Sign
+                                  vfrec7_result[31] =operand_a_delay [31];
+                          end 
+         endcase
+      return vfrec7_result;
+  endfunction : vfrec7_fp32
+
+// for SEW=64
+
+  function automatic elen_t vfrec7_fp64(logic [9:0] vfpu_result, elen_t operand_a_delay);
+              elen_t vfrec7_result;
+                  unique case (vfpu_result[9:0])
+                fpnew_pkg:: NEGINF, 
+                fpnew_pkg:: POSINF:    vfrec7_result[63:0]={operand_a_delay [63],63'b0};
+                fpnew_pkg:: NEGZERO:   vfrec7_result[63:0]=64'hfff0000000000000;
+                fpnew_pkg:: POSZERO:   vfrec7_result[63:0]=64'h7ff0000000000000;
+                fpnew_pkg:: SNAN,
+                fpnew_pkg:: QNAN :     vfrec7_result[63:0]=64'h7ff8000000000000;
+                fpnew_pkg:: NEGSUBNORM,
+                fpnew_pkg:: POSSUBNORM: 
+                            begin
+                                         //Exponent   //exp_o =2*B-1-exp_i = 2*B+(~exp_i)
+                                    vfrec7_result[62:52]= 11'd2046 +(~operand_a_delay[62:52]);  
+                                        //Significand 7bits
+                                    vfrec7_result[51:45]= vfrec7_lut(operand_a_delay[50:44]);
+                                        //Sign
+                                     vfrec7_result[63] =operand_a_delay [63];
+                            end
+                fpnew_pkg:: POSNORM,
+                fpnew_pkg:: NEGNORM:   
+                             begin
+                                          //Exponent   //exp_o =2*B-1-exp_i = 2*B+(~exp_i)
+                                     vfrec7_result[62:52]= 11'd2046 +(~operand_a_delay[62:52]);  
+                                         //Significand 7bits
+                                     vfrec7_result[51:45]= vfrec7_lut(operand_a_delay[51:45]);
+                                       // check for Subnormal output
+                                    unique case (vfrec7_result[62:52])
+                                     11'b000_0000_0000  :  vfrec7_result[51:44]={1'b1, vfrec7_result[51:45]}; 
+                                     11'b111_1111_1111  : begin
+                                             vfrec7_result[62:52]=11'b000_0000_0000;
+                                             vfrec7_result[51:43]={2'b01, vfrec7_result[51:45]};             
+                                          end
+                                    endcase
+                                         //Sign
+                                      vfrec7_result[63] =operand_a_delay [63];
+                              end 
+                  endcase
+         return vfrec7_result;
+  endfunction : vfrec7_fp64
+  
 endpackage : ara_pkg
