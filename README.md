@@ -3,7 +3,7 @@
 [![ci](https://github.com/pulp-platform/ara/actions/workflows/ci.yml/badge.svg)](https://github.com/pulp-platform/ara/actions/workflows/ci.yml)
 
 Ara is a vector unit working as a coprocessor for the CVA6 core.
-It supports the RISC-V Vector Extension, [version 0.10](https://github.com/riscv/riscv-v-spec/releases/tag/v0.10).
+It supports the RISC-V Vector Extension, [version 1.0](https://github.com/riscv/riscv-v-spec/releases/tag/v1.0).
 
 ## Dependencies
 
@@ -29,7 +29,7 @@ git submodule sync --recursive
 
 ## Toolchain
 
-Ara requires a RISC-V LLVM toolchain capable of understanding the vector extension, version 0.10.x.
+Ara requires a RISC-V LLVM toolchain capable of understanding the vector extension, version 1.0.
 
 To build this toolchain, run the following command in the project's root directory.
 
