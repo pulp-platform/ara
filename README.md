@@ -171,10 +171,9 @@ cd hardware
 make sim app=${program} ideal_dispatcher=1
 ```
 
-## Publication
+## Publications
 
 If you want to use Ara, you can cite us:
-
 ```
 @Article{Ara2020,
   author = {Matheus Cavalcante and Fabian Schuiki and Florian Zaruba and Michael Schaffner and Luca Benini},
@@ -186,4 +185,15 @@ If you want to use Ara, you can cite us:
   pages  = {530-543},
   doi    = {10.1109/TVLSI.2019.2950087}
 }
+```
+```
+@INPROCEEDINGS{9912071,
+  author={Perotti, Matteo and Cavalcante, Matheus and Wistoff, Nils and Andri, Renzo and Cavigelli, Lukas and Benini, Luca},
+  booktitle={2022 IEEE 33rd International Conference on Application-specific Systems, Architectures and Processors (ASAP)}, 
+  title={A “New Ara” for Vector Computing: An Open Source Highly Efficient RISC-V V 1.0 Vector Processor Design}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={43-51},
+  doi={10.1109/ASAP54787.2022.00017}}
 ```
