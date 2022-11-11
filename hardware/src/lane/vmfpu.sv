@@ -757,6 +757,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           fp_rm = RTZ;
         end
         VFCLASS: fp_op = CLASSIFY;
+        VFREC7: begin
+           fp_op = CLASSIFY;
+        end
         VFSGNJ : begin
           fp_op = SGNJ;
           fp_rm = RNE;
@@ -917,10 +920,44 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .out_ready_i   (vfpu_out_ready),
       .busy_o        (/* Unused */  )
     );
-
+    elen_t operand_a_delay, vfrec7_result;
+    // register for delay of operand_a
+    always_ff @(posedge clk_i or negedge rst_ni) 
+    begin
+         if (!rst_ni) begin
+                operand_a_delay <= 64'b0;
+         end else begin
+                operand_a_delay <=operand_a ;
+         end
+    end
+      
     always_comb begin: fpu_result_processing_p
+          vfrec7_result=64'b0;   //vfrec7 output
+
+         unique case (vinsn_processing_q.vtype.vsew)
+            EW16:begin
+                vfrec7_result[15:0] =vfrec7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] );
+                vfrec7_result[31:16]=vfrec7_fp16(vfpu_result[25:16],operand_a_delay[31:16]);
+                vfrec7_result[47:32]=vfrec7_fp16(vfpu_result[41:32],operand_a_delay[47:32]);
+                vfrec7_result[63:48]=vfrec7_fp16(vfpu_result[57:48],operand_a_delay[63:48]);
+              end
+            EW32: 
+              begin 
+                vfrec7_result[31:0 ] =vfrec7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] );
+                vfrec7_result[63:32]=vfrec7_fp32(vfpu_result[41:32],operand_a_delay[63:32]);
+             end
+            EW64: 
+              begin
+             vfrec7_result=vfrec7_fp64(vfpu_result[9:0],operand_a_delay);
+             end
+         endcase
+
       // Forward the result
-      vfpu_processed_result = vfpu_result;
+      if(vinsn_processing_q.op==VFREC7)  begin
+         vfpu_processed_result = vfrec7_result;
+      end else begin
+           vfpu_processed_result = vfpu_result;
+      end
       // After a comparison, send the mask back to the mask unit
       // 1) Negate the result if op == VMFNE (fpnew does not natively support a not-equal comparison)
       // 2) Encode the mask in the bit after each comparison result

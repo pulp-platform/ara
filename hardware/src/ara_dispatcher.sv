@@ -1979,6 +1979,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     unique case (insn.varith_type.rs1)
                       5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
                       5'b10000: ara_req_d.op = ara_pkg::VFCLASS;
+                      5'b00101: ara_req_d.op = ara_pkg::VFREC7;
                       default : illegal_insn = 1'b1;
                     endcase
 
