@@ -1750,7 +1750,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       if (mfpu_state_q == NO_REDUCTION) begin
         // Initialize counters and vmfpu state if needed by the next instruction
         // After a reduction, the next instructions starts after the reduction commits
-        if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
+        if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
           // The next will be the first operation of this instruction
           // This information is useful for reduction operation
           first_op_d         = 1'b1;
@@ -1782,23 +1782,28 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0 && !prevent_commit) begin
-        mfpu_state_d = next_mfpu_state(vfu_operation_i.op);
+        // Don't start a new reduction if the unit is not completely idle
+        if (!is_reduction(vfu_operation_i.op) || (vinsn_queue_d.commit_cnt == '0)) begin
+          mfpu_state_d = next_mfpu_state(vfu_operation_i.op);
+        end
         // The next will be the first operation of this instruction
         // This information is useful for reduction operation
         first_op_d              = 1'b1;
         reduction_rx_cnt_d      = reduction_rx_cnt_init(NrLanes, lane_id_i);
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
         // Allow the first valid
-        red_hs_synch_d          = !(vfu_operation_i.op inside {VFREDOSUM, VFWREDOSUM}) & is_reduction(vfu_operation_i.op);
+        red_hs_synch_d          =
+          !(vfu_operation_i.op inside {VFREDOSUM, VFWREDOSUM}) & is_reduction(vfu_operation_i.op);
         ntr_filling_d           = 1'b0;
         intra_issued_op_cnt_d   = '0;
         first_result_op_valid_d = 1'b0;
         intra_op_rx_cnt_d       = '0;
         osum_issue_cnt_d        = '0;
+        issue_cnt_d             = vfu_operation_i.vl;
       end
       if (vinsn_queue_d.processing_cnt == '0) to_process_cnt_d = vfu_operation_i.vl;
-      if (vinsn_queue_d.commit_cnt == '0) commit_cnt_d = is_reduction(vfu_operation_i.op) ? 1 : vfu_operation_i.vl;
-      if (vinsn_queue_d.issue_cnt == '0) issue_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.commit_cnt == '0) commit_cnt_d =
+        is_reduction(vfu_operation_i.op) ? 1 : vfu_operation_i.vl;
       // Floating-Point re-encoding for widening operations
       // Enabled only for the supported formats
       if (FPUSupport != FPUSupportNone) begin
