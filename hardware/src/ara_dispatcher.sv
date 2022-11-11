@@ -2935,6 +2935,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       load_zero_vl     = is_vload;
       store_zero_vl    = is_vstore;
     end
+
+    acc_resp_o.load_complete  = load_zero_vl  | load_complete_q;
+    acc_resp_o.store_complete = store_zero_vl | store_complete_q;
   end: p_decoder
 
 endmodule : ara_dispatcher
