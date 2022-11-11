@@ -1325,7 +1325,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
               operands_valid = 1'b0;
             end
           end else if (ntr_filling_q) begin
-            if (((vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1]) && intra_op_rx_cnt_q != vinsn_issue_q.vl) &&
+            if (((vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1]) && intra_op_rx_cnt_q < vinsn_issue_q.vl) &&
                 (mask_valid_i || vinsn_issue_q.vm)) begin
               intra_op_rx_cnt_en   = 1'b1;
               vfpu_tag_in          = strb_t'(1);
@@ -1341,7 +1341,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             // The second operand is the result of the previous operation
             // In case there is no data from the operand queue, first check if there are two valid results,
             // if not, stop issuing.
-            if (((vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1]) && intra_op_rx_cnt_q != vinsn_issue_q.vl) &&
+            if (((vinsn_issue_q.swap_vs2_vd_op ? mfpu_operand_valid_i[2] : mfpu_operand_valid_i[1]) && intra_op_rx_cnt_q < vinsn_issue_q.vl) &&
                (mask_valid_i || vinsn_issue_q.vm)) begin
               // Take result_queue_q first
               if (first_result_op_valid_q) begin
