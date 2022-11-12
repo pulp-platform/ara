@@ -115,6 +115,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Replace `apps/common/script/datagen.sh` with new input data source-of-truth (`apps/common/default_arguments.mk`) during app compilation
  - benchmark.sh can now also benchmark just one app at a time via an input argument
  - Adapt `fdotproduct` to `dotproduct` structure
+ - Pre-calculate next-cycle `aligned_start_address` in `addrgen` for timing reasons
 
 ## 2.2.0 - 2021-11-02
 
