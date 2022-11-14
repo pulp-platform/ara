@@ -8,11 +8,15 @@
 //              Instantiates an AXI-Bus and memories.
 
 module ara_testharness #(
+    // Multi-core Ara
+    parameter int unsigned NrAraSystems = 1,
     // Ara-specific parameters
     parameter int unsigned NrLanes      = 0,
+    // Memory-related params
+    parameter int unsigned L2NumWords   = 2**20,
     // AXI Parameters
     parameter int unsigned AxiUserWidth = 1,
-    parameter int unsigned AxiIdWidth   = 5,
+    parameter int unsigned AxiIdWidth   = 4,
     parameter int unsigned AxiAddrWidth = 64,
     parameter int unsigned AxiDataWidth = 64*NrLanes/2,
     // AXI Resp Delay [ps] for gate-level simulation
@@ -66,7 +70,9 @@ module ara_testharness #(
    *********/
 
   ara_soc #(
+    .NrAraSystems(NrAraSystems ),
     .NrLanes     (NrLanes      ),
+    .L2NumWords  (L2NumWords   ),
     .AxiAddrWidth(AxiAddrWidth ),
     .AxiDataWidth(AxiDataWidth ),
     .AxiIdWidth  (AxiIdWidth   ),
@@ -160,10 +166,20 @@ module ara_testharness #(
       runtime_cnt_en_d = cnt_en_mask | ~i_ara_soc.i_system.i_ara.ara_idle;
   end
 
+  // Additional signals for multicore system
+  logic [NrAraSystems-1:0] ara_idle, fifo_empty, valid_insn;
+  logic                    full_ara_idle, full_fifo_empty, any_valid_insn;
+
   // Vector runtime counter
   always_comb begin
     runtime_cnt_d = runtime_cnt_q;
     if (runtime_cnt_en_q) runtime_cnt_d = runtime_cnt_q + 1;
+  end
+
+  for (genvar core = 0; core < NrAraSystems; core++) begin
+    assign valid_insn[core] = i_ara_soc.gen_ara_systems[core].i_system.i_ara.acc_req_valid_i;
+    assign ara_idle[core]   = i_ara_soc.gen_ara_systems[core].i_system.i_ara.ara_idle;
+    assign fifo_empty[core] = ~i_ara_soc.gen_ara_systems[core].i_system.i_ara.acc_req_valid_i;
   end
 
   // Update logic
@@ -176,15 +192,24 @@ module ara_testharness #(
     // Keep the previous value
     runtime_to_be_updated_d = runtime_to_be_updated_q;
 
+    // Update the runtime if any of the cores receives a new valid instruction
+    any_valid_insn  = |valid_insn;
+    // Update only when all the cores are idle and there are no new valid instructions
+    full_ara_idle   = &ara_idle;
+    full_fifo_empty = &fifo_empty;
+
+    // Once the counter starts, it will go on forever
+    runtime_cnt_en_d = any_valid_insn | runtime_cnt_en_q;
+
     // Assert the update flag upon a new valid vector instruction
-    if (!runtime_to_be_updated_q && i_ara_soc.i_system.i_ara.acc_req_valid_i) begin
+    if (!runtime_to_be_updated_q && any_valid_insn) begin
       runtime_to_be_updated_d = 1'b1;
     end
 
     // Update the internal runtime and reset the update flag
-    if (runtime_to_be_updated_q           &&
-        i_ara_soc.i_system.i_ara.ara_idle &&
-        !i_ara_soc.i_system.i_ara.acc_req_valid_i) begin
+    if (runtime_to_be_updated_q &&
+        full_ara_idle           &&
+        full_fifo_empty) begin
       runtime_buf_d = runtime_cnt_q;
       runtime_to_be_updated_d = 1'b0;
     end

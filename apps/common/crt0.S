@@ -114,6 +114,8 @@ reset_vector:
     jalr t0
 1:  // Return to _eoc
     la      ra, _eoc
+    // Make mhartid available as first argument
+    csrr    a0, mhartid
     // Call main
     la      t0, main
     csrw    mepc, t0

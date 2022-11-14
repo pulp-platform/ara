@@ -32,3 +32,6 @@
 	path = toolchain/riscv-llvm
 	url = https://github.com/llvm/llvm-project.git
 	ignore = dirty
+[submodule "hardware/deps/cluster_interconnect"]
+	path = hardware/deps/cluster_interconnect
+	url = https://github.com/pulp-platform/cluster_interconnect.git

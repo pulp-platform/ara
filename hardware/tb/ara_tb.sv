@@ -23,6 +23,12 @@ module ara_tb;
   timeprecision 1ps;
   `endif
 
+  `ifdef NR_ARA_SYSTEMS
+  localparam NrAraSystems = `NR_ARA_SYSTEMS;
+  `else
+  localparam NrAraSystems = 4;
+  `endif
+
   `ifdef NR_LANES
   localparam NrLanes = `NR_LANES;
   `else
@@ -40,6 +46,18 @@ module ara_tb;
 
   localparam DRAMAddrBase = 64'h8000_0000;
   localparam DRAMLength   = 64'h4000_0000; // 1GByte of DDR (split between two chips on Genesys2)
+
+  // Memory initialization
+  localparam int unsigned L2NumWords = 2**20;
+  localparam int unsigned L2NumBanks = NrAraSystems;
+
+  // Derived parameters
+  localparam int unsigned L2BankNumWords   = L2NumWords / L2NumBanks;
+  localparam int unsigned L2BankAddrWidth  = $clog2(L2BankNumWords);
+  localparam int unsigned L2BankWidth      = AxiWideDataWidth;
+  localparam int unsigned L2BankBeWidth    = L2BankWidth/8;
+  localparam int unsigned L2BeWidth        = L2BankBeWidth * L2NumBanks;
+  localparam int unsigned L2BankSize       = L2BankNumWords * L2BankBeWidth;
 
   /********************************
    *  Clock and Reset Generation  *
@@ -77,7 +95,9 @@ module ara_tb;
   // we do not instantiate it when Verilating this module.
   `ifndef VERILATOR
   ara_testharness #(
+    .NrAraSystems(NrAraSystems    ),
     .NrLanes     (NrLanes         ),
+    .L2NumWords  (L2NumWords      ),
     .AxiAddrWidth(AxiAddrWidth    ),
     .AxiDataWidth(AxiWideDataWidth),
     .AxiRespDelay(AxiRespDelay    )
@@ -93,50 +113,53 @@ module ara_tb;
    *************************/
 
   typedef logic [AxiAddrWidth-1:0] addr_t;
-  typedef logic [AxiWideDataWidth-1:0] data_t;
+  typedef logic [L2BankWidth-1:0]  data_t;
 
-  initial begin : dram_init
-    automatic data_t mem_row;
-    byte buffer [];
-    addr_t address;
-    addr_t length;
-    string binary;
+  for (genvar bank = 0; bank < L2NumBanks; bank++) begin : gen_l2_banks_init
+    initial begin : dram_init
+      automatic data_t mem_row;
+      byte buffer [];
+      addr_t address;
+      addr_t length;
+      string binary;
 
-    // tc_sram is initialized with zeros. We need to overwrite this value.
-    repeat (2)
-      #ClockPeriod;
+      // tc_sram is initialized with zeros. We need to overwrite this value.
+      repeat (2)
+        #ClockPeriod;
 
-    // Initialize memories
-    void'($value$plusargs("PRELOAD=%s", binary));
-    if (binary != "") begin
-      // Read ELF
-      read_elf(binary);
-      $display("Loading ELF file %s", binary);
-      while (get_section(address, length)) begin
-        // Read sections
-        automatic int nwords = (length + AxiWideBeWidth - 1)/AxiWideBeWidth;
-        $display("Loading section %x of length %x", address, length);
-        buffer = new[nwords * AxiWideBeWidth];
-        void'(read_section(address, buffer));
-        // Initializing memories
-        for (int w = 0; w < nwords; w++) begin
-          mem_row = '0;
-          for (int b = 0; b < AxiWideBeWidth; b++) begin
-            mem_row[8 * b +: 8] = buffer[w * AxiWideBeWidth + b];
+      // Initialize memories
+      void'($value$plusargs("PRELOAD=%s", binary));
+      if (binary != "") begin
+        // Read ELF
+        read_elf(binary);
+        $display("Loading %s", binary);
+        while (get_section(address, length)) begin
+          // Read sections
+          automatic int nwords = (length + L2BeWidth - 1)/L2BeWidth;
+          $display("Loading section %x of length %x", address, length);
+          buffer = new[nwords * L2BeWidth];
+          void'(read_section(address, buffer));
+          // Initializing memories
+          for (int w = 0; w < nwords; w++) begin
+            mem_row = '0;
+            for (int b = 0; b < L2BankBeWidth; b++) begin
+              mem_row[8 * b +: 8] = buffer[(bank + w * L2NumBanks) * L2BankBeWidth + b];
+            end
+            if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength) begin
+              // This requires the sections to be aligned to AxiWideByteOffset,
+              // otherwise, they can be over-written.
+              dut.i_ara_soc.gen_l2_banks[bank].l2_mem.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
+              $display("Mem row[%x]: %x", (address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset, mem_row);
+            end else
+              $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
           end
-          if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength)
-            // This requires the sections to be aligned to AxiWideByteOffset,
-            // otherwise, they can be over-written.
-            dut.i_ara_soc.i_dram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
-          else
-            $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
         end
       end
     end else begin
       $error("Expecting a firmware to run, none was provided!");
       $finish;
-    end
-  end : dram_init
+    end : dram_init
+  end : gen_l2_banks_init
 
 `ifndef TARGET_GATESIM
 

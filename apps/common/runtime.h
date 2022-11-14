@@ -22,6 +22,13 @@ inline int64_t get_cycle_count() {
   return cycle_count;
 };
 
+/// Obtain the ID of the current core.
+static inline uint64_t get_core_id() {
+  uint64_t r;
+  asm volatile("csrr %0, mhartid" : "=r"(r));
+  return r;
+}
+
 #ifndef SPIKE
 // Enable and disable the hw-counter
 // Until the HW counter is not enabled, it will not start
