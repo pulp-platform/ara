@@ -23,8 +23,8 @@ module ara_tb;
   timeprecision 1ps;
   `endif
 
-  `ifdef NR_ARA_SYSTEMS
-  localparam NrAraSystems = `NR_ARA_SYSTEMS;
+  `ifdef NR_CORES
+  localparam NrAraSystems = `NR_CORES;
   `else
   localparam NrAraSystems = 4;
   `endif

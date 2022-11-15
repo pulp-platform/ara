@@ -79,7 +79,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   // One bank per system
   localparam int unsigned NrAXIMasters     = NrAraSystems; // Actually masters, but slaves on the crossbar
   localparam int unsigned L2NumBanks       = NrAraSystems;
-  localparam int unsigned NrAXIMastersLog2 = (NrAXIMasters > 1) ? $clog2(NrAXIMasters) : 1;
+  localparam int unsigned NrAXIMastersLog2 = $clog2(NrAXIMasters);
+  // Fix for signal declaration
+  localparam int unsigned NrAXIMastersLog2_fixed = (NrAXIMasters > 1) ? $clog2(NrAXIMasters) : 1;
 
   // Banked L2 memory
   localparam int unsigned L2BankNumWords   = L2NumWords / L2NumBanks;
@@ -318,7 +320,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     );
   end
 
-  typedef logic [NrAXIMastersLog2-1:0] bank_ini_t;
+  typedef logic [NrAXIMastersLog2_fixed-1:0] bank_ini_t;
 
   logic [NrAXIMasters-1:0]                      l2_req;
   logic [NrAXIMasters-1:0]                      l2_gnt;

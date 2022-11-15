@@ -18,10 +18,20 @@ ifndef config
 		config := default
 	endif
 endif
+ifndef mc_config
+	ifdef ARA_MC_CONFIGURATION
+		config := $(ARA_MC_CONFIGURATION)
+	else
+		config := mc_default
+	endif
+endif
 
 # Include configuration
 config_file := $(ROOT_DIR)/../config/$(config).mk
 include $(abspath $(ROOT_DIR)/../config/$(config).mk)
+
+mc_config_file := $(ROOT_DIR)/../config/$(mc_config).mk
+include $(abspath $(ROOT_DIR)/../config/$(mc_config).mk)
 
 # Clang flags for Verilator command
 ifneq (${CLANG_PATH},)
@@ -102,7 +112,7 @@ vlog_args += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233
 vlog_args += -work $(library)
 
 # Defines
-bender_defs += --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen) --define RVV_ARIANE=1
+bender_defs += --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen) --define NR_CORES=$(nr_cores) --define RVV_ARIANE=1
 
 # Default target
 all: compile
