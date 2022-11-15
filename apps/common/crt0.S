@@ -71,9 +71,12 @@ reset_vector:
     li      x29, 0
     li      x30, 0
     li      x31, 0
-    // Initialize stack at the end of the DRAM region
+    // Initialize stacks for the current core
     la      t0, dram_end_address_reg
-    ld      sp, 0(t0)
+    ld      t0, 0(t0)
+    csrr    t1, mhartid
+    slli    t1, t1, LOG2_SINGLE_STACK_SIZE
+    sub     sp, t0, t1
     // Set up a PMP to permit all accesses
     li t0, (1 << (31 + (__riscv_xlen / 64) * (53 - 31))) - 1
     csrw pmpaddr0, t0
