@@ -457,7 +457,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     CachedRegionAddrBase : {DRAMBase},
     CachedRegionLength   : {DRAMLength},
     //  cache config
-    Axi64BitCompliant    : 1'b1,
+    AxiCompliant         : 1'b1,
     SwapEndianess        : 1'b0,
     // debug
     DmBaseAddress        : 64'h0,
