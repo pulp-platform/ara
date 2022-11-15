@@ -50,7 +50,7 @@ all: $(BINARIES)
 linker_script: $(COMMON_DIR)/script/align_sections.sh $(ROOT_DIR)/../../config/$(config).mk
 	chmod +x $(COMMON_DIR)/script/align_sections.sh
 	rm -f $(COMMON_DIR)/link.ld && cp $(COMMON_DIR)/arch.link.ld $(COMMON_DIR)/link.ld
-	$(COMMON_DIR)/script/align_sections.sh $(nr_lanes) $(COMMON_DIR)/link.ld
+	$(COMMON_DIR)/script/align_sections.sh $(nr_lanes) $(nr_cores) $(COMMON_DIR)/link.ld
 
 # Make all applications
 $(APPS): % : bin/% $(APPS_DIR)/Makefile $(shell find common -type f)
