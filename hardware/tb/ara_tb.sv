@@ -59,6 +59,9 @@ module ara_tb;
   localparam int unsigned L2BeWidth        = L2BankBeWidth * L2NumBanks;
   localparam int unsigned L2BankSize       = L2BankNumWords * L2BankBeWidth;
 
+  localparam integer unsigned L2Width          = L2BankWidth * L2NumBanks;
+  localparam integer unsigned L2ByteOffset     = $clog2(L2BeWidth);
+
   /********************************
    *  Clock and Reset Generation  *
    ********************************/
@@ -148,8 +151,7 @@ module ara_tb;
             if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength) begin
               // This requires the sections to be aligned to AxiWideByteOffset,
               // otherwise, they can be over-written.
-              dut.i_ara_soc.gen_l2_banks[bank].l2_mem.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
-              $display("Mem row[%x]: %x", (address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset, mem_row);
+              dut.i_ara_soc.gen_l2_banks[bank].l2_mem.init_val[(address - DRAMAddrBase + (w << L2ByteOffset)) >> L2ByteOffset] = mem_row;
             end else
               $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
           end
