@@ -347,6 +347,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
       .DataWidth (AxiDataWidth   ),
       .IdWidth   (AxiSocIdWidth  ),
       .NumBanks  (1              ),
+      .BufDepth  (3              ),
       .axi_req_t (soc_wide_req_t ),
       .axi_resp_t(soc_wide_resp_t)
     ) i_axi_to_mem (
