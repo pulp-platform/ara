@@ -50,8 +50,8 @@ int main(void) {
   enable_fp();
 
   TEST_CASE1();
-  
+
   EXIT_CHECK();
 
-  
+
 }
