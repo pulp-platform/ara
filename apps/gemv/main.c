@@ -16,7 +16,6 @@
 
 // Author: Chi Zhang, ETH Zurich <chizhang@iis.ee.ethz.ch>
 
-
 #include <stdint.h>
 #include <string.h>
 
@@ -32,7 +31,8 @@
 
 #define M_ROW 1024
 #define V_LEN 1024
-double GEMV_M[M_ROW * V_LEN] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+double GEMV_M[M_ROW * V_LEN]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
 double GEMV_D[M_ROW] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 double GEMV_V[V_LEN] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
@@ -42,30 +42,29 @@ int main() {
   printf("\n");
   printf("==========\n");
   printf("=  GEMV  =\n");
-  printf("==========\n"); 
+  printf("==========\n");
   printf("\n");
   printf("\n");
 
-  for (int s = 4; s <= M_ROW; s *= 2)
-  {
+  for (int s = 4; s <= M_ROW; s *= 2) {
     printf("\n");
     printf("------------------------------------------------------------\n");
-    printf("Calculating a (%d x %d) x %d matrix vector multiplication...\n",
-           s, s, s);
+    printf("Calculating a (%d x %d) x %d matrix vector multiplication...\n", s,
+           s, s);
     printf("------------------------------------------------------------\n");
     printf("\n");
 
-  	// Initialize Matrices
+    // Initialize Matrices
     printf("Initializing matrix and vector...\n");
-    init_gemv_data(s,s,GEMV_M,GEMV_V,1,2,3);
+    init_gemv_data(s, s, GEMV_M, GEMV_V, 1, 2, 3);
 
-    //Start GEMV calculating
-  	printf("calculating ... \n");
-  	start_timer();
-  	gemv_rowwise(s,s,GEMV_M,GEMV_V,GEMV_D);
-  	stop_timer();
+    // Start GEMV calculating
+    printf("calculating ... \n");
+    start_timer();
+    gemv_rowwise(s, s, GEMV_M, GEMV_V, GEMV_D);
+    stop_timer();
 
-  	// Metrics
+    // Metrics
     int64_t runtime = get_timer();
     float performance = 2.0 * s * s / runtime;
     float utilization = 100 * performance / (2.0 * NR_LANES);
@@ -74,23 +73,17 @@ int main() {
     printf("The performance is %f FLOP/cycle (%f%% utilization) at %d lanes.\n",
            performance, utilization, NR_LANES);
 
-    //Verify the result
-    if (VERIFY)
-    {
+    // Verify the result
+    if (VERIFY) {
       printf("Verifying ...\n");
-      if(gemv_verify(s,s,GEMV_M,GEMV_V,GEMV_D)){
+      if (gemv_verify(s, s, GEMV_M, GEMV_V, GEMV_D)) {
         return 1;
-      }else{
+      } else {
         printf("Passed.\n");
       }
     }
-
   }
 
   printf("Done!\n");
   return 0;
 }
-
-
-
-
