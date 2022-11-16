@@ -19,12 +19,19 @@
 #ifndef _GEMV_H
 #define _GEMV_H
 
-void init_gemv_data(const unsigned long int m_row, const unsigned long int v_len, double * matrix, double * vector, double a, double b, double c);
+void init_gemv_data(const unsigned long int m_row,
+                    const unsigned long int v_len, double *matrix,
+                    double *vector, double a, double b, double c);
 
-void gemv_rowwise(const unsigned long int m_row, const unsigned long int v_len, double * matrix, double * vector, double * dest);
+void gemv_rowwise(const unsigned long int m_row, const unsigned long int v_len,
+                  double *matrix, double *vector, double *dest);
 
-void gemv_rowwise_small_than_slice(const unsigned long int m_row, const unsigned long int v_len, double * matrix, double * vector, double * dest);
+void gemv_rowwise_small_than_slice(const unsigned long int m_row,
+                                   const unsigned long int v_len,
+                                   double *matrix, double *vector,
+                                   double *dest);
 
-int gemv_verify(const unsigned long int m_row, const unsigned long int v_len, double * matrix, double * vector, double * dest);
+int gemv_verify(const unsigned long int m_row, const unsigned long int v_len,
+                double *matrix, double *vector, double *dest);
 
 #endif
