@@ -19,22 +19,10 @@
 #ifndef _SPMV_H
 #define _SPMV_H
 
-void spmv_csr_idx32(
-int32_t N_ROW,
-int32_t * CSR_PROW,
-int32_t * CSR_INDEX,
-double   * CSR_DATA,
-double   * IN_VEC,
-double   * OUT_VEC);
+void spmv_csr_idx32(int32_t N_ROW, int32_t *CSR_PROW, int32_t *CSR_INDEX,
+                    double *CSR_DATA, double *IN_VEC, double *OUT_VEC);
 
-int spmv_verify(
-int32_t N_ROW,
-int32_t * CSR_PROW,
-int32_t * CSR_INDEX,
-double   * CSR_DATA,
-double   * IN_VEC,
-double   * OUT_VEC);
-
-
+int spmv_verify(int32_t N_ROW, int32_t *CSR_PROW, int32_t *CSR_INDEX,
+                double *CSR_DATA, double *IN_VEC, double *OUT_VEC);
 
 #endif
