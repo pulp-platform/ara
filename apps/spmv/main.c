@@ -16,7 +16,6 @@
 
 // Author: Chi Zhang, ETH Zurich <chizhang@iis.ee.ethz.ch>
 
-
 #include <stdint.h>
 #include <string.h>
 
@@ -30,41 +29,47 @@
 #include <stdio.h>
 #endif
 
-
 extern uint64_t R;
 extern uint64_t C;
 extern uint64_t NZ;
 
-extern int32_t 	CSR_PROW[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern int32_t 	CSR_INDEX[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern double 	CSR_DATA[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern double 	CSR_IN_VECTOR[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
-extern double 	CSR_OUT_VECTOR[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern int32_t CSR_PROW[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern int32_t CSR_INDEX[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern double CSR_DATA[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern double CSR_IN_VECTOR[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern double CSR_OUT_VECTOR[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
-int main()
-{
-	printf("\n");
+int main() {
+  printf("\n");
   printf("==========\n");
   printf("=  SpMV  =\n");
-  printf("==========\n"); 
+  printf("==========\n");
   printf("\n");
   printf("\n");
 
-  double density = ((double)NZ)/(R*C);
-  double nz_per_row = ((double)NZ)/R;
+  double density = ((double)NZ) / (R * C);
+  double nz_per_row = ((double)NZ) / R;
 
-	printf("\n");
-  printf("-------------------------------------------------------------------\n");
-  printf("Calculating a (%d x %d) x %d sparse matrix vector multiplication...\n",
-         R, C, C);
-  printf("CSR format with %d nozeros: %f density, %f nonzeros per row \n",
-         NZ, density, nz_per_row);
-  printf("-------------------------------------------------------------------\n");
+  printf("\n");
+  printf(
+      "-------------------------------------------------------------------\n");
+  printf(
+      "Calculating a (%d x %d) x %d sparse matrix vector multiplication...\n",
+      R, C, C);
+  printf("CSR format with %d nozeros: %f density, %f nonzeros per row \n", NZ,
+         density, nz_per_row);
+  printf(
+      "-------------------------------------------------------------------\n");
   printf("\n");
 
   printf("calculating ... \n");
   start_timer();
-  spmv_csr_idx32(R,CSR_PROW,CSR_INDEX,CSR_DATA,CSR_IN_VECTOR,CSR_OUT_VECTOR);
+  spmv_csr_idx32(R, CSR_PROW, CSR_INDEX, CSR_DATA, CSR_IN_VECTOR,
+                 CSR_OUT_VECTOR);
   stop_timer();
 
   // Metrics
@@ -76,12 +81,12 @@ int main()
   printf("The performance is %f FLOP/cycle (%f%% utilization) at %d lanes.\n",
          performance, utilization, NR_LANES);
 
-	printf("Verifying ...\n");
-	if(spmv_verify(R,CSR_PROW,CSR_INDEX,CSR_DATA,CSR_IN_VECTOR,CSR_OUT_VECTOR))
-	{
-		return 1;
-	}else{
-		printf("Passed.\n");
-	}
-	return 0;
+  printf("Verifying ...\n");
+  if (spmv_verify(R, CSR_PROW, CSR_INDEX, CSR_DATA, CSR_IN_VECTOR,
+                  CSR_OUT_VECTOR)) {
+    return 1;
+  } else {
+    printf("Passed.\n");
+  }
+  return 0;
 }
