@@ -922,7 +922,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     );
     elen_t operand_a_delay, vfrec7_result;
     // register for delay of operand_a
-    always_ff @(posedge clk_i or negedge rst_ni) 
+    always_ff @(posedge clk_i or negedge rst_ni)
     begin
          if (!rst_ni) begin
                 operand_a_delay <= 64'b0;
@@ -930,10 +930,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                 operand_a_delay <=operand_a ;
          end
     end
-      
-    always_comb begin: fpu_result_processing_p
-          vfrec7_result=64'b0;   //vfrec7 output
 
+    always_comb begin: fpu_result_processing_p
+                        //  vfrec7
          unique case (vinsn_processing_q.vtype.vsew)
             EW16:begin
                 vfrec7_result[15:0] =vfrec7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] );
@@ -941,15 +940,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                 vfrec7_result[47:32]=vfrec7_fp16(vfpu_result[41:32],operand_a_delay[47:32]);
                 vfrec7_result[63:48]=vfrec7_fp16(vfpu_result[57:48],operand_a_delay[63:48]);
               end
-            EW32: 
-              begin 
+            EW32:
+              begin
                 vfrec7_result[31:0 ] =vfrec7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] );
-                vfrec7_result[63:32]=vfrec7_fp32(vfpu_result[41:32],operand_a_delay[63:32]);
-             end
-            EW64: 
+                vfrec7_result[63:32]= vfrec7_fp32(vfpu_result[41:32],operand_a_delay[63:32]);
+              end
+            EW64:
               begin
              vfrec7_result=vfrec7_fp64(vfpu_result[9:0],operand_a_delay);
              end
+             default:;
          endcase
 
       // Forward the result
