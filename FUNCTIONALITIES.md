@@ -66,6 +66,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 
 - Vector mask-register logical instructions: `vmand`, `vmnand`, `vmandnot`, `vmxor`, `vmor`, `vmnor`, `vmornot`, `vmxnor`
 - Vector mask instructions: `vmsbf`, `vmsof`, `vmsif`, `viota`, `vid`
+- Vector mask population count and find first set bit instructions: `vcpop.m`, `vfirst.m`
 
 ## Vector permutation instructions
 
