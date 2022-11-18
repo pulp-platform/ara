@@ -30,7 +30,8 @@ module ara_tb;
   `endif
 
   localparam ClockPeriod  = 1ns;
-  localparam AxiRespDelay = 200ps;
+  // Axi response delay [ps]
+  localparam int unsigned AxiRespDelay = 200;
 
   localparam AxiAddrWidth      = 64;
   localparam AxiWideDataWidth  = 64 * NrLanes / 2;
