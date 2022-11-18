@@ -83,6 +83,7 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 
 #include <riscv_vector.h>
 
+#include "runtime.h"
 #include "util.h"
 
 // The vector algorithm seems not to be parametrized on the data type

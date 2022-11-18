@@ -64,6 +64,11 @@ void dropout_vec(const unsigned int n, const float *i, const float scale,
                : [vl] "=r"(vl)
                : [n] "r"(n));
 
+#ifdef VCD_DUMP
+  // Start dumping VCD
+  event_trigger = +1;
+#endif
+
   for (unsigned int avl = n; avl > 0; avl -= vl) {
     // Find next vl
     asm volatile("vsetvli %[vl], %[avl], e32, m8, ta, ma"
@@ -83,5 +88,10 @@ void dropout_vec(const unsigned int n, const float *i, const float scale,
     sel_ptr += vl >> 3;
     o += vl;
   }
+
+#ifdef VCD_DUMP
+  // Stop dumping VCD
+  event_trigger = -1;
+#endif
 }
 #endif

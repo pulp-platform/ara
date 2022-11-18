@@ -170,6 +170,14 @@ void j2d_kernel_asm_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
     der_0 = A[1 * c + j + gvl];
 
     for (uint32_t i = 1; i <= size_y; i += 3) {
+#ifdef VCD_DUMP
+      // Start dumping VCD
+      if (i == 7)
+        event_trigger = +1;
+      // Stop dumping VCD
+      if (i == 13)
+        event_trigger = -1;
+#endif
       asm volatile("vfslide1up.vf v24, v4, %0" ::"f"(izq_0));
       asm volatile("vfslide1down.vf v28, v4, %0" ::"f"(der_0));
       asm volatile("vfadd.vv v12, v4, v0");   // middle - top

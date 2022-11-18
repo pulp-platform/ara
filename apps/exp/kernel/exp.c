@@ -40,6 +40,10 @@ void exp_1xf64_bmark(double *exponents, double *results, size_t len) {
   size_t avl = len;
   vfloat64m1_t exp_vec, res_vec;
 
+#ifdef VCD_DUMP
+  // Start dumping VCD
+  event_trigger = +1;
+#endif
   for (size_t vl = vsetvl_e64m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
     vl = vsetvl_e64m1(avl);
@@ -53,6 +57,10 @@ void exp_1xf64_bmark(double *exponents, double *results, size_t len) {
     exponents += vl;
     results += vl;
   }
+#ifdef VCD_DUMP
+  // Stop dumping VCD
+  event_trigger = -1;
+#endif
 }
 
 void exp_2xf32_bmark(float *exponents, float *results, size_t len) {
@@ -60,6 +68,10 @@ void exp_2xf32_bmark(float *exponents, float *results, size_t len) {
   size_t avl = len;
   vfloat32m1_t exp_vec, res_vec;
 
+#ifdef VCD_DUMP
+  // Start dumping VCD
+  event_trigger = +1;
+#endif
   for (size_t vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
     vl = vsetvl_e32m1(avl);
@@ -73,6 +85,10 @@ void exp_2xf32_bmark(float *exponents, float *results, size_t len) {
     exponents += vl;
     results += vl;
   }
+#ifdef VCD_DUMP
+  // Stop dumping VCD
+  event_trigger = -1;
+#endif
 }
 
 // Intermix the instructions

@@ -25,7 +25,9 @@
 
 #define DEBUG
 
-/////////////////
+extern int64_t event_trigger;
+
+////////////////
 // FIXED-POINT //
 /////////////////
 
@@ -653,6 +655,14 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
 
   // Butterfly until the end
   for (unsigned int i = 1; i < log2_nfft; ++i) {
+#ifdef VCD_DUMP
+    // Start dumping VCD
+    if (i == 1)
+      event_trigger = +1;
+    // Stop dumping VCD
+    if (i == 3)
+      event_trigger = -1;
+#endif
     // Bump the twiddle pointers.
     twiddles_re += vl;
     twiddles_im += vl;

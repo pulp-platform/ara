@@ -50,6 +50,8 @@
 
 #include "fconv3d.h"
 
+extern int64_t event_trigger;
+
 void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
                     int64_t C, int64_t F) {
 
@@ -407,6 +409,11 @@ void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
   // outside of this loop) (We keep F rows outside because of the unrolling by
   // 2, just for easeness)
   for (int j = 0; j < ((M + F - 1) - 2 * F) / 2; ++j) {
+#ifdef VCD_DUMP
+    // Start dumping VCD
+    event_trigger = +1;
+#endif
+
     // Work on F output rows
 
     // Loop on the channels
@@ -525,6 +532,11 @@ void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
 
     // Bump the input ptr
     i_ += N + F - 1;
+
+#ifdef VCD_DUMP
+    // Stop dumping VCD
+    event_trigger = -1;
+#endif
 
     //////////////
     // UNROLL 1 //

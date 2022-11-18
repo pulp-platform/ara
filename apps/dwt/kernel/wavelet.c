@@ -20,6 +20,8 @@
 #include "wavelet.h"
 #include <stdio.h>
 
+extern int64_t event_trigger;
+
 static inline void dwt_step(const gsl_wavelet *w, float *a, size_t n,
                             float *buf) {
   size_t i, ii;
@@ -152,6 +154,14 @@ void gsl_wavelet_transform_vector(float *data, size_t n, float *buf,
   w->offset = 0;
 
   for (i = n; i >= 2; i >>= 1) {
+#ifdef VCD_DUMP
+    // Start dumping VCD
+    if (i == n)
+      event_trigger = +1;
+    // Stop dumping VCD
+    if (i == (n >> 1))
+      event_trigger = -1;
+#endif
     dwt_step_vector(w, data, i, buf);
     if (first_iter_only)
       i = 0;

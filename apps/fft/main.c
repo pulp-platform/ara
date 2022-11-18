@@ -107,6 +107,9 @@ int main() {
   // DIF FFT //
   /////////////
 
+  int64_t runtime;
+
+#ifndef VCD_DUMP
 #ifdef DEBUG
   printf("Intermediate butterfly outputs:\n");
   for (int k = 0; k < (31 - __builtin_clz(NFFT)) + 2; ++k) {
@@ -130,7 +133,7 @@ int main() {
   printf("Initializing Inputs for DIF\n");
 
   // Performance metrics
-  int64_t runtime = get_timer();
+  runtime = get_timer();
   printf("The DIF execution took %d cycles.\n", runtime);
 
   /////////////
@@ -154,7 +157,7 @@ int main() {
   // Performance metrics
   runtime = get_timer();
   printf("The DIT execution took %d cycles.\n", runtime);
-
+#endif
   ////////////////////
   // Vector DIF FFT //
   ////////////////////
