@@ -16,7 +16,7 @@ module ara_testharness #(
     parameter int unsigned AxiAddrWidth = 64,
     parameter int unsigned AxiDataWidth = 64*NrLanes/2,
     // AXI Resp Delay [ps] for gate-level simulation
-    parameter              AxiRespDelay = 200ps
+    parameter int unsigned AxiRespDelay = 200
   ) (
     input  logic        clk_i,
     input  logic        rst_ni,

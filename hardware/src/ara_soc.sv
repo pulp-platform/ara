@@ -19,7 +19,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  int           unsigned AxiUserWidth = 1,
     parameter  int           unsigned AxiIdWidth   = 5,
     // AXI Resp Delay [ps] for gate-level simulation
-    parameter                         AxiRespDelay = 200ps,
+    parameter  int           unsigned AxiRespDelay = 200,
     // Main memory
     parameter  int           unsigned L2NumWords   = 2**20,
     // Dependant parameters. DO NOT CHANGE!
@@ -504,7 +504,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
 
 `ifdef TARGET_GATESIM
-  assign #(AxiRespDelay) system_axi_resp_spill_del = system_axi_resp_spill;
+  assign #(AxiRespDelay*1ps) system_axi_resp_spill_del = system_axi_resp_spill;
 
   axi_cut #(
     .ar_chan_t   (system_ar_chan_t     ),
