@@ -315,7 +315,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         // Are we ready?
         // During a reduction (vinsn_issue_q.vfu == VFU_Alu/VFU_MFPU) don't wait for mask bits
         if ((&sldu_operand_valid_i || (((vinsn_issue_q.stride >> vinsn_issue_q.vtype.vsew) >= vinsn_issue_q.vl) && (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD))) &&
-          (sldu_operand_target_fu_i[0] == SLDU || is_issue_reduction) && !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_i)))
+          (sldu_operand_target_fu_i[0] == ALU_SLDU || is_issue_reduction) && !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_i)))
         begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
           automatic int in_byte_count = NrLanes * 8 - in_pnt_q;

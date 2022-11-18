@@ -278,7 +278,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // Handle handshake and data between VRF and spill register
         // We accept all the incoming data, without any checks
         // since Ara stalls on an indexed memory operation
-        if (&addrgen_operand_valid_i & addrgen_operand_target_fu_i[0] == ADDRGEN) begin
+        if (&addrgen_operand_valid_i & addrgen_operand_target_fu_i[0] == MFPU_ADDRGEN) begin
 
           // Valid data for the spill register
           idx_addr_valid_d = 1'b1;

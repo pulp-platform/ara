@@ -18,6 +18,9 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     parameter  logic                  SupportIntExt2 = 1'b0,
     parameter  logic                  SupportIntExt4 = 1'b0,
     parameter  logic                  SupportIntExt8 = 1'b0,
+    // Support neutral value filling
+    parameter  logic                  SupportReduct  = 1'b0,
+    parameter  logic                  SupportNtrVal  = 1'b0,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth      = $bits(elen_t),
     localparam int           unsigned StrbWidth      = DataWidth/8
@@ -122,30 +125,127 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   //  Type conversion  //
   ///////////////////////
 
+  // Count how many operands were already produced
+  vlen_t vl_d, vl_q;
+
   elen_t                            conv_operand;
   // Decide whether we are taking the operands from the lower or from the upper half of the input
   // buffer operand
   logic  [idx_width(StrbWidth)-1:0] select_d, select_q;
 
+  // Neutral value for the computational operation
+  typedef union packed {
+    logic [0:0][63:0] w64;
+    logic [1:0][31:0] w32;
+    logic [3:0][15:0] w16;
+    logic [7:0][ 7:0] w8;
+  } ntr_operand_t;
+  ntr_operand_t ntr;
+
+  // Helper variables for reductions
+  logic ntrh_int, ntrl_int;
+
+  // Helper to fill with neutral values the last packet
+  logic incomplete_packet, last_packet;
+
   always_comb begin: type_conversion
-    // Helper variables for reductions
-    logic ntrh, ntrl;
     // Shuffle the input operand
     automatic logic [idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
 
     // Default: no conversion
     conv_operand = ibuf_operand;
 
-    // Calculate the neutral values for reductions
-    // Examples with EW8:
-    // VREDSUM, VREDOR, VREDXOR, VREDMAXU, VWREDSUMU, VWRESUM: 0x00
-    // VREDAND, VREDMINU:                                      0xff
-    // VREDMIN:                                                0x7f
-    // VREDMAX:                                                0x80
-    // Neutral low bits
-    ntrl = cmd.ntr_red[0];
-    // Neutral high bit
-    ntrh = cmd.ntr_red[1];
+    // Reductions need to mask away the inactive elements
+    // A temporary solution is to send a neutral value directly
+    // from the opqueues
+    if (SupportNtrVal || SupportReduct) begin
+      // Calculate the neutral values for reductions
+      // Examples with EW8:
+      // VREDSUM, VREDOR, VREDXOR, VREDMAXU, VWREDSUMU, VWRESUM: 0x00
+      // VREDAND, VREDMINU:                                      0xff
+      // VREDMIN:                                                0x7f
+      // VREDMAX:                                                0x80
+      // Neutral low bits
+      ntrl_int = cmd.ntr_red[0];
+      ntrh_int = cmd.ntr_red[1];
+
+      // During a reduction, all the elements that should not contribute
+      // should have a neutral value.
+      // If the 64-bit packet is not complete, the
+      // upper MSb can corrupt the result.
+      // The following neutral values will be inserted wherever an
+      // harmless value is needed not to change the result of the
+      // legit operation.
+      // Power optimization:
+      // The optimal solution would be to act on the mask bits in the two
+      // processing units (valu and vmfpu), masking the unused elements.
+      ntr = '0;
+      // Gate for power saving
+      if (cmd.is_reduct) begin
+        unique case (cmd.target_fu)
+          ALU_SLDU: begin
+            unique case (cmd.eew)
+              EW8 :    ntr.w64 = {8{ntrh_int, { 7{ntrl_int}}}};
+              EW16:    ntr.w64 = {4{ntrh_int, {15{ntrl_int}}}};
+              EW32:    ntr.w64 = {2{ntrh_int, {31{ntrl_int}}}};
+              default: ntr.w64 = {1{ntrh_int, {63{ntrl_int}}}};
+            endcase
+          end
+          MFPU_ADDRGEN: begin
+            unique case (cmd.eew)
+              EW16: begin
+                unique case (cmd.ntr_red)
+                  2'b01: ntr.w64 = {4{16'h7c00}};
+                  2'b10: ntr.w64 = {4{16'hfc00}};
+                  default:;
+                endcase
+              end
+              EW32: begin
+                unique case (cmd.ntr_red)
+                  2'b01: ntr.w64 = {2{32'h7f800000}};
+                  2'b10: ntr.w64 = {2{32'hff800000}};
+                  default:;
+                endcase
+              end
+              // Add EW64 for convenience of coding
+              default: begin
+                unique case (cmd.ntr_red)
+                  2'b01: ntr.w64 = {1{64'h7ff0000000000000}};
+                  2'b10: ntr.w64 = {1{64'hfff0000000000000}};
+                  default:;
+                endcase
+              end
+            endcase
+          end
+          default:;
+        endcase
+      end
+
+      // Assert the signal if the last 64-bit packet will contain also
+      // elements with idx >= vl (they should not contribute to the result!).
+      // Gate for power saving
+      // Power optimization:
+      // The optimal solution would be to act on the mask bits in the two
+      // processing units (valu and vmfpu), masking the unused elements.
+      unique case (cmd.eew)
+        EW8 : begin
+          incomplete_packet = |cmd.vl[2:0];
+          last_packet       = ((cmd.vl - vl_q) <= 8) ? 1'b1 : 1'b0;
+        end
+        EW16: begin
+          incomplete_packet = |cmd.vl[1:0];
+          last_packet       = ((cmd.vl - vl_q) <= 4) ? 1'b1 : 1'b0;
+        end
+        EW32: begin
+          incomplete_packet = |cmd.vl[0:0];
+          last_packet       = ((cmd.vl - vl_q) <= 2) ? 1'b1 : 1'b0;
+        end
+        default: begin
+          incomplete_packet = 1'b0;
+          last_packet       = 1'b0;
+        end
+      endcase
+    end
 
     unique case (cmd.conv)
       // Sign extension
@@ -206,135 +306,18 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           endcase
       end
 
-      OpQueueIntReductionZExt: begin
-        if (lane_id_i == '0) begin
-          unique case (cmd.eew)
-            EW8 : conv_operand = {{7{ntrh, { 7{ntrl}}}}, ibuf_operand[7:0]};
-            EW16: conv_operand = {{3{ntrh, {15{ntrl}}}}, ibuf_operand[15:0]};
-            EW32: conv_operand = {{1{ntrh, {31{ntrl}}}}, ibuf_operand[31:0]};
-            default:;
-          endcase
-        end else begin
-          unique case (cmd.eew)
-            // Lane != 0, just send harmless values
-            EW8 : conv_operand = {8{ntrh, { 7{ntrl}}}};
-            EW16: conv_operand = {4{ntrh, {15{ntrl}}}};
-            EW32: conv_operand = {2{ntrh, {31{ntrl}}}};
-            default: // EW64
-              conv_operand = {1{ntrh, {63{ntrl}}}};
-          endcase
-        end
-      end
-
-      // Floating-point neutral value
-      // pinf -> positive infinity, ninf -> negative infinity
-      OpQueueFloatReductionZExt: begin
-        if (lane_id_i == '0) begin
-          unique case (cmd.ntr_red)
-            2'b00: begin
-              unique case (cmd.eew)
-                EW16: conv_operand = {{3{16'd0}}, ibuf_operand[15:0]};
-                EW32: conv_operand = {32'd0, ibuf_operand[31:0]};
-                default:;
-              endcase
-            end
-            2'b01: begin
-              unique case (cmd.eew)
-                EW16: conv_operand = {{3{16'h7c00}}, ibuf_operand[15:0]};
-                EW32: conv_operand = {32'h7f800000, ibuf_operand[31:0]};
-                default:;
-              endcase
-            end
-            2'b10: begin
-              unique case (cmd.eew)
-                EW16: conv_operand = {{3{16'hfc00}}, ibuf_operand[15:0]};
-                EW32: conv_operand = {32'hff800000, ibuf_operand[31:0]};
-                default:;
-              endcase
-            end
-          endcase
-        end else begin
-            // Lane != 0, just send harmless values
-          unique case (cmd.ntr_red)
-            2'b00: begin
-              unique case (cmd.eew)
-                EW16: conv_operand = '0;
-                EW32: conv_operand = '0;
-                default: // EW64
-                  conv_operand = '0;
-              endcase
-            end
-            2'b01: begin
-              unique case (cmd.eew)
-                EW16: conv_operand = {4{16'h7c00}};
-                EW32: conv_operand = {2{32'h7f800000}};
-                default: // EW64
-                  conv_operand = 64'h7ff0000000000000;
-              endcase
-            end
-            2'b10: begin
-              unique case (cmd.eew)
-                EW16: conv_operand = {4{16'hfc00}};
-                EW32: conv_operand = {2{32'hff800000}};
-                default: // EW64
-                  conv_operand = 64'hfff0000000000000;
-              endcase
-            end
-          endcase
-        end
-      end
-
-      // Widening floating-point reduction
-      OpQueueFloatReductionWideZExt: begin
-        if (lane_id_i == '0) begin
-          unique case (cmd.ntr_red)
-            2'b00: begin
-              unique case (cmd.eew)
-                EW32: conv_operand = {32'd0, ibuf_operand[31:0]};
-                EW64: conv_operand = ibuf_operand;
-                default:;
-              endcase
-            end
-            2'b01: begin
-              unique case (cmd.eew)
-                EW32: conv_operand = {32'h7f800000, ibuf_operand[31:0]};
-                EW64: conv_operand = ibuf_operand;
-                default:;
-              endcase
-            end
-            2'b10: begin
-              unique case (cmd.eew)
-                EW32: conv_operand = {32'hff800000, ibuf_operand[31:0]};
-                EW64: conv_operand = ibuf_operand;
-                default:;
-              endcase
-            end
-          endcase
-        end else begin
-            // Lane != 0, just send harmless values
-          unique case (cmd.ntr_red)
-            2'b00: begin
-              unique case (cmd.eew)
-                EW32: conv_operand = '0;
-                EW64: conv_operand = '0;
-                default:;
-              endcase
-            end
-            2'b01: begin
-              unique case (cmd.eew)
-                EW32: conv_operand = {2{32'h7f800000}};
-                EW64: conv_operand = 64'h7ff0000000000000;
-                default:;
-              endcase
-            end
-            2'b10: begin
-              unique case (cmd.eew)
-                EW32: conv_operand = {2{32'hff800000}};
-                EW64: conv_operand = 64'hfff0000000000000;
-                default:;
-              endcase
-            end
-          endcase
+      OpQueueReductionZExt: begin
+        if (SupportReduct) begin
+          if (lane_id_i == '0) begin
+            unique case (cmd.eew)
+              EW8 : conv_operand = {ntr.w8[7:1] , ibuf_operand[7:0]};
+              EW16: conv_operand = {ntr.w16[3:1], ibuf_operand[15:0]};
+              EW32: conv_operand = {ntr.w32[1:1], ibuf_operand[31:0]};
+              default:;
+            endcase
+          end else begin
+            conv_operand = ntr.w64;
+          end
         end
       end
 
@@ -378,16 +361,34 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         endcase
       end
 
-      default:;
+      // Pad with neutral values the MSb of an incomplete 64-bit packet
+      // not to compromise reductions.
+      default: begin
+        // Pad only the last packet during a reduction, and pad the correct bytes only!
+        if (last_packet && incomplete_packet) begin
+          if (SupportNtrVal) unique case (cmd.eew)
+            EW8 : for (int unsigned b = 0; b < 8; b++) begin
+                    automatic int unsigned bs = shuffle_index(b, 1, EW8);
+                    if ((b >> 0) >= cmd.vl[2:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
+                  end
+            EW16: for (int unsigned b = 0; b < 8; b++) begin
+                    automatic int unsigned bs = shuffle_index(b, 1, EW16);
+                    if ((b >> 1) >= cmd.vl[1:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
+                  end
+            EW32: for (int unsigned b = 0; b < 8; b++) begin
+                    automatic int unsigned bs = shuffle_index(b, 1, EW32);
+                    if ((b >> 2) >= cmd.vl[0:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
+                  end
+            default:;
+          endcase
+        end
+      end
     endcase
   end : type_conversion
 
   /********************
    *  Operand output  *
    *******************/
-
-  // Count how many operands were already produced
-  vlen_t vl_d, vl_q;
 
   always_comb begin: obuf_control
     // Do not pop anything from the any of the queues
@@ -420,7 +421,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         OpQueueConversionSExt8,
         OpQueueConversionZExt8:
           if (SupportIntExt8) vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
-        OpQueueIntReductionZExt, OpQueueFloatReductionZExt, OpQueueFloatReductionWideZExt:
+        OpQueueReductionZExt:
           vl_d = vl_q + 1;
         default: vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
       endcase
