@@ -758,7 +758,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           fp_rm = RTZ;
         end
         VFCLASS,
-        VFREC7: begin
+        VFREC7,
+        VFRSQRT7: begin
            fp_op = CLASSIFY;
         end
         VFSGNJ : begin
@@ -921,6 +922,87 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .out_ready_i   (vfpu_out_ready ),
       .busy_o        (/* Unused */   )
     );
+    elen_t operand_a_delay,
+           vfrsqrt7_result;
+    // register for delay of operand_a
+    always_ff @(posedge clk_i or negedge rst_ni)
+    begin
+         if (!rst_ni) begin
+                operand_a_delay <= 64'b0;
+         end else begin
+                operand_a_delay <=operand_a ;
+         end
+    end
+        ////////////////////////////
+        //  Leading zeros modules //
+        ///////////////////////////
+logic [15:0] lzc_e16;
+logic [9:0]  lzc_e32;
+logic [5:0]  lzc_e64;
+ /////for e16///
+  lzc#(
+    .WIDTH(10),
+    .MODE (1)
+  ) leading_zero_e16_0 (
+    .in_i    (operand_a_delay[9:0]),
+    .cnt_o   (lzc_e16[3:0] ),
+    .empty_o ()
+  );
+
+  lzc#(
+    .WIDTH(10),
+    .MODE (1)
+  ) leading_zero_e16_1 (
+    .in_i    (operand_a_delay[25:16]),
+    .cnt_o   (lzc_e16[7:4]  ),
+    .empty_o ()
+  );
+
+  lzc#(
+    .WIDTH(10),
+    .MODE (1)
+  ) leading_zero_e16_2 (
+    .in_i    (operand_a_delay[41:32]),
+    .cnt_o   (lzc_e16[11:8] ),
+    .empty_o ()
+  );
+
+  lzc#(
+    .WIDTH(10),
+    .MODE (1)
+  ) leading_zero_e16_3 (
+    .in_i    (operand_a_delay[57:48]),
+    .cnt_o   (lzc_e16[15:12] ),
+    .empty_o ()
+  );
+
+//////For E32//////////////
+  lzc#(
+    .WIDTH(23),
+    .MODE (1)
+  ) leading_zero_e32_0 (
+    .in_i    (operand_a_delay[22:0]),
+    .cnt_o   (lzc_e32[4:0] ),
+    .empty_o ()
+  );
+/// Leading zero counter
+  lzc#(
+    .WIDTH(23),
+    .MODE (1)
+  ) leading_zero_e32_1 (
+    .in_i    (operand_a_delay[54:32]),
+    .cnt_o   (lzc_e32[9:5]),
+    .empty_o ()
+  );
+/// E64/////////
+  lzc#(
+    .WIDTH(52),
+    .MODE (1)
+  ) leading_zero_e64 (
+    .in_i    (operand_a_delay[51:0]),
+    .cnt_o   (lzc_e64),
+    .empty_o ()
+  );
 
     ////////////
     // vfrec7 //
@@ -996,10 +1078,32 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           end
         endcase
 
+        //vfrsqrt7
+         unique case (vinsn_processing_q.vtype.vsew)
+            EW16:begin
+                vfrsqrt7_result[15:0]  = vfrsqrt7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] ,lzc_e16[3:0]  );
+                vfrsqrt7_result[31:16] = vfrsqrt7_fp16(vfpu_result[25:16],operand_a_delay[31:16],lzc_e16[7:4]  );
+                vfrsqrt7_result[47:32] = vfrsqrt7_fp16(vfpu_result[41:32],operand_a_delay[47:32],lzc_e16[11:8] );
+                vfrsqrt7_result[63:48] = vfrsqrt7_fp16(vfpu_result[57:48],operand_a_delay[63:48],lzc_e16[15:12]);
+              end
+            EW32:
+              begin
+                vfrsqrt7_result[31:0]  = vfrsqrt7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] , lzc_e32[4:0]);
+                vfrsqrt7_result[63:32] = vfrsqrt7_fp32(vfpu_result[41:32],operand_a_delay[63:32],lzc_e32[9:5]);
+             end
+            EW64:
+              begin
+               vfrsqrt7_result = vfrsqrt7_fp64(vfpu_result[9:0],operand_a_delay,lzc_e64);
+             end
+             default:;
+         endcase
+
         // Forward the result
         if (vinsn_processing_q.op == VFREC7) begin
           vfpu_processed_result = vfrec7_result_o;
           vfpu_ex_flag          = vfrec7_ex_flag;
+        end else if(vinsn_processing_q.op==VFRSQRT7) begin
+         vfpu_processed_result = vfrsqrt7_result;
         end else begin
           vfpu_processed_result = vfpu_result;
           vfpu_ex_flag          = vfpu_ex_flag_fn;
