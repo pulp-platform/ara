@@ -53,6 +53,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix `eew_vs1` for widening instructions
  - Fix cleaning of the accumulator after partial reduction in `valu`
  - De-parametrize FFT on the data-type
+ - New reductions should start only when the previous operation is over
+ - Prevent VMFPU from acknowledging the opqueues when their issue is over
+ - Operand requesters sanitize partial operands during a reduction
+ - Fix load/store-complete signals to CVA6
 
 ### Added
 
@@ -116,6 +120,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - benchmark.sh can now also benchmark just one app at a time via an input argument
  - Adapt `fdotproduct` to `dotproduct` structure
  - Pre-calculate next-cycle `aligned_start_address` in `addrgen` for timing reasons
+ - Add `is_reduct` signal to the operand queues, to gate the neutral value filling
 
 ## 2.2.0 - 2021-11-02
 
