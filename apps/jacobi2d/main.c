@@ -135,12 +135,14 @@ int main() {
   output_printfile(R, C, B_fixed_v);
 #endif
 
+#ifndef VCD_DUMP
   // Measure scalar kernel execution
   printf("Processing the scalar benchmark\n");
   start_timer();
   j2d_s(R, C, A_fixed_s, B_fixed_s, TSTEPS);
   stop_timer();
   printf("Scalar jacobi2d cycle count: %d\n", get_timer());
+#endif
 
   // Measure vector kernel execution
   printf("Processing the vector benchmark\n");

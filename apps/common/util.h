@@ -26,6 +26,7 @@
 #endif
 
 #ifdef VCD_DUMP
+#pragma message("VCD_DUMP successfully initialized")
 #define NO_PRINTF
 #define NO_TIMER
 #endif

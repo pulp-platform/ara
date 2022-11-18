@@ -73,6 +73,9 @@ PYTHON ?= python3
 
 # Defines
 ENV_DEFINES ?=
+ifeq ($(vcd_dump),1)
+ENV_DEFINES += -DVCD_DUMP=1
+endif
 MAKE_DEFINES = -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
 DEFINES += $(ENV_DEFINES) $(MAKE_DEFINES)
 

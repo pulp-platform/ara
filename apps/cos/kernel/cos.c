@@ -23,6 +23,10 @@ void cos_1xf64_bmark(double *angles, double *results, size_t len) {
   size_t avl = len;
   vfloat64m1_t cos_vec, res_vec;
 
+#ifdef VCD_DUMP
+  // Start dumping VCD
+  event_trigger = +1;
+#endif
   for (size_t vl = vsetvl_e64m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
     vl = vsetvl_e64m1(avl);
@@ -36,6 +40,10 @@ void cos_1xf64_bmark(double *angles, double *results, size_t len) {
     angles += vl;
     results += vl;
   }
+#ifdef VCD_DUMP
+  // Stop dumping VCD
+  event_trigger = -1;
+#endif
 }
 
 void cos_2xf32_bmark(float *angles, float *results, size_t len) {
@@ -43,6 +51,10 @@ void cos_2xf32_bmark(float *angles, float *results, size_t len) {
   size_t avl = len;
   vfloat32m1_t cos_vec, res_vec;
 
+#ifdef VCD_DUMP
+  // Start dumping VCD
+  event_trigger = +1;
+#endif
   for (size_t vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
     vl = vsetvl_e32m1(avl);
@@ -56,4 +68,8 @@ void cos_2xf32_bmark(float *angles, float *results, size_t len) {
     angles += vl;
     results += vl;
   }
+#ifdef VCD_DUMP
+  // Stop dumping VCD
+  event_trigger = -1;
+#endif
 }

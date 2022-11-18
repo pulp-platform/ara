@@ -109,9 +109,11 @@ void fmatmul_vec_4x4(double *c, const double *a, const double *b,
   while (n != N) {
 #ifdef VCD_DUMP
     // Start dumping VCD
-    if (n == 8)  event_trigger = +1;
+    if (n == 8)
+      event_trigger = +1;
     // Stop dumping VCD
-    if (n == 12) event_trigger = -1;
+    if (n == 12)
+      event_trigger = -1;
 #endif
 
     // Calculate pointer to the matrix A
@@ -241,9 +243,11 @@ void fmatmul_vec_8x8(double *c, const double *a, const double *b,
   while (n != N) {
 #ifdef VCD_DUMP
     // Start dumping VCD
-    if (n == 8)  event_trigger = +1;
+    if (n == 8)
+      event_trigger = +1;
     // Stop dumping VCD
-    if (n == 12) event_trigger = -1;
+    if (n == 12)
+      event_trigger = -1;
 #endif
 
     // Calculate pointer to the matrix A
@@ -417,9 +421,11 @@ void fmatmul_vec_16x16(double *c, const double *a, const double *b,
   while (n != N) {
 #ifdef VCD_DUMP
     // Start dumping VCD
-    if (n == 8)  event_trigger = +1;
+    if (n == 8)
+      event_trigger = +1;
     // Stop dumping VCD
-    if (n == 12) event_trigger = -1;
+    if (n == 12)
+      event_trigger = -1;
 #endif
 
     // Calculate pointer to the matrix A
