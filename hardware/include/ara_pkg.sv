@@ -124,7 +124,7 @@ package ara_pkg;
     VDIVU, VDIV, VREMU, VREM,
     // FPU
     VFADD, VFSUB, VFRSUB, VFMUL, VFDIV, VFRDIV, VFMACC, VFNMACC, VFMSAC, VFNMSAC, VFMADD, VFNMADD, VFMSUB,
-    VFNMSUB, VFSQRT, VFMIN, VFMAX, VFCLASS, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX,
+    VFNMSUB, VFSQRT, VFMIN, VFMAX,VFRSQRT7, VFCLASS, VFSGNJ, VFSGNJN, VFSGNJX, VFCVTXUF, VFCVTXF, VFCVTFXU, VFCVTFX,
     VFCVTRTZXUF, VFCVTRTZXF, VFCVTFF,
     // Floating-point reductions
     VFREDUSUM, VFREDOSUM, VFREDMIN, VFREDMAX, VFWREDUSUM, VFWREDOSUM,
@@ -1005,5 +1005,340 @@ package ara_pkg;
     axi_pkg::len_t len;
     logic is_load;
   } addrgen_axi_req_t;
+
+
+
+///////////////////////////
+  // VFSQRT7 Look Up Table //
+  //////////////////////////
+
+  function automatic logic [6:0] vfrsqrt7_lut(logic [6:0] vfrsqrt7_lut_select);
+      logic [6:0] vfrsqrt7_lut_out;
+      unique case (vfrsqrt7_lut_select)
+          7'd0  : vfrsqrt7_lut_out=7'd52;
+          7'd1  : vfrsqrt7_lut_out=7'd51;
+          7'd2  : vfrsqrt7_lut_out=7'd50;
+          7'd3  : vfrsqrt7_lut_out=7'd48;
+          7'd4  : vfrsqrt7_lut_out=7'd47;
+          7'd5  : vfrsqrt7_lut_out=7'd46;
+          7'd6  : vfrsqrt7_lut_out=7'd44;
+          7'd7  : vfrsqrt7_lut_out=7'd43;
+          7'd8  : vfrsqrt7_lut_out=7'd42;
+          7'd9  : vfrsqrt7_lut_out=7'd41;
+          7'd10 : vfrsqrt7_lut_out=7'd40;
+          7'd11 : vfrsqrt7_lut_out=7'd39;
+          7'd12 : vfrsqrt7_lut_out=7'd38;
+          7'd13 : vfrsqrt7_lut_out=7'd36;
+          7'd14 : vfrsqrt7_lut_out=7'd35;
+          7'd15 : vfrsqrt7_lut_out=7'd34;
+          7'd16 : vfrsqrt7_lut_out=7'd33;
+          7'd17 : vfrsqrt7_lut_out=7'd32;
+          7'd18 : vfrsqrt7_lut_out=7'd31;
+          7'd19 : vfrsqrt7_lut_out=7'd30;
+          7'd20 : vfrsqrt7_lut_out=7'd30;
+          7'd21 : vfrsqrt7_lut_out=7'd29;
+          7'd22 : vfrsqrt7_lut_out=7'd28;
+          7'd23 : vfrsqrt7_lut_out=7'd27;
+          7'd24 : vfrsqrt7_lut_out=7'd26;
+          7'd25 : vfrsqrt7_lut_out=7'd25;
+          7'd26 : vfrsqrt7_lut_out=7'd24;
+          7'd27 : vfrsqrt7_lut_out=7'd23;
+          7'd28 : vfrsqrt7_lut_out=7'd23;
+          7'd29 : vfrsqrt7_lut_out=7'd22;
+          7'd30 : vfrsqrt7_lut_out=7'd21;
+          7'd31 : vfrsqrt7_lut_out=7'd20;
+          7'd32 : vfrsqrt7_lut_out=7'd19;
+          7'd33 : vfrsqrt7_lut_out=7'd19;
+          7'd34 : vfrsqrt7_lut_out=7'd18;
+          7'd35 : vfrsqrt7_lut_out=7'd17;
+          7'd36 : vfrsqrt7_lut_out=7'd16;
+          7'd37 : vfrsqrt7_lut_out=7'd16;
+          7'd38 : vfrsqrt7_lut_out=7'd15;
+          7'd39 : vfrsqrt7_lut_out=7'd14;
+          7'd40 : vfrsqrt7_lut_out=7'd14;
+          7'd41 : vfrsqrt7_lut_out=7'd13;
+          7'd42 : vfrsqrt7_lut_out=7'd12;
+          7'd43 : vfrsqrt7_lut_out=7'd12;
+          7'd44 : vfrsqrt7_lut_out=7'd11;
+          7'd45 : vfrsqrt7_lut_out=7'd10;
+          7'd46 : vfrsqrt7_lut_out=7'd10;
+          7'd47 : vfrsqrt7_lut_out=7'd9;
+          7'd48 : vfrsqrt7_lut_out=7'd9;
+          7'd49 : vfrsqrt7_lut_out=7'd8;
+          7'd50 : vfrsqrt7_lut_out=7'd7;
+          7'd51 : vfrsqrt7_lut_out=7'd7;
+          7'd52 : vfrsqrt7_lut_out=7'd6;
+          7'd53 : vfrsqrt7_lut_out=7'd6;
+          7'd54 : vfrsqrt7_lut_out=7'd5;
+          7'd55 : vfrsqrt7_lut_out=7'd4;
+          7'd56 : vfrsqrt7_lut_out=7'd4;
+          7'd57 : vfrsqrt7_lut_out=7'd3;
+          7'd58 : vfrsqrt7_lut_out=7'd3;
+          7'd59 : vfrsqrt7_lut_out=7'd2;
+          7'd60 : vfrsqrt7_lut_out=7'd2;
+          7'd61 : vfrsqrt7_lut_out=7'd1;
+          7'd62 : vfrsqrt7_lut_out=7'd1;
+          7'd63 : vfrsqrt7_lut_out=7'd0;
+          7'd64 : vfrsqrt7_lut_out=7'd127;
+          7'd65 : vfrsqrt7_lut_out=7'd125;
+          7'd66 : vfrsqrt7_lut_out=7'd123;
+          7'd67 : vfrsqrt7_lut_out=7'd121;
+          7'd68 : vfrsqrt7_lut_out=7'd119;
+          7'd69 : vfrsqrt7_lut_out=7'd118;
+          7'd70 : vfrsqrt7_lut_out=7'd116;
+          7'd71 : vfrsqrt7_lut_out=7'd114;
+          7'd72 : vfrsqrt7_lut_out=7'd113;
+          7'd73 : vfrsqrt7_lut_out=7'd111;
+          7'd74 : vfrsqrt7_lut_out=7'd109;
+          7'd75 : vfrsqrt7_lut_out=7'd108;
+          7'd76 : vfrsqrt7_lut_out=7'd106;
+          7'd77 : vfrsqrt7_lut_out=7'd105;
+          7'd78 : vfrsqrt7_lut_out=7'd103;
+          7'd79 : vfrsqrt7_lut_out=7'd102;
+          7'd80 : vfrsqrt7_lut_out=7'd100;
+          7'd81 : vfrsqrt7_lut_out=7'd99;
+          7'd82 : vfrsqrt7_lut_out=7'd97;
+          7'd83 : vfrsqrt7_lut_out=7'd96;
+          7'd84 : vfrsqrt7_lut_out=7'd95;
+          7'd85 : vfrsqrt7_lut_out=7'd93;
+          7'd86 : vfrsqrt7_lut_out=7'd92;
+          7'd87 : vfrsqrt7_lut_out=7'd91;
+          7'd88 : vfrsqrt7_lut_out=7'd90;
+          7'd89 : vfrsqrt7_lut_out=7'd88;
+          7'd90 : vfrsqrt7_lut_out=7'd87;
+          7'd91 : vfrsqrt7_lut_out=7'd86;
+          7'd92 : vfrsqrt7_lut_out=7'd85;
+          7'd93 : vfrsqrt7_lut_out=7'd84;
+          7'd94 : vfrsqrt7_lut_out=7'd83;
+          7'd95 : vfrsqrt7_lut_out=7'd82;
+          7'd96 : vfrsqrt7_lut_out=7'd80;
+          7'd97 : vfrsqrt7_lut_out=7'd79;
+          7'd98 : vfrsqrt7_lut_out=7'd78;
+          7'd99 : vfrsqrt7_lut_out=7'd77;
+          7'd100: vfrsqrt7_lut_out=7'd76;
+          7'd101: vfrsqrt7_lut_out=7'd75;
+          7'd102: vfrsqrt7_lut_out=7'd74;
+          7'd103: vfrsqrt7_lut_out=7'd73;
+          7'd104: vfrsqrt7_lut_out=7'd72;
+          7'd105: vfrsqrt7_lut_out=7'd71;
+          7'd106: vfrsqrt7_lut_out=7'd70;
+          7'd107: vfrsqrt7_lut_out=7'd70;
+          7'd108: vfrsqrt7_lut_out=7'd69;
+          7'd109: vfrsqrt7_lut_out=7'd68;
+          7'd110: vfrsqrt7_lut_out=7'd67;
+          7'd111: vfrsqrt7_lut_out=7'd66;
+          7'd112: vfrsqrt7_lut_out=7'd65;
+          7'd113: vfrsqrt7_lut_out=7'd64;
+          7'd114: vfrsqrt7_lut_out=7'd63;
+          7'd115: vfrsqrt7_lut_out=7'd63;
+          7'd116: vfrsqrt7_lut_out=7'd62;
+          7'd117: vfrsqrt7_lut_out=7'd61;
+          7'd118: vfrsqrt7_lut_out=7'd60;
+          7'd119: vfrsqrt7_lut_out=7'd59;
+          7'd120: vfrsqrt7_lut_out=7'd59;
+          7'd121: vfrsqrt7_lut_out=7'd58;
+          7'd122: vfrsqrt7_lut_out=7'd57;
+          7'd123: vfrsqrt7_lut_out=7'd56;
+          7'd124: vfrsqrt7_lut_out=7'd56;
+          7'd125: vfrsqrt7_lut_out=7'd55;
+          7'd126: vfrsqrt7_lut_out=7'd54;
+          7'd127: vfrsqrt7_lut_out=7'd53;
+      endcase
+      return  vfrsqrt7_lut_out;
+  endfunction :  vfrsqrt7_lut
+  ////////////////////
+  //  VFRSQRT7 OUTPUT //
+  ////////////////////
+
+ //for SEW=16
+
+  function automatic logic [16:0]  vfrsqrt7_fp16(logic [9:0] vfpu_result, logic [15:0] operand_a_delay, logic[5:0] leading_zeros_count);
+
+     logic [15:0] vfrsqrt7_result,
+                  vfrsqrt7_norm_sig;
+     logic [5:0]  vfrsqrt7_exp_o,
+                  vfrsqrt7_exp_i;
+
+     vfrsqrt7_result   = 16'd0;
+     vfrsqrt7_norm_sig = 16'd0;
+     vfrsqrt7_exp_o    = 6'd0;
+     vfrsqrt7_exp_i    = 6'd0;
+
+        unique case (vfpu_result[9:0])
+          fpnew_pkg:: NEGINF,
+          fpnew_pkg:: NEGNORM,
+          fpnew_pkg:: NEGSUBNORM,
+          fpnew_pkg:: SNAN,
+          fpnew_pkg:: QNAN :     vfrsqrt7_result = 16'h7e00;
+          fpnew_pkg:: NEGZERO:   vfrsqrt7_result = 16'hfc00;
+          fpnew_pkg:: POSZERO:   vfrsqrt7_result = 16'h7c00;
+          fpnew_pkg:: POSINF:    vfrsqrt7_result = {operand_a_delay [15],15'b0};
+          fpnew_pkg:: POSSUBNORM:
+                        begin
+                                //Input exponent:
+                                //0 minus the number of leading zeros
+                                vfrsqrt7_exp_i = 6'd0-leading_zeros_count;
+                                //Output exponent can be found by
+                                //exp_o = (3*B-1-exp_i )/2
+                                //      = (3*B+(~exp_i))/2
+                                vfrsqrt7_exp_o = 6'd45+ +(~vfrsqrt7_exp_i);
+                                     // dividing by 2
+                                vfrsqrt7_result[14:10] = vfrsqrt7_exp_o[5:1];
+                                //As input is subnormal, So the normalized input significand
+                                //is given by shifting the input significand left by
+                                //1 minus the input exponent
+                                vfrsqrt7_norm_sig = operand_a_delay<<(6'd1-vfrsqrt7_exp_i);
+                                //Output significand can be found by
+                                //concatenating LSB of the normalized input exponent and
+                                //the six MSBs of the normalized input significand
+                                vfrsqrt7_result[9:3] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_norm_sig[9:4]});
+                                 //The output signequals the input sign.
+                                vfrsqrt7_result[15] = operand_a_delay [15];
+                        end
+          fpnew_pkg:: POSNORM:
+                       begin
+                                 //Output exponent can be found by
+                                 //exp_o = (3*B-1-exp_i )/2
+                                 //      = (3*B+(~exp_i))/2
+                                vfrsqrt7_exp_o = 6'd45+(~operand_a_delay[14:10]);
+                                     // dividing by 2
+                                vfrsqrt7_result[14:10] = vfrsqrt7_exp_o[5:1];
+                                //Output significand can be found by
+                                //concatenating LSB of the normalized input exponent and
+                                //the six MSBs of the normalized input significand
+                                vfrsqrt7_result[9:3]= vfrsqrt7_lut(operand_a_delay[10:4]);
+                                 //The output signequals the input sign.
+                                vfrsqrt7_result[15] = operand_a_delay[15];
+                        end
+         endcase
+      return vfrsqrt7_result;
+  endfunction : vfrsqrt7_fp16
+
+//for SEW=32
+  function automatic logic [31:0] vfrsqrt7_fp32(logic [9:0] vfpu_result, logic [31:0] operand_a_delay, logic [4:0] leading_zeros_count);
+
+     logic [31:0] vfrsqrt7_result,
+                  vfrsqrt7_norm_sig;
+     logic [8:0]  vfrsqrt7_exp_o,
+                  vfrsqrt7_exp_i;
+
+     vfrsqrt7_result   = 32'd0;
+     vfrsqrt7_norm_sig = 32'd0;
+     vfrsqrt7_exp_o    = 9'd0;
+     vfrsqrt7_exp_i    = 9'd0;
+
+       unique case (vfpu_result[9:0])
+          fpnew_pkg:: NEGINF,
+          fpnew_pkg:: NEGNORM,
+          fpnew_pkg:: NEGSUBNORM,
+          fpnew_pkg:: SNAN,
+          fpnew_pkg:: QNAN :     vfrsqrt7_result = 32'h7fc00000;
+          fpnew_pkg:: NEGZERO:   vfrsqrt7_result = 32'hff800000;
+          fpnew_pkg:: POSZERO:   vfrsqrt7_result = 32'h7f800000;
+          fpnew_pkg:: POSINF:    vfrsqrt7_result = {operand_a_delay [31],31'b0};
+          fpnew_pkg:: POSSUBNORM:
+                         begin
+                                //Input exponent:
+                                //0 minus the number of leading zeros
+                                vfrsqrt7_exp_i = 9'd0-leading_zeros_count;
+                                //Output exponent can be found by
+                                //exp_o = (3*B-1-exp_i )/2
+                                //      = (3*B+(~exp_i))/2
+                                vfrsqrt7_exp_o = 9'd381 +(~vfrsqrt7_exp_i);
+                                     // dividing by 2
+                                vfrsqrt7_result[30:23] = vfrsqrt7_exp_o[8:1];
+                                //As input is subnormal, So the normalized input significand
+                                //is given by shifting the input significand left by
+                                //1 minus the input exponent
+                                vfrsqrt7_norm_sig = operand_a_delay<<(9'd1-vfrsqrt7_exp_i);
+                                //Output significand can be found by
+                                //concatenating LSB of the normalized input exponent and
+                                //the six MSBs of the normalized input significand
+                                vfrsqrt7_result[22:16] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_norm_sig[22:17]});
+                                 //The output signequals the input sign.
+                                vfrsqrt7_result[31] = operand_a_delay [31];
+                         end
+          fpnew_pkg:: POSNORM:
+                         begin
+                                 //Exponent can be found by
+                                 //exp_o = (3*B-1-exp_i )/2
+                                 //      = (3*B+(~exp_i))/2
+                                 vfrsqrt7_exp_o = 9'd381 +(~operand_a_delay[30:23]);
+                                     // dividing by 2
+                                 vfrsqrt7_result[30:23] = vfrsqrt7_exp_o[8:1];
+                                //Output significand can be found by
+                                //concatenating LSB of the normalized input exponent and
+                                //the six MSBs of the normalized input significand
+                                 vfrsqrt7_result[22:16]= vfrsqrt7_lut(operand_a_delay[23:17]);
+                                 //The output signequals the input sign.
+                                 vfrsqrt7_result[31] =operand_a_delay [31];
+                          end
+         endcase
+      return vfrsqrt7_result;
+  endfunction : vfrsqrt7_fp32
+
+// for SEW=64
+
+  function automatic elen_t vfrsqrt7_fp64(logic [9:0] vfpu_result, elen_t operand_a_delay,logic [11:0] leading_zeros_count);
+
+     elen_t        vfrsqrt7_result,
+                   vfrsqrt7_norm_sig;
+     logic [11:0]  vfrsqrt7_exp_o,
+                   vfrsqrt7_exp_i;
+
+     vfrsqrt7_result   = 64'd0;
+     vfrsqrt7_norm_sig = 64'd0;
+     vfrsqrt7_exp_o    = 12'd0;
+     vfrsqrt7_exp_i    = 12'd0;
+
+            unique case (vfpu_result[9:0])
+          fpnew_pkg:: NEGINF,
+          fpnew_pkg:: NEGNORM,
+          fpnew_pkg:: NEGSUBNORM,
+          fpnew_pkg:: SNAN,
+          fpnew_pkg:: QNAN :     vfrsqrt7_result[63:0] = 64'h7ff8000000000000;
+          fpnew_pkg:: NEGZERO:   vfrsqrt7_result[63:0] = 64'hfff0000000000000;
+          fpnew_pkg:: POSZERO:   vfrsqrt7_result[63:0] = 64'h7ff0000000000000;
+          fpnew_pkg:: POSINF:    vfrsqrt7_result[63:0] = {operand_a_delay [63],63'b0};
+          fpnew_pkg:: POSSUBNORM:
+                      begin
+                                //Input exponent:
+                                //0 minus the number of leading zeros
+                                vfrsqrt7_exp_i = 12'd0-leading_zeros_count;
+                                //Output exponent can be found by
+                                //exp_o = (3*B-1-exp_i )/2
+                                //      = (3*B+(~exp_i))/2
+                                vfrsqrt7_exp_o = 12'd3069 +(~vfrsqrt7_exp_i);
+                                     // dividing by 2
+                                vfrsqrt7_result[62:52] = vfrsqrt7_exp_o[11:1];
+                                //As input is subnormal, So the normalized input significand
+                                //is given by shifting the input significand left by
+                                //1 minus the input exponent
+                                vfrsqrt7_norm_sig = operand_a_delay<<(12'd1-vfrsqrt7_exp_i);
+                                //Output significand can be found by
+                                //concatenating LSB of the normalized input exponent and
+                                //the six MSBs of the normalized input significand
+                                vfrsqrt7_result[51:45] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_norm_sig[51:46]});
+                                 //The output signequals the input sign.
+                                vfrsqrt7_result[63] = operand_a_delay [63];
+                      end
+          fpnew_pkg:: POSNORM:
+                      begin
+                                //Output exponent can be found by
+                                //exp_o = (3*B-1-exp_i )/2
+                                //      = (3*B+(~exp_i))/2
+                                vfrsqrt7_exp_o= 12'd3069 +(~operand_a_delay[62:52]);
+                                    // dividing by 2
+                                vfrsqrt7_result[62:52] = vfrsqrt7_exp_o[11:1];
+                                //Output significand can be found by
+                                //concatenating LSB of the normalized input exponent and
+                                //the six MSBs of the normalized input significand
+                                vfrsqrt7_result[51:45]= vfrsqrt7_lut(operand_a_delay[52:46]);
+                                //The output signequals the input sign.
+                                vfrsqrt7_result[63] =operand_a_delay [63];
+                        end
+            endcase
+         return vfrsqrt7_result;
+  endfunction : vfrsqrt7_fp64
 
 endpackage : ara_pkg
