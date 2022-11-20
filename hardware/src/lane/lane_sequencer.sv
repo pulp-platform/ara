@@ -43,21 +43,29 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   pe_req_t pe_req;
   logic    pe_req_valid;
   logic    pe_req_ready;
+  logic    fifo_full, fifo_empty;
 
-  fall_through_register #(
-    .T(pe_req_t)
-  ) i_pe_req_register (
-    .clk_i     (clk_i         ),
-    .rst_ni    (rst_ni        ),
-    .clr_i     (1'b0          ),
-    .testmode_i(1'b0          ),
-    .data_i    (pe_req_i      ),
-    .valid_i   (pe_req_valid_i),
-    .ready_o   (pe_req_ready_o),
-    .data_o    (pe_req        ),
-    .valid_o   (pe_req_valid  ),
-    .ready_i   (pe_req_ready  )
+  fifo_v3 #(
+      .FALL_THROUGH   (1'b1),
+      .DATA_WIDTH     ($size(pe_req_t)),
+      .DEPTH          (8),
+      .dtype          (pe_req_t)
+  ) i_pe_req_fall_through_fifo (
+      .clk_i          (clk_i),
+      .rst_ni         (rst_ni),
+      .flush_i        (1'b0),
+      .testmode_i     (1'b0),
+      .full_o         (fifo_full),
+      .empty_o        (fifo_empty),
+      .usage_o        (),
+      .data_i         (pe_req_i),
+      .push_i         (pe_req_valid_i & ~fifo_full),
+      .data_o         (pe_req),
+      .pop_i          (pe_req_ready & ~fifo_empty)
   );
+
+  assign pe_req_ready_o = ~fifo_full;
+  assign pe_req_valid   = ~fifo_empty;
 
   //////////////////////////////////////
   //  Operand Request Command Queues  //
