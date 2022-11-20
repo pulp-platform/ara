@@ -191,8 +191,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   operand_requester #(
     .NrBanks(NrVRFBanksPerLane),
-    .NrLanes(NrLanes          ),
-    .vaddr_t(vaddr_t          )
+    .NrLanes(NrLanes          )
   ) i_operand_requester (
     .clk_i                    (clk_i                   ),
     .rst_ni                   (rst_ni                  ),

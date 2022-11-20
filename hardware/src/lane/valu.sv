@@ -8,15 +8,20 @@
 // in a SIMD fashion, always operating on 64 bits.
 
 module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int  unsigned NrLanes      = 0,
+    parameter  int  unsigned NrLanes         = 0,
     // Support for fixed-point data types
-    parameter  logic         FixPtSupport = FixedPointEnable,
+    parameter  logic         FixPtSupport    = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type          vaddr_t      = logic,
+    localparam int  unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int  unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int  unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam int  unsigned VaddrVregWidth  = $clog2(MaxVLenBPerLane),
+    localparam type          vaddr_t         = logic [VaddrIdxWidth-1:0],
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth    = $bits(elen_t),
-    localparam int  unsigned StrbWidth    = DataWidth/8,
-    localparam type          strb_t       = logic [StrbWidth-1:0]
+    localparam int  unsigned DataWidth       = $bits(elen_t),
+    localparam int  unsigned StrbWidth       = DataWidth/8,
+    localparam type          strb_t          = logic [StrbWidth-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -54,6 +59,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     input  logic                         mask_valid_i,
     output logic                         mask_ready_o
   );
+
+  // Include address-handling functions
+  `include "../../include/ara_vaddr.svh"
 
   import cf_math_pkg::idx_width;
 
@@ -136,6 +144,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     strb_t be;
     logic mask;
   } payload_t;
+
+  vaddr_t addr_d, addr_q;
 
   // Result queue
   payload_t [ResultQueueDepth-1:0]            result_queue_d, result_queue_q;
@@ -424,6 +434,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     reduction_rx_cnt_d      = reduction_rx_cnt_q;
     sldu_transactions_cnt_d = sldu_transactions_cnt_q;
     red_hs_synch_d          = red_hs_synch_q;
+    addr_d                  = addr_q;
     alu_red_valid_o         = 1'b0;
     sldu_alu_ready_d        = 1'b0;
     simd_red_cnt_max_d      = simd_red_cnt_max_q;
@@ -474,8 +485,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                 mask_ready_o = !vinsn_issue_q.vm;
 
               // Store the result in the result queue
+              addr_d = next_vaddr(addr_q, vinsn_issue_q.vd);
               result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
-              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
+              result_queue_d[result_queue_write_pnt_q].addr  = addr_q;
               result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
               result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
               if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
@@ -530,6 +542,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                   vinsn_queue_d.issue_pnt = '0;
                 else
                   vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+                // Change starting address when we issue a new instruction
+                // Since this unit is not pipelined and elements written in the
+                // result queue belong to vinsn_issue_q
+                addr_d = vaddr(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vd, NrLanes);
 
                 // Assign vector length for next instruction in the instruction queue
                 if (vinsn_queue_d.issue_cnt != 0) begin
@@ -830,6 +847,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         red_hs_synch_d = 1'b1; // Allow the first valid
 
         issue_cnt_d = vfu_operation_i.vl;
+        // Initialize the starting address for the next instruction
+        addr_d = vaddr(vfu_operation_i.vd, NrLanes);
         if (!(vfu_operation_i.op inside {[VMANDNOT:VMXNOR]}))
           issue_cnt_d = vfu_operation_i.vl;
         else begin
@@ -877,6 +896,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       simd_red_cnt_max_q      <= '0;
       alu_red_ready_q         <= 1'b0;
       alu_vxsat_q             <= '0;
+      addr_q                  <= '0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       commit_cnt_q            <= commit_cnt_d;
@@ -890,6 +910,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       simd_red_cnt_max_q      <= simd_red_cnt_max_d;
       alu_red_ready_q         <= alu_red_ready_i;
       alu_vxsat_q             <= alu_vxsat_d;
+      addr_q                  <= addr_d;
     end
   end
 
