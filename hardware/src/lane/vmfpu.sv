@@ -9,15 +9,19 @@
 
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned NrLanes    = 0,
+    parameter  int           unsigned NrLanes         = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // Type used to address vector register file elements
-    parameter  type                   vaddr_t    = logic,
+    localparam int           unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int           unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int           unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int           unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam type          vaddr_t                  = logic [VaddrIdxWidth-1:0],
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           unsigned DataWidth  = $bits(elen_t),
-    localparam int           unsigned StrbWidth  = DataWidth/8,
-    localparam type                   strb_t     = logic [DataWidth/8-1:0]
+    localparam int           unsigned DataWidth       = $bits(elen_t),
+    localparam int           unsigned StrbWidth       = DataWidth/8,
+    localparam type                   strb_t          = logic [DataWidth/8-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -55,6 +59,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     input  logic                         mask_valid_i,
     output logic                         mask_ready_o
   );
+
+  // Include address-handling functions
+  `include "../../include/ara_vaddr.svh"
 
   ////////////////////////////////
   //  Vector instruction queue  //
@@ -174,6 +181,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   //////////////////////
   //  Helper signals  //
   //////////////////////
+
+  vaddr_t addr_d, addr_q;
 
   logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
 
@@ -1019,6 +1028,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     reduction_rx_cnt_d      = reduction_rx_cnt_q;
     sldu_transactions_cnt_d = sldu_transactions_cnt_q;
     red_hs_synch_d          = red_hs_synch_q;
+    addr_d                  = addr_q;
     mfpu_red_valid_o        = 1'b0;
     sldu_mfpu_ready_d       = 1'b0;
     simd_red_cnt_max_d      = simd_red_cnt_max_q;
@@ -1193,9 +1203,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           to_process_cnt_d = (narrowing(vinsn_processing_q.cvt_resize)) ? (to_process_cnt_q - processed_element_cnt_narrow) : (to_process_cnt_q - processed_element_cnt);
 
           // Store the result in the result queue
+          addr_d = increment_vaddr(addr_q, vinsn_processing_q.vd);
           result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
-          result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes) +
-            ((vinsn_processing_q.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing_q.vtype.vsew));
+          result_queue_d[result_queue_write_pnt_q].addr  = addr_q;
           // FP narrowing instructions pack the result in two different cycles, and only some 16-bit slices are active
           if (narrowing(vinsn_processing_q.cvt_resize)) begin
             for (int b = 0; b < 4; b++) begin
@@ -1250,6 +1260,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
             if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
               vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
+
+            // Update the address for the results of the next cycles since they belong
+            // to the next instruction
+            addr_d = vaddr(vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vd, NrLanes);
           end
         end
       end
@@ -1664,6 +1678,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         if (vinsn_queue_d.processing_cnt != 0) to_process_cnt_d =
           vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vl;
 
+        // Update the starting address for the next instruction
+        addr_d = vaddr(vinsn_queue_q.vinsn[vinsn_queue_d.processing_pnt].vd, NrLanes);
+
         // Bump issue counter and pointers
         vinsn_queue_d.issue_cnt -= 1;
         if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) vinsn_queue_d.issue_pnt = '0;
@@ -1801,7 +1818,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         osum_issue_cnt_d        = '0;
         issue_cnt_d             = vfu_operation_i.vl;
       end
-      if (vinsn_queue_d.processing_cnt == '0) to_process_cnt_d = vfu_operation_i.vl;
+      if (vinsn_queue_d.processing_cnt == '0) begin
+        to_process_cnt_d = vfu_operation_i.vl;
+        // A new instruction to process; update the starting address
+        addr_d = vaddr(vfu_operation_i.vd, NrLanes);
+      end
       if (vinsn_queue_d.commit_cnt == '0) commit_cnt_d =
         is_reduction(vfu_operation_i.op) ? 1 : vfu_operation_i.vl;
       // Floating-Point re-encoding for widening operations
@@ -1869,6 +1890,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       intra_issued_op_cnt_q   <= '0;
       intra_op_rx_cnt_q       <= '0;
       osum_issue_cnt_q        <= '0;
+      addr_q                  <= '0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       to_process_cnt_q        <= to_process_cnt_d;
@@ -1891,6 +1913,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       intra_issued_op_cnt_q   <= intra_issued_op_cnt_d;
       intra_op_rx_cnt_q       <= intra_op_rx_cnt_d;
       osum_issue_cnt_q        <= osum_issue_cnt_d;
+      addr_q                  <= addr_d;
     end
   end
 
