@@ -131,6 +131,10 @@ module ara import ara_pkg::*; #(
   logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table;
   // Ready for lane 0 (scalar operand fwd)
   logic pe_scalar_resp_ready;
+  // VLDU Hazard checking
+  vid_t                         vldu_commit_id;
+  logic                         vldu_commit_id_valid;
+  logic                         vldu_hazard;
 
   // Mask unit operands
   elen_t     [NrLanes-1:0][NrMaskFUnits+2-1:0] masku_operand;
@@ -168,7 +172,11 @@ module ara import ara_pkg::*; #(
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack              ),
     .addrgen_error_i       (addrgen_error            ),
-    .addrgen_error_vl_i    (addrgen_error_vl         )
+    .addrgen_error_vl_i    (addrgen_error_vl         ),
+    // Interface with the VLDU for hazard handling
+    .vldu_commit_id_i      (vldu_commit_id           ),
+    .vldu_commit_id_valid_i(vldu_commit_id_valid     ),
+    .vldu_hazard_o         (vldu_hazard              )
   );
 
   // Scalar move support
@@ -331,6 +339,9 @@ module ara import ara_pkg::*; #(
     .addrgen_ack_o              (addrgen_ack                                           ),
     .addrgen_error_o            (addrgen_error                                         ),
     .addrgen_error_vl_o         (addrgen_error_vl                                      ),
+    .commit_id_o                (vldu_commit_id                                        ),
+    .commit_id_valid_o          (vldu_commit_id_valid                                  ),
+    .hazard_i                   (vldu_hazard                                           ),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),
