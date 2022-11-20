@@ -9,11 +9,16 @@
 // queues. This stage also includes the VRF arbiter.
 
 module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned NrBanks = 0,     // Number of banks in the vector register file
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int unsigned NrLanes         = 0,
+    parameter  int unsigned NrBanks         = 0, // Number of banks in the vector register file
+    // Type used to address vector register file elements
+    localparam int unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam type         vaddr_t         = logic [VaddrIdxWidth-1:0],
     // Dependant parameters. DO NOT CHANGE!
-    localparam type          strb_t  = logic[$bits(elen_t)/8-1:0]
+    localparam type          strb_t         = logic[$bits(elen_t)/8-1:0]
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,
@@ -75,6 +80,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                       ldu_result_gnt_o,
     output logic                                       ldu_result_final_gnt_o
   );
+
+  `include "../include/ara_vaddr.svh"
 
   import cf_math_pkg::idx_width;
 
@@ -233,6 +240,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       vid_t id;
       // Address of the next element to be read
       vaddr_t addr;
+      // Source reg LSbs (useful for barber's pole)
+      logic [idx_width(NrBanks)-1:0] vs;
       // How many elements remain to be read
       vlen_t len;
       // Element width
@@ -315,6 +324,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               addr   : vaddr(operand_request_i[requester].vs, NrLanes) +
               (operand_request_i[requester].vstart >>
                 (int'(EW64) - int'(operand_request_i[requester].eew))),
+              vs     : operand_request_i[requester].vs[idx_width(NrBanks)-1:0],
               // For memory operations, the number of elements initially refers to the new EEW (vsew here),
               // but the requester must refer to the old EEW (eew here)
               // This reasoning cannot be applied also to widening instructions, which modify vsew
@@ -362,7 +372,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Received a grant.
             if (|operand_requester_gnt) begin
               // Bump the address pointer
-              requester_d.addr = requester_q.addr + 1'b1;
+              requester_d.addr = increment_vaddr(requester_q.addr, requester_q.vs);
 
               // We read less than 64 bits worth of elements
               if (requester_q.len < (1 << (int'(EW64) - int'(requester_q.vew))))
@@ -403,6 +413,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   addr : vaddr(operand_request_i[requester].vs, NrLanes) +
                   (operand_request_i[requester].vstart >>
                     (int'(EW64) - int'(operand_request_i[requester].eew))),
+                  vs     : operand_request_i[requester].vs[idx_width(NrBanks)-1:0],
                   len    : (operand_request_i[requester].scale_vl) ?
                              ((operand_request_i[requester].vl <<
                              operand_request_i[requester].vtype.vsew) >>

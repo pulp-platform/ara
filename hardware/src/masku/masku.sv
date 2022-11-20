@@ -10,12 +10,17 @@
 // predicated instructions.
 
 module masku import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes         = 0,
+    // Address of an element in the lane's VRF
+    localparam int  unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int  unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int  unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam type          vaddr_t         = logic [VaddrIdxWidth-1:0],
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
-    localparam int  unsigned StrbWidth = DataWidth/8,
-    localparam type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
+    localparam int  unsigned DataWidth       = $bits(elen_t), // Width of the lane datapath
+    localparam int  unsigned StrbWidth       = DataWidth/8,
+    localparam type          strb_t          = logic [StrbWidth-1:0] // Byte-strobe type
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,
@@ -45,6 +50,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                       vstu_mask_ready_i,
     input  logic                                       sldu_mask_ready_i
   );
+
+  // Include address-handling functions
+  `include "../../include/ara_vaddr.svh"
 
   import cf_math_pkg::idx_width;
 
@@ -139,6 +147,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // There is a mask queue per lane, holding the operands that were not
   // yet used by the corresponding lane.
+
+  vaddr_t addr_d, addr_q;
 
   // Mask queue
   strb_t [MaskQueueDepth-1:0][NrLanes-1:0] mask_queue_d, mask_queue_q;
@@ -407,6 +417,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     issue_cnt_d   = issue_cnt_q;
     commit_cnt_d  = commit_cnt_q;
 
+    addr_d = addr_q;
+
     mask_pnt_d = mask_pnt_q;
     vrf_pnt_d  = vrf_pnt_q;
 
@@ -491,6 +503,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         else
           mask_queue_write_pnt_d = mask_queue_write_pnt_q + 1;
 
+        // Increment write-back address
+        addr_d = increment_vaddr(addr_q, vinsn_issue.vd);
+
         // Account for the operands that were issued
         read_cnt_d = read_cnt_q - NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
         if (read_cnt_q < NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew)))
@@ -561,8 +576,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             result_queue_d[result_queue_write_pnt_q][lane] = '{
               wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result[lane],
               be   : be(element_cnt, vinsn_issue.vtype.vsew),
-              addr : vaddr(vinsn_issue.vd, NrLanes) +
-                (((vinsn_issue.vl - issue_cnt_q) / NrLanes / DataWidth)),
+              addr : addr_q,
               id : vinsn_issue.id
             };
           end
@@ -570,6 +584,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           // Increment the VRF pointer
           if (vinsn_issue.op inside {[VMFEQ:VMSBC]}) begin
             vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
+
+            // Increment write-back address
+            addr_d = increment_vaddr(addr_q, vinsn_issue.vd);
 
             // Filled-up a word, or finished execution
             if (vrf_pnt_d == DataWidth*NrLanes || vrf_pnt_d >= issue_cnt_q) begin
@@ -745,6 +762,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         issue_cnt_d = pe_req_i.vl;
         read_cnt_d  = pe_req_i.vl;
 
+        // Initialize the starting address of the next instruction
+        addr_d = vaddr(pe_req_i.vd, NrLanes);
+
         // Trim skipped words
         if (pe_req_i.op == VSLIDEUP) begin
           issue_cnt_d -= vlen_t'(trimmed_stride);
@@ -797,6 +817,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= '0;
       pe_resp_o          <= '0;
       result_final_gnt_q <= '0;
+      addr_q             <= '0;
     end else begin
       vinsn_running_q    <= vinsn_running_d;
       read_cnt_q         <= read_cnt_d;
@@ -806,6 +827,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= mask_pnt_d;
       pe_resp_o          <= pe_resp;
       result_final_gnt_q <= result_final_gnt_d;
+      addr_q             <= addr_d;
     end
   end
 

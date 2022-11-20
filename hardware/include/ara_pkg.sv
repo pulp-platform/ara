@@ -852,11 +852,6 @@ package ara_pkg;
   // Each lane has eight VRF banks
   localparam int unsigned NrVRFBanksPerLane = 8;
 
-  // Find the starting address of a vector register vid
-  function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB / NrLanes / 8);
-  endfunction: vaddr
-
   // Differenciate between SLDU and ADDRGEN operands from opqueue
   typedef enum logic {
     SLDU    = 1'b0,

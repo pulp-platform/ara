@@ -87,8 +87,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   //////////////////
 
   valu #(
-    .NrLanes(NrLanes),
-    .vaddr_t(vaddr_t)
+    .NrLanes(NrLanes)
   ) i_valu (
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
@@ -131,8 +130,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
 
   vmfpu #(
     .NrLanes   (NrLanes   ),
-    .FPUSupport(FPUSupport),
-    .vaddr_t   (vaddr_t   )
+    .FPUSupport(FPUSupport)
   ) i_vmfpu (
     .clk_i                (clk_i                           ),
     .rst_ni               (rst_ni                          ),
