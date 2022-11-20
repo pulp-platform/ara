@@ -74,17 +74,17 @@ package ara_pkg;
   localparam int unsigned LatFMax = LatFCompEW64;
 
   // Define the maximum instruction queue depth
-  localparam MaxVInsnQueueDepth = 4;
+  localparam MaxVInsnQueueDepth = 8;
   // FUs instruction queue depth.
-  localparam int unsigned MfpuInsnQueueDepth = 4;
-  localparam int unsigned ValuInsnQueueDepth = 4;
-  localparam int unsigned VlduInsnQueueDepth = 4;
-  localparam int unsigned VstuInsnQueueDepth = 4;
-  localparam int unsigned VaddrgenInsnQueueDepth = 4;
-  localparam int unsigned SlduInsnQueueDepth = 2;
-  localparam int unsigned NoneInsnQueueDepth = 1;
+  localparam int unsigned MfpuInsnQueueDepth     = 8;
+  localparam int unsigned ValuInsnQueueDepth     = 4;
+  localparam int unsigned VlduInsnQueueDepth     = 8;
+  localparam int unsigned VstuInsnQueueDepth     = 8;
+  localparam int unsigned VaddrgenInsnQueueDepth = 8;
+  localparam int unsigned SlduInsnQueueDepth     = 2;
+  localparam int unsigned NoneInsnQueueDepth     = 1;
   // Ara supports MaskuInsnQueueDepth = 1 only.
-  localparam int unsigned MaskuInsnQueueDepth = 1;
+  localparam int unsigned MaskuInsnQueueDepth    = 1;
 
   ///////////////////
   //  Definitions  //
