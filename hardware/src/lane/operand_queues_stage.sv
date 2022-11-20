@@ -52,12 +52,13 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   ///////////
 
   operand_queue #(
-    .BufferDepth   (5         ),
-    .FPUSupport    (FPUSupport),
-    .NrLanes       (NrLanes   ),
-    .SupportIntExt2(1'b1      ),
-    .SupportIntExt4(1'b1      ),
-    .SupportIntExt8(1'b1      )
+    .CmdBufDepth   (ValuInsnQueueDepth),
+    .DataBufDepth  (5                 ),
+    .FPUSupport    (FPUSupport        ),
+    .NrLanes       (NrLanes           ),
+    .SupportIntExt2(1'b1              ),
+    .SupportIntExt4(1'b1              ),
+    .SupportIntExt8(1'b1              )
   ) i_operand_queue_alu_a (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -75,12 +76,13 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   );
 
   operand_queue #(
-    .BufferDepth   (5         ),
-    .FPUSupport    (FPUSupport),
-    .NrLanes       (NrLanes   ),
-    .SupportIntExt2(1'b1      ),
-    .SupportIntExt4(1'b1      ),
-    .SupportIntExt8(1'b1      )
+    .CmdBufDepth   (ValuInsnQueueDepth),
+    .DataBufDepth  (5                 ),
+    .FPUSupport    (FPUSupport        ),
+    .NrLanes       (NrLanes           ),
+    .SupportIntExt2(1'b1              ),
+    .SupportIntExt4(1'b1              ),
+    .SupportIntExt8(1'b1              )
   ) i_operand_queue_alu_b (
     .clk_i                    (clk_i                          ),
     .rst_ni                   (rst_ni                         ),
@@ -102,10 +104,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   //////////////////////
 
   operand_queue #(
-    .BufferDepth   (5         ),
-    .FPUSupport    (FPUSupport),
-    .NrLanes       (NrLanes   ),
-    .SupportIntExt2(1'b1      )
+    .CmdBufDepth   (MfpuInsnQueueDepth ),
+    .DataBufDepth  (5                  ),
+    .FPUSupport    (FPUSupport         ),
+    .NrLanes       (NrLanes            ),
+    .SupportIntExt2(1'b1               )
   ) i_operand_queue_mfpu_a (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -123,10 +126,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   );
 
   operand_queue #(
-    .BufferDepth   (5         ),
-    .FPUSupport    (FPUSupport),
-    .NrLanes       (NrLanes   ),
-    .SupportIntExt2(1'b1      )
+    .CmdBufDepth   (MfpuInsnQueueDepth ),
+    .DataBufDepth  (5                  ),
+    .FPUSupport    (FPUSupport         ),
+    .NrLanes       (NrLanes            ),
+    .SupportIntExt2(1'b1               )
   ) i_operand_queue_mfpu_b (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -144,10 +148,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   );
 
   operand_queue #(
-    .BufferDepth   (5         ),
-    .FPUSupport    (FPUSupport),
-    .NrLanes       (NrLanes   ),
-    .SupportIntExt2(1'b1      )
+    .CmdBufDepth   (MfpuInsnQueueDepth ),
+    .DataBufDepth  (5                  ),
+    .FPUSupport    (FPUSupport         ),
+    .NrLanes       (NrLanes            ),
+    .SupportIntExt2(1'b1               )
   ) i_operand_queue_mfpu_c (
     .clk_i                    (clk_i                             ),
     .rst_ni                   (rst_ni                            ),
@@ -169,9 +174,10 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   ///////////////////////
 
   operand_queue #(
-    .BufferDepth(2         ),
-    .FPUSupport (FPUSupport),
-    .NrLanes    (NrLanes   )
+    .CmdBufDepth   (VstuInsnQueueDepth + MaskuInsnQueueDepth),
+    .DataBufDepth  (2                                       ),
+    .FPUSupport    (FPUSupport                              ),
+    .NrLanes       (NrLanes                                 )
   ) i_operand_queue_st_mask_a (
     .clk_i                    (clk_i                         ),
     .rst_ni                   (rst_ni                        ),
@@ -193,9 +199,10 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
    ****************/
 
   operand_queue #(
-    .BufferDepth(2         ),
-    .FPUSupport (FPUSupport),
-    .NrLanes    (NrLanes   )
+    .CmdBufDepth   (VlduInsnQueueDepth),
+    .DataBufDepth  (2                 ),
+    .FPUSupport    (FPUSupport        ),
+    .NrLanes       (NrLanes           )
   ) i_operand_queue_slide_addrgen_a (
     .clk_i                    (clk_i                                         ),
     .rst_ni                   (rst_ni                                        ),
@@ -217,11 +224,12 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   /////////////////
 
   operand_queue #(
-    .BufferDepth(1         ),
-    .FPUSupport (FPUSupport),
-    .SupportIntExt2(1'b1),
-    .SupportIntExt4(1'b1),
-    .SupportIntExt8(1'b1),
+    .CmdBufDepth   (MaskuInsnQueueDepth),
+    .DataBufDepth  (1                  ),
+    .FPUSupport    (FPUSupport         ),
+    .SupportIntExt2(1'b1               ),
+    .SupportIntExt4(1'b1               ),
+    .SupportIntExt8(1'b1               ),
     .NrLanes    (NrLanes   )
   ) i_operand_queue_mask_b (
     .clk_i                    (clk_i                           ),
@@ -240,8 +248,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   );
 
   operand_queue #(
-    .BufferDepth(1         ),
-    .NrLanes    (NrLanes   )
+    .CmdBufDepth   (MaskuInsnQueueDepth),
+    .DataBufDepth  (1                  ),
+    .NrLanes       (NrLanes            )
   ) i_operand_queue_mask_m (
     .clk_i                    (clk_i                           ),
     .rst_ni                   (rst_ni                          ),

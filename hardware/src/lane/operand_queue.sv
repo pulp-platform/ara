@@ -9,7 +9,8 @@
 // need it.
 
 module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned BufferDepth    = 2,
+    parameter  int           unsigned CmdBufDepth    = 2,
+    parameter  int           unsigned DataBufDepth   = 2,
     parameter  int           unsigned NrSlaves       = 1,
     parameter  int           unsigned NrLanes        = 0,
     // Support for floating-point data types
@@ -49,7 +50,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic               cmd_pop;
 
   fifo_v3 #(
-    .DEPTH(BufferDepth        ),
+    .DEPTH(CmdBufDepth        ),
     .dtype(operand_queue_cmd_t)
   ) i_cmd_buffer (
     .clk_i     (clk_i                    ),
@@ -76,8 +77,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic  ibuf_pop;
 
   fifo_v3 #(
-    .DEPTH     (BufferDepth),
-    .DATA_WIDTH(DataWidth  )
+    .DEPTH     (DataBufDepth),
+    .DATA_WIDTH(DataWidth   )
   ) i_input_buffer (
     .clk_i     (clk_i          ),
     .rst_ni    (rst_ni         ),
@@ -95,7 +96,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
   // We used a credit based system, to ensure that the FIFO is always
   // able to accept a request.
-  logic [idx_width(BufferDepth):0] ibuf_usage_d, ibuf_usage_q;
+  logic [idx_width(DataBufDepth):0] ibuf_usage_d, ibuf_usage_q;
 
   always_comb begin: p_ibuf_usage
     // Maintain state
@@ -107,7 +108,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     if (ibuf_pop) ibuf_usage_d -= 1;
 
     // Are we ready?
-    operand_queue_ready_o = (ibuf_usage_q != BufferDepth);
+    operand_queue_ready_o = (ibuf_usage_q != DataBufDepth);
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_ibuf_usage_ff
