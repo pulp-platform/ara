@@ -158,8 +158,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .axi_r_t     (axi_r_t     ),
-    .NrLanes     (NrLanes     ),
-    .vaddr_t     (vaddr_t     )
+    .NrLanes     (NrLanes     )
   ) i_vldu (
     .clk_i                  (clk_i                     ),
     .rst_ni                 (rst_ni                    ),
