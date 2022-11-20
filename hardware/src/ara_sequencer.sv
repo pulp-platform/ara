@@ -41,7 +41,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Interface with the Address Generation
     input  logic                            addrgen_ack_i,
     input  logic                            addrgen_error_i,
-    input  vlen_t                           addrgen_error_vl_i
+    input  vlen_t                           addrgen_error_vl_i,
+    // Interface with the VLDU to handle load WAW and WAR hazards
+    input  vid_t                            vldu_commit_id_i,
+    input  logic                            vldu_commit_id_valid_i,
+    output logic                            vldu_hazard_o
   );
 
   ///////////////////////////////////
@@ -261,6 +265,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     write_list_d          = write_list_q;
     global_hazard_table_d = global_hazard_table_o;
 
+    // No hazard check requested
+    vldu_hazard_o = 1'b0;
+
     // Maintain request
     pe_req_d       = '0;
     pe_req_valid_d = 1'b0;
@@ -369,10 +376,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
                                                 pe_req_d.hazard_vs1 | pe_req_d.hazard_vs2;
 
             // We only issue instructions that take no operands if they have no hazards.
+            // Exception to this rule: loads, as they are super common. WAW and WAR hazards
+            // on load instructions are handled in the VLDU.
             // Moreover, SLIDE instructions cannot be always chained
             // ToDo: optimize the case for vslide1down, vslide1up (wait 2 cycles, then chain)
-            if (!(|{ara_req_i.use_vs1, ara_req_i.use_vs2, ara_req_i.use_vd_op, !ara_req_i.vm}) &&
-                |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2, pe_req_d.hazard_vm, pe_req_d.hazard_vd} ||
+            if ((!(|{ara_req_i.use_vs1, ara_req_i.use_vs2, ara_req_i.use_vd_op, !ara_req_i.vm})              &&
+                |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2, pe_req_d.hazard_vm, pe_req_d.hazard_vd}          &&
+                !(is_load(pe_req_d.op)))                                                                     ||
                 (pe_req_d.op == VSLIDEUP && |{pe_req_d.hazard_vd, pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}) ||
                 (pe_req_d.op == VSLIDEDOWN && |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}))
             begin
@@ -451,6 +461,18 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         end
       end
     endcase
+
+    // Load-related hazards handling
+    // Loads are masters on the x-bar to write the in-lane VRF. Nevertheless,
+    // they can have WAR or WAW dependencies. When there is a load in the load
+    // unit, its hazard bit is always checked and cleared here as soon as the
+    // dependency does not exist anymore. Whenever the hazard bit is set,
+    // the load cannot issue requests.
+    // It's safe to pipeline vldu_hazard_o if the timing is tight.
+    // (if so, add a sync signal)
+    if (vldu_commit_id_valid_i) begin
+      vldu_hazard_o = |global_hazard_table_o[vldu_commit_id_i];
+    end
 
     // Update the global hazard table
     for (int id = 0; id < NrVInsn; id++) global_hazard_table_d[id] &= vinsn_running_d;

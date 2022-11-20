@@ -44,6 +44,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                    addrgen_ack_o,
     output logic                    addrgen_error_o,
     output vlen_t                   addrgen_error_vl_o,
+    output vid_t                    commit_id_o,
+    output logic                    commit_id_valid_o,
+    input  logic                    hazard_i,
     // Interface with the lanes
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
@@ -172,6 +175,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i     (pe_vinsn_running_i        ),
     .pe_req_ready_o         (pe_req_ready_o[OffsetLoad]),
     .pe_resp_o              (pe_resp_o[OffsetLoad]     ),
+    .commit_id_o            (commit_id_o               ),
+    .commit_id_valid_o      (commit_id_valid_o         ),
+    .hazard_i               (hazard_i                  ),
     // Interface with the address generator
     .axi_addrgen_req_i      (axi_addrgen_req           ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid     ),
