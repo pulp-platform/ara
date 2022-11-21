@@ -119,6 +119,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Parametrize `vfrec7` support
  - Support for vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
  - Parametrize `vfrsqrt7` support
+ - Support for vector permute instructions: `vrgather`, `vrgatherei16`, `vcompress`
 
 ### Changed
 
