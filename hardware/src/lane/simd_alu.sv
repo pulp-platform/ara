@@ -111,6 +111,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VMXOR   : res = operand_a_i ^ operand_b_i;
         VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
+        // vmsbf, vmsof, vmsif and viota operand generation
+        VMSBF, VMSOF, VMSIF, VIOTA : res = opb;
+
         // Arithmetic instructions
         VADD, VADC, VMADC, VREDSUM, VWREDSUMU, VWREDSUM: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin

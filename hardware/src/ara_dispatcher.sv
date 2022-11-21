@@ -1110,6 +1110,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_valid_d   = 1'b0;
                     end
                   end
+                  6'b010100: begin
+                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.use_vs1   = 1'b0;
+                    case (insn.varith_type.rs1)
+                      5'b00001: ara_req_d.op = ara_pkg::VMSBF;
+                      5'b00010: ara_req_d.op = ara_pkg::VMSOF;
+                      5'b00011: ara_req_d.op = ara_pkg::VMSIF;
+                      5'b10000: ara_req_d.op = ara_pkg::VIOTA;
+                      5'b10001: ara_req_d.op = ara_pkg::VID;
+                    endcase
+                  end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMANDNOT;
                     ara_req_d.use_vd_op = 1'b1;
