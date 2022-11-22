@@ -1,3 +1,15 @@
+// See LICENSE and LICENSE_1 for licensing terms of the original
+// and vectorized version, respectively.
+
+/*************************************************************************
+ * RISC-V Vectorized Version
+ * Author: Cristóbal Ramírez Lazo
+ * email: cristobal.ramirez@bsc.es
+ * Barcelona Supercomputing Center (2020)
+ *************************************************************************/
+
+// Modifications + Fixes to the vectorized version by:
+// Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
 #include "kernel/lavamd.h"
 #include "runtime.h"
@@ -37,13 +49,14 @@ int main() {
 
   printf("n_boxes = %u, NUMBER_PAR_PER_BOX = %u\n", n_boxes,
          NUMBER_PAR_PER_BOX);
-
+#ifdef DEBUG
   printf("sizeof(box_cpu_mem[0]) = %u\n", sizeof(box_cpu_mem[0]));
 
   for (uint64_t i = 0; i < n_boxes; i++) {
     printf("box_cpu_mem[%d].offset = %u, while .number == %u\n", i,
            box_cpu_mem[i].offset, box_cpu_mem[i].number);
   }
+#endif
 
   printf("Running the scalar benchmark.\n");
   kernel(alpha, n_boxes, box_cpu_mem, rv_cpu_mem, qv_cpu_mem, fv_s_cpu_mem,

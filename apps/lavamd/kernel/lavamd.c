@@ -55,8 +55,11 @@ void kernel(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv, fp *qv,
   //////////////////////////
   // Process interactions //
   //////////////////////////
-
+#ifndef PSEUDO_LAVAMD
   for (l = 0; l < n_boxes; ++l) {
+#else
+  for (l = 0; l < 1; ++l) {
+#endif
 
     //---------------------------
     //	home box - box parameters
@@ -76,8 +79,11 @@ void kernel(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv, fp *qv,
     //---------------------------
     //	Do for the # of (home+neighbor) boxes
     //---------------------------
+#ifndef PSEUDO_LAVAMD
     for (k = 0; k < (uint64_t)(1 + box[l].nn); ++k) {
-
+#else
+    for (k = 0; k < 2; ++k) {
+#endif
       //-----------------------
       //	neighbor box - get pointer to the right box
       //-----------------------
@@ -107,7 +113,11 @@ void kernel(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv, fp *qv,
       //	Do for the # of particles in home box
       //-----------------------
 
+#ifndef PSEUDO_LAVAMD
       for (i = 0; i < NUMBER_PAR_PER_BOX; ++i) {
+#else
+      for (i = 0; i < 4; ++i) {
+#endif
         // do for the # of particles in current (home or neighbor) box
         for (j = 0; j < NUMBER_PAR_PER_BOX; ++j) {
           // coefficients
@@ -167,7 +177,11 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
   //	PROCESS INTERACTIONS
   //===========================
 
+#ifndef PSEUDO_LAVAMD
   for (l = 0; l < n_boxes; ++l) {
+#else
+  for (l = 0; l < 1; ++l) {
+#endif
 
     //-----------------------------
     //	home box - box parameters
@@ -186,7 +200,11 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
     //-----------------------------------------
     //	Do for the # of (home+neighbor) boxes
     //-----------------------------------------
+#ifndef PSEUDO_LAVAMD
     for (k = 0; k < (uint64_t)(1 + box[l].nn); k++) {
+#else
+    for (k = 0; k < 2; k++) {
+#endif
 
       //---------------------------------------
       //	neighbor box - get pointer to the right box
@@ -215,7 +233,11 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
       //---------------------------------------
       //	Do for the # of particles in home box
       //---------------------------------------
+#ifndef PSEUDO_LAVAMD
       for (i = 0; i < NUMBER_PAR_PER_BOX; ++i) {
+#else
+      for (i = 0; i < 4; ++i) {
+#endif
 
         unsigned long int gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX);
 
