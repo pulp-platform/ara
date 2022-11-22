@@ -22,6 +22,7 @@
 #include "riscv_vector.h"
 
 void exp_1xf64_bmark(double *exponents, double *results, size_t len);
+void exp_1xf64_asm_bmark(double *exponents, double *results, size_t len);
 void exp_2xf32_bmark(float *exponents, float *results, size_t len);
 
 // Cannot use LMUL > 1 with this implmentation

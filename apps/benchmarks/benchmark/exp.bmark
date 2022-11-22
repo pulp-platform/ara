@@ -52,7 +52,7 @@ int main() {
   printf("Executing exponential on %d 64-bit data...\n", N_f64);
 
   start_timer();
-  exp_1xf64_bmark(exponents_f64, results_f64, N_f64);
+  exp_1xf64_asm_bmark(exponents_f64, results_f64, N_f64);
   stop_timer();
 
   runtime = get_timer();
