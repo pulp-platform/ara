@@ -36,18 +36,19 @@ def emit(name, array, alignment='8'):
 ## SCRIPT ##
 ############
 
-if len(sys.argv) == 4:
+if len(sys.argv) == 5:
   boxes1d = int(sys.argv[1])
   par4box = int(sys.argv[2])
   alpha   = sys.argv[3]
+  maxelm  = int(sys.argv[4])
 else:
-  print("Error. Give me three arguments: one-dimension size of the grid, the number of particles per box, and alpha.")
+  print("Error. Give me four arguments: one-dimension size of the grid, the number of particles per box, alpha, and the maximum length of one vector register for the current LMUL configuration.")
   sys.exit()
 
 dtype=np.float32
 
 # Constants
-NUMBER_PAR_PER_BOX = 96
+NUMBER_PAR_PER_BOX = par4box
 
 ##########################
 ## Dimension and memory ##
