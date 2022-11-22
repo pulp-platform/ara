@@ -19,6 +19,15 @@
 #include <math.h>
 #include <stdint.h>
 
+// This macro simplifies the program for benchmarking purposes,
+// by removing the outer loops of the kernel and shortening the
+// semi-last loop.
+// Approximately all the time spent in executing the program is
+// in the inner nested loop. The one immediatly before it, also
+// accounts for some of the time. The rest is negligible.
+// Use this macro to save time while benchmarking.
+#define PSEUDO_LAVAMD 1
+
 #define fp float
 
 #define DOT(A, B) ((A.x) * (B.x) + (A.y) * (B.y) + (A.z) * (B.z))

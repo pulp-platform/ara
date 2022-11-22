@@ -36,11 +36,12 @@ def emit(name, array, alignment='8'):
 ## SCRIPT ##
 ############
 
-if len(sys.argv) == 3:
+if len(sys.argv) == 4:
   boxes1d = int(sys.argv[1])
-  alpha   = sys.argv[2]
+  par4box = int(sys.argv[2])
+  alpha   = sys.argv[3]
 else:
-  print("Error. Give me two arguments: one-dimension size of the grid, and alpha.")
+  print("Error. Give me three arguments: one-dimension size of the grid, the number of particles per box, and alpha.")
   sys.exit()
 
 dtype=np.float32
