@@ -32,6 +32,21 @@ extern int wall[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern int result_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern int result_s[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
+int verify_result(int *result_s, int *result_v, uint32_t cols) {
+  // Check vector with scalar result
+  for (uint32_t i = 0; i < cols; i++) {
+    if (result_v[i] != result_s[i]) {
+      printf("Error. result_v[%d]=%d != result_s[%d]=%d \n", i, result_v[i], i,
+             result_s[i]);
+      return 1;
+    }
+  }
+
+  printf("Test result: PASS. No errors found.\n");
+
+  return 0;
+}
+
 int main() {
   printf("\n");
   printf("================\n");

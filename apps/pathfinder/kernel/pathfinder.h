@@ -20,6 +20,4 @@ void run_vector(int *wall, int *result_v, uint32_t cols, uint32_t rows,
 void run_vector_short_m4(int *wall, int *result_v, uint32_t cols, uint32_t rows,
                          uint32_t num_runs, int neutral_value);
 
-int verify_result(int *result_s, int *result_v, uint32_t cols);
-
 #endif
