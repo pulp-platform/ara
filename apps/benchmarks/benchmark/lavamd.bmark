@@ -1,0 +1,71 @@
+// Copyright 2020 ETH Zurich and University of Bologna.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
+
+#include "../kernel/lavamd.h"
+#include "runtime.h"
+#include "util.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
+
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
+extern fp alpha;
+extern uint64_t n_boxes;
+extern uint64_t NUMBER_PAR_PER_BOX;
+
+extern box_str box_cpu_mem[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern FOUR_VECTOR rv_cpu_mem[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern fp qv_cpu_mem[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern FOUR_VECTOR fv_v_cpu_mem[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern FOUR_VECTOR fv_s_cpu_mem[]
+    __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern nei_str nn_mem[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    kernel_vec(alpha, n_boxes, box_cpu_mem, rv_cpu_mem, qv_cpu_mem, fv_s_cpu_mem,
+               NUMBER_PAR_PER_BOX);
+}
+
+int main() {
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
+
+  HW_CNT_READY;
+  start_timer();
+  kernel_vec(alpha, n_boxes, box_cpu_mem, rv_cpu_mem, qv_cpu_mem, fv_v_cpu_mem,
+             NUMBER_PAR_PER_BOX);
+  stop_timer();
+  HW_CNT_NOT_READY;
+
+  int64_t runtime = get_timer();
+  printf("[sw-cycles]: %ld\n", runtime);
+
+  return 0;
+}

@@ -418,3 +418,35 @@ plot roof_cpu(x, 1, 2.4) w l lw 2 lc 1 t  '2 Lanes',   \
      roof_cpu(x, 8, 19.2) w l lw 2 lc 7 t '16 Lanes',   \
      'roi_align_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'roi_align_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+############
+## lavaMD ##
+############
+
+# Title
+set title "lavamd performance, (depth: #elements)"
+
+# Set the range
+set xrange [32:1024]
+
+# Set axis labels
+set xlabel 'Depth: (#elements)'
+set ylabel 'Performance (OP/cycle)'
+
+# Output png
+set term png
+set out "lavamd.png"
+
+# Plot the rooflines for 32-bit data
+plot roof_cpu(x, 1, 5.24) w l lw 2 lc 1 t  '2 Lanes',   \
+     'lavamd_2.benchmark'       w p lw 2 lc 1 pt 5 notitle,  \
+     'lavamd_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,  \
+     roof_cpu(x, 2, 5.5) w l lw 2 lc 2 t  '4 Lanes',   \
+     'lavamd_4.benchmark'       w p lw 2 lc 2 pt 5 notitle,  \
+     'lavamd_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,  \
+     roof_cpu(x, 4, 5.5) w l lw 2 lc 3 t  '8 Lanes',    \
+     'lavamd_8.benchmark'       w p lw 2 lc 3 pt 5 notitle,  \
+     'lavamd_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
+     roof_cpu(x, 8, 5.5) w l lw 2 lc 7 t '16 Lanes',   \
+     'lavamd_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
+     'lavamd_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle

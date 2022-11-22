@@ -750,6 +750,50 @@ roi_align() {
   done
 }
 
+############
+## lavaMD ##
+############
+
+lavamd() {
+
+  kernel=lavamd
+  defines=""
+
+  # Run pseudo-lavamd by default,
+  # so box1d is not really important
+  box1d=2
+  alpha=0.5
+  # Depend on the implementation
+  lmul=1
+  sew=32
+  maxelm=$(( ($vlen * $lmul) / $sew ))
+
+  tempfile=`mktemp`
+
+  # Log the performance results
+  > ${kernel}_${nr_lanes}.benchmark
+  > ${kernel}_${nr_lanes}_ideal.benchmark
+
+  for par4box in 4 8 16 32 64 96 128 256 512; do
+
+    args="$box1d $par4box $alpha $maxelm"
+    metadata="$kernel $nr_lanes $par4box $sew"
+
+    clean_and_gen_data $kernel "$args" || exit
+
+    # Default System
+    compile_and_run $kernel "$defines" $tempfile 0                                || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+
+    # Ideal Dispatcher System, if QuestaSim is available
+    if [ "$ci" == 0 ]; then
+      compile_and_run $kernel "$defines" $tempfile 1                                      || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      verify_id_results 10 $sew                                                           || exit
+    fi
+  done
+}
+
 case $1 in
   "imatmul" | "fmatmul")
     matmul $1
@@ -803,6 +847,10 @@ case $1 in
     roi_align
     ;;
 
+  "lavamd")
+    lavamd
+    ;;
+
   *)
     echo "Benchmarking all the apps."
     matmul fmatmul
@@ -817,5 +865,6 @@ case $1 in
     dotproduct
     pathfinder
     roi_align
+    lavamd
     ;;
 esac
