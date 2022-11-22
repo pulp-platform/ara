@@ -11,21 +11,6 @@
 
 #include "pathfinder.h"
 
-int verify_result(int *result_s, int *result_v, uint32_t cols) {
-  // Check vector with scalar result
-  for (uint32_t i = 0; i < cols; i++) {
-    if (result_v[i] != result_s[i]) {
-      printf("Error. result_v[%d]=%d != result_s[%d]=%d \n", i, result_v[i], i,
-             result_s[i]);
-      return 1;
-    }
-  }
-
-  printf("Test result: PASS. No errors found.\n");
-
-  return 0;
-}
-
 int *run(int *wall, int *result_s, int *src, uint32_t cols, uint32_t rows,
          uint32_t num_runs) {
   int min;

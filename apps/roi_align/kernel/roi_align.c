@@ -388,24 +388,6 @@ int64_t CropAndResizePerBox_BHWC_vec(
   return 0;
 }
 
-// Compare the vector and scalar implementation.
-// Return 0 if no error is found
-// Return -1 if we have an error on the first element
-// A positive return value indicates the index of the faulty element
-int verify_result(float *s_crops_data, float *v_crops_data, size_t size) {
-  int ret;
-  float DELTA = 0.00001;
-
-  for (unsigned long int i = 0; i < size; ++i) {
-    if (similarity_check_32b(s_crops_data[i], v_crops_data[i], DELTA)) {
-      ret = (!i) ? -1 : i;
-      return ret;
-    }
-  }
-
-  return 0;
-}
-
 // Normalized image
 void init_image(float *vec, size_t size) {
   for (unsigned long int i = 0; i < size; ++i)

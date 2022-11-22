@@ -21,6 +21,8 @@
 #include <stdio.h>
 #endif
 
+#define DELTA 0.00001
+
 void printf_fx(float num);
 
 int64_t CropAndResizePerBox(const float *image_data, const int batch_size,
@@ -53,12 +55,6 @@ int64_t CropAndResizePerBox_BHWC_vec(
 
     float *crops_data, const int crop_height, const int crop_width,
     const float extrapolation_value);
-
-// Compare the vector and scalar implementation.
-// Return 0 if no error is found
-// Return -1 if we have an error on the first element
-// A positive return value indicates the index of the faulty element
-int verify_result(float *s_crops_data, float *v_crops_data, size_t size);
 
 // Normalized image
 void init_image(float *vec, size_t size);
