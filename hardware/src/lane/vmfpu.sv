@@ -922,8 +922,14 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .out_ready_i   (vfpu_out_ready ),
       .busy_o        (/* Unused */   )
     );
-    elen_t operand_a_delay,
-           vfrsqrt7_result;
+elen_t operand_a_delay,
+       vfrsqrt7_result_o;
+
+vfr_struct_e16 vfrsqrt7_out_e16[4];
+vfr_struct_e32 vfrsqrt7_out_e32[2];
+vfr_struct_e64 vfrsqrt7_out_e64;
+status_t    vfrsqrt7_ex_flag;
+
     // register for delay of operand_a
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
@@ -936,70 +942,43 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         ////////////////////////////
         //  Leading zeros modules //
         ///////////////////////////
+localparam int unsigned SIG_BITS_E16   = 10;
+localparam int unsigned SIG_BITS_E32   = 23;
+localparam int unsigned SIG_BITS_E64   = 52;
+
 logic [15:0] lzc_e16;
-logic [9:0]  lzc_e32;
+logic [9:0] lzc_e32;
 logic [5:0]  lzc_e64;
- /////for e16///
-  lzc#(
-    .WIDTH(10),
+ /////E16///
+  for (genvar i = 0; i < 4; i = i + 1) begin
+    lzc#(
+    .WIDTH(SIG_BITS_E16),
     .MODE (1)
-  ) leading_zero_e16_0 (
-    .in_i    (operand_a_delay[9:0]),
-    .cnt_o   (lzc_e16[3:0] ),
+  ) leading_zero_e16_i (
+    .in_i    (operand_a_delay[(16*i)+(SIG_BITS_E16-1):(16*i)]),
+    .cnt_o   (lzc_e16[(4*i)+3:(4*i)] ),
     .empty_o ()
   );
+  end
+/////E32///
 
-  lzc#(
-    .WIDTH(10),
+  for (genvar j = 0; j < 2; j = j + 1) begin
+    lzc#(
+    .WIDTH(SIG_BITS_E32),
     .MODE (1)
-  ) leading_zero_e16_1 (
-    .in_i    (operand_a_delay[25:16]),
-    .cnt_o   (lzc_e16[7:4]  ),
+  ) leading_zero_e32_i (
+    .in_i    (operand_a_delay[(32*j)+(SIG_BITS_E32-1):(32*j)]),
+    .cnt_o   (lzc_e32[(5*j)+4:(5*j)] ),
     .empty_o ()
   );
+  end
 
+/////E64///
   lzc#(
-    .WIDTH(10),
-    .MODE (1)
-  ) leading_zero_e16_2 (
-    .in_i    (operand_a_delay[41:32]),
-    .cnt_o   (lzc_e16[11:8] ),
-    .empty_o ()
-  );
-
-  lzc#(
-    .WIDTH(10),
-    .MODE (1)
-  ) leading_zero_e16_3 (
-    .in_i    (operand_a_delay[57:48]),
-    .cnt_o   (lzc_e16[15:12] ),
-    .empty_o ()
-  );
-
-//////For E32//////////////
-  lzc#(
-    .WIDTH(23),
-    .MODE (1)
-  ) leading_zero_e32_0 (
-    .in_i    (operand_a_delay[22:0]),
-    .cnt_o   (lzc_e32[4:0] ),
-    .empty_o ()
-  );
-/// Leading zero counter
-  lzc#(
-    .WIDTH(23),
-    .MODE (1)
-  ) leading_zero_e32_1 (
-    .in_i    (operand_a_delay[54:32]),
-    .cnt_o   (lzc_e32[9:5]),
-    .empty_o ()
-  );
-/// E64/////////
-  lzc#(
-    .WIDTH(52),
+    .WIDTH(SIG_BITS_E64),
     .MODE (1)
   ) leading_zero_e64 (
-    .in_i    (operand_a_delay[51:0]),
+    .in_i    (operand_a_delay[SIG_BITS_E64-1:0]),
     .cnt_o   (lzc_e64),
     .empty_o ()
   );
@@ -1078,36 +1057,44 @@ logic [5:0]  lzc_e64;
           end
         endcase
 
-        //vfrsqrt7
-         unique case (vinsn_processing_q.vtype.vsew)
-            EW16:begin
-                vfrsqrt7_result[15:0]  = vfrsqrt7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] ,lzc_e16[3:0]  );
-                vfrsqrt7_result[31:16] = vfrsqrt7_fp16(vfpu_result[25:16],operand_a_delay[31:16],lzc_e16[7:4]  );
-                vfrsqrt7_result[47:32] = vfrsqrt7_fp16(vfpu_result[41:32],operand_a_delay[47:32],lzc_e16[11:8] );
-                vfrsqrt7_result[63:48] = vfrsqrt7_fp16(vfpu_result[57:48],operand_a_delay[63:48],lzc_e16[15:12]);
-              end
-            EW32:
-              begin
-                vfrsqrt7_result[31:0]  = vfrsqrt7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] , lzc_e32[4:0]);
-                vfrsqrt7_result[63:32] = vfrsqrt7_fp32(vfpu_result[41:32],operand_a_delay[63:32],lzc_e32[9:5]);
-             end
-            EW64:
-              begin
-               vfrsqrt7_result = vfrsqrt7_fp64(vfpu_result[9:0],operand_a_delay,lzc_e64);
-             end
-             default:;
-         endcase
+      //vfrsqrt7
+      unique case (vinsn_processing_q.vtype.vsew)
+         EW16: begin
+             vfrsqrt7_out_e16[0] = vfrsqrt7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] ,lzc_e16[3:0]  );
+             vfrsqrt7_out_e16[1] = vfrsqrt7_fp16(vfpu_result[25:16],operand_a_delay[31:16],lzc_e16[7:4]  );
+             vfrsqrt7_out_e16[2] = vfrsqrt7_fp16(vfpu_result[41:32],operand_a_delay[47:32],lzc_e16[11:8]);
+             vfrsqrt7_out_e16[3] = vfrsqrt7_fp16(vfpu_result[57:48],operand_a_delay[63:48],lzc_e16[15:12]);
+
+             vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vfrsqrt7_e16,vfrsqrt7_out_e16[2].vfrsqrt7_e16,vfrsqrt7_out_e16[1].vfrsqrt7_e16,vfrsqrt7_out_e16[0].vfrsqrt7_e16};
+             vfrsqrt7_ex_flag  = vfrsqrt7_out_e16[3].vfrsqrt7_ex_flag | vfrsqrt7_out_e16[2].vfrsqrt7_ex_flag | vfrsqrt7_out_e16[1].vfrsqrt7_ex_flag | vfrsqrt7_out_e16[0].vfrsqrt7_ex_flag;
+         end
+         EW32: begin
+             vfrsqrt7_out_e32[0] = vfrsqrt7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] , lzc_e32[4:0]);
+             vfrsqrt7_out_e32[1] = vfrsqrt7_fp32(vfpu_result[41:32],operand_a_delay[63:32],lzc_e32[9:5]);
+
+             vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vfrsqrt7_e32,vfrsqrt7_out_e32[0].vfrsqrt7_e32};
+             vfrsqrt7_ex_flag  = vfrsqrt7_out_e32[1].vfrsqrt7_ex_flag | vfrsqrt7_out_e32[0].vfrsqrt7_ex_flag;
+         end
+         EW64: begin
+            vfrsqrt7_out_e64 = vfrsqrt7_fp64(vfpu_result[9:0],operand_a_delay[63:0],lzc_e64[5:0]);
+
+             vfrsqrt7_result_o  =  vfrsqrt7_out_e64.vfrsqrt7_e64;
+             vfrsqrt7_ex_flag   =    vfrsqrt7_out_e64.vfrsqrt7_ex_flag;
+         end
+         default: vfrsqrt7_result_o='x;
+      endcase
 
         // Forward the result
         if (vinsn_processing_q.op == VFREC7) begin
           vfpu_processed_result = vfrec7_result_o;
           vfpu_ex_flag          = vfrec7_ex_flag;
         end else if(vinsn_processing_q.op==VFRSQRT7) begin
-         vfpu_processed_result = vfrsqrt7_result;
+         vfpu_processed_result = vfrsqrt7_result_o;
+         vfpu_ex_flag          = vfrsqrt7_ex_flag;
         end else begin
-          vfpu_processed_result = vfpu_result;
-          vfpu_ex_flag          = vfpu_ex_flag_fn;
-        end
+           vfpu_processed_result = vfpu_result;
+           vfpu_ex_flag          = vfpu_ex_flag;
+      end
       end else begin
         // NO vfrec7, vfrsqrt7, rto support
         vfpu_processed_result = vfpu_result;

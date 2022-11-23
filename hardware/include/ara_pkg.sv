@@ -1570,12 +1570,54 @@ package ara_pkg;
     return vfrec7_out;
   endfunction : vfrec7_fp64
 
-///////////////////////////
+  ///////////////////////////
   // VFSQRT7 Look Up Table //
   //////////////////////////
+localparam int unsigned LUT_BITS     = 7;
+localparam int unsigned E16_BITS     = 16;
+localparam int unsigned E32_BITS     = 32;
+localparam int unsigned E64_BITS     = 64;
 
-  function automatic logic [6:0] vfrsqrt7_lut(logic [6:0] vfrsqrt7_lut_select);
-      logic [6:0] vfrsqrt7_lut_out;
+localparam int unsigned EXP_BITS_E16  = 5;
+localparam int unsigned EXP_BITS_E32  = 8;
+localparam int unsigned EXP_BITS_E64  = 11;
+
+localparam int unsigned VF_TYPE_SEL_BITS  = 10;
+
+localparam logic [5:0] E16_3xB     = 6'd45;
+localparam logic [8:0] E32_3xB     = 9'd381;
+localparam logic [11:0] E64_3xB     = 12'd3069;
+
+localparam logic [15:0] E16_NaN   = 16'h7e00;
+localparam logic [15:0] E16_pInf  = 16'h7c00;
+localparam logic [15:0] E16_mInf  = 16'hfc00;
+
+localparam int unsigned E32_NaN   = 32'h7fc00000;
+localparam int unsigned E32_pInf  = 32'h7f800000;
+localparam int unsigned E32_mInf  = 32'hff800000;
+
+localparam logic [63:0] E64_NaN   = 64'h7ff8000000000000;
+localparam logic [63:0] E64_pInf  = 64'h7ff0000000000000;
+localparam logic [63:0] E64_mInf  = 64'hfff0000000000000;
+
+
+ typedef struct packed {
+  fpnew_pkg::status_t vfrsqrt7_ex_flag;
+  fp16_t              vfrsqrt7_e16;
+  } vfr_struct_e16;
+
+  typedef struct packed {
+  fpnew_pkg::status_t vfrsqrt7_ex_flag;
+  fp32_t              vfrsqrt7_e32;
+  } vfr_struct_e32;
+
+ typedef struct packed {
+  fpnew_pkg::status_t vfrsqrt7_ex_flag;
+  fp64_t              vfrsqrt7_e64;
+  } vfr_struct_e64;
+
+  function automatic logic [LUT_BITS-1:0] vfrsqrt7_lut(logic [LUT_BITS-1:0] vfrsqrt7_lut_select);
+      logic [LUT_BITS-1:0] vfrsqrt7_lut_out;
       unique case (vfrsqrt7_lut_select)
           7'd0  : vfrsqrt7_lut_out=7'd52;
           7'd1  : vfrsqrt7_lut_out=7'd51;
@@ -1711,196 +1753,220 @@ package ara_pkg;
   ////////////////////
   //  VFRSQRT7 OUTPUT //
   ////////////////////
+//for SEW=16
+  function automatic vfr_struct_e16 vfrsqrt7_fp16(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E16_BITS-1:0] operand_a_delay, logic [3:0] leading_zeros_count);
+     vfr_struct_e16 vfrsqrt7_o;
+     fp16_t         vfrsqrt7_i;
 
- //for SEW=16
+     logic [EXP_BITS_E16:0]  vfrsqrt7_exp_i,
+                             vfrsqrt7_exp_o;
 
-  function automatic logic [16:0]  vfrsqrt7_fp16(logic [9:0] vfpu_result, logic [15:0] operand_a_delay, logic[5:0] leading_zeros_count);
-
-     logic [15:0] vfrsqrt7_result,
-                  vfrsqrt7_norm_sig;
-     logic [5:0]  vfrsqrt7_exp_o,
-                  vfrsqrt7_exp_i;
-
-     vfrsqrt7_result   = 16'd0;
-     vfrsqrt7_norm_sig = 16'd0;
+     vfrsqrt7_o.vfrsqrt7_e16     = 16'd0;
+     vfrsqrt7_o.vfrsqrt7_ex_flag = '{1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
+     vfrsqrt7_i        = 16'd0;
      vfrsqrt7_exp_o    = 6'd0;
      vfrsqrt7_exp_i    = 6'd0;
-
-        unique case (vfpu_result[9:0])
+         unique case (vfpu_result[6:5])
+         2'b01: begin // POSSUBNORM
+                //As input is subnormal, So
+                //input exponent:
+                //0 minus the number of leading zeros
+                vfrsqrt7_exp_i = 6'd0-({2'b00,leading_zeros_count});
+                //the normalized input significand(mantissa)
+                //is given by shifting the input significand left by
+                //1 minus the input exponent
+                vfrsqrt7_i.m = operand_a_delay[9:0]<<(6'd1-vfrsqrt7_exp_i);
+         end
+         2'b10: begin // POSNORM
+                vfrsqrt7_exp_i  = {1'b0,operand_a_delay[14:10]};
+                vfrsqrt7_i.m  = operand_a_delay[9:0];
+         end
+         default: begin
+                vfrsqrt7_exp_i = 'x;
+                vfrsqrt7_i.m = 'x;
+         end
+         endcase
+       unique case (vfpu_result)
           fpnew_pkg:: NEGINF,
           fpnew_pkg:: NEGNORM,
           fpnew_pkg:: NEGSUBNORM,
-          fpnew_pkg:: SNAN,
-          fpnew_pkg:: QNAN :     vfrsqrt7_result = 16'h7e00;
-          fpnew_pkg:: NEGZERO:   vfrsqrt7_result = 16'hfc00;
-          fpnew_pkg:: POSZERO:   vfrsqrt7_result = 16'h7c00;
-          fpnew_pkg:: POSINF:    vfrsqrt7_result = {operand_a_delay [15],15'b0};
-          fpnew_pkg:: POSSUBNORM:
-                        begin
-                                //Input exponent:
-                                //0 minus the number of leading zeros
-                                vfrsqrt7_exp_i = 6'd0-leading_zeros_count;
+          fpnew_pkg:: QNAN : begin
+                                 vfrsqrt7_o.vfrsqrt7_e16 = E16_NaN;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.NV=1'b1;
+                             end
+          fpnew_pkg:: SNAN :     vfrsqrt7_o.vfrsqrt7_e16 = E16_NaN;
+          fpnew_pkg:: NEGZERO: begin
+                                 vfrsqrt7_o.vfrsqrt7_e16 = E16_mInf;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.DZ=1'b1;
+                               end
+          fpnew_pkg:: POSZERO: begin
+                                 vfrsqrt7_o.vfrsqrt7_e16 = E16_pInf;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.DZ=1'b1;
+                               end
+          fpnew_pkg:: POSINF:    vfrsqrt7_o.vfrsqrt7_e16 = 16'd0;
+          fpnew_pkg:: POSSUBNORM,
+          fpnew_pkg:: POSNORM:
+                         begin
                                 //Output exponent can be found by
                                 //exp_o = (3*B-1-exp_i )/2
                                 //      = (3*B+(~exp_i))/2
-                                vfrsqrt7_exp_o = 6'd45+ +(~vfrsqrt7_exp_i);
+                                vfrsqrt7_exp_o = E16_3xB +(~vfrsqrt7_exp_i);
                                      // dividing by 2
-                                vfrsqrt7_result[14:10] = vfrsqrt7_exp_o[5:1];
-                                //As input is subnormal, So the normalized input significand
-                                //is given by shifting the input significand left by
-                                //1 minus the input exponent
-                                vfrsqrt7_norm_sig = operand_a_delay<<(6'd1-vfrsqrt7_exp_i);
-                                //Output significand can be found by
+                                vfrsqrt7_o.vfrsqrt7_e16.e = vfrsqrt7_exp_o[5:1];
+                                //Output significand(mantissa) can be found by
                                 //concatenating LSB of the normalized input exponent and
                                 //the six MSBs of the normalized input significand
-                                vfrsqrt7_result[9:3] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_norm_sig[9:4]});
-                                 //The output signequals the input sign.
-                                vfrsqrt7_result[15] = operand_a_delay [15];
-                        end
-          fpnew_pkg:: POSNORM:
-                       begin
-                                 //Output exponent can be found by
-                                 //exp_o = (3*B-1-exp_i )/2
-                                 //      = (3*B+(~exp_i))/2
-                                vfrsqrt7_exp_o = 6'd45+(~operand_a_delay[14:10]);
-                                     // dividing by 2
-                                vfrsqrt7_result[14:10] = vfrsqrt7_exp_o[5:1];
-                                //Output significand can be found by
-                                //concatenating LSB of the normalized input exponent and
-                                //the six MSBs of the normalized input significand
-                                vfrsqrt7_result[9:3]= vfrsqrt7_lut(operand_a_delay[10:4]);
-                                 //The output signequals the input sign.
-                                vfrsqrt7_result[15] = operand_a_delay[15];
-                        end
+                                vfrsqrt7_o.vfrsqrt7_e16.m[9:3] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_i.m[9:4]});
+                                 //The output sign equals the input sign.
+                                vfrsqrt7_o.vfrsqrt7_e16.s = vfrsqrt7_i.s;
+                         end
          endcase
-      return vfrsqrt7_result;
+      return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp16
 
 //for SEW=32
-  function automatic logic [31:0] vfrsqrt7_fp32(logic [9:0] vfpu_result, logic [31:0] operand_a_delay, logic [4:0] leading_zeros_count);
+  function automatic vfr_struct_e32 vfrsqrt7_fp32(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E32_BITS-1:0] operand_a_delay, logic [4:0] leading_zeros_count);
+     vfr_struct_e32 vfrsqrt7_o;
+     fp32_t         vfrsqrt7_i;
 
-     logic [31:0] vfrsqrt7_result,
-                  vfrsqrt7_norm_sig;
-     logic [8:0]  vfrsqrt7_exp_o,
-                  vfrsqrt7_exp_i;
+     logic [EXP_BITS_E32:0]  vfrsqrt7_exp_i,
+                             vfrsqrt7_exp_o;
 
-     vfrsqrt7_result   = 32'd0;
-     vfrsqrt7_norm_sig = 32'd0;
+     vfrsqrt7_o.vfrsqrt7_e32     = 32'd0;
+     vfrsqrt7_o.vfrsqrt7_ex_flag = '{1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
+
+     vfrsqrt7_i        = 32'd0;
      vfrsqrt7_exp_o    = 9'd0;
      vfrsqrt7_exp_i    = 9'd0;
-
-       unique case (vfpu_result[9:0])
+         unique case (vfpu_result[6:5])
+         2'b01: begin // POSSUBNORM
+                //As input is subnormal, So
+                //input exponent:
+                //0 minus the number of leading zeros
+                vfrsqrt7_exp_i = 9'd0-({4'b0000,leading_zeros_count});
+                //the normalized input significand(mantissa)
+                //is given by shifting the input significand left by
+                //1 minus the input exponent
+                vfrsqrt7_i.m = operand_a_delay[22:0]<<(9'd1-vfrsqrt7_exp_i);
+         end
+         2'b10: begin // POSNORM
+                vfrsqrt7_exp_i  = {1'b0,operand_a_delay[30:23]};
+                vfrsqrt7_i.m  = operand_a_delay[22:0];
+         end
+         default: begin
+                vfrsqrt7_exp_i = 'x;
+                vfrsqrt7_i.m = 'x;
+         end
+         endcase
+       unique case (vfpu_result)
           fpnew_pkg:: NEGINF,
           fpnew_pkg:: NEGNORM,
           fpnew_pkg:: NEGSUBNORM,
-          fpnew_pkg:: SNAN,
-          fpnew_pkg:: QNAN :     vfrsqrt7_result = 32'h7fc00000;
-          fpnew_pkg:: NEGZERO:   vfrsqrt7_result = 32'hff800000;
-          fpnew_pkg:: POSZERO:   vfrsqrt7_result = 32'h7f800000;
-          fpnew_pkg:: POSINF:    vfrsqrt7_result = {operand_a_delay [31],31'b0};
-          fpnew_pkg:: POSSUBNORM:
+          fpnew_pkg:: QNAN : begin
+                                 vfrsqrt7_o.vfrsqrt7_e32 = E32_NaN;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.NV=1'b1;
+                             end
+          fpnew_pkg:: SNAN :     vfrsqrt7_o.vfrsqrt7_e32 = E32_NaN;
+          fpnew_pkg:: NEGZERO: begin
+                                 vfrsqrt7_o.vfrsqrt7_e32 = E32_mInf;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.DZ=1'b1;
+                               end
+          fpnew_pkg:: POSZERO: begin
+                                 vfrsqrt7_o.vfrsqrt7_e32 = E32_pInf;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.DZ=1'b1;
+                               end
+          fpnew_pkg:: POSINF:    vfrsqrt7_o.vfrsqrt7_e32 = 32'd0;
+          fpnew_pkg:: POSSUBNORM,
+          fpnew_pkg:: POSNORM:
                          begin
-                                //Input exponent:
-                                //0 minus the number of leading zeros
-                                vfrsqrt7_exp_i = 9'd0-leading_zeros_count;
                                 //Output exponent can be found by
                                 //exp_o = (3*B-1-exp_i )/2
                                 //      = (3*B+(~exp_i))/2
-                                vfrsqrt7_exp_o = 9'd381 +(~vfrsqrt7_exp_i);
+                                vfrsqrt7_exp_o = E32_3xB +(~vfrsqrt7_exp_i);
                                      // dividing by 2
-                                vfrsqrt7_result[30:23] = vfrsqrt7_exp_o[8:1];
-                                //As input is subnormal, So the normalized input significand
-                                //is given by shifting the input significand left by
-                                //1 minus the input exponent
-                                vfrsqrt7_norm_sig = operand_a_delay<<(9'd1-vfrsqrt7_exp_i);
-                                //Output significand can be found by
+                                vfrsqrt7_o.vfrsqrt7_e32.e = vfrsqrt7_exp_o[8:1];
+                                //Output significand(mantissa) can be found by
                                 //concatenating LSB of the normalized input exponent and
                                 //the six MSBs of the normalized input significand
-                                vfrsqrt7_result[22:16] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_norm_sig[22:17]});
-                                 //The output signequals the input sign.
-                                vfrsqrt7_result[31] = operand_a_delay [31];
+                                vfrsqrt7_o.vfrsqrt7_e32.m[22:16] = vfrsqrt7_lut({vfrsqrt7_exp_i [0],vfrsqrt7_i.m[22:17]});
+                                 //The output sign equals the input sign.
+                                vfrsqrt7_o.vfrsqrt7_e32.s = vfrsqrt7_i.s;
                          end
-          fpnew_pkg:: POSNORM:
-                         begin
-                                 //Exponent can be found by
-                                 //exp_o = (3*B-1-exp_i )/2
-                                 //      = (3*B+(~exp_i))/2
-                                 vfrsqrt7_exp_o = 9'd381 +(~operand_a_delay[30:23]);
-                                     // dividing by 2
-                                 vfrsqrt7_result[30:23] = vfrsqrt7_exp_o[8:1];
-                                //Output significand can be found by
-                                //concatenating LSB of the normalized input exponent and
-                                //the six MSBs of the normalized input significand
-                                 vfrsqrt7_result[22:16]= vfrsqrt7_lut(operand_a_delay[23:17]);
-                                 //The output signequals the input sign.
-                                 vfrsqrt7_result[31] =operand_a_delay [31];
-                          end
          endcase
-      return vfrsqrt7_result;
+      return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp32
 
-// for SEW=64
 
-  function automatic elen_t vfrsqrt7_fp64(logic [9:0] vfpu_result, elen_t operand_a_delay,logic [11:0] leading_zeros_count);
+//for SEW=64
+  function automatic vfr_struct_e64 vfrsqrt7_fp64(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E64_BITS-1:0] operand_a_delay, logic [5:0] leading_zeros_count);
+     vfr_struct_e64 vfrsqrt7_o;
+     fp64_t     vfrsqrt7_i;
 
-     elen_t        vfrsqrt7_result,
-                   vfrsqrt7_norm_sig;
-     logic [11:0]  vfrsqrt7_exp_o,
-                   vfrsqrt7_exp_i;
+     logic [EXP_BITS_E64:0]  vfrsqrt7_exp_i,
+                             vfrsqrt7_exp_o;
 
-     vfrsqrt7_result   = 64'd0;
-     vfrsqrt7_norm_sig = 64'd0;
+     vfrsqrt7_o.vfrsqrt7_e64   = 64'd0;
+     vfrsqrt7_o.vfrsqrt7_ex_flag = '{1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
+
+     vfrsqrt7_i        = 64'd0;
      vfrsqrt7_exp_o    = 12'd0;
      vfrsqrt7_exp_i    = 12'd0;
-
-            unique case (vfpu_result[9:0])
+         unique case (vfpu_result[6:5])
+         2'b01: begin // POSSUBNORM
+                //As input is subnormal, So
+                //input exponent:
+                //0 minus the number of leading zeros
+                vfrsqrt7_exp_i = 12'd0-({6'd0,leading_zeros_count});
+                //the normalized input significand(mantissa)
+                //is given by shifting the input significand left by
+                //1 minus the input exponent
+                vfrsqrt7_i.m = operand_a_delay[51:0]<<(12'd1-vfrsqrt7_exp_i);
+         end
+         2'b10: begin // POSNORM
+                vfrsqrt7_exp_i  = {1'b0,operand_a_delay[62:52]};
+                vfrsqrt7_i.m  = operand_a_delay[51:0];
+         end
+         default: begin
+                vfrsqrt7_exp_i = 'x;
+                vfrsqrt7_i.m = 'x;
+         end
+         endcase
+       unique case (vfpu_result)
           fpnew_pkg:: NEGINF,
           fpnew_pkg:: NEGNORM,
           fpnew_pkg:: NEGSUBNORM,
-          fpnew_pkg:: SNAN,
-          fpnew_pkg:: QNAN :     vfrsqrt7_result[63:0] = 64'h7ff8000000000000;
-          fpnew_pkg:: NEGZERO:   vfrsqrt7_result[63:0] = 64'hfff0000000000000;
-          fpnew_pkg:: POSZERO:   vfrsqrt7_result[63:0] = 64'h7ff0000000000000;
-          fpnew_pkg:: POSINF:    vfrsqrt7_result[63:0] = {operand_a_delay [63],63'b0};
-          fpnew_pkg:: POSSUBNORM:
-                      begin
-                                //Input exponent:
-                                //0 minus the number of leading zeros
-                                vfrsqrt7_exp_i = 12'd0-leading_zeros_count;
-                                //Output exponent can be found by
-                                //exp_o = (3*B-1-exp_i )/2
-                                //      = (3*B+(~exp_i))/2
-                                vfrsqrt7_exp_o = 12'd3069 +(~vfrsqrt7_exp_i);
-                                     // dividing by 2
-                                vfrsqrt7_result[62:52] = vfrsqrt7_exp_o[11:1];
-                                //As input is subnormal, So the normalized input significand
-                                //is given by shifting the input significand left by
-                                //1 minus the input exponent
-                                vfrsqrt7_norm_sig = operand_a_delay<<(12'd1-vfrsqrt7_exp_i);
-                                //Output significand can be found by
-                                //concatenating LSB of the normalized input exponent and
-                                //the six MSBs of the normalized input significand
-                                vfrsqrt7_result[51:45] = vfrsqrt7_lut({vfrsqrt7_exp_i[0],vfrsqrt7_norm_sig[51:46]});
-                                 //The output signequals the input sign.
-                                vfrsqrt7_result[63] = operand_a_delay [63];
-                      end
+          fpnew_pkg:: QNAN : begin
+                                 vfrsqrt7_o.vfrsqrt7_e64        = E64_NaN;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.NV = 1'b1;
+                             end
+          fpnew_pkg:: SNAN :     vfrsqrt7_o.vfrsqrt7_e64        = E64_NaN;
+          fpnew_pkg:: NEGZERO: begin
+                                 vfrsqrt7_o.vfrsqrt7_e64        = E64_mInf;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.DZ = 1'b1;
+                               end
+          fpnew_pkg:: POSZERO: begin
+                                 vfrsqrt7_o.vfrsqrt7_e64        = E64_pInf;
+                                 vfrsqrt7_o.vfrsqrt7_ex_flag.DZ = 1'b1;
+                               end
+          fpnew_pkg:: POSINF:    vfrsqrt7_o.vfrsqrt7_e64        = 64'd0;
+          fpnew_pkg:: POSSUBNORM,
           fpnew_pkg:: POSNORM:
-                      begin
+                         begin
                                 //Output exponent can be found by
                                 //exp_o = (3*B-1-exp_i )/2
                                 //      = (3*B+(~exp_i))/2
-                                vfrsqrt7_exp_o= 12'd3069 +(~operand_a_delay[62:52]);
-                                    // dividing by 2
-                                vfrsqrt7_result[62:52] = vfrsqrt7_exp_o[11:1];
-                                //Output significand can be found by
+                                vfrsqrt7_exp_o = E64_3xB +(~vfrsqrt7_exp_i);
+                                     // dividing by 2
+                                vfrsqrt7_o.vfrsqrt7_e64.e = vfrsqrt7_exp_o[11:1];
+                                //Output significand(mantissa) can be found by
                                 //concatenating LSB of the normalized input exponent and
                                 //the six MSBs of the normalized input significand
-                                vfrsqrt7_result[51:45]= vfrsqrt7_lut(operand_a_delay[52:46]);
-                                //The output signequals the input sign.
-                                vfrsqrt7_result[63] =operand_a_delay [63];
-                        end
-            endcase
-         return vfrsqrt7_result;
+                                vfrsqrt7_o.vfrsqrt7_e64.m[51:45] = vfrsqrt7_lut({vfrsqrt7_exp_i [0],vfrsqrt7_i.m[51:46]});
+                                 //The output sign equals the input sign.
+                                vfrsqrt7_o.vfrsqrt7_e64.s = vfrsqrt7_i.s;
+                         end
+         endcase
+      return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp64
 
 endpackage : ara_pkg
