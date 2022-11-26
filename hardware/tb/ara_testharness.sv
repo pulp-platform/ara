@@ -72,6 +72,7 @@ module ara_testharness #(
   ) i_ara_soc (
     .clk_i         (clk_i       ),
     .rst_ni        (rst_ni      ),
+    .hw_cnt_en_o   (/* Unused */),
     .exit_o        (exit_o      ),
     .scan_enable_i (1'b0        ),
     .scan_data_i   (1'b0        ),
@@ -119,6 +120,9 @@ module ara_testharness #(
   // If a new vector instruction is dispathced, the runtime will be updated once again as soon as
   // the previous updating conditions applies again.
   //
+  // The counter has now a SW enable. This enable allows the hw-counter to start counting when
+  // the start conditions happen.
+  //
   // This leads to accurate measurements IF:
   //   1) Every program run contains only a single benchmark to be measured
   //   2) The SW reads the runtime value when Ara is idle and all the vector instructions are over!
@@ -130,8 +134,26 @@ module ara_testharness #(
   logic runtime_cnt_en_d, runtime_cnt_en_q;
   logic	runtime_to_be_updated_d, runtime_to_be_updated_q;
 
-  // Once the counter starts, it will go on forever
-  assign runtime_cnt_en_d = i_ara_soc.i_system.i_ara.acc_req_valid_i | runtime_cnt_en_q;
+  // The counter can start only if it's enabled. When it's disabled, it will go on counting until
+  // the last vector instruciton is over.
+  logic cnt_en_mask;
+`ifndef IDEAL_DISPATCHER
+  assign cnt_en_mask = i_ara_soc.hw_cnt_en_o[0];
+`else
+  assign cnt_en_mask = 1'b1;
+`endif
+  always_comb begin
+    // Keep the previous value
+    runtime_cnt_en_d = runtime_cnt_en_q;
+    // If disabled
+    if (!runtime_cnt_en_q)
+      // Start only if the software allowed the enable and we detect the first V instruction
+      runtime_cnt_en_d = i_ara_soc.i_system.i_ara.acc_req_valid_i & cnt_en_mask;
+    // If enabled
+    if (runtime_cnt_en_q)
+      // Stop counting only if the software disabled the counter and Ara returned idle
+      runtime_cnt_en_d = cnt_en_mask | ~i_ara_soc.i_system.i_ara.ara_idle;
+  end
 
   // Vector runtime counter
   always_comb begin
