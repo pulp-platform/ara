@@ -25,11 +25,23 @@ import numpy as np
 
 # Performance extractors: returns problem size and performance (throughput)
 def imatmul(args, cycles):
-  size        = int(args[0])
+  m           = int(args[0])
+  n           = int(args[1])
+  p           = int(args[2])
+  if (m == n and n == p):
+    size = m
+  else:
+    sys.exit('Unimplemented return value for performance function if !(M == N == P) in "' + kernel)
   performance = 2 * size * size * size / cycles
   return [size, performance]
 def fmatmul(args, cycles):
-  size        = int(args[0])
+  m           = int(args[0])
+  n           = int(args[1])
+  p           = int(args[2])
+  if (m == n and n == p):
+    size = m
+  else:
+    sys.exit('Unimplemented return value for performance function if !(M == N == P) in "' + kernel)
   performance = 2 * size * size * size / cycles
   return [size, performance]
 def iconv2d(args, cycles):
@@ -49,6 +61,8 @@ def fconv3d(args, cycles):
   return [size, performance]
 def jacobi2d(args, cycles):
   size        = int(args[0])
+  trash_0     = args[1]
+  trash_1     = args[2]
   performance = 2 * 5 * (size-1) * (size-1) / cycles
   return [size, performance]
 def dropout(args, cycles):
@@ -57,6 +71,7 @@ def dropout(args, cycles):
   return [size, performance]
 def fft(args, cycles):
   size        = int(args[0])
+  dtype       = args[1]
   performance = 10 * size * np.log2(size) / cycles
   return [size, performance]
 def dwt(args, cycles):
