@@ -28,6 +28,10 @@
 #include <stdio.h>
 #endif
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 // For benchmarking purposes
 #define FILTER_COEFF 2
 
@@ -35,6 +39,11 @@ extern uint64_t DWT_LEN;
 extern float data_s[] __attribute__((aligned(4 * NR_LANES)));
 extern float data_v[] __attribute__((aligned(4 * NR_LANES)));
 extern float    buf[] __attribute__((aligned(4 * NR_LANES)));
+
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    gsl_wavelet_transform_vector(data_v, DWT_LEN, buf, 0);
+}
 
 int main() {
   int64_t runtime;
@@ -45,8 +54,14 @@ int main() {
   int error = 0;
   int first_iter_only;
 
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
+
   first_iter_only = 0;
 
+  HW_CNT_READY;
   start_timer();
   gsl_wavelet_transform_vector(data_v, DWT_LEN, buf, first_iter_only);
   stop_timer();

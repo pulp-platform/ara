@@ -30,6 +30,10 @@
 #include <stdio.h>
 #endif
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 // data type
 #ifndef dtype
 #error "Define a dtype to benchmark fdotproduct! [double|float|_Float16]"
@@ -51,18 +55,21 @@ extern _Float16 res16_v;
 // Dummy scalar to check the datatype
 dtype r;
 
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    fdotp_v64b(v64a, v64b, 128);
+}
+
 int main() {
-/*
-  printf("\n");
-  printf("===========\n");
-  printf("=  FDOTP  =\n");
-  printf("===========\n");
-  printf("\n");
-  printf("\n");
-*/
+
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
 
   uint64_t v_sw_runtime;
 
+  HW_CNT_READY;
   // This benchmark is executed for one dtype only to ensure the same initial conditions.
   // If not, Ara would reshuffle some registers because of different EEWs and this would
   // lead to artificial slow-down

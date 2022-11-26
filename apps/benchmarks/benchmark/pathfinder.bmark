@@ -22,11 +22,18 @@
 #include <stdio.h>
 #endif
 
+#define WARM_CACHES_ITER 1
+
 extern int32_t num_runs;
 extern int32_t rows;
 extern int32_t cols;
 extern int     wall[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern int result_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    run_vector(wall, result_v, cols, rows, num_runs);
+}
 
 int main() {
 /*
@@ -38,11 +45,17 @@ int main() {
   printf("\n");
 */
 
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
+
   int error;
   int* s_ptr;
 
   int neutral_value = 0x7fffffff; // Max value for int datatype
 
+  HW_CNT_READY;
   if (cols > NR_LANES * 128) {
     start_timer();
     run_vector(wall, result_v, cols, rows, num_runs);

@@ -30,28 +30,37 @@
 #include "printf.h"
 #endif
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 extern const unsigned int N;
-extern const float I[];
-extern const float SCALE;
-extern const uint8_t SEL[];
-extern float o[];
-extern float o_gold[];
+extern const float   I[]      __attribute__((aligned(4 * NR_LANES)));;
+extern const float   SCALE;
+extern const uint8_t SEL[]    __attribute__((aligned(4 * NR_LANES)));;
+extern       float   o[]      __attribute__((aligned(4 * NR_LANES)));;
+extern       float   o_gold[] __attribute__((aligned(4 * NR_LANES)));;
+
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    dropout_vec(N, I, SCALE, SEL, o);
+}
 
 int main() {
-  printf("\n");
-  printf("=============\n");
-  printf("=  DROPOUT  =\n");
-  printf("=============\n");
-  printf("\n");
-  printf("\n");
+
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
 
   // Call the main kernel, and measure cycles
+  HW_CNT_READY;
   start_timer();
   dropout_vec(N, I, SCALE, SEL, o);
   stop_timer();
+
   // Performance metrics
   int64_t runtime = get_timer();
-
   printf("[sw-cycles]: %ld\n", runtime);
 
   return 0;

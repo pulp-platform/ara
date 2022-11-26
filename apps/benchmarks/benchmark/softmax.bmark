@@ -23,6 +23,10 @@
 #include "runtime.h"
 #include "util.h"
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 #ifndef SPIKE
 #include "printf.h"
 #else
@@ -36,9 +40,20 @@ extern float buf[] __attribute__((aligned(4 * NR_LANES)));
 extern float o_s[] __attribute__((aligned(4 * NR_LANES)));
 extern float o_v[] __attribute__((aligned(4 * NR_LANES)));
 
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    softmax_vec(i, o_v, channels, innerSize);
+}
+
 int main() {
   int64_t runtime;
 
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
+
+  HW_CNT_READY;
   start_timer();
   softmax_vec(i, o_v, channels, innerSize);
   stop_timer();

@@ -84,6 +84,10 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 #include "printf.h"
 #endif
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 // The padded matrices should be aligned in SW not on the padding,
 // but on the actual data.
 // R and C contain the padding as well.
@@ -95,13 +99,25 @@ extern uint64_t TSTEPS;
 extern DATA_TYPE A_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern DATA_TYPE B_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
+void warm_caches(uint64_t heat, DATA_TYPE* A_fixed_v, DATA_TYPE* B_fixed_v) {
+  for (uint64_t k = 0; k < heat; ++k)
+    j2d_v(R, C, A_fixed_v, B_fixed_v, TSTEPS);
+}
+
 int main() {
+
   // Align the matrices so that the vector store will also be aligned
   size_t mtx_offset = ((4 * NR_LANES) / sizeof(DATA_TYPE)) - 1;
   DATA_TYPE *A_fixed_v = A_v + mtx_offset;
   DATA_TYPE *B_fixed_v = B_v + mtx_offset;
 
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER, A_fixed_v, B_fixed_v);
+#endif
+
   // Measure vector kernel execution
+  HW_CNT_READY;
   start_timer();
   j2d_v(R, C, A_fixed_v, B_fixed_v, TSTEPS);
   stop_timer();
