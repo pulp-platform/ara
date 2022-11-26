@@ -129,6 +129,51 @@ module ara_tb;
     end
   end : dram_init
 
+  /*************************
+   *  PRINT STORED VALUES  *
+   *************************/
+
+  // This is useful to check that the ideal dispatcher simulation was correct
+
+`ifndef IDEAL_DISPATCHER
+  localparam OutResultFile = "../gold_results.txt";
+`else
+  localparam OutResultFile = "../id_results.txt";
+`endif
+
+  int fd;
+
+  data_t                     ara_w;
+  logic [AxiWideBeWidth-1:0] ara_w_strb;
+  logic                      ara_w_valid;
+  logic                      ara_w_ready;
+
+  // Avoid dumping what it's not measured, e.g. cache warming
+  logic dump_en_mask;
+
+  initial begin
+    fd = $fopen(OutResultFile, "w");
+    $display("Dump results on %s", OutResultFile);
+  end
+
+  assign ara_w       = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_req.w.data;
+  assign ara_w_strb  = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_req.w.strb;
+  assign ara_w_valid = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_req.w_valid;
+  assign ara_w_ready = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_resp.w_ready;
+
+`ifndef IDEAL_DISPATCHER
+  assign dump_en_mask = dut.i_ara_soc.hw_cnt_en_o[0];
+`else
+  // Ideal-Dispatcher system does not warm the scalar cache
+  assign dump_en_mask = 1'b1;
+`endif
+  always_ff @(posedge clk)
+    if (dump_en_mask)
+      if (ara_w_valid && ara_w_ready)
+        for (int b = 0; b < AxiWideBeWidth; b++)
+          if (ara_w_strb[b])
+            $fdisplay(fd, "%0x", ara_w[b*8 +: 8]);
+
   /*********
    *  EOC  *
    *********/
@@ -143,6 +188,7 @@ module ara_tb;
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end
 
+      $fclose(fd);
       $finish(exit >> 1);
     end
   end
