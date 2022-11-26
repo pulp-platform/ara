@@ -54,7 +54,7 @@ matmul() {
       # Standard system
       config=${config} ENV_DEFINES="-DSIZE=$size -D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the cycle count and calculate performance
       cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -68,6 +68,8 @@ matmul() {
         # Extract the cycle count and calculate performance
         cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$size" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -102,7 +104,7 @@ conv2d() {
         # Standard System
         config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
-        make -C hardware/ simv app=benchmarks > $tempfile || exit
+        make -C hardware/ -B simc app=benchmarks > $tempfile || exit
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -116,6 +118,8 @@ conv2d() {
           # Extract the performance
           cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+          # Verify the results
+          diff hardware/id_results.txt hardware/gold_results.txt || exit
         fi
       done
     done
@@ -151,7 +155,7 @@ conv3d() {
         # Standard System
         config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
-        make -C hardware/ simv app=benchmarks > $tempfile || exit
+        make -C hardware/ -B simc app=benchmarks > $tempfile || exit
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -165,6 +169,8 @@ conv3d() {
           # Extract the performance
           cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$msize $fsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+          # Verify the results
+          diff hardware/id_results.txt hardware/gold_results.txt || exit
         fi
       done
     done
@@ -196,7 +202,7 @@ jacobi2d() {
       ${PYTHON} apps/$kernel/script/gen_data.py $vsize $vsize $OnlyVec > apps/benchmarks/data/data.S
       config=${config} ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
          cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -210,6 +216,8 @@ jacobi2d() {
         # Extract the performance
            cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -239,7 +247,7 @@ dropout() {
       # Standard System
       config=${config} ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
          cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -253,6 +261,9 @@ dropout() {
         # Extract the performance
            cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        echo "Verifying results 'diff hardware/id_results.txt hardware/gold_results.txt'"
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -286,7 +297,7 @@ fft() {
 
       config=${config} ENV_DEFINES="-D${kernel^^}=1 -DFFT_SAMPLES=${vsize}" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
       cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -300,6 +311,8 @@ fft() {
         # Extract the performance
            cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -328,7 +341,7 @@ dwt() {
       ${PYTHON} apps/$kernel/script/gen_data.py $vsize > apps/benchmarks/data/data.S
       config=${config} ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
       cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -342,6 +355,8 @@ dwt() {
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -369,7 +384,7 @@ exp() {
       ${PYTHON} apps/$kernel/script/gen_data.py $vsize > apps/benchmarks/data/data.S
       ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
       cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -383,6 +398,8 @@ exp() {
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$vsize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -411,7 +428,7 @@ softmax() {
       ${PYTHON} apps/$kernel/script/gen_data.py $chsize $insize > apps/benchmarks/data/data.S
       ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      make -C hardware/ simv app=benchmarks > $tempfile || exit
+      make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
       cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$chsize $insize" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -425,6 +442,8 @@ softmax() {
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$chsize $insize" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
@@ -453,7 +472,7 @@ fdotproduct() {
         ${PYTHON} apps/$kernel/script/gen_data.py $bsize > apps/benchmarks/data/data.S
         config=${config} ENV_DEFINES="-D${kernel^^}=1 -Ddtype=${dtype}" \
                make -C apps/ bin/benchmarks
-        config=${config} make -C hardware/ simv app=benchmarks > ${tempfile} || exit
+        config=${config} make -C hardware/ -B simc app=benchmarks > ${tempfile} || exit
         # Extract the performance (hw counter to be more accurate!)
         info_0=$(cat $tempfile | grep "\[${kernel}\]")
         info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d " " -f 2)
@@ -471,6 +490,8 @@ fdotproduct() {
           info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d " " -f 3)
           info="$info_0 $info_1"
           echo $info >> ${kernel}_${nr_lanes}_ideal.benchmark
+          # Verify the results
+          diff hardware/id_results.txt hardware/gold_results.txt || exit
         fi
       done
     done
@@ -500,7 +521,7 @@ dotproduct() {
         ${PYTHON} apps/$kernel/script/gen_data.py $bsize > apps/benchmarks/data/data.S
         config=${config} ENV_DEFINES="-D${kernel^^}=1 -Ddtype=${dtype}" \
                make -C apps/ bin/benchmarks
-        config=${config} make -C hardware/ simv app=benchmarks > ${tempfile} || exit
+        config=${config} make -C hardware/ -B simc app=benchmarks > ${tempfile} || exit
         # Extract the performance (hw counter to be more accurate!)
         info_0=$(cat $tempfile | grep "\[${kernel}\]")
         info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d " " -f 2)
@@ -518,6 +539,8 @@ dotproduct() {
           info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d " " -f 3)
           info="$info_0 $info_1"
           echo $info >> ${kernel}_${nr_lanes}_ideal.benchmark
+          # Verify the results
+          diff hardware/id_results.txt hardware/gold_results.txt || exit
         fi
       done
     done
@@ -548,7 +571,7 @@ pathfinder() {
         ${PYTHON} apps/$kernel/script/gen_data.py $runs $cols $rows > apps/benchmarks/data/data.S
         config=${config} ENV_DEFINES="-D${kernel^^}=1" \
                make -C apps/ bin/benchmarks
-        config=${config} make -C hardware/ simv app=benchmarks > $tempfile || exit
+        config=${config} make -C hardware/ -B simc app=benchmarks > $tempfile || exit
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$runs $cols $rows" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -562,6 +585,8 @@ pathfinder() {
           # Extract the performance
           cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
           ./scripts/performance.py $kernel "$runs $cols $rows" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+          # Verify the results
+          diff hardware/id_results.txt hardware/gold_results.txt || exit
         fi
       done
     done
@@ -599,7 +624,7 @@ roi_align() {
       ${PYTHON} apps/$kernel/script/gen_data.py $args > apps/benchmarks/data/data.S
       config=${config} ENV_DEFINES="-D${kernel^^}=1" \
              make -C apps/ bin/benchmarks
-      config=${config} make -C hardware/ simv app=benchmarks > $tempfile || exit
+      config=${config} make -C hardware/ -B simc app=benchmarks > $tempfile || exit
       # Extract the performance
       cycles=$(cat $tempfile | grep "\[sw-cycles\]" | cut -d: -f2)
       ./scripts/performance.py $kernel "$args" $cycles >> ${kernel}_${nr_lanes}.benchmark
@@ -613,6 +638,8 @@ roi_align() {
         # Extract the performance
         cycles=$(cat $tempfile | grep "\[hw-cycles\]" | cut -d: -f2)
         ./scripts/performance.py $kernel "$args" $cycles >> ${kernel}_${nr_lanes}_ideal.benchmark
+        # Verify the results
+        diff hardware/id_results.txt hardware/gold_results.txt || exit
       fi
     done
   done
