@@ -24,7 +24,8 @@ module ctrl_registers #(
     // Control registers
     output logic           [DataWidth-1:0] exit_o,
     output logic           [DataWidth-1:0] dram_base_addr_o,
-    output logic           [DataWidth-1:0] dram_end_addr_o
+    output logic           [DataWidth-1:0] dram_end_addr_o,
+    output logic           [DataWidth-1:0] hw_cnt_en_o
   );
 
   `include "common_cells/registers.svh"
@@ -33,7 +34,7 @@ module ctrl_registers #(
   //  Definitions  //
   ///////////////////
 
-  localparam int unsigned NumRegs          = 3;
+  localparam int unsigned NumRegs          = 4;
   localparam int unsigned DataWidthInBytes = (DataWidth + 7) / 8;
   localparam int unsigned RegNumBytes      = NumRegs * DataWidthInBytes;
 
@@ -41,15 +42,18 @@ module ctrl_registers #(
   localparam logic [DataWidthInBytes-1:0] ReadWriteReg = {DataWidthInBytes{1'b0}};
 
   // Memory map
-  // [23:24]: dram_end_addr  (ro)
+  // [31:24]: dram_end_addr  (rw)
+  // [23:16]: dram_end_addr  (ro)
   // [15:8]:  dram_base_addr (ro)
   // [7:0]:   exit           (rw)
   localparam logic [NumRegs-1:0][DataWidth-1:0] RegRstVal = '{
+    0,
     DRAMBaseAddr + DRAMLength,
     DRAMBaseAddr,
     0
   };
   localparam logic [NumRegs-1:0][DataWidthInBytes-1:0] AxiReadOnly = '{
+    ReadWriteReg,
     ReadOnlyReg,
     ReadOnlyReg,
     ReadWriteReg
@@ -61,6 +65,7 @@ module ctrl_registers #(
 
   logic [RegNumBytes-1:0] wr_active_d, wr_active_q;
 
+  logic [DataWidth-1:0] hw_cnt_en;
   logic [DataWidth-1:0] dram_base_address;
   logic [DataWidth-1:0] dram_end_address;
   logic [DataWidth-1:0] exit;
@@ -82,7 +87,7 @@ module ctrl_registers #(
     .rd_active_o(/* Unused */                               ),
     .reg_d_i    ('0                                         ),
     .reg_load_i ('0                                         ),
-    .reg_q_o    ({dram_end_address, dram_base_address, exit})
+    .reg_q_o    ({hw_cnt_en, dram_end_address, dram_base_address, exit})
   );
 
   `FF(wr_active_q, wr_active_d, '0);
@@ -91,6 +96,7 @@ module ctrl_registers #(
   //   Signals   //
   /////////////////
 
+  assign hw_cnt_en_o      = hw_cnt_en;
   assign dram_base_addr_o = dram_base_address;
   assign dram_end_addr_o  = dram_end_address;
   assign exit_o           = {exit, logic'(|wr_active_q[7:0])};

@@ -30,6 +30,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     input  logic        clk_i,
     input  logic        rst_ni,
     output logic [63:0] exit_o,
+    output logic [63:0] hw_cnt_en_o,
     // Scan chain
     input  logic        scan_enable_i,
     input  logic        scan_data_i,
@@ -381,6 +382,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .rst_ni               (rst_ni                      ),
     .axi_lite_slave_req_i (axi_lite_ctrl_registers_req ),
     .axi_lite_slave_resp_o(axi_lite_ctrl_registers_resp),
+    .hw_cnt_en_o          (hw_cnt_en_o                 ),
     .dram_base_addr_o     (/* Unused */                ),
     .dram_end_addr_o      (/* Unused */                ),
     .exit_o               (exit_o                      )
