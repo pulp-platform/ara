@@ -26,6 +26,10 @@
 #include "../kernel/support_data.h"
 #include "util.h"
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 #define MAX_NFFT 256
 
 extern unsigned long int NFFT;
@@ -34,14 +38,24 @@ extern v2f twiddle_vec[] __attribute__((aligned(32 * NR_LANES), section(".l2")))
 extern v2f     samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 float buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
-// Threshold for FP numbers comparison during the final check
-#define THRESHOLD 1
+void warm_caches(uint64_t heat, float* samples_reim, float* twiddle_reim) {
+  for (uint64_t k = 0; k < heat; ++k)
+    fft_r2dif_vec(samples_reim, samples_reim + NFFT,
+                twiddle_reim, twiddle_reim + ((NFFT >> 1) * (31 - __builtin_clz(NFFT))),
+                mask_addr_vec, index_ptr, NFFT);
+}
 
 int main() {
   float* samples_reim = cmplx2reim(samples, buf, NFFT);
 
   float* twiddle_reim = cmplx2reim(twiddle_vec, buf, ((NFFT >> 1) * (31 - __builtin_clz(NFFT))));
 
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER, samples_reim, twiddle_reim);
+#endif
+
+  HW_CNT_READY;
   start_timer();
   fft_r2dif_vec(samples_reim, samples_reim + NFFT,
                 twiddle_reim, twiddle_reim + ((NFFT >> 1) * (31 - __builtin_clz(NFFT))),

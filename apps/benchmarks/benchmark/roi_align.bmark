@@ -1,0 +1,73 @@
+/*
+    Original implementation taken from
+    https://github.com/longcw/RoIAlign.pytorch No license found on the website.
+    A question about the license was made here
+    https://github.com/longcw/RoIAlign.pytorch/issues/48 Following the answer to
+    this question, a correct header will be added also here
+    Adaptation by: Matteo Perotti, ETH Zurich, <mperotti@iis.ee.ethz.ch>
+*/
+
+#include <stdint.h>
+#include <string.h>
+
+#include "runtime.h"
+
+#include "../kernel/roi_align.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
+
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
+#define EXTRAPOLATION_VALUE 0
+
+extern uint64_t BATCH_SIZE;
+extern uint64_t DEPTH;
+extern uint64_t IMAGE_HEIGHT;
+extern uint64_t IMAGE_WIDTH;
+extern uint64_t N_BOXES;
+extern uint64_t CROP_HEIGHT;
+extern uint64_t CROP_WIDTH;
+
+extern float image_data[];
+extern float boxes_data[];
+extern int box_index_data[];
+extern float crops_data[];
+extern float crops_data_vec[];
+
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    CropAndResizePerBox_BHWC_vec(image_data, BATCH_SIZE, DEPTH, IMAGE_HEIGHT,
+                               IMAGE_WIDTH, boxes_data, box_index_data, 0,
+                               N_BOXES, crops_data_vec, CROP_HEIGHT, CROP_WIDTH,
+                               EXTRAPOLATION_VALUE);
+}
+
+int main() {
+
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
+
+  int64_t runtime;
+
+  // Vector benchmark
+  HW_CNT_READY;
+  start_timer();
+  CropAndResizePerBox_BHWC_vec(image_data, BATCH_SIZE, DEPTH, IMAGE_HEIGHT,
+                               IMAGE_WIDTH, boxes_data, box_index_data, 0,
+                               N_BOXES, crops_data_vec, CROP_HEIGHT, CROP_WIDTH,
+                               EXTRAPOLATION_VALUE);
+  stop_timer();
+
+  runtime = get_timer();
+  printf("[sw-cycles]: %ld\n", runtime);
+
+  return 0;
+}

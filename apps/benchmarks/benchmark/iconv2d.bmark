@@ -24,6 +24,10 @@
 
 #include "../kernel/iconv2d.h"
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 extern int64_t i[] __attribute__((
     aligned(4 * NR_LANES))); // [ (M+floor(F/2)) * (N+floor(F/2)) ]
 extern int64_t f[] __attribute__((aligned(4 * NR_LANES)));        // [ F*F ]
@@ -34,8 +38,20 @@ extern int64_t M;
 extern int64_t N;
 extern int64_t F;
 
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    iconv2d_7x7(o, i, f, M, N, F);
+}
+
 int main() {
+
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
+
   // Measure runtime with a hot cache
+  HW_CNT_READY;
   start_timer();
   if (F == 3)
     iconv2d_3x3(o, i, f, M, N, F);

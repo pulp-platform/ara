@@ -27,6 +27,10 @@
 #include <stdio.h>
 #endif
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 extern size_t N_f64;
 extern double exponents_f64[] __attribute__((aligned(4 * NR_LANES)));
 extern double results_f64[] __attribute__((aligned(4 * NR_LANES)));
@@ -37,20 +41,21 @@ extern float exponents_f32[] __attribute__((aligned(4 * NR_LANES)));
 extern float results_f32[] __attribute__((aligned(4 * NR_LANES)));
 extern float gold_results_f32[] __attribute__((aligned(4 * NR_LANES)));
 
-#define THRESHOLD 1
+void warm_caches(uint64_t heat) {
+  for (uint64_t k = 0; k < heat; ++k)
+    exp_1xf64_asm_bmark(exponents_f64, results_f64, N_f64);
+}
 
 int main() {
-  printf("\n");
-  printf("==========\n");
-  printf("=  FEXP  =\n");
-  printf("==========\n");
-  printf("\n");
-  printf("\n");
 
   int64_t runtime;
 
-  printf("Executing exponential on %d 64-bit data...\n", N_f64);
+#ifndef SPIKE
+  // Warm-up caches
+  warm_caches(WARM_CACHES_ITER);
+#endif
 
+  HW_CNT_READY;
   start_timer();
   exp_1xf64_asm_bmark(exponents_f64, results_f64, N_f64);
   stop_timer();

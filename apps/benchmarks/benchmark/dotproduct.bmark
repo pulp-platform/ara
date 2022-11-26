@@ -30,6 +30,10 @@
 #include <stdio.h>
 #endif
 
+#ifndef WARM_CACHES_ITER
+#define WARM_CACHES_ITER 1
+#endif
+
 // data type
 #ifndef dtype
 #error "Define a dtype to benchmark dotproduct! [int64_t|int32_t|int16_t|int8_t]"
@@ -54,18 +58,21 @@ extern int8_t  res8_v;
 // Dummy scalar to check the datatype
 dtype r;
 
+void warm_caches(uint64_t heat) {
+  int trash;
+  for (uint64_t k = 0; k < heat; ++k)
+    trash = dotp_v64b(v64a, v64b, 128);
+}
+
 int main() {
-/*
-  printf("\n");
-  printf("==========\n");
-  printf("=  DOTP  =\n");
-  printf("==========\n");
-  printf("\n");
-  printf("\n");
-*/
+
+#ifndef SPIKE
+  warm_caches(WARM_CACHES_ITER);
+#endif
 
   uint64_t v_sw_runtime;
 
+  HW_CNT_READY;
   // This benchmark is executed for one dtype only to ensure the same initial conditions.
   // If not, Ara would reshuffle some registers because of different EEWs and this would
   // lead to artificial slow-down
