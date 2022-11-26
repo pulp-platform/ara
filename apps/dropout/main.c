@@ -24,11 +24,11 @@
 #include "kernel/dropout.h"
 
 extern const unsigned int N;
-extern const float I[];
 extern const float SCALE;
-extern const uint8_t SEL[];
-extern float o[];
-extern float o_gold[];
+extern const float I[] __attribute__((aligned(4 * NR_LANES)));
+extern const uint8_t SEL[] __attribute__((aligned(4 * NR_LANES)));
+extern float o[] __attribute__((aligned(4 * NR_LANES)));
+extern float o_gold[] __attribute__((aligned(4 * NR_LANES)));
 
 int main() {
   printf("\n");
