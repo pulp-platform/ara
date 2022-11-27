@@ -81,11 +81,11 @@ toolchain-llvm-main: Makefile
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && \
 	$(CMAKE) --build build --target install
 
-toolchain-llvm-newlib: Makefile
+toolchain-llvm-newlib: Makefile toolchain-llvm
 	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	../configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
-	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany -Wno-error-implicit-function-declaration" \
+	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany -Wno-error-implicit-function-declaration -Wno-error=int-conversion" \
 	AS_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-as \
 	AR_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ar \
 	LD_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ld \
@@ -119,7 +119,7 @@ toolchain-llvm-rt: Makefile toolchain-llvm-main toolchain-llvm-newlib
 	-DLLVM_CONFIG_PATH=$(LLVM_INSTALL_DIR)/bin/llvm-config
 	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && \
 	$(CMAKE) --build build --target install && \
-	ln -s $(LLVM_INSTALL_DIR)/lib/linux $(LLVM_INSTALL_DIR)/lib/clang/15.0.0/lib
+	ln -s $(LLVM_INSTALL_DIR)/lib/linux $(LLVM_INSTALL_DIR)/lib/clang/16/lib
 
 # Spike
 .PHONY: riscv-isa-sim riscv-isa-sim-mod
