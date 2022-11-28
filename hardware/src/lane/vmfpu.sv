@@ -639,7 +639,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // fp_sign is used in control block
   logic [2:0] fp_sign;
-
   // Is the FPU enabled?
   if (FPUSupport != FPUSupportNone) begin : fpu_gen
     // Features (enabled formats, vectors etc.)
@@ -891,10 +890,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     );
 elen_t operand_a_delay,
        vfrsqrt7_result_o;
+fpu_mask_t vfpu_flag_mask;
 
-vfr_struct_e16 vfrsqrt7_out_e16[4];
-vfr_struct_e32 vfrsqrt7_out_e32[2];
-vfr_struct_e64 vfrsqrt7_out_e64;
+vf7_struct_e16 vfrsqrt7_out_e16[4];
+vf7_struct_e32 vfrsqrt7_out_e32[2];
+vf7_struct_e64 vfrsqrt7_out_e64;
 status_t    vfrsqrt7_ex_flag;
 
     // register for delay of operand_a
@@ -902,8 +902,10 @@ status_t    vfrsqrt7_ex_flag;
     begin
          if (!rst_ni) begin
                 operand_a_delay <= 64'b0;
+                 vfpu_flag_mask <= 4'b0;
          end else begin
                 operand_a_delay <=operand_a ;
+                vfpu_flag_mask  <=vfpu_simd_mask;
          end
     end
         ////////////////////////////
@@ -960,21 +962,27 @@ logic [5:0]  lzc_e64;
              vfrsqrt7_out_e16[2] = vfrsqrt7_fp16(vfpu_result[41:32],operand_a_delay[47:32],lzc_e16[11:8]);
              vfrsqrt7_out_e16[3] = vfrsqrt7_fp16(vfpu_result[57:48],operand_a_delay[63:48],lzc_e16[15:12]);
 
-             vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vfrsqrt7_e16,vfrsqrt7_out_e16[2].vfrsqrt7_e16,vfrsqrt7_out_e16[1].vfrsqrt7_e16,vfrsqrt7_out_e16[0].vfrsqrt7_e16};
-             vfrsqrt7_ex_flag  = vfrsqrt7_out_e16[3].vfrsqrt7_ex_flag | vfrsqrt7_out_e16[2].vfrsqrt7_ex_flag | vfrsqrt7_out_e16[1].vfrsqrt7_ex_flag | vfrsqrt7_out_e16[0].vfrsqrt7_ex_flag;
+             vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vf7_e16,vfrsqrt7_out_e16[2].vf7_e16,vfrsqrt7_out_e16[1].vf7_e16,vfrsqrt7_out_e16[0].vf7_e16};
+             vfrsqrt7_ex_flag  = (vfrsqrt7_out_e16[3].ex_flag   & {5{vfpu_flag_mask[3]}})
+                                 | (vfrsqrt7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
+                                 | (vfrsqrt7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
+                                 | (vfrsqrt7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
+
          end
          EW32: begin
              vfrsqrt7_out_e32[0] = vfrsqrt7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] , lzc_e32[4:0]);
              vfrsqrt7_out_e32[1] = vfrsqrt7_fp32(vfpu_result[41:32],operand_a_delay[63:32],lzc_e32[9:5]);
 
-             vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vfrsqrt7_e32,vfrsqrt7_out_e32[0].vfrsqrt7_e32};
-             vfrsqrt7_ex_flag  = vfrsqrt7_out_e32[1].vfrsqrt7_ex_flag | vfrsqrt7_out_e32[0].vfrsqrt7_ex_flag;
+             vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32,vfrsqrt7_out_e32[0].vf7_e32};
+             vfrsqrt7_ex_flag  = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}} )
+                                 | (vfrsqrt7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
+
          end
          EW64: begin
             vfrsqrt7_out_e64 = vfrsqrt7_fp64(vfpu_result[9:0],operand_a_delay[63:0],lzc_e64[5:0]);
 
-             vfrsqrt7_result_o  =  vfrsqrt7_out_e64.vfrsqrt7_e64;
-             vfrsqrt7_ex_flag   =    vfrsqrt7_out_e64.vfrsqrt7_ex_flag;
+             vfrsqrt7_result_o  =  vfrsqrt7_out_e64.vf7_e64;
+             vfrsqrt7_ex_flag   =  vfrsqrt7_out_e64.ex_flag & {5{vfpu_flag_mask[0]}};
          end
          default: vfrsqrt7_result_o='x;
       endcase
