@@ -30,6 +30,8 @@ This file is licensed under the MIT license.
 
 `jacobi2d` comes from an adaptation of the software in `https://github.com/RALC88/riscv-vectorized-benchmark-suite`. The source file `apps/jacobi2d/main.c` contains the original licence.
 
+`conjugate_gradient` needs python package `sklearn` for generating symmetric and positivie-defined matrix
+
 ### Verilator simulations
 
 In order to run Verilator simulations, you will need a modern Verilator installation.
