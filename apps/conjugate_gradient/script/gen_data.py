@@ -19,13 +19,13 @@
 
 # arg1: size, arg2: steps, arg3: sparse density
 
-import random 
+import random
 import numpy as np
 import sys
 from sklearn.datasets import make_spd_matrix
 from sklearn.datasets import make_sparse_spd_matrix
 
-#fun for froming file 
+#fun for froming file
 def emit(name, array, alignment='8'):
   print(".global %s" % name)
   print(".balign " + alignment)
@@ -68,44 +68,7 @@ def genSymetricPositveSparseMatrix(size,data_type, idx_type,density,element_byte
 		data_list.append(M[a][b])
 		pass
 
-
-	# #symetric elements
-	# #generate nonzero map
-	# sym_size = int(0.5*size*(size-1))
-	# sym_nz = int(sym_size*density)
-	# pool = list(range(sym_size))
-	# sym_nz_map = np.zeros([sym_size], dtype=np.int32)
-	# for x in range(sym_nz):
-	# 	insert = random.choice(pool)
-	# 	pool.remove(insert)
-	# 	sym_nz_map[insert] = 1;
-	# 	pass
-
-	# non_zero = size + 2*sym_nz
-	# num_row = size
-	# num_col = size
-
-	# #create insert list
-	# insert_list = []
-	# cnt=0;
-	# for i in range(size):
-	# 	insert_list.append(i*size + i)
-	# 	for j in range(i):
-	# 		if sym_nz_map[cnt] == 1:
-	# 			insert_list.append(i*size + j)
-	# 			insert_list.append(j*size + i)
-	# 			pass
-	# 		cnt = cnt +1
-	# 		pass
-	# 	pass
-	# insert_list.sort()
-
-	# if len(insert_list) != non_zero:
-	# 	print("Error. Generate sparse matrix wrong")
-	# 	sys.exit()
-	# 	pass
-
-  #Count for p_row
+	#Count for p_row
 	p_row = []
 	p_row.append(0)
 	acc_bar = num_col
@@ -181,7 +144,7 @@ def genSymetricPositveSparseMatrix(size,data_type, idx_type,density,element_byte
 			pass
 		pass
 
-	#Form numpy data 
+	#Form numpy data
 	A_PROW = np.array(p_row, dtype=idx_type)
 	A_IDX = np.array(index_list, dtype=idx_type)
 	A_DATA = np.array(data_list, dtype=data_type)
@@ -204,7 +167,7 @@ def genRandomVector(size,data_type):
 
 
 if len(sys.argv) == 4:
-  S = int(sys.argv[1]) 
+  S = int(sys.argv[1])
   N = int(sys.argv[2])
   D = float(sys.argv[3])
 else:
