@@ -23,11 +23,11 @@
 # # INT32 idx
 # # FP64  data
 
-import random 
+import random
 import numpy as np
 import sys
 
-#fun for froming file 
+#fun for froming file
 def emit(name, array, alignment='8'):
   print(".global %s" % name)
   print(".balign " + alignment)
@@ -88,7 +88,7 @@ def randomCSR(num_row, num_col, density, element_byte):
     pool = list(range(0,num_col*element_byte,element_byte))
     for x in range(length):
       index = random.choice(pool)
-      pool.remove(index)    
+      pool.remove(index)
       row_idx_list.append(index)
       pass
     row_idx_list.sort()
