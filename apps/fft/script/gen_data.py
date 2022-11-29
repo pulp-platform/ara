@@ -17,7 +17,6 @@
 
 # arg1: image size, arg2: filter size
 
-import random as rand
 import numpy as np
 import sys
 
@@ -80,11 +79,10 @@ def setupTwiddlesLUT_dif_vec(Twiddles_vec, Nfft):
       twi[...]['im'] = np.sin(Phi)
 
 def setupInput(samples, Nfft, dyn):
-  rand.seed()
   with np.nditer(samples, op_flags=['readwrite']) as it:
     for samp in it:
-      samp[...]['re'] = rand.uniform(-2**15, 2**15-1)
-      samp[...]['im'] = rand.uniform(-2**15, 2**15-1)
+      samp[...]['re'] = np.random.rand(1)
+      samp[...]['im'] = np.random.rand(1)
 
 def emit(name, array, alignment='8'):
 	print(".global %s" % name)
