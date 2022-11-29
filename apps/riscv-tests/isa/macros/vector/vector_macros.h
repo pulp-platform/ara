@@ -121,6 +121,20 @@ int test_case;
   }                                                                                   \
   printf("PASSED.\n");
 
+//Macro used to compare large number of elements
+#define LVCMP(T,str,casenum,elements, vexp ,vact)                                     \
+  printf("Checking the results of the test case %d:\n", casenum);                     \
+  MEMORY_BARRIER;                                                                     \
+  for (unsigned int i = 0; i < elements; i++) {                                       \
+    if (vexp[i] != vact[i]) {                                                         \
+      printf("Index %d FAILED. Got "#str", expected "#str".\n", i, vexp[i], vact[i]); \
+      num_failed++;                                                                   \
+      return;                                                                         \
+    }                                                                                 \
+  }                                                                                   \
+  printf("PASSED.\n");
+
+
 // Check the results against an in-memory vector of golden values
 #define VMCMP(T,str,casenum,vexp,vgold,size)                                          \
   printf("Checking the results of the test case %d:\n", casenum);                     \
@@ -204,15 +218,29 @@ int test_case;
  ***************************/
 
 // Vector comparison
-#define VCMP_U64(casenum,vect,act...) {VSTORE_U64(vect); VCMP(uint64_t,%lu, casenum,Ru64,act)}
-#define VCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%u,  casenum,Ru32,act)}
-#define VCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%hu, casenum,Ru16,act)}
-#define VCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %hhu,casenum,Ru8, act)}
+#define VCMP_U64(casenum,vect,act...) {VSTORE_U64(vect); VCMP(uint64_t,%x, casenum,Ru64,act)}
+#define VCMP_U32(casenum,vect,act...) {VSTORE_U32(vect); VCMP(uint32_t,%x,  casenum,Ru32,act)}
+#define VCMP_U16(casenum,vect,act...) {VSTORE_U16(vect); VCMP(uint16_t,%x, casenum,Ru16,act)}
+#define VCMP_U8(casenum,vect,act...)  {VSTORE_U8(vect);  VCMP(uint8_t, %x,casenum,Ru8, act)}
 
-#define VVCMP_U64(casenum,ptr64,act...) {VCMP(uint64_t,%lu,casenum,ptr64,act)}
-#define VVCMP_U32(casenum,ptr32,act...) {VCMP(uint32_t,%u, casenum,ptr32,act)}
-#define VVCMP_U16(casenum,ptr16,act...) {VCMP(uint16_t,%hu,casenum,ptr16,act)}
-#define VVCMP_U8(casenum,ptr8,act...)  {VCMP(uint8_t, %hhu,casenum,ptr8, act)}
+#define LVCMP_U8(casenum,vect,act)  {uint64_t vl; read_vl(vl); VSTORE_L8(vect);    \
+                                     LVCMP(uint8_t, %x,casenum,vl, Lu8, act)}
+#define LVCMP_U16(casenum,vect,act)  {uint64_t vl; read_vl(vl); VSTORE_L16(vect);    \
+                                     LVCMP(uint16_t, %x,casenum, vl, Lu16, act)}
+#define LVCMP_U32(casenum,vect,act)  {uint64_t vl; read_vl(vl); VSTORE_L32(vect);    \
+                                     LVCMP(uint32_t, %x,casenum,vl, Lu32, act)}
+#define LVCMP_U64(casenum,vect,act)  {uint64_t vl; read_vl(vl); VSTORE_L64(vect);    \
+                                     LVCMP(uint64_t, %x,casenum, vl, Lu64, act)}
+
+#define VVCMP_U64(casenum,ptr64,act...) {VCMP(uint64_t,%x,casenum,ptr64,act)}
+#define VVCMP_U32(casenum,ptr32,act...) {VCMP(uint32_t,%x, casenum,ptr32,act)}
+#define VVCMP_U16(casenum,ptr16,act...) {VCMP(uint16_t,%x,casenum,ptr16,act)}
+#define VVCMP_U8(casenum,ptr8,act...)  {VCMP(uint8_t, %x,casenum,ptr8, act)}
+
+#define LVVCMP_U64(casenum,ptr64,act) {uint64_t vl; read_vl(vl); LVCMP(uint64_t,%x,casenum,vl, ptr64,act)}
+#define LVVCMP_U32(casenum,ptr32,act) {uint64_t vl; read_vl(vl); LVCMP(uint32_t,%x,casenum,vl, ptr32,act)}
+#define LVVCMP_U16(casenum,ptr16,act) {uint64_t vl; read_vl(vl); LVCMP(uint16_t,%x,casenum,vl, ptr16,act)}
+#define LVVCMP_U8(casenum,ptr8,act)  {uint64_t vl; read_vl(vl); LVCMP(uint8_t, %x,casenum,vl, ptr8, act)}
 
 #define VCMP_I64(casenum,vect,act...) {VSTORE_I64(vect); VCMP(int64_t,%ld, casenum,Ri64,act)}
 #define VCMP_I32(casenum,vect,act...) {VSTORE_I32(vect); VCMP(int32_t,%d,  casenum,Ri32,act)}
@@ -233,6 +261,11 @@ int test_case;
 #define VSTORE_U32(vreg) VSTORE(uint32_t,e32,vreg,Ru32)
 #define VSTORE_U16(vreg) VSTORE(uint16_t,e16,vreg,Ru16)
 #define VSTORE_U8(vreg)  VSTORE(uint8_t ,e8 ,vreg,Ru8 )
+
+#define VSTORE_L64(vreg) VSTORE(uint64_t,e64,vreg,Lu64)
+#define VSTORE_L32(vreg) VSTORE(uint32_t,e32,vreg,Lu32)
+#define VSTORE_L16(vreg) VSTORE(uint16_t,e16,vreg,Lu16)
+#define VSTORE_L8(vreg)  VSTORE(uint8_t ,e8 ,vreg,Lu8 )
 
 #define VSTORE_I64(vreg) VSTORE(int64_t,e64,vreg,Ri64)
 #define VSTORE_I32(vreg) VSTORE(int32_t,e32,vreg,Ri32)
