@@ -32,9 +32,6 @@ def emit(name, array, alignment='8'):
       s += "%02x" % bs[i+3-n]
     print("    .word 0x%s" % s)
 
-def rand_matrix(N, M, seed):
-  return np.arange(seed, seed+N*M, dtype=np.float32).reshape(N, M) * 3.141
-
 ############
 ## SCRIPT ##
 ############
@@ -45,12 +42,13 @@ else:
   print("Error. Give me one argument: the number of vector elements.")
   sys.exit()
 
+dtype = np.float32
+
 # Vector of samples
-data = np.around(rand_matrix(NDWT, 1, 1)).astype(np.float32)
-np.random.shuffle(data.flat)
+data = np.random.rand(NDWT).astype(dtype);
 
 # Buffer
-buf = np.zeros(int(NDWT/2), dtype=np.float32)
+buf = np.zeros(int(NDWT/2), dtype=dtype)
 
 # Create the file
 print(".section .data,\"aw\",@progbits")

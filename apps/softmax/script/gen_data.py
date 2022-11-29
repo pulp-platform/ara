@@ -33,7 +33,7 @@ def emit(name, array, alignment='8'):
     print("    .word 0x%s" % s)
 
 def rand_matrix(N, dtype):
-  return np.random.rand(N).astype(dtype) * 3.141
+  return np.random.rand(N).astype(dtype)
 
 ############
 ## SCRIPT ##

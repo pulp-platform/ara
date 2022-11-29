@@ -56,9 +56,6 @@ def convolve2D(kernel, image, padding):
 
     return output
 
-def rand_matrix(N, M, seed):
-	return np.arange(seed, seed+N*M, dtype=np.float64).reshape(N, M) * 3.141
-
 def emit(name, array, alignment='8'):
 	print(".global %s" % name)
 	print(".balign " + alignment)
@@ -75,56 +72,42 @@ if len(sys.argv) > 1:
 	matrix_width = int(sys.argv[1])
 	assert(matrix_width <= 128), "The width of the image cannot be greater than 128 64-bit \
 	                                  elements. If this is not enough, modify the algorithm."
-	filter_size = int(sys.argv[2])
+	f = int(sys.argv[2])
 	# Filter size must be odd
-	assert(filter_size % 2 == 1), "The filter size must be an odd integer number"
+	assert(f % 2 == 1), "The filter size must be an odd integer number"
 else:
 	matrix_width = 64
-	filter_size = 3
+	f = 3
+
+dtype=np.float64
 
 # Input image. Take a square image
 M = matrix_width
 N = matrix_width
-padding = int(filter_size/2)
+padding = int(f/2)
 M_pad = M + 2*padding
 N_pad = N + 2*padding
 assert(M % 4 == 0), "Output image dimension must be divisible by 4, pad the input image accordingly"
 assert(N % 4 == 0), "Output image dimension must be divisible by 4, pad the input image accordingly"
 
 # Generate a random float64 input padded image
-image = np.around(rand_matrix(M_pad, N_pad, 1)).astype(np.float64)
-np.random.shuffle(image.flat)
+image = np.random.rand(M_pad, N_pad).astype(dtype);
 
 # Generate a random float64 filter
-gen_filter = np.around(rand_matrix(filter_size, filter_size, 0)).astype(np.float64)
-np.random.shuffle(gen_filter.flat)
+gen_filter = np.random.rand(f, f).astype(dtype);
 
 # Create the empty o matrix
-empty_o = np.zeros((M, N)).astype(np.float64)
+empty_o = np.zeros((M, N)).astype(dtype)
 
 # Calculate the output matrix
-result = np.around(convolve2D(gen_filter, image, padding)).astype(np.float64)
-
-# Calculate a checksum
-checksum = np.sum(result, dtype=np.float64)
-
-# Print information on display
-#print("Image:\n")
-#print(image)
-#print("Filter:\n")
-#print(gen_filter)
-#print("Results:\n")
-#print(result)
-#print("\n")
-#print(checksum)
+result = convolve2D(gen_filter, image, padding).astype(dtype)
 
 # Print information on file
 print(".section .data,\"aw\",@progbits")
 emit("M", np.array(M, dtype=np.uint64))
 emit("N", np.array(N, dtype=np.uint64))
-emit("F", np.array(filter_size, dtype=np.uint64))
+emit("F", np.array(f, dtype=np.uint64))
 emit("i", image, 'NR_LANES*4')
 emit("f", gen_filter, 'NR_LANES*4')
 emit("o", empty_o, 'NR_LANES*4')
 emit("golden_o", result, 'NR_LANES*4')
-emit("o_checksum", checksum)

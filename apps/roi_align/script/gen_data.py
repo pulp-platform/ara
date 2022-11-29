@@ -22,8 +22,7 @@ import sys
 
 # Batch * Depth * Height * Width
 def rand_matrix(dims):
-        mtx = np.linspace(-1, 1, num=np.prod(dims), dtype=np.float32).reshape(dims)
-        np.random.shuffle(mtx)
+        mtx = np.random.rand(*dims).astype(dtype=np.float32)
         return mtx
 
 def emit(name, array, alignment='8'):
@@ -52,7 +51,7 @@ else:
 )
 
 # Generate a random batch of feature maps
-image_data = np.random.randn(batch_size, depth, height, width).astype(np.float32)
+image_data = np.random.rand(batch_size, depth, height, width).astype(np.float32)
 
 # Generate random coordinates for the boxes
 xs = np.random.uniform(0, width, size=(n_boxes, 2))

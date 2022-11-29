@@ -45,12 +45,12 @@ avl32 = int(vsize / 4)
 avl16 = int(vsize / 2)
 
 # Create the vectors
-v64a = np.random.randn(avl64).astype(np.float64)
-v64b = np.random.randn(avl64).astype(np.float64)
-v32a = np.random.randn(avl32).astype(np.float32)
-v32b = np.random.randn(avl32).astype(np.float32)
-v16a = np.random.randn(avl16).astype(np.float16)
-v16b = np.random.randn(avl16).astype(np.float16)
+v64a = np.random.rand(avl64).astype(np.float64)
+v64b = np.random.rand(avl64).astype(np.float64)
+v32a = np.random.rand(avl32).astype(np.float32)
+v32b = np.random.rand(avl32).astype(np.float32)
+v16a = np.random.rand(avl16).astype(np.float16)
+v16b = np.random.rand(avl16).astype(np.float16)
 
 # Create the golden output
 gold64 = reduce(lambda a, b: a+b, np.multiply(v64a, v64b))

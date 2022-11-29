@@ -17,7 +17,6 @@
 
 # arg1: vector size, arg2: filter size
 
-import random as rand
 import numpy as np
 import sys
 
