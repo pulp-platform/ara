@@ -1080,9 +1080,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_req_ready_o  = 1'b0;
                     acc_resp_valid_o = 1'b0;
 
-                    ara_req_d.op         = ara_pkg::VMVXS;
+                    case (insn.varith_type.rs1)
+                      5'b00000: begin
+                        ara_req_d.op      = ara_pkg::VMVXS;
+                        ara_req_d.vl      = 1;
+                      end
+                      5'b10000: begin
+                        ara_req_d.op      = ara_pkg::VCPOP;
+                        ara_req_d.use_vs1 = 1'b0;
+                      end
+                      5'b10001: begin
+                        ara_req_d.op      = ara_pkg::VFIRST;
+                        ara_req_d.use_vs1 = 1'b0;
+                      end
+                      default :;
+                    endcase
+
                     ara_req_d.use_vd     = 1'b0;
-                    ara_req_d.vl         = 1;
                     ara_req_d.vstart     = '0;
                     skip_lmul_checks     = 1'b1;
                     ignore_zero_vl_check = 1'b1;

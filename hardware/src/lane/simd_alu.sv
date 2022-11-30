@@ -114,6 +114,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         // vmsbf, vmsof, vmsif and viota operand generation
         VMSBF, VMSOF, VMSIF, VIOTA : res = opb;
 
+	      // Vector count population and find first set bit instructions
+        VCPOP, VFIRST : res = operand_b_i;
+
         // Arithmetic instructions
         VADD, VADC, VMADC, VREDSUM, VWREDSUMU, VWREDSUM: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin

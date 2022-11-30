@@ -122,7 +122,7 @@ package ara_pkg;
     // Floating-point comparison instructions
     VMFEQ, VMFLE, VMFLT, VMFNE, VMFGT, VMFGE,
     // Integer comparison instructions
-    VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSBF, VMSOF, VMSIF, VIOTA, VID, VMSGT,
+    VMSEQ, VMSNE, VMSLTU, VMSLT, VMSLEU, VMSLE, VMSGTU, VMSBF, VMSOF, VMSIF, VIOTA, VID, VCPOP, VFIRST, VMSGT,
     // Integer add-with-carry and subtract-with-borrow carry-out instructions
     VMADC, VMSBC,
     // Mask operations
@@ -146,6 +146,11 @@ package ara_pkg;
   function automatic is_store(ara_op_e op);
     is_store = op inside {[VSE:VSXE]};
   endfunction : is_store
+
+  // Return true of op is either VCPOP or VFIRST
+  function automatic vd_scalar(ara_op_e op);
+    vd_scalar = op inside {[VCPOP:VFIRST]};
+  endfunction : vd_scalar
 
   typedef enum logic [1:0] {
     NO_RED,

@@ -25,6 +25,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     input  logic     [NrVInsn-1:0]                     pe_vinsn_running_i,
     output logic                                       pe_req_ready_o,
     output pe_resp_t                                   pe_resp_o,
+    output elen_t                                      result_scalar_o,
+    output logic                                       result_scalar_valid_o,
     // Interface with the lanes
     input  elen_t    [NrLanes-1:0][NrMaskFUnits+2-1:0] masku_operand_i,
     input  logic     [NrLanes-1:0][NrMaskFUnits+2-1:0] masku_operand_valid_i,
@@ -213,7 +215,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic result_queue_empty;
   assign result_queue_empty = (result_queue_cnt_q == '0);
 
-  // vmsbf, vmsif, vmsof, viota, vid variables
+  // vmsbf, vmsif, vmsof, viota, vid, vcpop, vfirst variables
   logic  [NrLanes*DataWidth-1:0] alu_result_f, alu_result_ff;
   logic  [NrLanes*DataWidth-1:0] alu_operand_a, alu_operand_a_seq, alu_operand_a_seq_f;
   logic  [NrLanes*DataWidth-1:0] alu_operand_b, alu_operand_b_seq, alu_operand_b_seq_m, alu_operand_b_seq_f, alu_operand_b_seq_ff;
@@ -255,13 +257,32 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // iteration count for masked instrctions
   always_comb begin
-    if (!pe_req_ready_o && masku_operand_a_valid_i) begin
+    if (vinsn_issue_valid && masku_operand_a_valid_i) begin
       iteration_count_d = iteration_count_q + 1'b1;
     end else begin
       iteration_count_d = iteration_count_q;
     end
-    if (pe_req_ready_o) begin
+    if (pe_req_ready_o && !vinsn_issue_valid) begin
       iteration_count_d = '0;
+    end
+  end
+
+  ////////////////////////////
+  //// Scalar result reg  ////
+  ////////////////////////////
+
+  elen_t result_scalar_d;
+  logic  result_scalar_valid_d;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      result_scalar_o       <= '0;
+      result_scalar_valid_o <= '0;
+      iteration_count_q     <= '0;
+    end else begin
+      result_scalar_o       <= result_scalar_d;
+      result_scalar_valid_o <= result_scalar_valid_d;
+      iteration_count_q     <= iteration_count_d;
     end
   end
 
@@ -269,11 +290,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   //  Mask ALU  //
   ////////////////
 
-  elen_t [NrLanes-1:0]      alu_result;
-  logic  [NrLanes*ELEN-1:0] bit_enable;
-  logic  [NrLanes*ELEN-1:0] bit_enable_shuffle;
-  logic  [NrLanes*ELEN-1:0] bit_enable_mask;
-  logic  [NrLanes*ELEN-1:0] mask;
+  elen_t [NrLanes-1:0]                 alu_result;
+  logic  [NrLanes*ELEN-1:0]            bit_enable;
+  logic  [NrLanes*ELEN-1:0]            bit_enable_shuffle;
+  logic  [NrLanes*ELEN-1:0]            bit_enable_mask;
+  logic  [NrLanes*ELEN-1:0]            mask;
+  logic  [NrLanes*ELEN-1:0]            vcpop_operand;
+  logic  [$clog2(DataWidth*NrLanes):0] popcount, vfirst_count;
+  logic  [$clog2(VLEN):0]              vfirst_count_d, vfirst_count_q;
+  logic  [$clog2(VLEN):0]              popcount_d, popcount_q;
+  logic                                vfirst_empty;
 
   // Pointers
   //
@@ -289,6 +315,24 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
+  // Population count for vcpop.m instruction
+  popcount #(
+    .INPUT_WIDTH (DataWidth*NrLanes)
+  ) i_popcount (
+    .data_i    (vcpop_operand),
+    .popcount_o(popcount     )
+  );
+
+  // Trailing zero counter
+  lzc #(
+    .WIDTH(DataWidth*NrLanes),
+    .MODE (0)
+  ) i_clz (
+    .in_i    (vcpop_operand),
+    .cnt_o   (vfirst_count ),
+    .empty_o (vfirst_empty )
+  );
+
   always_comb begin: p_mask_alu
     alu_result          = '0;
     bit_enable          = '0;
@@ -297,6 +341,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     not_found_one_d     = pe_req_ready_o ? 1'b1 : not_found_one_q;
     alu_result_vm       = '0;
     alu_operand_b_seq_m = '0;
+    vcpop_operand       = '0;
 
     if (vinsn_issue_valid) begin
       // Calculate bit enable
@@ -538,6 +583,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             endcase
           end
         end
+        [VCPOP:VFIRST] : begin
+          vcpop_operand = (!vinsn_issue.vm) ? masku_operand_a_i & bit_enable_mask : masku_operand_a_i;
+        end
         default: begin
           alu_result    = '0;
           alu_result_vm = '0;
@@ -584,13 +632,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   always_comb begin: p_masku
     // Maintain state
-    vinsn_queue_d = vinsn_queue_q;
-    read_cnt_d    = read_cnt_q;
-    issue_cnt_d   = issue_cnt_q;
-    commit_cnt_d  = commit_cnt_q;
+    vinsn_queue_d  = vinsn_queue_q;
+    read_cnt_d     = read_cnt_q;
+    issue_cnt_d    = issue_cnt_q;
+    commit_cnt_d   = commit_cnt_q;
 
-    mask_pnt_d = mask_pnt_q;
-    vrf_pnt_d  = vrf_pnt_q;
+    mask_pnt_d     = mask_pnt_q;
+    vrf_pnt_d      = vrf_pnt_q;
+
+    popcount_d     = popcount_q;
+    vfirst_count_d = vfirst_count_q;
 
     mask_queue_d           = mask_queue_q;
     mask_queue_valid_d     = mask_queue_valid_q;
@@ -620,12 +671,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
+    // scalar path signals
+    result_scalar_d       = result_scalar_o;
+    result_scalar_valid_d = result_scalar_valid_o;
+
     /////////////////////
     //  Mask Operands  //
     /////////////////////
 
     // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid) begin
+    if (vinsn_issue_valid && !(vd_scalar(vinsn_issue.op))) begin
       // Is there place in the mask queue to write the mask operands?
       // Did we receive the mask bits on the MaskM channel?
       if (!vinsn_issue.vm && !mask_queue_full && &masku_operand_m_valid_i) begin
@@ -696,6 +751,42 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
 
+    //////////////////////////////
+    // Calculate scalar results //
+    //////////////////////////////
+
+    // Is there an instruction ready to be issued?
+    if (vinsn_issue_valid && vd_scalar(vinsn_issue.op)) begin
+      if (masku_operand_a_valid_i) begin
+
+        masku_operand_a_ready_o = masku_operand_a_valid_i;
+
+        // Account for the elements that were processed
+        issue_cnt_d = issue_cnt_q - ((NrLanes*DataWidth)/(8 << vinsn_issue.vtype.vsew));
+        if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes)))
+          issue_cnt_d = '0;
+
+        // Acknowledge the operands, also triggers another beat if necessary
+        if (!vinsn_issue.vm) masku_operand_m_ready_o = '1;
+
+        // Adding the popcount and vfirst_count from all streams of operands
+        if (|masku_operand_a_valid_i) begin
+          popcount_d     = popcount_q + popcount;
+          vfirst_count_d = vfirst_count_q + vfirst_count;
+        end
+
+        // if this is the last beat, commit the result to the scalar_result queue
+        if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes))) begin
+          result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : (vfirst_empty) ? -1 : vfirst_count_d;
+          result_scalar_valid_d = '1;
+
+          // Decrement the commit counter by the entire number of elements,
+          // since we only commit one result for everything
+          commit_cnt_d = '0;
+        end
+      end
+    end
+
     //////////////////////////////////
     //  Write results to the lanes  //
     //////////////////////////////////
@@ -710,7 +801,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         fake_a_valid = 1'b0;
 
     // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid) begin
+    if (vinsn_issue_valid && !vd_scalar(vinsn_issue.op)) begin
       // This instruction executes on the Mask Unit
       if (vinsn_issue.vfu == VFU_MaskUnit) begin
         // Is there place in the result queue to write the results?
@@ -861,6 +952,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Is this operand going to the lanes?
     mask_valid_lane_o = vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit};
 
+    if (vd_scalar(vinsn_issue.op)) begin
+      mask_valid_o = (vinsn_issue.vm) ? '0 : '1;
+    end
+
     // All lanes accepted the VRF request
     if (!(|mask_queue_valid_d[mask_queue_read_pnt_q]))
       // There is something waiting to be written
@@ -930,11 +1025,27 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           commit_cnt_d = '0;
       end
 
+    ///////////////////////////
+    // Commit scalar results //
+    ///////////////////////////
+
+    // The scalar result has been sent to and acknowledged by the dispatcher
+    if (vinsn_commit.op inside {[VCPOP:VFIRST]} && result_scalar_valid_o == 1) begin
+
+      // reset result_scalar
+      result_scalar_d       = '0;
+      result_scalar_valid_d = '0;
+
+      // reset the popcount and vfirst_count
+      popcount_d     = '0;
+      vfirst_count_d = '0;
+    end
+
     // Finished committing the results of a vector instruction
     // Some instructions forward operands to the lanes before writing the VRF
     // In this case, wait for the lanes to be written
     if (vinsn_commit_valid && commit_cnt_d == '0 &&
-      (!(vinsn_commit.op inside {[VMFEQ:VMSBC]}) || &result_final_gnt_d)) begin
+      (!(vinsn_commit.op inside {[VMFEQ:VID], [VMSGT:VMSBC]}) || &result_final_gnt_d)) begin
       // Mark the vector instruction as being done
       pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
@@ -1014,6 +1125,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= '0;
       pe_resp_o          <= '0;
       result_final_gnt_q <= '0;
+      popcount_q         <= '0;
+      vfirst_count_q     <= '0;
     end else begin
       vinsn_running_q    <= vinsn_running_d;
       read_cnt_q         <= read_cnt_d;
@@ -1023,6 +1136,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= mask_pnt_d;
       pe_resp_o          <= pe_resp;
       result_final_gnt_q <= result_final_gnt_d;
+      popcount_q         <= popcount_d;
+      vfirst_count_q     <= vfirst_count_d;
     end
   end
 
