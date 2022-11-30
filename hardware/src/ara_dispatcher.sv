@@ -295,6 +295,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       RESHUFFLE: begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+        // Initial temptative VLMAX (then modified by lmul!)
+        automatic int unsigned vlmax = VLENB >> ara_req_d.vtype_d.vsew;
 
         // Stall the interface, wait for the backend to accept the injected uop
         acc_req_ready_o  = 1'b0;
@@ -315,7 +317,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         ara_req_d.vm            = 1'b1;
         // Shuffle the whole reg (vl refers to current vsew)
         ara_req_d.vtype.vsew    = eew_new_buffer_q;
-        ara_req_d.vl            = VLENB >> ara_req_d.vtype.vsew;
+        // Maximum vector length. VLMAX = LMUL * VLEN / SEW.
+        unique case (vtype_q.vlmul)
+          LMUL_1  : vlmax <<= 0;
+          LMUL_2  : vlmax <<= 1;
+          LMUL_4  : vlmax <<= 2;
+          LMUL_8  : vlmax <<= 3;
+          default:;
+        endcase
+        // This is a conservative strategy and can be optimized.
+        // If LMUL > 1, technically we should reshuffle only the
+        // next registers that have eew_q != from vsew.
+        // An optimization can be to sequentially go one by one for
+        // LMUL times, starting from the first register, and check
+        // If we need a reshuffle there or not. If yes, inject a
+        // reshuffle instruction.
+        ara_req_d.vl            = vlmax;
         // Vl refers to current system vsew but operand requesters
         // will fetch from a register with a different eew
         ara_req_d.scale_vl      = 1'b1;
