@@ -141,6 +141,10 @@ module ara import ara_pkg::*; #(
   logic                                        mask_valid_lane;
   logic      [NrLanes-1:0]                     lane_mask_ready;
 
+  // Mask unit scalar result variables
+  elen_t     result_scalar;
+  logic      result_scalar_valid;
+
   ara_sequencer #(.NrLanes(NrLanes)) i_sequencer (
     .clk_i                 (clk_i                    ),
     .rst_ni                (rst_ni                   ),
@@ -162,8 +166,8 @@ module ara import ara_pkg::*; #(
     // Interface with the operand requesters
     .global_hazard_table_o (global_hazard_table      ),
     // Interface with the lane 0
-    .pe_scalar_resp_i      (masku_operand[0][1]      ), // MaskB OpQueue
-    .pe_scalar_resp_valid_i(masku_operand_valid[0][1]), // MaskB OpQueue Valid
+    .pe_scalar_resp_i      (pe_req.op inside{[VCPOP:VFIRST]} ? result_scalar : masku_operand[0][1]), // MaskB OpQueue
+    .pe_scalar_resp_valid_i(pe_req.op inside{[VCPOP:VFIRST]} ? result_scalar_valid : masku_operand_valid[0][1]), // MaskB OpQueue Valid
     .pe_scalar_resp_ready_o(pe_scalar_resp_ready     ),
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack              ),
@@ -411,6 +415,8 @@ module ara import ara_pkg::*; #(
     .pe_vinsn_running_i      (pe_vinsn_running                ),
     .pe_req_ready_o          (pe_req_ready[NrLanes+OffsetMask]),
     .pe_resp_o               (pe_resp[NrLanes+OffsetMask]     ),
+    .result_scalar_o         (result_scalar                   ),
+    .result_scalar_valid_o   (result_scalar_valid             ),
     // Interface with the lanes
     .masku_operand_i         (masku_operand                   ),
     .masku_operand_valid_i   (masku_operand_valid             ),
