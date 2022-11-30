@@ -278,11 +278,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     if (!rst_ni) begin
       result_scalar_o       <= '0;
       result_scalar_valid_o <= '0;
-      iteration_count_q     <= '0;
     end else begin
       result_scalar_o       <= result_scalar_d;
       result_scalar_valid_o <= result_scalar_valid_d;
-      iteration_count_q     <= iteration_count_d;
     end
   end
 
@@ -290,16 +288,17 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   //  Mask ALU  //
   ////////////////
 
-  elen_t [NrLanes-1:0]                 alu_result;
-  logic  [NrLanes*ELEN-1:0]            bit_enable;
-  logic  [NrLanes*ELEN-1:0]            bit_enable_shuffle;
-  logic  [NrLanes*ELEN-1:0]            bit_enable_mask;
-  logic  [NrLanes*ELEN-1:0]            mask;
-  logic  [NrLanes*ELEN-1:0]            vcpop_operand;
-  logic  [$clog2(DataWidth*NrLanes):0] popcount, vfirst_count;
-  logic  [$clog2(VLEN):0]              vfirst_count_d, vfirst_count_q;
-  logic  [$clog2(VLEN):0]              popcount_d, popcount_q;
-  logic                                vfirst_empty;
+  elen_t [NrLanes-1:0]                   alu_result;
+  logic  [NrLanes*ELEN-1:0]              bit_enable;
+  logic  [NrLanes*ELEN-1:0]              bit_enable_shuffle;
+  logic  [NrLanes*ELEN-1:0]              bit_enable_mask;
+  logic  [NrLanes*ELEN-1:0]              mask;
+  logic  [NrLanes*ELEN-1:0]              vcpop_operand;
+  logic  [$clog2(DataWidth*NrLanes):0]   popcount;
+  logic  [$clog2(VLEN):0]                popcount_d, popcount_q;
+  logic  [$clog2(DataWidth*NrLanes)-1:0] vfirst_count;
+  logic  [$clog2(VLEN)-1:0]              vfirst_count_d, vfirst_count_q;
+  logic                                  vfirst_empty;
 
   // Pointers
   //
