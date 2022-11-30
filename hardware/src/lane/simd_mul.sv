@@ -152,7 +152,7 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 1; l++) begin: gen_mul
       assign mul_res.w128[l] =
       $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
-      assign vxsat.w64[l]   = |mul_res.w128[l][127:64];
+        assign vxsat.w64[l] = (op == VSMUL) ? result_o[(l+1)*64-1] ^ mul_res.w128[l][127] : '0;
     end : gen_mul
 
     always_comb begin : p_mul
@@ -186,7 +186,7 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 2; l++) begin: gen_mul
       assign mul_res.w64[l] =
       $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
-      assign vxsat.w32[l]   = |mul_res.w64[l][63:32];
+        assign vxsat.w32[l] = (op == VSMUL) ? result_o[(l+1)*32-1] ^ mul_res.w64[l][63] : '0;
     end: gen_mul
 
     always_comb begin : p_mul
@@ -218,7 +218,7 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 4; l++) begin: gen_mul
       assign mul_res.w32[l] =
       $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l] [15] & signed_b, opb.w16[l]});
-      assign vxsat.w16[l]   = |mul_res.w32[l][31:16];
+        assign vxsat.w16[l] = (op == VSMUL) ? result_o[(l+1)*16-1] ^ mul_res.w32[l][31] : '0;
     end : gen_mul
 
     always_comb begin : p_mul
@@ -250,7 +250,7 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 8; l++) begin: gen_mul
       assign mul_res.w16[l] =
       $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
-      assign vxsat.w8[l]   = |mul_res.w16[l][15:8];
+        assign vxsat.w8[l] = (op == VSMUL) ? result_o[(l+1)*8-1] ^ mul_res.w16[l][15] : '0;
     end : gen_mul
 
     always_comb begin : p_mul
