@@ -35,12 +35,86 @@ void TEST_CASE1(void) {
            0xffe1a00000000000, 0x7fe5400000000000, 0x7fd5600000000000,
            0x0020000000000000, 0x0009000000000000, pInfd);
 };
+// Test to check DZ flag
+void TEST_CASE2(void) {
+  CLEAR_FFLAGS;
+  VSET(16, e16, m1);
+  CHECK_FFLAGS(0);
+  VLOAD_16(v2, pZero, mZeroh, pZero, mZeroh, pZero, mZeroh, pZero, mZeroh,
+           pZero, mZeroh, pZero, mZeroh, pZero, mZeroh, pZero, mZeroh);
+  asm volatile("vfrec7.v v1, v2");
+  VCMP_U16(4, v1, pInfh, mInfh, pInfh, mInfh, pInfh, mInfh, pInfh, mInfh, pInfh,
+           mInfh, pInfh, mInfh, pInfh, mInfh, pInfh, mInfh);
+  CHECK_FFLAGS(DZ);
 
+  CLEAR_FFLAGS;
+  VSET(16, e32, m1);
+  CHECK_FFLAGS(0);
+  VLOAD_32(v2, pZero, mZerof, pZero, mZerof, pZero, mZerof, pZero, mZerof,
+           pZero, mZerof, pZero, mZerof, pZero, mZerof, pZero, mZerof);
+  asm volatile("vfrec7.v v1, v2");
+  VCMP_U32(5, v1, pInff, mInff, pInff, mInff, pInff, mInff, pInff, mInff, pInff,
+           mInff, pInff, mInff, pInff, mInff, pInff, mInff);
+  CHECK_FFLAGS(DZ);
+
+  CLEAR_FFLAGS;
+  VSET(16, e64, m1);
+  CHECK_FFLAGS(0);
+  VLOAD_64(v2, pZero, mZerod, pZero, mZerod, pZero, mZerod, pZero, mZerod,
+           pZero, mZerod, pZero, mZerod, pZero, mZerod, pZero, mZerod);
+  asm volatile("vfrec7.v v1, v2");
+  VCMP_U64(6, v1, pInfd, mInfd, pInfd, mInfd, pInfd, mInfd, pInfd, mInfd, pInfd,
+           mInfd, pInfd, mInfd, pInfd, mInfd, pInfd, mInfd);
+  CHECK_FFLAGS(DZ);
+};
+// Test to check NX,OF flags as well as for subnormal numbers with sig=00..
+void TEST_CASE3(void) {
+  CLEAR_FFLAGS;
+  VSET(16, e16, m1);
+  CHECK_FFLAGS(0);
+  CHANGE_RM(RM_RUP);
+  VLOAD_16(v2, 0x80fe, 0x807e, 0x803e, 0x801e, 0x800e, 0x8006, 0x8002, 0x8030,
+           0x00fe, 0x007e, 0x003e, 0x001e, 0x000e, 0x0006, 0x0002, 0x0030);
+  asm volatile("vfrec7.v v1, v2");
+  VCMP_U16(7, v1, mMaxh, mMaxh, mMaxh, mMaxh, mMaxh, mMaxh, mMaxh, mMaxh, pInfh,
+           pInfh, pInfh, pInfh, pInfh, pInfh, pInfh, pInfh);
+  CHECK_FFLAGS(NX | OF);
+
+  CLEAR_FFLAGS;
+  VSET(16, e32, m1);
+  CHECK_FFLAGS(0);
+  CHANGE_RM(RM_RDN);
+  VLOAD_32(v2, 0x800dd27e, 0x8005d27e, 0x8005d27c, 0x8001d27c, 0x8000d27c,
+           0x8000527c, 0x8000127c, 0x8000107c, 0x000dd27e, 0x0005d27e,
+           0x0005d27c, 0x0001d27c, 0x0000d27c, 0x0000527c, 0x0000127c,
+           0x0000107c);
+  asm volatile("vfrec7.v v1, v2");
+  VCMP_U32(8, v1, mInff, mInff, mInff, mInff, mInff, mInff, mInff, mInff, pMaxf,
+           pMaxf, pMaxf, pMaxf, pMaxf, pMaxf, pMaxf, pMaxf);
+  CHECK_FFLAGS(NX | OF);
+
+  CLEAR_FFLAGS;
+  VSET(16, e64, m1);
+  CHECK_FFLAGS(0);
+  CHANGE_RM(RM_RTZ);
+  VLOAD_64(v2, 0x000147ea91db7acb, 0x000347ea91db7acb, 0x000047ea91db7acb,
+           0x000347ea91db70cb, 0x000347ea91db7a0b, 0x000347ea91db7ac0,
+           0x000347ea91db0acb, 0x000348e91db7acb, 0x800147ea91db7acb,
+           0x800347ea91db7acb, 0x800047ea91db7acb, 0x800347ea91db70cb,
+           0x800347ea91db7a0b, 0x800347ea91db7ac0, 0x800347ea91db0acb,
+           0x800147ea91db7a0b);
+  asm volatile("vfrec7.v v1, v2");
+  VCMP_U64(9, v1, pMaxd, pMaxd, pMaxd, pMaxd, pMaxd, pMaxd, pMaxd, pMaxd, mMaxd,
+           mMaxd, mMaxd, mMaxd, mMaxd, mMaxd, mMaxd, mMaxd);
+  CHECK_FFLAGS(NX | OF);
+};
 int main(void) {
   enable_vec();
   enable_fp();
 
   TEST_CASE1();
+  TEST_CASE2();
+  TEST_CASE3();
 
   EXIT_CHECK();
 }

@@ -920,43 +920,74 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .out_ready_i   (vfpu_out_ready),
       .busy_o        (/* Unused */  )
     );
-    elen_t operand_a_delay, vfrec7_result;
+elen_t operand_a_delay,
+       vfrec7_result_o;
+fpu_mask_t vfpu_flag_mask;
+
+vf7_struct_e16 vfrec7_out_e16[4];
+vf7_struct_e32 vfrec7_out_e32[2];
+vf7_struct_e64 vfrec7_out_e64;
+
+status_t    vfrec7_ex_flag;
+roundmode_e fp_rm_process;
+
+
     // register for delay of operand_a
     always_ff @(posedge clk_i or negedge rst_ni)
     begin
          if (!rst_ni) begin
                 operand_a_delay <= 64'b0;
+                 vfpu_flag_mask <= 4'b0;
          end else begin
                 operand_a_delay <=operand_a ;
+                vfpu_flag_mask  <=vfpu_simd_mask;
          end
     end
+    assign   fp_rm_process = vinsn_processing_q.fp_rm;
+
 
     always_comb begin: fpu_result_processing_p
-                        //  vfrec7
-         unique case (vinsn_processing_q.vtype.vsew)
-            EW16:begin
-                vfrec7_result[15:0] =vfrec7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] );
-                vfrec7_result[31:16]=vfrec7_fp16(vfpu_result[25:16],operand_a_delay[31:16]);
-                vfrec7_result[47:32]=vfrec7_fp16(vfpu_result[41:32],operand_a_delay[47:32]);
-                vfrec7_result[63:48]=vfrec7_fp16(vfpu_result[57:48],operand_a_delay[63:48]);
-              end
-            EW32:
-              begin
-                vfrec7_result[31:0 ] =vfrec7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] );
-                vfrec7_result[63:32]= vfrec7_fp32(vfpu_result[41:32],operand_a_delay[63:32]);
-              end
-            EW64:
-              begin
-             vfrec7_result=vfrec7_fp64(vfpu_result[9:0],operand_a_delay);
-             end
-             default:;
-         endcase
 
-      // Forward the result
+                   //vfrec7
+      unique case (vinsn_processing_q.vtype.vsew)
+         EW16: begin
+             vfrec7_out_e16[0] = vfrec7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] ,fp_rm_process);
+             vfrec7_out_e16[1] = vfrec7_fp16(vfpu_result[25:16],operand_a_delay[31:16],fp_rm_process);
+             vfrec7_out_e16[2] = vfrec7_fp16(vfpu_result[41:32],operand_a_delay[47:32],fp_rm_process);
+             vfrec7_out_e16[3] = vfrec7_fp16(vfpu_result[57:48],operand_a_delay[63:48],fp_rm_process);
+
+             vfrec7_result_o = {vfrec7_out_e16[3].vf7_e16,vfrec7_out_e16[2].vf7_e16,vfrec7_out_e16[1].vf7_e16,vfrec7_out_e16[0].vf7_e16};
+             vfrec7_ex_flag  = (vfrec7_out_e16[3].ex_flag   & {5{vfpu_flag_mask[3]}})
+                                 | (vfrec7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
+                                 | (vfrec7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
+                                 | (vfrec7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
+
+         end
+         EW32: begin
+             vfrec7_out_e32[0] = vfrec7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0]  ,fp_rm_process);
+             vfrec7_out_e32[1] = vfrec7_fp32(vfpu_result[41:32],operand_a_delay[63:32],fp_rm_process);
+
+             vfrec7_result_o = {vfrec7_out_e32[1].vf7_e32,vfrec7_out_e32[0].vf7_e32};
+             vfrec7_ex_flag  = (vfrec7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}} )
+                                 | (vfrec7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
+
+         end
+         EW64: begin
+            vfrec7_out_e64 = vfrec7_fp64(vfpu_result[9:0],operand_a_delay[63:0],fp_rm_process);
+
+             vfrec7_result_o  =  vfrec7_out_e64.vf7_e64;
+             vfrec7_ex_flag   =  vfrec7_out_e64.ex_flag & {5{vfpu_flag_mask[0]}};
+         end
+         default: vfrec7_result_o='x;
+      endcase
+
+         // Forward the result
       if(vinsn_processing_q.op==VFREC7)  begin
-         vfpu_processed_result = vfrec7_result;
+         vfpu_processed_result = vfrec7_result_o;
+         vfpu_ex_flag          = vfrec7_ex_flag;
       end else begin
            vfpu_processed_result = vfpu_result;
+           vfpu_ex_flag          = vfpu_ex_flag;
       end
       // After a comparison, send the mask back to the mask unit
       // 1) Negate the result if op == VMFNE (fpnew does not natively support a not-equal comparison)
