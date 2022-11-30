@@ -349,9 +349,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   //  SIMD Vector ALU  //
   ///////////////////////
 
-  elen_t valu_result;
-  logic  valu_valid;
-  alu_vxsat_t alu_vxsat;
+  elen_t  valu_result;
+  logic   valu_valid;
+  vxsat_t alu_vxsat, alu_vxsat_q, alu_vxsat_d;
+
+  assign alu_vxsat_d = alu_vxsat;
 
   simd_alu i_simd_alu (
     .operand_a_i       (alu_operand_a                                                   ),
@@ -364,7 +366,24 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     .vew_i             (vinsn_issue_q.vtype.vsew                                        ),
     .vxsat_o           (alu_vxsat                                                       ),
     .vxrm_i            (alu_vxrm_i                                                      ),
+    .rm                (r                                                               ),
     .result_o          (valu_result                                                     )
+  );
+
+  ///////////////////
+  // Rounding Mode //
+  ///////////////////
+
+  strb_t r;
+
+  fixed_p_rounding i_fp_rounding (
+    .operand_a_i (alu_operand_a           ),
+    .operand_b_i (alu_operand_b           ),
+    .valid_i     (valu_valid              ),
+    .op_i        (vinsn_issue_q.op        ),
+    .vew_i       (vinsn_issue_q.vtype.vsew),
+    .vxrm_i      (alu_vxrm_i              ),
+    .r           (r                       )
   );
 
   // Vector saturation flag validation signal
@@ -454,8 +473,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)
                 result_queue_d[result_queue_write_pnt_q].be = be(element_cnt, vinsn_issue_q.vtype.vsew) & (vinsn_issue_q.vm || vinsn_issue_q.op inside {VMERGE, VADC, VSBC} ? {StrbWidth{1'b1}} : mask_i);
 
-              // Did Alu saturated when computing any elemnts?
-              vxsat_flag_o = |(alu_vxsat & result_queue_d[result_queue_write_pnt_q].be);
               // Is this a narrowing instruction?
               if (narrowing(vinsn_issue_q.op)) begin
                 // How many elements did we calculate in this iteration?
@@ -720,6 +737,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     alu_result_id_o   = result_queue_q[result_queue_read_pnt_q].id;
     alu_result_be_o   = result_queue_q[result_queue_read_pnt_q].be;
 
+    // alu saturation calculation
+    if (|result_queue_valid_q)
+      vxsat_flag_o = |(alu_vxsat_q & result_queue_q[result_queue_read_pnt_q].be);
+
     // Received a grant from the VRF.
     // Deactivate the request.
     if (alu_result_gnt_i || mask_operand_gnt) begin
@@ -847,6 +868,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       red_hs_synch_q          <= 1'b0;
       simd_red_cnt_max_q      <= '0;
       alu_red_ready_q         <= 1'b0;
+      alu_vxsat_q             <= '0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       commit_cnt_q            <= commit_cnt_d;
@@ -859,6 +881,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       red_hs_synch_q          <= red_hs_synch_d;
       simd_red_cnt_max_q      <= simd_red_cnt_max_d;
       alu_red_ready_q         <= alu_red_ready_i;
+      alu_vxsat_q             <= alu_vxsat_d;
     end
   end
 

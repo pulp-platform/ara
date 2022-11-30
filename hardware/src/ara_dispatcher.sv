@@ -56,7 +56,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t  vstart_d, vstart_q;
   vlen_t  vl_d, vl_q;
   vtype_t vtype_d, vtype_q;
-  vxsat_t vxsat_d, vxsat_q;
+  vxsat_e vxsat_d, vxsat_q;
   vxrm_t  vxrm_d, vxrm_q;
 
   `FF(vstart_q, vstart_d, '0)
@@ -227,6 +227,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     illegal_insn = 1'b0;
     vxsat_d      = vxsat_q;
+    vxrm_d      = vxrm_q;
 
     is_vload      = 1'b0;
     is_vstore     = 1'b0;
@@ -562,7 +563,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b100010: ara_req_d.op = ara_pkg::VSSUBU;
                   6'b100011: ara_req_d.op = ara_pkg::VSSUB;
                   6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                  6'b100111: ara_req_d.op = ara_pkg::VSMUL;
                   6'b101000: ara_req_d.op = ara_pkg::VSRL;
+                  6'b101010: ara_req_d.op = ara_pkg::VSSRL;
+                  6'b101011: ara_req_d.op = ara_pkg::VSSRA;
                   6'b101001: ara_req_d.op = ara_pkg::VSRA;
                   6'b101100: begin
                     ara_req_d.op             = ara_pkg::VNSRL;
@@ -599,6 +603,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
+                  end
+                  6'b101110: begin
+                    ara_req_d.op = ara_pkg::VNCLIPU;
+                    ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  end
+                  6'b101111: begin
+                    ara_req_d.op = ara_pkg::VNCLIP;
+                    ara_req_d.eew_vs2 = vtype_q.vsew.next();
                   end
                   // Reductions encode in cvt_resize the neutral value bits
                   // CVT_WIDE is 2'b00 (hack to save wires)
@@ -783,7 +795,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b100010: ara_req_d.op = ara_pkg::VSSUBU;
                   6'b100011: ara_req_d.op = ara_pkg::VSSUB;
                   6'b100101: ara_req_d.op = ara_pkg::VSLL;
+                  6'b100111: ara_req_d.op = ara_pkg::VSMUL;
                   6'b101000: ara_req_d.op = ara_pkg::VSRL;
+                  6'b101010: ara_req_d.op = ara_pkg::VSSRL;
+                  6'b101011: ara_req_d.op = ara_pkg::VSSRA;
                   6'b101001: ara_req_d.op = ara_pkg::VSRA;
                   6'b101100: begin
                     ara_req_d.op             = ara_pkg::VNSRL;
@@ -820,6 +835,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
+                  end
+                  6'b101110: begin
+                    ara_req_d.op = ara_pkg::VNCLIPU;
+                    ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  end
+                  6'b101111: begin
+                    ara_req_d.op = ara_pkg::VNCLIP;
+                    ara_req_d.eew_vs2 = vtype_q.vsew.next();
                   end
                   default: illegal_insn = 1'b1;
                 endcase
@@ -984,6 +1007,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b101000: ara_req_d.op = ara_pkg::VSRL;
                   6'b101001: ara_req_d.op = ara_pkg::VSRA;
+                  6'b101010: ara_req_d.op = ara_pkg::VSSRL;
+                  6'b101011: ara_req_d.op = ara_pkg::VSSRA;
                   6'b101100: begin
                     ara_req_d.op             = ara_pkg::VNSRL;
                     ara_req_d.conversion_vs1 = OpQueueConversionZExt2;
@@ -1019,6 +1044,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
+                  end
+                  6'b101110: begin
+                    ara_req_d.op = ara_pkg::VNCLIPU;
+                    ara_req_d.eew_vs2 = vtype_q.vsew.next();
+                  end
+                  6'b101111: begin
+                    ara_req_d.op = ara_pkg::VNCLIP;
+                    ara_req_d.eew_vs2 = vtype_q.vsew.next();
                   end
                   default: illegal_insn = 1'b1;
                 endcase
@@ -2759,7 +2792,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_t'(acc_req_i.rs1[0]);
+                    vxsat_d           = vxsat_e'(acc_req_i.rs1[0]);
                     acc_resp_o.result = vlen_t'(vxsat_q);
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2792,7 +2825,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q | vxsat_t'(acc_req_i.rs1[0]);
+                    vxsat_d           = vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
                     acc_resp_o.result = vlen_t'(vxsat_q);
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2821,7 +2854,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     else acc_resp_o.error                                 = 1'b1;
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q & ~vxsat_t'(acc_req_i.rs1[0]);
+                    vxsat_d           = vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
                     acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2869,7 +2902,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     else acc_resp_o.error                                 = 1'b1;
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q | vxsat_t'(acc_req_i.insn.itype.rs1[0]);
+                    vxsat_d           = vxsat_q | vxsat_e'(acc_req_i.insn.itype.rs1[0]);
                     acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2898,7 +2931,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     else acc_resp_o.error                                 = 1'b1;
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q & ~vxsat_t'(acc_req_i.insn.itype.rs1[0]);
+                    vxsat_d           = vxsat_q & ~vxsat_e'(acc_req_i.insn.itype.rs1[0]);
                     acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;

@@ -85,6 +85,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
 
+  // saturation selection
+  logic alu_vxsat, mfpu_vxsat;
+  assign vxsat_flag_o = mfpu_vxsat | alu_vxsat;
+
   //////////////////
   //  Vector ALU  //
   //////////////////
@@ -97,7 +101,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .rst_ni               (rst_ni                         ),
     .lane_id_i            (lane_id_i                      ),
     // Interface with Dispatcher
-    .vxsat_flag_o         (vxsat_flag_o                   ),
+    .vxsat_flag_o         (alu_vxsat                      ),
     .alu_vxrm_i           (alu_vxrm_i                     ),
     // Interface with the lane sequencer
     .vfu_operation_i      (vfu_operation_i                ),
@@ -143,6 +147,9 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .clk_i                (clk_i                           ),
     .rst_ni               (rst_ni                          ),
     .lane_id_i            (lane_id_i                       ),
+    // Interface with Dispatcher
+    .mfpu_vxsat_o         (mfpu_vxsat                      ),
+    .mfpu_vxrm_i          (alu_vxrm_i                      ),
     // Interface with CVA6
     .fflags_ex_o          (fflags_ex_o                     ),
     .fflags_ex_valid_o    (fflags_ex_valid_o               ),

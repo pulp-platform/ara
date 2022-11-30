@@ -22,6 +22,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     input  logic                         clk_i,
     input  logic                         rst_ni,
     input  logic[idx_width(NrLanes)-1:0] lane_id_i,
+    // Interface with Dispatcher
+    output logic                         mfpu_vxsat_o,
+    input  vxrm_t                        mfpu_vxrm_i,
     // Interface with CVA6
     output logic           [4:0]         fflags_ex_o,
     output logic                         fflags_ex_valid_o,
@@ -177,7 +180,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   logic vinsn_issue_mul, vinsn_issue_div, vinsn_issue_fpu;
 
-  assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VNMSUB]};
+  assign vinsn_issue_mul = vinsn_issue_q.op inside {[VMUL:VSMUL]};
   assign vinsn_issue_div = vinsn_issue_q.op inside {[VDIVU:VREM]};
   assign vinsn_issue_fpu = vinsn_issue_q.op inside {[VFADD:VMFGE]};
 
@@ -280,7 +283,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // We let the mask percolate throughout the pipeline to have the mask unit synchronized with the
   // operand queues
   // Another choice would be to delay the mask grant when the vmul_result is committed
-  strb_t [3:0] vmul_simd_mask;
+  strb_t  [3:0] vmul_simd_mask;
+  vxsat_t [3:0] mfpu_vxsat;
+  logic   [7:0] mfpu_vxsat_q, mfpu_vxsat_d;
+
+  // mfpu saturation calculation
+  assign mfpu_vxsat_o = |(mfpu_vxsat_q & result_queue_q[result_queue_read_pnt_q].be);
 
   simd_mul #(
     .NumPipeRegs (LatMultiplierEW64),
@@ -293,6 +301,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .operand_c_i(mfpu_operand_i[2]                                          ),
     .mask_i     (mask_i                                                     ),
     .op_i       (vinsn_issue_q.op                                           ),
+    .vxsat_o    (mfpu_vxsat[EW64]                                           ),
+    .vxrm_i     (mfpu_vxrm_i                                                ),
     .result_o   (vmul_simd_result[EW64]                                     ),
     .mask_o     (vmul_simd_mask[EW64]                                       ),
     .valid_i    (vmul_simd_in_valid[EW64]                                   ),
@@ -312,6 +322,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .operand_c_i(mfpu_operand_i[2]                                          ),
     .mask_i     (mask_i                                                     ),
     .op_i       (vinsn_issue_q.op                                           ),
+    .vxsat_o    (mfpu_vxsat[EW32]                                           ),
+    .vxrm_i     (mfpu_vxrm_i                                                ),
     .result_o   (vmul_simd_result[EW32]                                     ),
     .mask_o     (vmul_simd_mask[EW32]                                       ),
     .valid_i    (vmul_simd_in_valid[EW32]                                   ),
@@ -331,6 +343,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .operand_c_i(mfpu_operand_i[2]                                          ),
     .mask_i     (mask_i                                                     ),
     .op_i       (vinsn_issue_q.op                                           ),
+    .vxsat_o    (mfpu_vxsat[EW16]                                           ),
+    .vxrm_i     (mfpu_vxrm_i                                                ),
     .result_o   (vmul_simd_result[EW16]                                     ),
     .mask_o     (vmul_simd_mask[EW16]                                       ),
     .valid_i    (vmul_simd_in_valid[EW16]                                   ),
@@ -350,6 +364,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .operand_c_i(mfpu_operand_i[2]                                          ),
     .mask_i     (mask_i                                                     ),
     .op_i       (vinsn_issue_q.op                                           ),
+    .vxsat_o    (mfpu_vxsat[EW8]                                            ),
+    .vxrm_i     (mfpu_vxrm_i                                                ),
     .result_o   (vmul_simd_result[EW8]                                      ),
     .mask_o     (vmul_simd_mask[EW8]                                        ),
     .valid_i    (vmul_simd_in_valid[EW8]                                    ),
@@ -371,6 +387,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     vmul_simd_in_valid                           = '0;
     vmul_simd_in_valid[vinsn_issue_q.vtype.vsew] = vmul_in_valid;
     vmul_in_ready                                = vmul_simd_in_ready[vinsn_issue_q.vtype.vsew];
+
+    // Saturation flag
+    mfpu_vxsat_d        = mfpu_vxsat[vinsn_processing_q.vtype.vsew];
 
     // We read the responses of a single SIMD Multiplier
     vmul_result         = vmul_simd_result[vinsn_processing_q.vtype.vsew];
@@ -1138,7 +1157,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
         // Select the correct valid, result, and mask, to write in the result queue
         case (vinsn_processing_q.op) inside
-          [VMUL:VNMSUB]: begin
+          [VMUL:VSMUL]: begin
             unit_out_valid  = vmul_out_valid;
             unit_out_result = vmul_result;
             unit_out_mask   = vmul_mask;
@@ -1869,6 +1888,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       intra_issued_op_cnt_q   <= '0;
       intra_op_rx_cnt_q       <= '0;
       osum_issue_cnt_q        <= '0;
+      mfpu_vxsat_q            <= '0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       to_process_cnt_q        <= to_process_cnt_d;
@@ -1891,6 +1911,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       intra_issued_op_cnt_q   <= intra_issued_op_cnt_d;
       intra_op_rx_cnt_q       <= intra_op_rx_cnt_d;
       osum_issue_cnt_q        <= osum_issue_cnt_d;
+      mfpu_vxsat_q            <= mfpu_vxsat_d;
     end
   end
 

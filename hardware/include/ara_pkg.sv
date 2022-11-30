@@ -101,7 +101,7 @@ package ara_pkg;
     // Arithmetic and logic instructions
     VADD, VSUB, VADC, VSBC, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
     // Fixed point
-    VSADDU, VSADD, VSSUBU, VSSUB, VAADDU, VAADD, VASUBU, VASUB,
+    VSADDU, VSADD, VSSUBU, VSSUB, VAADDU, VAADD, VASUBU, VASUB, VSSRL, VSSRA, VNCLIP, VNCLIPU,
     // Shifts,
     VSLL, VSRL, VSRA, VNSRL, VNSRA,
     // Merge
@@ -112,6 +112,8 @@ package ara_pkg;
     VREDSUM, VREDAND, VREDOR, VREDXOR, VREDMINU, VREDMIN, VREDMAXU, VREDMAX, VWREDSUMU, VWREDSUM,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
+    // Fixed point multiplication
+    VSMUL,
     // Div
     VDIVU, VDIV, VREMU, VREM,
     // FPU
@@ -833,18 +835,18 @@ package ara_pkg;
   endfunction : deshuffle_index
 
   /////////////////////////
-  //  Fixed-Point        //
+  ////// Fixed-Point //////
   /////////////////////////
 
-  typedef logic                       vxsat_t;
-  typedef logic [1:0]                 vxrm_t;
+  typedef logic        vxsat_e;
+  typedef logic [1:0]  vxrm_t;
 
   typedef union packed {
     logic [0:0][7:0] w64;
     logic [1:0][3:0] w32;
     logic [3:0][1:0] w16;
     logic [7:0][0:0] w8;
-  } alu_vxsat_t;
+  } vxsat_t;
 
   /////////////////////////
   //  MASKU definitions  //
