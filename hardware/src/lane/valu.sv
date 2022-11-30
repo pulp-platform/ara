@@ -8,13 +8,15 @@
 // in a SIMD fashion, always operating on 64 bits.
 
 module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int  unsigned NrLanes   = 0,
+    parameter  int  unsigned NrLanes      = 0,
+    // Support for fixed-point data types
+    parameter  logic         FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type          vaddr_t   = logic,
+    parameter  type          vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t),
-    localparam int  unsigned StrbWidth = DataWidth/8,
-    localparam type          strb_t    = logic [StrbWidth-1:0]
+    localparam int  unsigned DataWidth    = $bits(elen_t),
+    localparam int  unsigned StrbWidth    = DataWidth/8,
+    localparam type          strb_t       = logic [StrbWidth-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -345,6 +347,28 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                         ? alu_state_q == SIMD_REDUCTION ? simd_red_operand : sldu_operand_q
                         : alu_operand_i[1];
 
+  ///////////////////
+  // Rounding Mode //
+  ///////////////////
+
+  strb_t r;
+
+  if (FixPtSupport == FixedPointEnable) begin
+    fixed_p_rounding i_fp_rounding (
+      .operand_a_i (alu_operand_a           ),
+      .operand_b_i (alu_operand_b           ),
+      .valid_i     (valu_valid              ),
+      .op_i        (vinsn_issue_q.op        ),
+      .vew_i       (vinsn_issue_q.vtype.vsew),
+      .vxrm_i      (alu_vxrm_i              ),
+      .r_o         (r                       )
+    );
+  end else begin
+    assign r = '0;
+  end
+
+  // Vector saturation flag validation signal
+
   ///////////////////////
   //  SIMD Vector ALU  //
   ///////////////////////
@@ -355,7 +379,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   assign alu_vxsat_d = alu_vxsat;
 
-  simd_alu i_simd_alu (
+  simd_alu #(
+    .FixPtSupport      (FixPtSupport                                                    )
+  ) i_simd_alu (
     .operand_a_i       (alu_operand_a                                                   ),
     .operand_b_i       (alu_operand_b                                                   ),
     .valid_i           (valu_valid                                                      ),
@@ -369,24 +395,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     .rm                (r                                                               ),
     .result_o          (valu_result                                                     )
   );
-
-  ///////////////////
-  // Rounding Mode //
-  ///////////////////
-
-  strb_t r;
-
-  fixed_p_rounding i_fp_rounding (
-    .operand_a_i (alu_operand_a           ),
-    .operand_b_i (alu_operand_b           ),
-    .valid_i     (valu_valid              ),
-    .op_i        (vinsn_issue_q.op        ),
-    .vew_i       (vinsn_issue_q.vtype.vsew),
-    .vxrm_i      (alu_vxrm_i              ),
-    .r           (r                       )
-  );
-
-  // Vector saturation flag validation signal
 
   ///////////////
   //  Control  //

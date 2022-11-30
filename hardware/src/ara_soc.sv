@@ -11,6 +11,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // Support for fixed-point data types
+    parameter  logic                  FixPtSupport = FixedPointEnable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
@@ -438,6 +440,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   ara_system #(
     .NrLanes           (NrLanes              ),
     .FPUSupport        (FPUSupport           ),
+    .FixPtSupport      (FixPtSupport         ),
     .ArianeCfg         (ArianeAraConfig      ),
     .AxiAddrWidth      (AxiAddrWidth         ),
     .AxiIdWidth        (AxiCoreIdWidth       ),

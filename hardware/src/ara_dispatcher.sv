@@ -9,9 +9,11 @@
 // response or an error message.
 
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int           unsigned NrLanes    = 0,
+    parameter int           unsigned NrLanes      = 0,
     // Support for floating-point data types
-    parameter fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble
+    parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // Support for fixed-point data types
+    parameter logic                  FixPtSupport = FixedPointEnable
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -2938,6 +2940,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           end
         endcase
       end
+
+      // Check that we have fixed-point support if requested
+      // vxsat and vxrm are always accessible anyway
+      if (ara_req_valid_d && (ara_req_d.op inside {[VSADDU:VNCLIPU], VSMUL}) && (FixPtSupport == FixedPointDisable))
+        illegal_insn = 1'b1;
 
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible

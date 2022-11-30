@@ -10,6 +10,9 @@
 // Once the pipeline is full, the unit can generate 64 bits per cycle.
 
 module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
+    // Support for fixed-point data types
+    parameter  logic          FixPtSupport = FixedPointEnable,
+    // SIMD-multiplier parameters
     parameter  int   unsigned NumPipeRegs  = 0,
     parameter  vew_e          ElementWidth = EW64,
     // Dependant parameters. DO NOT CHANGE!
@@ -140,9 +143,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
   assign signed_b = op inside {VMULH, VMULHSU, VSMUL};
 
   // saturation and rounding mode
-  vxsat_t     vxsat;
-  vxrm_t      vxrm;
-  strb_t      r;
+  vxsat_t vxsat;
+  vxrm_t  vxrm;
+  strb_t  r;
 
   assign vxrm    = vxrm_i;
   assign vxsat_o = vxsat;
@@ -152,16 +155,21 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 1; l++) begin: gen_mul
       assign mul_res.w128[l] =
       $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
+      if (FixPtSupport == FixedPointEnable)
         assign vxsat.w64[l] = (op == VSMUL) ? result_o[(l+1)*64-1] ^ mul_res.w128[l][127] : '0;
+      else
+        assign vxsat.w64[l] = '0;
     end : gen_mul
 
     always_comb begin : p_mul
       unique case (op)
         // Single-Width integer multiply instructions
-        VMUL, VSMUL: begin
+        VMUL: for (int l = 0; l < 1; l++) result_o[64*l +: 64] = mul_res.w128[l][63:0];
+        VSMUL: if (FixPtSupport == FixedPointEnable) begin
           unique case (vxrm)
             2'b00: for (int b=0; b<1; b++) r[b] = mul_res.w128[b][62];
-            2'b01: for (int b=0; b<1; b++) r[b] = mul_res.w128[b][62] & ((mul_res.w128[b][61:0] != '0) | mul_res.w128[b][63]);
+            2'b01: for (int b=0; b<1; b++)
+              r[b] = mul_res.w128[b][62] & ((mul_res.w128[b][61:0] != '0) | mul_res.w128[b][63]);
             2'b10: r ='0;
             2'b11: for (int b=0; b<1; b++) r[b] = !mul_res.w128[b][63] & (mul_res.w128[b][62:0] != '0);
           endcase
@@ -186,16 +194,21 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 2; l++) begin: gen_mul
       assign mul_res.w64[l] =
       $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
+      if (FixPtSupport == FixedPointEnable)
         assign vxsat.w32[l] = (op == VSMUL) ? result_o[(l+1)*32-1] ^ mul_res.w64[l][63] : '0;
+      else
+        assign vxsat.w32[l] = '0;
     end: gen_mul
 
     always_comb begin : p_mul
       unique case (op)
         // Single-Width integer multiply instructions
-        VMUL, VSMUL: begin
+        VMUL: for (int l = 0; l < 2; l++) result_o[32*l +: 32] = mul_res.w64[l][31:0];
+        VSMUL: if (FixPtSupport == FixedPointEnable) begin
           unique case (vxrm)
             2'b00: for (int b=0; b<2; b++) r[b] = mul_res.w64[b][30];
-            2'b01: for (int b=0; b<2; b++) r[b] = mul_res.w64[b][30] & ((mul_res.w64[b][29:0] != '0) | mul_res.w64[b][31]);
+            2'b01: for (int b=0; b<2; b++) r[b] =
+              mul_res.w64[b][30] & ((mul_res.w64[b][29:0] != '0) | mul_res.w64[b][31]);
             2'b10: r ='0;
             2'b11: for (int b=0; b<2; b++) r[b] = !mul_res.w64[b][31] & (mul_res.w64[b][30:0] != '0);
           endcase
@@ -218,16 +231,21 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 4; l++) begin: gen_mul
       assign mul_res.w32[l] =
       $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l] [15] & signed_b, opb.w16[l]});
+      if (FixPtSupport == FixedPointEnable)
         assign vxsat.w16[l] = (op == VSMUL) ? result_o[(l+1)*16-1] ^ mul_res.w32[l][31] : '0;
+      else
+        assign vxsat.w16[l] = '0;
     end : gen_mul
 
     always_comb begin : p_mul
       unique case (op)
         // Single-Width integer multiply instructions
-        VMUL, VSMUL: begin
+        VMUL: for (int l = 0; l < 4; l++) result_o[16*l +: 16] = mul_res.w32[l][15:0];
+        VSMUL: if (FixPtSupport == FixedPointEnable) begin
           unique case (vxrm)
             2'b00: for (int b=0; b<4; b++) r[b] = mul_res.w32[b][14];
-            2'b01: for (int b=0; b<4; b++) r[b] = mul_res.w32[b][14] & ((mul_res.w32[b][13:0] != '0) | mul_res.w32[b][15]);
+            2'b01: for (int b=0; b<4; b++) r[b] =
+              mul_res.w32[b][14] & ((mul_res.w32[b][13:0] != '0) | mul_res.w32[b][15]);
             2'b10: r ='0;
             2'b11: for (int b=0; b<4; b++) r[b] = !mul_res.w32[b][15] & (mul_res.w32[b][14:0] != '0);
           endcase
@@ -250,16 +268,21 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     for (genvar l = 0; l < 8; l++) begin: gen_mul
       assign mul_res.w16[l] =
       $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
+      if (FixPtSupport == FixedPointEnable)
         assign vxsat.w8[l] = (op == VSMUL) ? result_o[(l+1)*8-1] ^ mul_res.w16[l][15] : '0;
+      else
+        assign vxsat.w8[l] = '0;
     end : gen_mul
 
     always_comb begin : p_mul
       unique case (op)
         // Single-Width integer multiply instructions
-        VMUL, VSMUL: begin
+        VMUL: for (int l = 0; l < 8; l++) result_o[8*l +: 8] = mul_res.w16[l][7:0];
+        VSMUL: if (FixPtSupport == FixedPointEnable) begin
           unique case (vxrm)
             2'b00: for (int b=0; b<8; b++) r[b] = mul_res.w16[b][6];
-            2'b01: for (int b=0; b<8; b++) r[b] = mul_res.w16[b][6] & ((mul_res.w16[b][5:0] != '0) | mul_res.w16[b][7]);
+            2'b01: for (int b=0; b<8; b++) r[b] =
+              mul_res.w16[b][6] & ((mul_res.w16[b][5:0] != '0) | mul_res.w16[b][7]);
             2'b10: r ='0;
             2'b11: for (int b=0; b<8; b++) r[b] = !mul_res.w16[b][7] & (mul_res.w16[b][6:0] != '0);
           endcase

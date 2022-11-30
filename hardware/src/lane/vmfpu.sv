@@ -9,15 +9,17 @@
 
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned NrLanes    = 0,
+    parameter  int           unsigned NrLanes      = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // Support for fixed-point data types
+    parameter  logic                  FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type                   vaddr_t    = logic,
+    parameter  type                   vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           unsigned DataWidth  = $bits(elen_t),
-    localparam int           unsigned StrbWidth  = DataWidth/8,
-    localparam type                   strb_t     = logic [DataWidth/8-1:0]
+    localparam int           unsigned DataWidth    = $bits(elen_t),
+    localparam int           unsigned StrbWidth    = DataWidth/8,
+    localparam type                   strb_t       = logic [DataWidth/8-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -291,6 +293,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   assign mfpu_vxsat_o = |(mfpu_vxsat_q & result_queue_q[result_queue_read_pnt_q].be);
 
   simd_mul #(
+    .FixPtSupport(FixPtSupport     ),
     .NumPipeRegs (LatMultiplierEW64),
     .ElementWidth(EW64             )
   ) i_simd_mul_ew64 (
@@ -312,6 +315,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   );
 
   simd_mul #(
+    .FixPtSupport(FixPtSupport     ),
     .NumPipeRegs (LatMultiplierEW32),
     .ElementWidth(EW32             )
   ) i_simd_mul_ew32 (
@@ -333,6 +337,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   );
 
   simd_mul #(
+    .FixPtSupport(FixPtSupport     ),
     .NumPipeRegs (LatMultiplierEW16),
     .ElementWidth(EW16             )
   ) i_simd_mul_ew16 (
@@ -354,6 +359,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   );
 
   simd_mul #(
+    .FixPtSupport(FixPtSupport     ),
     .NumPipeRegs (LatMultiplierEW8),
     .ElementWidth(EW8             )
   ) i_simd_mul_ew8 (
