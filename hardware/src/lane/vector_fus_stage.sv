@@ -8,14 +8,16 @@
 // of each lane, namely the ALU and the Multiplier/FPU.
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned NrLanes    = 0,
+    parameter  int           unsigned NrLanes      = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // Support for fixed-point data types
+    parameter  logic                  FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type                   vaddr_t    = logic,
+    parameter  type                   vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           unsigned DataWidth  = $bits(elen_t),
-    localparam type                   strb_t     = logic [DataWidth/8-1:0]
+    localparam int           unsigned DataWidth    = $bits(elen_t),
+    localparam type                   strb_t       = logic [DataWidth/8-1:0]
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -95,6 +97,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
 
   valu #(
     .NrLanes(NrLanes),
+    .FixPtSupport(FixPtSupport),
     .vaddr_t(vaddr_t)
   ) i_valu (
     .clk_i                (clk_i                          ),
@@ -142,6 +145,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   vmfpu #(
     .NrLanes   (NrLanes   ),
     .FPUSupport(FPUSupport),
+    .FixPtSupport(FixPtSupport),
     .vaddr_t   (vaddr_t   )
   ) i_vmfpu (
     .clk_i                (clk_i                           ),

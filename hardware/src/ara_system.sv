@@ -11,6 +11,8 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     parameter int                      unsigned NrLanes            = 0,                               // Number of parallel vector lanes.
     // Support for floating-point data types
     parameter fpu_support_e                     FPUSupport         = FPUSupportHalfSingleDouble,
+    // Support for fixed-point data types
+    parameter  logic                            FixPtSupport       = FixedPointEnable,
     // Ariane configuration
     parameter ariane_pkg::ariane_cfg_t          ArianeCfg          = ariane_pkg::ArianeDefaultConfig,
     // AXI Interface

@@ -32,6 +32,12 @@ package ara_pkg;
 
   // Ara Features.
 
+  // Fixed-point support
+  typedef enum logic {
+    FixedPointDisable = 1'b0,
+    FixedPointEnable  = 1'b1
+  } fixpt_support_e;
+
   // The three bits correspond to {RVVD, RVVF, RVVH}
   typedef enum logic [2:0] {
     FPUSupportNone             = 3'b000,
