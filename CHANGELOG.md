@@ -99,6 +99,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Support for vector mask instructions: `vmsbf`, `vmsof`, `vmsif`, `viota`, `vid`
  - Add support for vector mask population count and find first set bit instructions: `vcpop.m`, `vfirst.m`
  - Add Spyglass linting script
+ - Add parametrized support for Fixed-Point math
 
 ### Changed
 
