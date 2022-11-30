@@ -18,7 +18,7 @@ module fixed_p_rounding import ara_pkg::*; import rvv_pkg::*; #(
     input  ara_op_e op_i,
     input  vew_e    vew_i,
     input  vxrm_t   vxrm_i,
-    output strb_t   r
+    output strb_t   r_o
   );
 
   /////////////////
@@ -43,6 +43,9 @@ module fixed_p_rounding import ara_pkg::*; import rvv_pkg::*; #(
   int j;
 
   always_comb begin
+    j   =  0;
+    r_o = '0;
+
     if (valid_i) begin
       unique case (op_i)
         VSSRA, VSSRL, VNCLIP, VNCLIPU : begin
@@ -51,23 +54,23 @@ module fixed_p_rounding import ara_pkg::*; import rvv_pkg::*; #(
               unique case (vxrm)
                 2'b00: begin
                   for (int i=0; i<8; i++) begin
-                    j    = opa.w8[i];
-                    r[i] = opb.w8[i][j-1];
+                    j      = opa.w8[i];
+                    r_o[i] = opb.w8[i][j-1];
                   end
                 end
                 2'b01: begin
                   for (int i=0; i<8; i++) begin
-                    j    = opa.w8[i];
-                    r[i] = opb.w8[i][j-1] & opb.w8[i][j];
+                    j      = opa.w8[i];
+                    r_o[i] = opb.w8[i][j-1] & opb.w8[i][j];
                   end
                 end
                 2'b10: begin
-                  r = '0;
+                  r_o = '0;
                 end
                 2'b11: begin
                   for (int i=0; i<8; i++) begin
-                    j    = opa.w8[i];
-                    r[i] = !opb.w8[i][j] & |(opb.w8[i] & bit_select);
+                    j      = opa.w8[i];
+                    r_o[i] = !opb.w8[i][j] & |(opb.w8[i] & bit_select);
                   end
                 end
               endcase
@@ -76,23 +79,23 @@ module fixed_p_rounding import ara_pkg::*; import rvv_pkg::*; #(
               unique case (vxrm)
                 2'b00: begin
                   for (int i=0; i<4; i++) begin
-                    j    = opa.w16[i];
-                    r[i] = opb.w16[i][j-1];
+                    j      = opa.w16[i];
+                    r_o[i] = opb.w16[i][j-1];
                   end
                 end
                 2'b01: begin
                   for (int i=0; i<4; i++) begin
-                    j    = opa.w16[i];
-                    r[i] = opb.w16[i][j-1] & opb.w16[i][j];
+                    j      = opa.w16[i];
+                    r_o[i] = opb.w16[i][j-1] & opb.w16[i][j];
                   end
                 end
                 2'b10: begin
-                  r = '0;
+                  r_o = '0;
                 end
                 2'b11: begin
                   for (int i=0; i<4; i++) begin
-                    j    = opa.w16[i];
-                    r[i] = !opb.w16[i][j] & |(opb.w16[i] & bit_select);
+                    j      = opa.w16[i];
+                    r_o[i] = !opb.w16[i][j] & |(opb.w16[i] & bit_select);
                   end
                 end
               endcase
@@ -101,23 +104,23 @@ module fixed_p_rounding import ara_pkg::*; import rvv_pkg::*; #(
               unique case (vxrm)
                 2'b00: begin
                   for (int i=0; i<2; i++) begin
-                    j    = opa.w32[i];
-                    r[i] = opb.w32[i][j-1];
+                    j      = opa.w32[i];
+                    r_o[i] = opb.w32[i][j-1];
                   end
                 end
                 2'b01: begin
                   for (int i=0; i<2; i++) begin
-                    j    = opa.w32[i];
-                    r[i] = opb.w32[i][j-1] & opb.w32[i][j];
+                    j      = opa.w32[i];
+                    r_o[i] = opb.w32[i][j-1] & opb.w32[i][j];
                   end
                 end
                 2'b10: begin
-                  r = '0;
+                  r_o = '0;
                 end
                 2'b11: begin
                   for (int i=0; i<2; i++) begin
-                    j    = opa.w32[i];
-                    r[i] = !opb.w32[i][j] & |(opb.w32[i] & bit_select);
+                    j      = opa.w32[i];
+                    r_o[i] = !opb.w32[i][j] & |(opb.w32[i] & bit_select);
                   end
                 end
               endcase
@@ -126,33 +129,33 @@ module fixed_p_rounding import ara_pkg::*; import rvv_pkg::*; #(
               unique case (vxrm)
                 2'b00: begin
                   for (int i=0; i<1; i++) begin
-                    j    = opa.w64[i];
-                    r[i] = opb.w64[i][j-1];
+                    j      = opa.w64[i];
+                    r_o[i] = opb.w64[i][j-1];
                   end
                 end
                 2'b01: begin
                   for (int i=0; i<1; i++) begin
-                    j    = opa.w64[i];
-                    r[i] = opb.w64[i][j-1] & opb.w64[i][j];
+                    j      = opa.w64[i];
+                    r_o[i] = opb.w64[i][j-1] & opb.w64[i][j];
                   end
                 end
                 2'b10: begin
-                  r = '0;
+                  r_o = '0;
                 end
                 2'b11: begin
                   for (int i=0; i<1; i++) begin
-                    j    = opa.w64[i];
-                    r[i] = !opb.w64[i][j] & |(opb.w64[i] & bit_select);
+                    j      = opa.w64[i];
+                    r_o[i] = !opb.w64[i][j] & |(opb.w64[i] & bit_select);
                   end
                 end
               endcase
             end
           endcase
         end
-        default: r=0;
+        default: r_o = '0;
       endcase
     end else begin
-      r = '0;
+      r_o = '0;
     end
   end
 
