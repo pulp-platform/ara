@@ -154,6 +154,9 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
     // Default: no conversion
     conv_operand = ibuf_operand;
+    // Default: packet complete
+    incomplete_packet = 1'b0;
+    last_packet       = 1'b0;
 
     // Reductions need to mask away the inactive elements
     // A temporary solution is to send a neutral value directly

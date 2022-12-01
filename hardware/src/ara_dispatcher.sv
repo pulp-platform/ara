@@ -373,7 +373,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end else if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
                   vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetivli_type.zimm10));
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
-                  vtype_d = vtype_xlen(acc_req_i.rs2[7:0]);
+                  vtype_d = vtype_xlen(riscv::xlen_t'(acc_req_i.rs2[7:0]));
                 end else
                   acc_resp_o.error = 1'b1;
 

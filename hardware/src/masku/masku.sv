@@ -339,7 +339,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     bit_enable_mask     = '0;
     not_found_one_d     = pe_req_ready_o ? 1'b1 : not_found_one_q;
     alu_result_vm       = '0;
+    alu_result_vm_m     = '0;
+    alu_result_vm_seq   = '0;
+    alu_operand_b_seq   = '0;
     alu_operand_b_seq_m = '0;
+    mask                = '0;
+    masku_operand_vd    = '0;
     vcpop_operand       = '0;
 
     if (vinsn_issue_valid) begin
@@ -574,7 +579,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 end
               end
               EW64: begin
-                for (int index = 1; index < (NrLanes*DataWidth)/32; index++) begin
+                for (int index = 1; index < (NrLanes*DataWidth)/64; index++) begin
                   alu_result_vm [(index*64) +: 63] = (((NrLanes * DataWidth)/8) >= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*4);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
