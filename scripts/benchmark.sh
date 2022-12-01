@@ -35,6 +35,11 @@ tmpscript=`mktemp`
 sed "s/ ?= /=/g" config/${config}.mk > $tmpscript
 source ${tmpscript}
 
+# Initialize the error report
+timestamp=$(date +%Y%m%d%H%M%S)
+error_rpt=./benchmark_errors_${timestamp}.rpt
+> ${error_rpt}
+
 #############
 ## Helpers ##
 #############
@@ -97,22 +102,83 @@ extract_performance() {
 extract_performance_dotp() {
   kernel=$1
   args=$2
-  tempfile=$3
-  outfile=$4
+  sew=$3
+  tempfile=$4
+  outfile=$5
 
-  info_0="[${kernel}]: ${nr_lanes} ${args}"
+  info_0="[${kernel}]: ${nr_lanes} ${args} ${sew}"
   info_1=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d: -f 2)
   info="$info_0 $info_1"
   echo $info >> $outfile
 }
 
+# The two simulations can produce different results whenever they use
+# unordered floating-point sum reductions. This is because bank conflicts
+# do not guarantee ordered and cycle-invariant accesses to the VRF.
+# FP-reductions use different accumulators also within each lane,
+# and the incoming operands can be added (subtracted) to different partial
+# accumulators, i.e. the order of the reduction operations can be different
+# also among simulations with the same source data whenever the system or
+# program are different.
 verify_id_results() {
-  echo "Verifying ideal_dispatcher results:"
-  diff hardware/id_results.txt hardware/gold_results.txt || exit
-  echo "Test passed. Summary of the first 10 lines for ID results:"
-  head -n 10 hardware/id_results.txt
+  threshold=$1
+  sew=$2
+
+  id_results=hardware/id_results.txt
+  gold_results=hardware/gold_results.txt
+
+  echo "Summary of the first 10 lines for ID results:"
+  head -n 10 ${id_results}
   echo "Summary of the first 10 lines for default-system results:"
-  head -n 10 hardware/gold_results.txt
+  head -n 10 ${gold_results}
+  echo "Verifying ideal_dispatcher results:"
+  if [ $threshold -gt 0 ]; then
+    i=0
+    while IFS= read -r l0 && IFS= read -r l1 <&3; do
+      # Find the last byte of a floating-point word
+      i=$(($i + 1))
+      if [ $(($i % ($sew / 8))) -eq 0 ]; then
+        # abs(x-y)
+        diff=$((16#${l0} - 16#${l1}))
+        diff=${diff#-}
+        # More than threshold?
+        if [[ $diff -gt $threshold ]]; then
+          echo "Error. Test failed."
+          return -1
+        fi
+      fi
+    done < ${id_results} 3< ${gold_results}
+  else
+    diff ${id_results} ${gold_results}
+    if [ $? -ne 0 ]; then
+      echo "Error. Test failed."
+    fi
+    return $?
+  fi
+}
+
+sew_from_dtype() {
+  case $1 in
+    "double" | "int64_t" | "uint64_t")
+    echo '64'
+    ;;
+
+    "float" | "int32_t" | "uint32_t")
+    echo '32'
+    ;;
+
+    "_Float16" | "int16_t" | "uint16_t")
+    echo '16'
+    ;;
+
+    "_Float8" | "int8_t" | "uint8_t")
+    echo '8'
+    ;;
+
+    *)
+    echo '-'
+    ;;
+  esac
 }
 
 #############
@@ -150,7 +216,8 @@ matmul() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -189,7 +256,8 @@ conv2d() {
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                      || exit
         extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-        verify_id_results                                                                   || exit
+        # Verify ID results is non-blocking! Check the report afterwards
+        verify_id_results 0 | tee -a ${error_rpt}
       fi
     done
   done
@@ -229,7 +297,8 @@ fconv3d() {
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                      || exit
         extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-        verify_id_results                                                                   || exit
+        # Verify ID results is non-blocking! Check the report afterwards
+        verify_id_results 0 | tee -a ${error_rpt}
       fi
     done
   done
@@ -244,8 +313,6 @@ jacobi2d() {
   kernel=jacobi2d
   defines=""
 
-  OnlyVec=1
-
   tempfile=`mktemp`
 
   # Log the performance results
@@ -255,7 +322,7 @@ jacobi2d() {
   for vsize_unpadded in 4 8 16 32 64 128 238; do
     vsize=$(($vsize_unpadded + 2))
 
-    args="$vsize $vsize $OnlyVec"
+    args="$vsize $vsize"
 
     clean_and_gen_data $kernel "$args" || exit
 
@@ -267,7 +334,8 @@ jacobi2d() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -301,7 +369,8 @@ dropout() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -340,7 +409,8 @@ fft() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -374,7 +444,8 @@ dwt() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -408,7 +479,8 @@ exp() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -444,7 +516,8 @@ softmax() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines"l $tempfile 1                                     || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }
@@ -480,6 +553,8 @@ fdotproduct() {
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                                || exit
         extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        # Verify ID results is non-blocking! Check the report afterwards
+        verify_id_results 0 | tee -a ${error_rpt}
       fi
     done
   done
@@ -517,6 +592,8 @@ dotproduct() {
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                                || exit
         extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        # Verify ID results is non-blocking! Check the report afterwards
+        verify_id_results 0 | tee -a ${error_rpt}
       fi
     done
   done
@@ -554,7 +631,8 @@ pathfinder() {
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                      || exit
         extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-        verify_id_results                                                                   || exit
+        # Verify ID results is non-blocking! Check the report afterwards
+        verify_id_results 0 | tee -a ${error_rpt}
       fi
     done
   done
@@ -596,7 +674,8 @@ roi_align() {
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
-      verify_id_results                                                                   || exit
+      # Verify ID results is non-blocking! Check the report afterwards
+      verify_id_results 0 | tee -a ${error_rpt}
     fi
   done
 }

@@ -39,6 +39,22 @@ threshold = {
   'roi_align'  : 300,
 }
 
+skip_check = {
+  'imatmul'    : 0,
+  'fmatmul'    : 0,
+  'iconv2d'    : 0,
+  'fconv2d'    : 0,
+  'fconv3d'    : 0,
+  'jacobi2d'   : 0,
+  'dropout'    : 0,
+  'fft'        : 0,
+  'dwt'        : 0,
+  'exp'        : 0,
+  'softmax'    : 0,
+  'pathfinder' : 0,
+  'roi_align'  : 1, # This program has a larger scalar component
+}
+
 def main():
   kernel   = sys.argv[1]
   hwcycles = int(sys.argv[2])
@@ -47,8 +63,10 @@ def main():
   try:
     # Check absolute thresholds
     if (abs(hwcycles - swcycles) > threshold[kernel]):
-      sys.exit('Error: the difference in hw_cycles ({}) and sw_cycles ({}) for kernel {} is too high.'.format(
-        hwcycles, swcycles, kernel))
+      # Check for exception rule
+      if not skip_check[kernel]:
+        sys.exit('Error: the difference in hw_cycles ({}) and sw_cycles ({}) for kernel {} is too high.'.format(
+          hwcycles, swcycles, kernel))
   except KeyError:
     sys.exit('Error: the kernel "' + kernel + '" is not valid')
 
