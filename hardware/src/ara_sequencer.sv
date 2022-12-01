@@ -287,7 +287,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     case (state_q)
       IDLE: begin
         // Sent a request, but the operand requesters are not ready
-        if (pe_req_valid_o && !(&operand_requester_ready)) begin
+        // Do not trap here the instructions that do not need any operands at all
+        if (pe_req_valid_o && !(&operand_requester_ready || (is_load(pe_req_o.op) && pe_req_o.vm))) begin
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;
