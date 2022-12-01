@@ -220,6 +220,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .busy_o      (/* Unused */                  )
   );
 
+`ifndef SPYGLASS
   tc_sram #(
     .NumWords (L2NumWords  ),
     .NumPorts (1           ),
@@ -234,6 +235,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .be_i   (l2_be                                                                      ),
     .rdata_o(l2_rdata                                                                   )
   );
+`else
+  assign l2_rdata = '0;
+`endif
 
   // One-cycle latency
   `FF(l2_rvalid, l2_req, 1'b0);
