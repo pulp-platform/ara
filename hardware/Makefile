@@ -204,6 +204,17 @@ riscv_tests_simv: $(tests)
 $(tests): rv%: $(app_path)/rv%
 	$(veril_library)/V$(veril_top) $(if $(trace),-t,) -l ram,$<,elf &> $(buildpath)/$@.trace
 
+# Lint
+.PHONY: lint spyglass/tmp/files
+
+SNPS_SG ?= spyglass-2022.06
+lint: spyglass/tmp/files spyglass/sdc/func.sdc spyglass/scripts/run_lint.tcl
+	cd spyglass; $(SNPS_SG) sg_shell -tcl scripts/run_lint.tcl
+
+spyglass/tmp/files: $(bender)
+	mkdir -p spyglass/tmp
+	./bender script verilator -t rtl -t spyglass -t cva6_test $(bender_defs) --define SPYGLASS > spyglass/tmp/files
+
 # DPIs
 .PHONY: dpi
 dpi: $(buildpath)/$(dpi_library)/ara_dpi.so

@@ -171,6 +171,10 @@ cd hardware
 make sim app=${program} ideal_dispatcher=1
 ```
 
+### Linting Flow
+
+We also provide Synopsys Spyglass linting scripts in the hardware/spyglass. Run make lint in the hardware folder, with a specific MemPool configuration, to run the tests associated with the lint_rtl target.
+
 ## Publications
 
 If you want to use Ara, you can cite us:
