@@ -94,6 +94,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add Roi-Align `app` and `benchmark`, and plot its performance
  - Support for vector mask instructions: `vmsbf`, `vmsof`, `vmsif`, `viota`, `vid`
  - Add support for vector mask population count and find first set bit instructions: `vcpop.m`, `vfirst.m`
+ - Add Spyglass linting script
 
 ### Changed
 

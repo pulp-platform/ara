@@ -74,3 +74,7 @@ sources:
           files:
             # Level 2
             - hardware/tb/ara_tb_verilator.sv
+
+    - target: spyglass
+      files:
+        - hardware/spyglass/src/ara_soc_wrap.sv
