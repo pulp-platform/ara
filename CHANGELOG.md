@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Prevent VMFPU from acknowledging the opqueues when their issue is over
  - Operand requesters sanitize partial operands during a reduction
  - Fix load/store-complete signals to CVA6
+ - Remove latches/repeated-signals from `masku`
 
 ### Added
 
