@@ -270,7 +270,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       // Exception 1: insn on mask vectors, as MASKU has to receive something from all lanes
       // and the partial results come from VALU and VMFPU.
       // Exception 2: during a reduction, all the lanes must cooperate anyway.
-      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]})) begin
+      if (vfu_operation_d.vl == '0 && (vfu_operation_d.vfu inside {VFU_Alu, VFU_MFpu}) && !(vfu_operation_d.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]})) begin
         vfu_operation_valid_d = 1'b0;
         // We are already done with this instruction
         vinsn_done_d[pe_req.id] |= 1'b1;
