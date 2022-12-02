@@ -164,11 +164,13 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_valid_o[MulFPUC] ||
             operand_request_valid_o[MaskM]);
         end
-        VFU_LoadUnit : pe_req_ready = !(operand_request_valid_o[MaskM]);
+        VFU_LoadUnit : pe_req_ready = !(operand_request_valid_o[MaskM] ||
+            (pe_req_i.op == VLXE && operand_request_valid_o[SlideAddrGenA]));
         VFU_SlideUnit: pe_req_ready = !(operand_request_valid_o[SlideAddrGenA]);
         VFU_StoreUnit: begin
           pe_req_ready = !(operand_request_valid_o[StA] ||
-            operand_request_valid_o[ MaskM]);
+            operand_request_valid_o[MaskM] ||
+            (pe_req_i.op == VSXE && operand_request_valid_o[SlideAddrGenA]));
         end
         VFU_MaskUnit : begin
           pe_req_ready = !(operand_request_valid_o[AluA] ||
