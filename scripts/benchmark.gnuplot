@@ -417,5 +417,4 @@ plot roof_cpu(x, 1, 2.4) w l lw 2 lc 1 t  '2 Lanes',   \
      'roi_align_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,  \
      roof_cpu(x, 8, 19.2) w l lw 2 lc 7 t '16 Lanes',   \
      'roi_align_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
-     'roi_align_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle, \
-     roof_issue(x, 4.8, 4, 2) w l lw 2 lc 5 notitle
+     'roi_align_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
