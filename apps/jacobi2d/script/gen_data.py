@@ -35,11 +35,9 @@ def emit(name, array, alignment='8'):
 ## SCRIPT ##
 ############
 
-if len(sys.argv) == 4:
+if len(sys.argv) == 3:
   R = int(sys.argv[1])
   C = int(sys.argv[2])
-  # Reduce memory footprint during V benchmark simulation
-  OnlyVec = int(sys.argv[3])
 else:
   print("Error. Give me one argument: the number of vector elements.")
   sys.exit()
@@ -66,6 +64,5 @@ emit("C", np.array(C, dtype=np.uint64))
 emit("TSTEPS", np.array(TSTEPS, dtype=np.uint64))
 emit("A_v", A, 'NR_LANES*4')
 emit("B_v", B, 'NR_LANES*4')
-if not OnlyVec:
-  emit("A_s", A, 'NR_LANES*4')
-  emit("B_s", B, 'NR_LANES*4')
+emit("A_s", A, 'NR_LANES*4')
+emit("B_s", B, 'NR_LANES*4')

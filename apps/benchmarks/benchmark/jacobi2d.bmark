@@ -98,6 +98,8 @@ extern uint64_t TSTEPS;
 
 extern DATA_TYPE A_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern DATA_TYPE B_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern DATA_TYPE A_s[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
+extern DATA_TYPE B_s[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
 void warm_caches(uint64_t heat, DATA_TYPE* A_fixed_v, DATA_TYPE* B_fixed_v) {
   for (uint64_t k = 0; k < heat; ++k)
@@ -110,10 +112,12 @@ int main() {
   size_t mtx_offset = ((4 * NR_LANES) / sizeof(DATA_TYPE)) - 1;
   DATA_TYPE *A_fixed_v = A_v + mtx_offset;
   DATA_TYPE *B_fixed_v = B_v + mtx_offset;
+  DATA_TYPE *A_fixed_s = A_s + mtx_offset;
+  DATA_TYPE *B_fixed_s = B_s + mtx_offset;
 
 #ifndef SPIKE
   // Warm-up caches
-  warm_caches(WARM_CACHES_ITER, A_fixed_v, B_fixed_v);
+  warm_caches(WARM_CACHES_ITER, A_fixed_s, B_fixed_s);
 #endif
 
   // Measure vector kernel execution

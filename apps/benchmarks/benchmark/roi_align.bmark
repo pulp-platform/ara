@@ -44,7 +44,7 @@ void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
     CropAndResizePerBox_BHWC_vec(image_data, BATCH_SIZE, DEPTH, IMAGE_HEIGHT,
                                IMAGE_WIDTH, boxes_data, box_index_data, 0,
-                               N_BOXES, crops_data_vec, CROP_HEIGHT, CROP_WIDTH,
+                               N_BOXES, crops_data, CROP_HEIGHT, CROP_WIDTH,
                                EXTRAPOLATION_VALUE);
 }
 
