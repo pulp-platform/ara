@@ -36,6 +36,7 @@ extern unsigned long int NFFT;
 
 extern v2f twiddle_vec[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern v2f     samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
+extern v2f   samples_s[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 float buf[MAX_NFFT] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 void warm_caches(uint64_t heat, float* samples_reim, float* twiddle_reim) {
@@ -46,13 +47,15 @@ void warm_caches(uint64_t heat, float* samples_reim, float* twiddle_reim) {
 }
 
 int main() {
+  float* samples_s_reim = cmplx2reim(samples_s, buf, NFFT);
+
   float* samples_reim = cmplx2reim(samples, buf, NFFT);
 
   float* twiddle_reim = cmplx2reim(twiddle_vec, buf, ((NFFT >> 1) * (31 - __builtin_clz(NFFT))));
 
 #ifndef SPIKE
   // Warm-up caches
-  warm_caches(WARM_CACHES_ITER, samples_reim, twiddle_reim);
+  warm_caches(WARM_CACHES_ITER, samples_s_reim, twiddle_reim);
 #endif
 
   HW_CNT_READY;

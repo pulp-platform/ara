@@ -42,7 +42,7 @@ extern float    buf[] __attribute__((aligned(4 * NR_LANES)));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
-    gsl_wavelet_transform_vector(data_v, DWT_LEN, buf, 0);
+    gsl_wavelet_transform_vector(data_s, DWT_LEN, buf, 0);
 }
 
 int main() {
