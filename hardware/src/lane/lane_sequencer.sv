@@ -288,42 +288,44 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       unique case (pe_req.vfu)
         VFU_Alu: begin
           operand_request_i[AluA] = '{
-            id         : pe_req.id,
-            vs         : pe_req.vs1,
-            eew        : pe_req.eew_vs1,
+            id             : pe_req.id,
+            vs             : pe_req.vs1,
+            eew            : pe_req.eew_vs1,
             // If reductions and vl == 0, we must replace with neutral values
-            conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs1,
-            scale_vl   : pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
-            vtype      : pe_req.vtype,
+            conv           : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs1,
+            scale_vl       : pe_req.scale_vl,
+            cvt_resize     : pe_req.cvt_resize,
+            special_hazard : pe_req.special_hazard,
+            vtype          : pe_req.vtype,
             // In case of reduction, AluA opqueue will keep the scalar element
-            vl         : (pe_req.op inside {[VREDSUM:VWREDSUM]}) ? 1 : vfu_operation_d.vl,
-            vstart     : vfu_operation_d.vstart,
-            hazard     : pe_req.hazard_vs1 | pe_req.hazard_vd,
-            is_reduct  : pe_req.op inside {[VREDSUM:VWREDSUM]} ? 1'b1 : 0,
-            target_fu  : ALU_SLDU,
-            default    : '0
+            vl             : (pe_req.op inside {[VREDSUM:VWREDSUM]}) ? 1 : vfu_operation_d.vl,
+            vstart         : vfu_operation_d.vstart,
+            hazard         : pe_req.hazard_vs1 | pe_req.hazard_vd,
+            is_reduct      : pe_req.op inside {[VREDSUM:VWREDSUM]} ? 1'b1 : 0,
+            target_fu      : ALU_SLDU,
+            default        : '0
           };
           operand_request_push[AluA] = pe_req.use_vs1;
 
           operand_request_i[AluB] = '{
-            id         : pe_req.id,
-            vs         : pe_req.vs2,
-            eew        : pe_req.eew_vs2,
+            id             : pe_req.id,
+            vs             : pe_req.vs2,
+            eew            : pe_req.eew_vs2,
             // If reductions and vl == 0, we must replace with neutral values
-            conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs2,
-            scale_vl   : pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
-            vtype      : pe_req.vtype,
+            conv           : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs2,
+            scale_vl       : pe_req.scale_vl,
+            cvt_resize     : pe_req.cvt_resize,
+            special_hazard : pe_req.special_hazard,
+            vtype          : pe_req.vtype,
             // If reductions and vl == 0, we must replace the operands with neutral
             // values in the opqueues. So, vl must be 1 at least
-            vl         : (pe_req.op inside {[VREDSUM:VWREDSUM]} && vfu_operation_d.vl == '0)
-                         ? 1 : vfu_operation_d.vl,
-            vstart     : vfu_operation_d.vstart,
-            hazard     : pe_req.hazard_vs2 | pe_req.hazard_vd,
-            is_reduct  : pe_req.op inside {[VREDSUM:VWREDSUM]} ? 1'b1 : 0,
-            target_fu  : ALU_SLDU,
-            default    : '0
+            vl             : (pe_req.op inside {[VREDSUM:VWREDSUM]} && vfu_operation_d.vl == '0)
+                             ? 1 : vfu_operation_d.vl,
+            vstart         : vfu_operation_d.vstart,
+            hazard         : pe_req.hazard_vs2 | pe_req.hazard_vd,
+            is_reduct      : pe_req.op inside {[VREDSUM:VWREDSUM]} ? 1'b1 : 0,
+            target_fu      : ALU_SLDU,
+            default        : '0
           };
           operand_request_push[AluB] = pe_req.use_vs2;
 
@@ -346,66 +348,69 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         end
         VFU_MFpu: begin
           operand_request_i[MulFPUA] = '{
-            id         : pe_req.id,
-            vs         : pe_req.vs1,
-            eew        : pe_req.eew_vs1,
+            id             : pe_req.id,
+            vs             : pe_req.vs1,
+            eew            : pe_req.eew_vs1,
             // If reductions and vl == 0, we must replace with neutral values
-            conv       : pe_req.conversion_vs1,
-            scale_vl   : pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
-            vtype      : pe_req.vtype,
+            conv           : pe_req.conversion_vs1,
+            scale_vl       : pe_req.scale_vl,
+            cvt_resize     : pe_req.cvt_resize,
+            special_hazard : pe_req.special_hazard,
+            vtype          : pe_req.vtype,
             // If reductions and vl == 0, we must replace the operands with neutral
             // values in the opqueues. So, vl must be 1 at least
-            vl         : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]}) ? 1 : vfu_operation_d.vl,
-            vstart     : vfu_operation_d.vstart,
-            hazard     : pe_req.hazard_vs1 | pe_req.hazard_vd,
-            is_reduct  : pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} ? 1'b1 : 0,
-            target_fu  : MFPU_ADDRGEN,
-            default    : '0
+            vl             : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]}) ? 1 : vfu_operation_d.vl,
+            vstart         : vfu_operation_d.vstart,
+            hazard         : pe_req.hazard_vs1 | pe_req.hazard_vd,
+            is_reduct      : pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} ? 1'b1 : 0,
+            target_fu      : MFPU_ADDRGEN,
+            default        : '0
           };
           operand_request_push[MulFPUA] = pe_req.use_vs1;
 
           operand_request_i[MulFPUB] = '{
-            id         : pe_req.id,
-            vs         : pe_req.swap_vs2_vd_op ? pe_req.vd        : pe_req.vs2,
-            eew        : pe_req.swap_vs2_vd_op ? pe_req.eew_vd_op : pe_req.eew_vs2,
+            id               : pe_req.id,
+            vs               : pe_req.swap_vs2_vd_op ? pe_req.vd        : pe_req.vs2,
+            eew              : pe_req.swap_vs2_vd_op ? pe_req.eew_vd_op : pe_req.eew_vs2,
             // If reductions and vl == 0, we must replace with neutral values
-            conv       : pe_req.conversion_vs2,
-            scale_vl   : pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
-            vtype      : pe_req.vtype,
+            conv             : pe_req.conversion_vs2,
+            scale_vl         : pe_req.scale_vl,
+            cvt_resize       : pe_req.cvt_resize,
+            special_hazard   : pe_req.special_hazard,
+            vtype            : pe_req.vtype,
             // If reductions and vl == 0, we must replace the operands with neutral
             // values in the opqueues. So, vl must be 1 at least
-            vl         : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} && vfu_operation_d.vl == '0)
-                        ? 1 : vfu_operation_d.vl,
-            vstart     : vfu_operation_d.vstart,
-            hazard     : (pe_req.swap_vs2_vd_op ?
+            vl               : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} && vfu_operation_d.vl == '0)
+                               ? 1 : vfu_operation_d.vl,
+            vstart           : vfu_operation_d.vstart,
+            hazard           : (pe_req.swap_vs2_vd_op ?
             pe_req.hazard_vd : (pe_req.hazard_vs2 | pe_req.hazard_vd)),
-            is_reduct  : pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} ? 1'b1 : 0,
-            target_fu  : MFPU_ADDRGEN,
-            default: '0
+            is_reduct        : pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} ? 1'b1 : 0,
+            target_fu        : MFPU_ADDRGEN,
+            default          : '0
           };
           operand_request_push[MulFPUB] = pe_req.swap_vs2_vd_op ?
           pe_req.use_vd_op : pe_req.use_vs2;
 
           operand_request_i[MulFPUC] = '{
-            id         : pe_req.id,
-            vs         : pe_req.swap_vs2_vd_op ? pe_req.vs2            : pe_req.vd,
-            eew        : pe_req.swap_vs2_vd_op ? pe_req.eew_vs2        : pe_req.eew_vd_op,
-            conv       : pe_req.swap_vs2_vd_op ? pe_req.conversion_vs2 : OpQueueConversionNone,
-            scale_vl   : pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
+            id             : pe_req.id,
+            vs             : pe_req.swap_vs2_vd_op ? pe_req.vs2            : pe_req.vd,
+            eew            : pe_req.swap_vs2_vd_op ? pe_req.eew_vs2        : pe_req.eew_vd_op,
+            conv           : pe_req.swap_vs2_vd_op ? pe_req.conversion_vs2 : OpQueueConversionNone,
+            scale_vl       : pe_req.scale_vl,
+            cvt_resize     : pe_req.cvt_resize,
+            special_hazard : pe_req.special_hazard,
             // If reductions and vl == 0, we must replace the operands with neutral
             // values in the opqueues. So, vl must be 1 at least
-            vl         : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} && vfu_operation_d.vl == '0)
-                        ? 1 : vfu_operation_d.vl,
-            vstart     : vfu_operation_d.vstart,
-            vtype      : pe_req.vtype,
-            hazard     : pe_req.swap_vs2_vd_op ?
+            vl             : (pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} && vfu_operation_d.vl == '0)
+                            ? 1 : vfu_operation_d.vl,
+            vstart         : vfu_operation_d.vstart,
+            vtype          : pe_req.vtype,
+            hazard         : pe_req.swap_vs2_vd_op ?
             (pe_req.hazard_vs2 | pe_req.hazard_vd) : pe_req.hazard_vd,
-            is_reduct  : pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} ? 1'b1 : 0,
-            target_fu  : MFPU_ADDRGEN,
-            default : '0
+            is_reduct      : pe_req.op inside {[VFREDUSUM:VFWREDOSUM]} ? 1'b1 : 0,
+            target_fu      : MFPU_ADDRGEN,
+            default        : '0
           };
           operand_request_push[MulFPUC] = pe_req.swap_vs2_vd_op ?
           pe_req.use_vs2 : pe_req.use_vd_op;
@@ -447,17 +452,18 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // Load indexed
           operand_request_i[SlideAddrGenA] = '{
-            id       : pe_req_i.id,
-            vs       : pe_req_i.vs2,
-            eew      : pe_req_i.eew_vs2,
-            conv     : pe_req_i.conversion_vs2,
-            target_fu: MFPU_ADDRGEN,
-            vl       : pe_req_i.vl / NrLanes,
-            scale_vl : pe_req_i.scale_vl,
-            vstart   : vfu_operation_d.vstart,
-            vtype    : pe_req_i.vtype,
-            hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
-            default  : '0
+            id             : pe_req_i.id,
+            vs             : pe_req_i.vs2,
+            eew            : pe_req_i.eew_vs2,
+            conv           : pe_req_i.conversion_vs2,
+            target_fu      : MFPU_ADDRGEN,
+            special_hazard : pe_req.special_hazard,
+            vl             : pe_req_i.vl / NrLanes,
+            scale_vl       : pe_req_i.scale_vl,
+            vstart         : vfu_operation_d.vstart,
+            vtype          : pe_req_i.vtype,
+            hazard         : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            default        : '0
           };
           // Since this request goes outside of the lane, we might need to request an
           // extra operand regardless of whether it is valid in this lane or not.
@@ -503,17 +509,18 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // Store indexed
           operand_request_i[SlideAddrGenA] = '{
-            id       : pe_req_i.id,
-            vs       : pe_req_i.vs2,
-            eew      : pe_req_i.eew_vs2,
-            conv     : pe_req_i.conversion_vs2,
-            target_fu: MFPU_ADDRGEN,
-            vl       : pe_req_i.vl / NrLanes,
-            scale_vl : pe_req_i.scale_vl,
-            vstart   : vfu_operation_d.vstart,
-            vtype    : pe_req_i.vtype,
-            hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
-            default  : '0
+            id             : pe_req_i.id,
+            vs             : pe_req_i.vs2,
+            eew            : pe_req_i.eew_vs2,
+            conv           : pe_req_i.conversion_vs2,
+            target_fu      : MFPU_ADDRGEN,
+            special_hazard : pe_req.special_hazard,
+            vl             : pe_req_i.vl / NrLanes,
+            scale_vl       : pe_req_i.scale_vl,
+            vstart         : vfu_operation_d.vstart,
+            vtype          : pe_req_i.vtype,
+            hazard         : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            default        : '0
           };
           // Since this request goes outside of the lane, we might need to request an
           // extra operand regardless of whether it is valid in this lane or not.
@@ -524,16 +531,17 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
         VFU_SlideUnit: begin
           operand_request_i[SlideAddrGenA] = '{
-            id       : pe_req.id,
-            vs       : pe_req.vs2,
-            eew      : pe_req.eew_vs2,
-            conv     : pe_req.conversion_vs2,
-            target_fu: ALU_SLDU,
-            scale_vl : pe_req.scale_vl,
-            vtype    : pe_req.vtype,
-            vstart   : vfu_operation_d.vstart,
-            hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
-            default  : '0
+            id             : pe_req.id,
+            vs             : pe_req.vs2,
+            eew            : pe_req.eew_vs2,
+            conv           : pe_req.conversion_vs2,
+            target_fu      : ALU_SLDU,
+            special_hazard : pe_req.special_hazard,
+            scale_vl       : pe_req.scale_vl,
+            vtype          : pe_req.vtype,
+            vstart         : vfu_operation_d.vstart,
+            hazard         : pe_req.hazard_vs2 | pe_req.hazard_vd,
+            default        : '0
           };
           operand_request_push[SlideAddrGenA] = pe_req.use_vs2;
 
