@@ -514,7 +514,7 @@ softmax() {
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
-      compile_and_run $kernel "$defines"l $tempfile 1                                     || exit
+      compile_and_run $kernel "$defines" $tempfile 1                                      || exit
       extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
