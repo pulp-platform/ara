@@ -171,6 +171,17 @@ cd hardware
 make sim app=${program} ideal_dispatcher=1
 ```
 
+### VCD Dumping
+
+It's possible to dump VCD files for accurate activity-based power analyses. To do so, use the `vcd_dump=1` option to compile the program and to run the simulation:
+
+```bash
+make -C apps bin/${program} vcd_dump=1
+make -C hardware simc app=${program} vcd_dump=1
+```
+
+Currently, the following kernels support automatic VCD dumping: `fmatmul`, `fconv3d`, `fft`, `dwt`, `exp`, `cos`, `log`, `dropout`, `jacobi2d`.
+
 ### Linting Flow
 
 We also provide Synopsys Spyglass linting scripts in the hardware/spyglass. Run make lint in the hardware folder, with a specific MemPool configuration, to run the tests associated with the lint_rtl target.
