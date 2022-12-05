@@ -319,7 +319,7 @@ jacobi2d() {
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
 
-  for vsize_unpadded in 4 8 16 32 64 128 238; do
+  for vsize_unpadded in 4 8 16 32 64 128; do
     vsize=$(($vsize_unpadded + 2))
 
     args="$vsize $vsize"
