@@ -361,6 +361,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               fp_rm         : ara_req_i.fp_rm,
               wide_fp_imm   : ara_req_i.wide_fp_imm,
               cvt_resize    : ara_req_i.cvt_resize,
+              special_hazard: ara_req_i.special_hazard,
               scale_vl      : ara_req_i.scale_vl,
               vl            : ara_req_i.vl,
               vstart        : ara_req_i.vstart,
@@ -384,8 +385,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
             if ((!(|{ara_req_i.use_vs1, ara_req_i.use_vs2, ara_req_i.use_vd_op, !ara_req_i.vm})              &&
                 |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2, pe_req_d.hazard_vm, pe_req_d.hazard_vd}          &&
                 !(is_load(pe_req_d.op)))                                                                     ||
-                (pe_req_d.op == VSLIDEUP && |{pe_req_d.hazard_vd, pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}) ||
-                (pe_req_d.op == VSLIDEDOWN && |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}))
+                (pe_req_d.op == VSLIDEUP && !pe_req_d.use_scalar_op &&
+                |{pe_req_d.hazard_vd, pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}) ||
+                (pe_req_d.op == VSLIDEDOWN && !pe_req_d.use_scalar_op &&
+                |{pe_req_d.hazard_vs1, pe_req_d.hazard_vs2}))
             begin
               ara_req_ready_o = 1'b0;
               pe_req_valid_d  = 1'b0;
