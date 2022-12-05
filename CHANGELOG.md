@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `VLXE` and `VSXE` need to wait that the SlideAddrGenA opreq is free before being issued by the lane sequencer to the operand requester stage
  - Do not trap instructions with no operands in the main sequencer
  - Commit a reduction only after a grant from the VRF
+ - Decouple `cmdBuffer` and `dataBuffer` depth parameters in the operand queues
 
 ### Added
 
@@ -104,6 +105,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for vector mask population count and find first set bit instructions: `vcpop.m`, `vfirst.m`
  - Add Spyglass linting script
  - Add parametrized support for Fixed-Point math
+ - Add support for Barber's Pole VRF Layout
 
 ### Changed
 
@@ -134,6 +136,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Adapt `fdotproduct` to `dotproduct` structure
  - Pre-calculate next-cycle `aligned_start_address` in `addrgen` for timing reasons
  - Add `is_reduct` signal to the operand queues, to gate the neutral value filling
+ - Handle WAW and WAR `vload` hazards in the `VLDU` without stalling the main sequencer
+ - Reductions are no more treated as widening instructions for what concerns WAW hazards in the operand requesters
+ - `slide1x` instructions are now not stalled in the main sequencer, but the hazard is handled downstream
 
 ## 2.2.0 - 2021-11-02
 
