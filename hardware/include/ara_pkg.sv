@@ -86,6 +86,7 @@ package ara_pkg;
   localparam int unsigned ValuInsnQueueDepth = 4;
   localparam int unsigned VlduInsnQueueDepth = 4;
   localparam int unsigned VstuInsnQueueDepth = 4;
+  localparam int unsigned VaddrgenInsnQueueDepth = 4;
   localparam int unsigned SlduInsnQueueDepth = 2;
   localparam int unsigned NoneInsnQueueDepth = 1;
   // Ara supports MaskuInsnQueueDepth = 1 only.
@@ -299,6 +300,8 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
+    // Widening and vslide1x instructions have different hazard stall policies
+    logic special_hazard;
 
     // Vector machine metadata
     vlen_t vl;
@@ -396,6 +399,8 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
+    // Widening and vslide1x instructions have different hazard stall policies
+    logic special_hazard;
 
     // Vector machine metadata
     vlen_t vl;
@@ -877,11 +882,6 @@ package ara_pkg;
   // Each lane has eight VRF banks
   localparam int unsigned NrVRFBanksPerLane = 8;
 
-  // Find the starting address of a vector register vid
-  function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB / NrLanes / 8);
-  endfunction: vaddr
-
   // Differenciate between SLDU and ADDRGEN operands from opqueue
   typedef enum logic {
     ALU_SLDU     = 1'b0,
@@ -898,6 +898,7 @@ package ara_pkg;
     logic scale_vl; // Rescale vl taking into account the new and old EEW
 
     resize_e cvt_resize;    // Resizing of FP conversions
+    logic special_hazard; // Widening and vslide1x instructions have different hazard stall policies
 
     logic is_reduct; // Is this a reduction?
 

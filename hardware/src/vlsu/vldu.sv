@@ -8,16 +8,21 @@
 // upon receiving vector memory operations.
 
 module vldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes         = 0,
+    // Address of an element in the lane's VRF
+    localparam int  unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int  unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int  unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam type          vaddr_t         = logic [VaddrIdxWidth-1:0],
     // AXI Interface parameters
-    parameter  int  unsigned AxiDataWidth = 0,
-    parameter  int  unsigned AxiAddrWidth = 0,
-    parameter  type          axi_r_t      = logic,
+    parameter  int  unsigned AxiDataWidth    = 0,
+    parameter  int  unsigned AxiAddrWidth    = 0,
+    parameter  type          axi_r_t         = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           DataWidth    = $bits(elen_t),
-    localparam type          strb_t       = logic[DataWidth/8-1:0],
-    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
+    localparam int           DataWidth       = $bits(elen_t),
+    localparam type          strb_t          = logic[DataWidth/8-1:0],
+    localparam type          axi_addr_t      = logic [AxiAddrWidth-1:0]
   ) (
     input  logic                           clk_i,
     input  logic                           rst_ni,
@@ -33,6 +38,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrVInsn-1:0] pe_vinsn_running_i,
     output logic                           pe_req_ready_o,
     output pe_resp_t                       pe_resp_o,
+    // Hazard handling to main sequencer
+    output vid_t                           commit_id_o,
+    output logic                           commit_id_valid_o,
+    input  logic                           hazard_i,
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
@@ -51,7 +60,11 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                           mask_ready_o
   );
 
+  // Include address-handling functions
+  `include "../../include/ara_vaddr.svh"
+
   import cf_math_pkg::idx_width;
+
   import axi_pkg::beat_lower_byte;
   import axi_pkg::beat_upper_byte;
   import axi_pkg::BURST_INCR;
@@ -101,6 +114,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   logic    vinsn_commit_valid;
   assign vinsn_commit       = vinsn_queue_q.vinsn[vinsn_queue_q.commit_pnt];
   assign vinsn_commit_valid = (vinsn_queue_q.commit_cnt != '0);
+  // To the main sequencer, for hazard checking
+  assign commit_id_valid_o = vinsn_commit_valid;
+  assign commit_id_o       = vinsn_commit.id;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -117,6 +133,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   /////////////////////
 
   localparam int unsigned ResultQueueDepth = 2;
+
+  vaddr_t addr_d, addr_q;
 
   // There is a result queue per lane, holding the results that were not
   // yet accepted by the corresponding lane.
@@ -197,6 +215,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     vinsn_queue_d = vinsn_queue_q;
     issue_cnt_d   = issue_cnt_q;
     commit_cnt_d  = commit_cnt_q;
+    addr_d        = addr_q;
 
     len_d     = len_q;
     r_pnt_d   = r_pnt_q;
@@ -286,9 +305,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Initialize id and addr fields of the result queue requests
         for (int lane = 0; lane < NrLanes; lane++) begin
           result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
-          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue_q.vd, NrLanes) +
-            (((vinsn_issue_q.vl - (issue_cnt_q >> int'(vinsn_issue_q.vtype.vsew))) / NrLanes) >>
-            (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
+          result_queue_d[result_queue_write_pnt_q][lane].addr = addr_q;
         end
       end
 
@@ -303,6 +320,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Trigger the request signal
         result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
+
+        // Increase the address
+        addr_d = increment_vaddr(addr_q, vinsn_issue_q.vd);
 
         // Acknowledge the mask operands
         mask_ready_o = !vinsn_issue_q.vm;
@@ -342,6 +362,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         else
           vinsn_queue_d.issue_pnt += 1;
 
+        // Modify the next instruction's address
+        addr_d = vaddr(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vd, NrLanes);
+
         // Prepare for the next vector instruction
         if (vinsn_queue_d.issue_cnt != 0)
           issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl << int'(vinsn_queue_q.vinsn[
@@ -354,7 +377,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////////
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
-      ldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
+      // Create a request only if there are no more hazards on vd (check vs1 since the info about
+      // hazard vd is also there)
+      ldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane] &&
+                                 !vinsn_commit.hazard_vs1;
       ldu_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr;
       ldu_result_id_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].id;
       ldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
@@ -415,6 +441,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             vinsn_queue_d.commit_pnt].vtype.vsew);
     end
 
+    // Update the Vd hazard bit for the current instruction
+    // hazard_vs1, hazard_vs2, hazard_vm all contain the info about hazard_vd, so work on one of them (vs1)
+    if (commit_id_valid_o) vinsn_queue_d.vinsn[vinsn_queue_q.commit_pnt].hazard_vs1 &= {NrVInsn{hazard_i}};
+
     //////////////////////////////
     //  Accept new instruction  //
     //////////////////////////////
@@ -425,8 +455,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
       // Initialize counters
-      if (vinsn_queue_d.issue_cnt == '0)
+      if (vinsn_queue_d.issue_cnt == '0) begin
         issue_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
+        addr_d      = vaddr(pe_req_i.vd, NrLanes);
+      end
       if (vinsn_queue_d.commit_cnt == '0)
         commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
@@ -447,6 +479,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       vrf_pnt_q          <= '0;
       pe_resp_o          <= '0;
       result_final_gnt_q <= '0;
+      addr_q             <= '0;
     end else begin
       vinsn_running_q    <= vinsn_running_d;
       issue_cnt_q        <= issue_cnt_d;
@@ -456,6 +489,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       vrf_pnt_q          <= vrf_pnt_d;
       pe_resp_o          <= pe_resp;
       result_final_gnt_q <= result_final_gnt_d;
+      addr_q             <= addr_d;
     end
   end
 

@@ -9,11 +9,16 @@
 // queues. This stage also includes the VRF arbiter.
 
 module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned NrBanks = 0,     // Number of banks in the vector register file
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int unsigned NrLanes         = 0,
+    parameter  int unsigned NrBanks         = 0, // Number of banks in the vector register file
+    // Type used to address vector register file elements
+    localparam int unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam type         vaddr_t         = logic [VaddrIdxWidth-1:0],
     // Dependant parameters. DO NOT CHANGE!
-    localparam type          strb_t  = logic[$bits(elen_t)/8-1:0]
+    localparam type          strb_t         = logic[$bits(elen_t)/8-1:0]
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,
@@ -75,6 +80,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                       ldu_result_gnt_o,
     output logic                                       ldu_result_final_gnt_o
   );
+
+  `include "../include/ara_vaddr.svh"
 
   import cf_math_pkg::idx_width;
 
@@ -233,6 +240,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       vid_t id;
       // Address of the next element to be read
       vaddr_t addr;
+      // Source reg LSbs (useful for barber's pole)
+      logic [idx_width(NrBanks)-1:0] vs;
       // How many elements remain to be read
       vlen_t len;
       // Element width
@@ -245,15 +254,27 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // In case of a WAW with a previous instruction,
       // read once every two writes of the previous instruction
       logic is_widening;
+      // Does this instruction have a special hazard protocol?
+      logic special_hazard;
       // One-bit counters
       logic [NrVInsn-1:0] waw_hazard_counter;
     } requester_d, requester_q;
 
+    // Asserted if the SLDU requester is registering a new instruction
+    logic new_sldu_insn;
+    logic has_stalled_d, has_stalled_q;
 
     // Is there a hazard during this cycle?
+    // WAW with widening instructions are special: wait for 2 writes instead of 1
+    // Slide1Up/Down with hazards should wait one cycle before being handled normally
     logic stall;
-    assign stall = |(requester_q.hazard & ~(vinsn_result_written_q &
-                   (~{NrVInsn{requester_q.is_widening}} | requester_q.waw_hazard_counter)));
+    assign stall = |(requester_q.hazard & ~(vinsn_result_written_q & ((~{NrVInsn{requester_q.is_widening}} &
+                     requester_q.special_hazard) | requester_q.waw_hazard_counter))) |
+                     (~has_stalled_q & requester_q.special_hazard & |requester_q.hazard);
+
+    // For every instruction, it signals if the requester has already stalled once
+    // This is needed for vslide1x stall handling
+    assign has_stalled_d = new_sldu_insn ? 1'b0 : (stall ? 1'b1 : has_stalled_q);
 
     // Did we get a grant?
     logic [NrBanks-1:0] operand_requester_gnt;
@@ -268,6 +289,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Maintain state
       state_d     = state_q;
       requester_d = requester_q;
+
+      new_sldu_insn = 1'b0;
 
       // Make no requests to the VRF
       operand_payload[requester] = '0;
@@ -287,6 +310,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             state_d                            = REQUESTING;
             // Acknowledge the request
             operand_request_ready_o[requester] = 1'b1;
+
+            // New slide unit instruction incoming
+            if (requester == (NrOperandQueues + VFU_SlideUnit))
+              new_sldu_insn = 1'b1;
 
             // Send a command to the operand queue
             operand_queue_cmd_o[requester] = '{
@@ -312,22 +339,25 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
             // Store the request
             requester_d = '{
-              id     : operand_request_i[requester].id,
-              addr   : vaddr(operand_request_i[requester].vs, NrLanes) +
-              (operand_request_i[requester].vstart >>
-                (int'(EW64) - int'(operand_request_i[requester].eew))),
+              id             : operand_request_i[requester].id,
+              addr           : vaddr(operand_request_i[requester].vs, NrLanes) +
+                                 (operand_request_i[requester].vstart >>
+                                 (int'(EW64) - int'(operand_request_i[requester].eew))),
+              vs             : operand_request_i[requester].vs[idx_width(NrBanks)-1:0],
               // For memory operations, the number of elements initially refers to the new EEW (vsew here),
               // but the requester must refer to the old EEW (eew here)
               // This reasoning cannot be applied also to widening instructions, which modify vsew
               // treating it as the EEW of vd
-              len         : (operand_request_i[requester].scale_vl) ?
-                              ((operand_request_i[requester].vl <<
-                              operand_request_i[requester].vtype.vsew) >>
-                              operand_request_i[requester].eew) :
-                              operand_request_i[requester].vl,
-              vew         : operand_request_i[requester].eew,
-              hazard      : operand_request_i[requester].hazard,
-              is_widening : operand_request_i[requester].cvt_resize == CVT_WIDE,
+              len            : (operand_request_i[requester].scale_vl) ?
+                                 ((operand_request_i[requester].vl <<
+                                 operand_request_i[requester].vtype.vsew) >>
+                                 operand_request_i[requester].eew) :
+                                 operand_request_i[requester].vl,
+              vew            : operand_request_i[requester].eew,
+              hazard         : operand_request_i[requester].hazard,
+              is_widening    : operand_request_i[requester].cvt_resize == CVT_WIDE &&
+                                 operand_request_i[requester].special_hazard,
+              special_hazard : operand_request_i[requester].special_hazard,
               default: '0
             };
             // The length should be at least one after the rescaling
@@ -363,7 +393,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Received a grant.
             if (|operand_requester_gnt) begin
               // Bump the address pointer
-              requester_d.addr = requester_q.addr + 1'b1;
+              requester_d.addr = increment_vaddr(requester_q.addr, requester_q.vs);
 
               // We read less than 64 bits worth of elements
               if (requester_q.len < (1 << (int'(EW64) - int'(requester_q.vew))))
@@ -380,6 +410,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 state_d                            = REQUESTING;
                 // Acknowledge the request
                 operand_request_ready_o[requester] = 1'b1;
+
+                // New slide unit instruction incoming
+                if (requester == (NrOperandQueues + VFU_SlideUnit))
+                  new_sldu_insn = 1'b1;
 
                 // Send a command to the operand queue
                 operand_queue_cmd_o[requester] = '{
@@ -401,18 +435,22 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Store the request
                 requester_d = '{
-                  id   : operand_request_i[requester].id,
-                  addr : vaddr(operand_request_i[requester].vs, NrLanes) +
-                  (operand_request_i[requester].vstart >>
-                    (int'(EW64) - int'(operand_request_i[requester].eew))),
-                  len    : (operand_request_i[requester].scale_vl) ?
-                             ((operand_request_i[requester].vl <<
-                             operand_request_i[requester].vtype.vsew) >>
-                             operand_request_i[requester].eew) :
-                             operand_request_i[requester].vl,
-                  vew    : operand_request_i[requester].eew,
-                  hazard : operand_request_i[requester].hazard,
-                  default: '0
+                  id             : operand_request_i[requester].id,
+                  addr           : vaddr(operand_request_i[requester].vs, NrLanes) +
+                                     (operand_request_i[requester].vstart >>
+                                     (int'(EW64) - int'(operand_request_i[requester].eew))),
+                  vs             : operand_request_i[requester].vs[idx_width(NrBanks)-1:0],
+                  len            : (operand_request_i[requester].scale_vl) ?
+                                     ((operand_request_i[requester].vl <<
+                                     operand_request_i[requester].vtype.vsew) >>
+                                     operand_request_i[requester].eew) :
+                                     operand_request_i[requester].vl,
+                  vew            : operand_request_i[requester].eew,
+                  hazard         : operand_request_i[requester].hazard,
+                  is_widening    : operand_request_i[requester].cvt_resize == CVT_WIDE &&
+                                     operand_request_i[requester].special_hazard,
+                  special_hazard : operand_request_i[requester].special_hazard,
+                  default        : '0
                 };
                 // The length should be at least one after the rescaling
                 if (requester_d.len == '0)
@@ -428,11 +466,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
-        state_q     <= IDLE;
-        requester_q <= '0;
+        state_q       <= IDLE;
+        requester_q   <= '0;
+        has_stalled_q <= 1'b0;
       end else begin
-        state_q     <= state_d;
-        requester_q <= requester_d;
+        state_q       <= state_d;
+        requester_q   <= requester_d;
+        has_stalled_q <= has_stalled_d;
       end
     end
   end : gen_operand_requester
