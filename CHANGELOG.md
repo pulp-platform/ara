@@ -62,6 +62,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `VLXE` and `VSXE` need to wait that the SlideAddrGenA opreq is free before being issued by the lane sequencer to the operand requester stage
  - Do not trap instructions with no operands in the main sequencer
  - Commit a reduction only after a grant from the VRF
+ - Solve duplicate verify function in `roi_align`
+ - Don't let the lanes sample more than once the same instruction when the workload is unbalanced and the instruction stalls in the main sequencer
+ - Don't mute instructions on mask vectors in the lane sequencer when `vl == 0` in that lane
 
 ### Added
 
@@ -104,6 +107,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for vector mask population count and find first set bit instructions: `vcpop.m`, `vfirst.m`
  - Add Spyglass linting script
  - Add parametrized support for Fixed-Point math
+ - Add optimized ASM version of exp 64-bit
+ - Add optimized ASM version of `roi_align`
+ - Add support for cache warming before benchmarks
+ - Add support to check the results of the ideal dispatcher runs
 
 ### Changed
 
@@ -134,6 +141,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Adapt `fdotproduct` to `dotproduct` structure
  - Pre-calculate next-cycle `aligned_start_address` in `addrgen` for timing reasons
  - Add `is_reduct` signal to the operand queues, to gate the neutral value filling
+ - The hw-counter can be enabled or disabled via software to work also with an environment with cache warming
+ - The dropout vectors are now explicitly memory aligned
+ - `matmul` generates data offline like all the other benchmarks
+ - Refactor `benchmark.sh` script
+ - Update `LLVM` to `16`. This brings faster compilations and a prototype of auto-vectorization (disabled by default here!)
+ - All the data-gen scripts generate now random data
+ - Patch `riscv-tests` `crt0.S` also before compiling `riscv-tests`
+ - Almost align all the vector/matrix sizes in `benchmark.sh`
 
 ## 2.2.0 - 2021-11-02
 
