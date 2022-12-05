@@ -111,6 +111,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add optimized ASM version of `roi_align`
  - Add support for cache warming before benchmarks
  - Add support to check the results of the ideal dispatcher runs
+ - Add HW/SW environment for automatic VCD dumping
 
 ### Changed
 
@@ -149,6 +150,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - All the data-gen scripts generate now random data
  - Patch `riscv-tests` `crt0.S` also before compiling `riscv-tests`
  - Almost align all the vector/matrix sizes in `benchmark.sh`
+ - Generate data for `fmatmul` at compile time
+ - SIMD multipliers are now power gated
 
 ## 2.2.0 - 2021-11-02
 
