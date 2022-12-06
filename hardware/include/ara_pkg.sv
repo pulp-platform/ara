@@ -1008,9 +1008,7 @@ package ara_pkg;
 
 
 
-  ///////////////////////////
-  //  VFREC7 Look Up Table //
-  //////////////////////////
+
 localparam int unsigned LUT_BITS     = 7;
 localparam int unsigned E16_BITS     = 16;
 localparam int unsigned E32_BITS     = 32;
@@ -1049,18 +1047,21 @@ localparam logic [62:0] E64_Inf   = 63'h7ff0000000000000;
  typedef struct packed {
   fpnew_pkg::status_t ex_flag;
   fp16_t              vf7_e16;
-  } vf7_struct_e16;
+  } vf7_flag_out_e16;
 
   typedef struct packed {
   fpnew_pkg::status_t ex_flag;
   fp32_t              vf7_e32;
-  } vf7_struct_e32;
+  } vf7_flag_out_e32;
 
  typedef struct packed {
   fpnew_pkg::status_t ex_flag;
   fp64_t              vf7_e64;
-  } vf7_struct_e64;
+  } vf7_flag_out_e64;
 
+  ///////////////////////////
+  //  VFREC7 Look Up Table //
+  //////////////////////////
 
   function automatic logic [LUT_BITS-1:0] vfrec7_lut(logic [LUT_BITS-1:0] vfrec7_lut_select);
       logic [LUT_BITS-1:0] vfrec7_lut_out;
@@ -1204,8 +1205,8 @@ localparam logic [62:0] E64_Inf   = 63'h7ff0000000000000;
 
 
 //for SEW=16
-  function automatic vf7_struct_e16 vfrec7_fp16(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E16_BITS-1:0] operand_a_delay,fpnew_pkg::roundmode_e fp_rm_process);
-     vf7_struct_e16 vfrec7_o,
+  function automatic vf7_flag_out_e16 vfrec7_fp16(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E16_BITS-1:0] operand_a_delay,fpnew_pkg::roundmode_e fp_rm_process);
+     vf7_flag_out_e16 vfrec7_o,
                     vfrec7_out;
 
      fp16_t vfrec7_i,
@@ -1328,8 +1329,8 @@ localparam logic [62:0] E64_Inf   = 63'h7ff0000000000000;
   endfunction : vfrec7_fp16
 
 //for SEW=32.....
-  function automatic vf7_struct_e32 vfrec7_fp32(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E32_BITS-1:0] operand_a_delay,fpnew_pkg::roundmode_e fp_rm_process);
-     vf7_struct_e32 vfrec7_o,
+  function automatic vf7_flag_out_e32 vfrec7_fp32(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E32_BITS-1:0] operand_a_delay,fpnew_pkg::roundmode_e fp_rm_process);
+     vf7_flag_out_e32 vfrec7_o,
                     vfrec7_out;
 
      fp32_t vfrec7_i,
@@ -1452,8 +1453,8 @@ localparam logic [62:0] E64_Inf   = 63'h7ff0000000000000;
   endfunction : vfrec7_fp32
 
 //for SEW=64
-  function automatic vf7_struct_e64 vfrec7_fp64(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E64_BITS-1:0] operand_a_delay,fpnew_pkg::roundmode_e fp_rm_process);
-     vf7_struct_e64 vfrec7_o,
+  function automatic vf7_flag_out_e64 vfrec7_fp64(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E64_BITS-1:0] operand_a_delay,fpnew_pkg::roundmode_e fp_rm_process);
+     vf7_flag_out_e64 vfrec7_o,
                     vfrec7_out;
 
      fp64_t vfrec7_i,
