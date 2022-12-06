@@ -922,69 +922,74 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .out_ready_i   (vfpu_out_ready ),
       .busy_o        (/* Unused */   )
     );
-elen_t operand_a_delay,
-       vfrsqrt7_result_o;
-fpu_mask_t vfpu_flag_mask;
+   elen_t operand_a_delay,
+          vfrsqrt7_result_o;
+   fpu_mask_t vfpu_flag_mask;
 
-vf7_struct_e16 vfrsqrt7_out_e16[4];
-vf7_struct_e32 vfrsqrt7_out_e32[2];
-vf7_struct_e64 vfrsqrt7_out_e64;
-status_t    vfrsqrt7_ex_flag;
+   vf7_flag_out_e16 vfrsqrt7_out_e16[4];
+   vf7_flag_out_e32 vfrsqrt7_out_e32[2];
+   vf7_flag_out_e64 vfrsqrt7_out_e64[1];
+   status_t    vfrsqrt7_ex_flag;
 
-    // register for delay of operand_a
-    always_ff @(posedge clk_i or negedge rst_ni)
-    begin
-         if (!rst_ni) begin
-                operand_a_delay <= 64'b0;
-                 vfpu_flag_mask <= 4'b0;
-         end else begin
-                operand_a_delay <=operand_a ;
-                vfpu_flag_mask  <=vfpu_simd_mask;
+   elen_t [LatFNonComp-1:0] operand_a_q;
+   elen_t [LatFNonComp:0]   operand_a_d;
+
+
+   //Delay for vfpu mask
+   `FF(vfpu_flag_mask,vfpu_simd_mask,'0,clk_i,rst_ni);
+
+   //Pipeline for operand_a
+   assign operand_a_d[0]   = operand_a;
+   for (genvar i = 0; i < LatFNonComp; i++) begin
+     assign operand_a_d[i+1]   = operand_a_q[i];
+
+      `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
          end
-    end
-        ////////////////////////////
-        //  Leading zeros modules //
-        ///////////////////////////
-localparam int unsigned SIG_BITS_E16   = 10;
-localparam int unsigned SIG_BITS_E32   = 23;
-localparam int unsigned SIG_BITS_E64   = 52;
 
-logic [15:0] lzc_e16;
-logic [9:0] lzc_e32;
-logic [5:0]  lzc_e64;
- /////E16///
-  for (genvar i = 0; i < 4; i = i + 1) begin
-    lzc#(
-    .WIDTH(SIG_BITS_E16),
-    .MODE (1)
-  ) leading_zero_e16_i (
-    .in_i    (operand_a_delay[(16*i)+(SIG_BITS_E16-1):(16*i)]),
-    .cnt_o   (lzc_e16[(4*i)+3:(4*i)] ),
-    .empty_o ()
-  );
-  end
-/////E32///
+   assign operand_a_delay = operand_a_d[LatFNonComp];
+      ////////////////////////////
+      //  Leading zeros modules //
+      ////////////////////////////
+   localparam int unsigned SIG_BITS_E16   = 10;
+   localparam int unsigned SIG_BITS_E32   = 23;
+   localparam int unsigned SIG_BITS_E64   = 52;
 
-  for (genvar j = 0; j < 2; j = j + 1) begin
-    lzc#(
-    .WIDTH(SIG_BITS_E32),
-    .MODE (1)
-  ) leading_zero_e32_i (
-    .in_i    (operand_a_delay[(32*j)+(SIG_BITS_E32-1):(32*j)]),
-    .cnt_o   (lzc_e32[(5*j)+4:(5*j)] ),
-    .empty_o ()
-  );
-  end
+   logic [15:0] lzc_e16;
+   logic [9:0] lzc_e32;
+   logic [5:0]  lzc_e64;
+    /////E16///
+     for (genvar i = 0; i < 4; i = i + 1) begin
+       lzc#(
+       .WIDTH(SIG_BITS_E16),
+       .MODE (1)
+     ) leading_zero_e16_i (
+       .in_i    (operand_a_delay[(16*i)+(SIG_BITS_E16-1):(16*i)]),
+       .cnt_o   (lzc_e16[(4*i)+3:(4*i)] ),
+       .empty_o ()
+     );
+     end
+   /////E32///
 
-/////E64///
-  lzc#(
-    .WIDTH(SIG_BITS_E64),
-    .MODE (1)
-  ) leading_zero_e64 (
-    .in_i    (operand_a_delay[SIG_BITS_E64-1:0]),
-    .cnt_o   (lzc_e64),
-    .empty_o ()
-  );
+     for (genvar j = 0; j < 2; j = j + 1) begin
+       lzc#(
+       .WIDTH(SIG_BITS_E32),
+       .MODE (1)
+     ) leading_zero_e32_i (
+       .in_i    (operand_a_delay[(32*j)+(SIG_BITS_E32-1):(32*j)]),
+       .cnt_o   (lzc_e32[(5*j)+4:(5*j)] ),
+       .empty_o ()
+     );
+     end
+
+   /////E64///
+     lzc#(
+       .WIDTH(SIG_BITS_E64),
+       .MODE (1)
+     ) leading_zero_e64 (
+       .in_i    (operand_a_delay[SIG_BITS_E64-1:0]),
+       .cnt_o   (lzc_e64),
+       .empty_o ()
+     );
 
     ////////////
     // vfrec7 //
@@ -1063,10 +1068,8 @@ logic [5:0]  lzc_e64;
       //vfrsqrt7
       unique case (vinsn_processing_q.vtype.vsew)
          EW16: begin
-             vfrsqrt7_out_e16[0] = vfrsqrt7_fp16(vfpu_result[9:0]  ,operand_a_delay[15:0] ,lzc_e16[3:0]  );
-             vfrsqrt7_out_e16[1] = vfrsqrt7_fp16(vfpu_result[25:16],operand_a_delay[31:16],lzc_e16[7:4]  );
-             vfrsqrt7_out_e16[2] = vfrsqrt7_fp16(vfpu_result[41:32],operand_a_delay[47:32],lzc_e16[11:8]);
-             vfrsqrt7_out_e16[3] = vfrsqrt7_fp16(vfpu_result[57:48],operand_a_delay[63:48],lzc_e16[15:12]);
+            for (int h = 0; h < 4; h++) vfrsqrt7_out_e16[h] =
+            vfrsqrt7_fp16(vfpu_result[h*16 +: 10], operand_a_delay[h*16 +: 16], lzc_e16[h*4 +: 4]);
 
              vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vf7_e16,vfrsqrt7_out_e16[2].vf7_e16,vfrsqrt7_out_e16[1].vf7_e16,vfrsqrt7_out_e16[0].vf7_e16};
              vfrsqrt7_ex_flag  = (vfrsqrt7_out_e16[3].ex_flag   & {5{vfpu_flag_mask[3]}})
@@ -1076,8 +1079,8 @@ logic [5:0]  lzc_e64;
 
          end
          EW32: begin
-             vfrsqrt7_out_e32[0] = vfrsqrt7_fp32(vfpu_result[9:0] ,operand_a_delay[31:0] , lzc_e32[4:0]);
-             vfrsqrt7_out_e32[1] = vfrsqrt7_fp32(vfpu_result[41:32],operand_a_delay[63:32],lzc_e32[9:5]);
+            for (int w = 0; w < 2; w++) vfrsqrt7_out_e32[w] =
+            vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
 
              vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32,vfrsqrt7_out_e32[0].vf7_e32};
              vfrsqrt7_ex_flag  = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}} )
@@ -1085,10 +1088,11 @@ logic [5:0]  lzc_e64;
 
          end
          EW64: begin
-            vfrsqrt7_out_e64 = vfrsqrt7_fp64(vfpu_result[9:0],operand_a_delay[63:0],lzc_e64[5:0]);
+            for (int d = 0; d < 1; d++) vfrsqrt7_out_e64[d] =
+            vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
 
-             vfrsqrt7_result_o  =  vfrsqrt7_out_e64.vf7_e64;
-             vfrsqrt7_ex_flag   =  vfrsqrt7_out_e64.ex_flag & {5{vfpu_flag_mask[0]}};
+             vfrsqrt7_result_o  =  vfrsqrt7_out_e64[0].vf7_e64;
+             vfrsqrt7_ex_flag   =  vfrsqrt7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
          end
          default: vfrsqrt7_result_o='x;
       endcase
