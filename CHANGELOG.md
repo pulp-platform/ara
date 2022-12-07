@@ -112,6 +112,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for cache warming before benchmarks
  - Add support to check the results of the ideal dispatcher runs
  - Add HW/SW environment for automatic VCD dumping
+ - Support for vector floating-point reciprocal estimate instruction: `vfrec7`
 
 ### Changed
 
