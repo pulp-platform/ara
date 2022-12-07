@@ -944,7 +944,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
      assign operand_a_d[i+1]   = operand_a_q[i];
 
       `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
-         end
+   end
 
    assign operand_a_delay = operand_a_d[LatFNonComp];
    assign   fp_rm_process = vinsn_processing_q.fp_rm;
