@@ -890,6 +890,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     );
    elen_t operand_a_delay,
           vfrsqrt7_result_o;
+
    fpu_mask_t vfpu_flag_mask;
 
    vf7_flag_out_e16 vfrsqrt7_out_e16[4];
@@ -910,7 +911,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
      assign operand_a_d[i+1]   = operand_a_q[i];
 
       `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
-         end
+   end
 
    assign operand_a_delay = operand_a_d[LatFNonComp];
       ////////////////////////////
@@ -921,7 +922,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
    localparam int unsigned SIG_BITS_E64   = 52;
 
    logic [15:0] lzc_e16;
-   logic [9:0] lzc_e32;
+   logic [9:0]  lzc_e32;
    logic [5:0]  lzc_e64;
     /////E16///
      for (genvar i = 0; i < 4; i = i + 1) begin
