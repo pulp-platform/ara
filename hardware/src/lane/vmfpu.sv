@@ -1081,7 +1081,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
          end
          EW32: begin
             for (int w = 0; w < 2; w++) vfrsqrt7_out_e32[w] =
-            vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
+             vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
 
              vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32,vfrsqrt7_out_e32[0].vf7_e32};
              vfrsqrt7_ex_flag  = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}} )
@@ -1090,12 +1090,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
          end
          EW64: begin
             for (int d = 0; d < 1; d++) vfrsqrt7_out_e64[d] =
-            vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
+             vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
 
              vfrsqrt7_result_o  =  vfrsqrt7_out_e64[0].vf7_e64;
              vfrsqrt7_ex_flag   =  vfrsqrt7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
          end
-         default: vfrsqrt7_result_o='x;
+         default: begin
+             vfrsqrt7_result_o='x;
+             vfrsqrt7_ex_flag ='x;
+         end
       endcase
 
         // Forward the result
@@ -1107,7 +1110,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
          vfpu_ex_flag          = vfrsqrt7_ex_flag;
         end else begin
            vfpu_processed_result = vfpu_result;
-           vfpu_ex_flag          = vfpu_ex_flag;
+           vfpu_ex_flag          = vfpu_ex_flag_fn;
       end
       end else begin
         // NO vfrec7, vfrsqrt7, rto support
