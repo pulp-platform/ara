@@ -148,6 +148,9 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]                     mask_valid;
   logic                                        mask_valid_lane;
   logic      [NrLanes-1:0]                     lane_mask_ready;
+  // Interface with the Mask Unit
+  elen_t     [NrLanes-1:0]                     viota_operand, alu_operand_a, alu_operand_b;
+  logic      [NrLanes-1:0]                     viota_operand_valid, alu_operand_a_valid, alu_operand_b_valid;
 
   // Mask unit scalar result variables
   elen_t     result_scalar;
@@ -302,7 +305,13 @@ module ara import ara_pkg::*; #(
       .masku_result_final_gnt_o        (masku_result_final_gnt[lane]        ),
       .mask_i                          (mask[lane]                          ),
       .mask_valid_i                    (mask_valid[lane] & mask_valid_lane  ),
-      .mask_ready_o                    (lane_mask_ready[lane]               )
+      .mask_ready_o                    (lane_mask_ready[lane]               ),
+      .alu_operand_a_o                 (alu_operand_a[lane]                 ),
+      .alu_operand_a_valid_o           (alu_operand_a_valid[lane]           ),
+      .alu_operand_b_o                 (alu_operand_b[lane]                 ),
+      .alu_operand_b_valid_o           (alu_operand_b_valid[lane]           ),
+      .viota_operand_o                 (viota_operand[lane]                 ),
+      .viota_operand_valid_o           (viota_operand_valid[lane]           )
     );
   end: gen_lanes
 
@@ -440,6 +449,12 @@ module ara import ara_pkg::*; #(
     .masku_result_be_o       (masku_result_be                 ),
     .masku_result_gnt_i      (masku_result_gnt                ),
     .masku_result_final_gnt_i(masku_result_final_gnt          ),
+    .alu_operand_a_i         (alu_operand_a                   ),
+    .alu_operand_a_valid_i   (alu_operand_a_valid             ),
+    .alu_operand_b_i         (alu_operand_b                   ),
+    .alu_operand_b_valid_i   (alu_operand_b_valid             ),
+    .viota_operand_i         (viota_operand                   ),
+    .viota_operand_valid_i   (viota_operand_valid             ),
     // Interface with the VFUs
     .mask_o                  (mask                            ),
     .mask_valid_o            (mask_valid                      ),
