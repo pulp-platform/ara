@@ -611,7 +611,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // FPU-related signals
   elen_t         vfpu_result, vfpu_processed_result;
-  status_t       vfpu_ex_flag;
+  status_t       vfpu_ex_flag, vfpu_ex_flag_fn;
   strb_t         vfpu_mask;
   logic          vfpu_in_valid;
   logic          vfpu_out_valid;
@@ -866,27 +866,27 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .TrueSIMDClass (TrueSIMDClass    ),
       .MaskType      (fpu_mask_t       )
     ) i_fpnew_bulk (
-      .clk_i         (clk_i         ),
-      .rst_ni        (rst_ni        ),
-      .flush_i       (1'b0          ),
-      .rnd_mode_i    (fp_rm         ),
-      .op_i          (fp_op         ),
-      .op_mod_i      (fp_opmod      ),
-      .vectorial_op_i(1'b1          ),
-      .operands_i    (vfpu_operands ),
-      .tag_i         (vfpu_tag_in   ),
-      .simd_mask_i   (vfpu_simd_mask),
-      .src_fmt_i     (fp_src_fmt    ),
-      .dst_fmt_i     (fp_dst_fmt    ),
-      .int_fmt_i     (fp_int_fmt    ),
-      .in_valid_i    (vfpu_in_valid ),
-      .in_ready_o    (vfpu_in_ready ),
-      .result_o      (vfpu_result   ),
-      .status_o      (vfpu_ex_flag  ),
-      .tag_o         (vfpu_tag_out  ),
-      .out_valid_o   (vfpu_out_valid),
-      .out_ready_i   (vfpu_out_ready),
-      .busy_o        (/* Unused */  )
+      .clk_i         (clk_i          ),
+      .rst_ni        (rst_ni         ),
+      .flush_i       (1'b0           ),
+      .rnd_mode_i    (fp_rm          ),
+      .op_i          (fp_op          ),
+      .op_mod_i      (fp_opmod       ),
+      .vectorial_op_i(1'b1           ),
+      .operands_i    (vfpu_operands  ),
+      .tag_i         (vfpu_tag_in    ),
+      .simd_mask_i   (vfpu_simd_mask ),
+      .src_fmt_i     (fp_src_fmt     ),
+      .dst_fmt_i     (fp_dst_fmt     ),
+      .int_fmt_i     (fp_int_fmt     ),
+      .in_valid_i    (vfpu_in_valid  ),
+      .in_ready_o    (vfpu_in_ready  ),
+      .result_o      (vfpu_result    ),
+      .status_o      (vfpu_ex_flag_fn),
+      .tag_o         (vfpu_tag_out   ),
+      .out_valid_o   (vfpu_out_valid ),
+      .out_ready_i   (vfpu_out_ready ),
+      .busy_o        (/* Unused */   )
     );
    elen_t operand_a_delay,
           vfrsqrt7_result_o;
@@ -975,7 +975,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
          end
          EW32: begin
             for (int w = 0; w < 2; w++) vfrsqrt7_out_e32[w] =
-            vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
+             vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
 
              vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32,vfrsqrt7_out_e32[0].vf7_e32};
              vfrsqrt7_ex_flag  = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}} )
@@ -984,12 +984,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
          end
          EW64: begin
             for (int d = 0; d < 1; d++) vfrsqrt7_out_e64[d] =
-            vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
+             vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
 
              vfrsqrt7_result_o  =  vfrsqrt7_out_e64[0].vf7_e64;
              vfrsqrt7_ex_flag   =  vfrsqrt7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
          end
-         default: vfrsqrt7_result_o='x;
+         default: begin
+             vfrsqrt7_result_o='x;
+             vfrsqrt7_ex_flag ='x;
+         end
       endcase
 
          // Forward the result
@@ -998,7 +1001,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
          vfpu_ex_flag          = vfrsqrt7_ex_flag;
       end else begin
            vfpu_processed_result = vfpu_result;
-           vfpu_ex_flag          = vfpu_ex_flag;
+           vfpu_ex_flag          = vfpu_ex_flag_fn;
       end
 
       // After a comparison, send the mask back to the mask unit
