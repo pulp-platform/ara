@@ -60,6 +60,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Remove latches/repeated-signals from `masku`
  - Reshuffle all the registers of a register group that have `eew_q != eew_d` when `LMUL > 1`
  - `VLXE` and `VSXE` need to wait that the SlideAddrGenA opreq is free before being issued by the lane sequencer to the operand requester stage
+ - Do not trap instructions with no operands in the main sequencer
+ - Commit a reduction only after a grant from the VRF
 
 ### Added
 
