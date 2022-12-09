@@ -1094,8 +1094,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 1)) << $clog2(NrLanes << 1);
             end
             EW64: begin
-              read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes)) << $clog2(NrLanes);
-              mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes)) << $clog2(NrLanes);
+              read_cnt_d -= (vlen_t'(trimmed_stride) >> idx_width(NrLanes)) << idx_width(NrLanes);
+              mask_pnt_d  = (vlen_t'(trimmed_stride) >> idx_width(NrLanes)) << idx_width(NrLanes);
             end
             default:;
           endcase

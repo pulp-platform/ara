@@ -100,9 +100,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // This is because the instruction counters for ALU and MFPU refers
   // to lane 0. If lane 0 finishes before the other lanes, the counter
   // is not reflecting the real lane situations anymore.
-  for (genvar i = 0; i < NrVInsn; i++) begin : gen_stall_lane_desynch
-    assign stall_lanes_desynch_vec[i] = ~pe_vinsn_running_q[0][i] & |pe_vinsn_running_q_trns[i][NrLanes-1:1];
-  end
+  if (NrLanes != 1)
+    for (genvar i = 0; i < NrVInsn; i++) begin : gen_stall_lane_desynch
+      assign stall_lanes_desynch_vec[i] = ~pe_vinsn_running_q[0][i] & |pe_vinsn_running_q_trns[i][NrLanes-1:1];
+    end
+  else
+    assign stall_lanes_desynch_vec = '0;
+
   assign stall_lanes_desynch = |stall_lanes_desynch_vec;
 
   /////////////////////////

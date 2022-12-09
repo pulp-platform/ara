@@ -255,7 +255,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
         valid_bytes = issue_cnt_q < NrLanes * 8     ? vinsn_valid_bytes : vrf_valid_bytes;
         valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes       : axi_valid_bytes;
-
         r_pnt_d   = r_pnt_q + valid_bytes;
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
 
