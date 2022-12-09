@@ -15,7 +15,7 @@ jobs:
 #####################
 
   tc-llvm:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - name: Recover the submodule commit hash
@@ -54,7 +54,7 @@ jobs:
         path: tc-llvm.tar
 
   tc-gcc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - name: Recover the submodule commit hash
@@ -89,7 +89,7 @@ jobs:
         path: tc-gcc.tar
 
   tc-isa-sim:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - name: Recover the submodule commit hash
@@ -124,7 +124,7 @@ jobs:
         path: tc-isa-sim.tar
 
   tc-verilator:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - name: Recover the submodule commit hash
@@ -164,7 +164,7 @@ jobs:
 ###################
 
   compile-apps:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
@@ -195,7 +195,7 @@ jobs:
         path: apps/bin
 
   compile-riscv-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
@@ -233,7 +233,7 @@ jobs:
         path: apps/bin
 
   compile-ara:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
@@ -282,7 +282,7 @@ jobs:
 ####################
 
   simulate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align]
@@ -315,7 +315,7 @@ jobs:
 ########################
 
   riscv-tests-simv:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
@@ -343,7 +343,7 @@ jobs:
       run: config=${{ matrix.ara_config }} make -C hardware -j8 riscv_tests_simv
 
   riscv-tests-spike:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: ["tc-isa-sim", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v3
@@ -382,7 +382,7 @@ jobs:
 ###################
 
   check-license:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
@@ -394,7 +394,7 @@ jobs:
       run: python scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
 
   check-clang-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: ['tc-llvm']
     steps:
     - uses: actions/checkout@v3
@@ -420,7 +420,7 @@ jobs:
         exit $EXIT_STATUS
 
   check-trailing-whitespaces:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
       with:
@@ -447,7 +447,7 @@ jobs:
 #####################
 
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
@@ -498,7 +498,7 @@ jobs:
         path: benchmarks-${{ matrix.ara_config }}.tar
 
   roofline:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: benchmark
     steps:
     - uses: actions/checkout@v3
@@ -649,7 +649,7 @@ jobs:
 ####################
 
   clean-up:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
@@ -665,7 +665,7 @@ jobs:
             riscv-tests-spike
 
   clean-up-compile-runs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
