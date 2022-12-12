@@ -198,9 +198,13 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Extract only 1/NrLanes of the word
+    if (NrLanes != 1) begin
     for (int unsigned lane = 0; lane < NrLanes; lane++)
       if (lane == word_lane_ptr_q)
         reduced_word = deshuffled_word[word_lane_ptr_q*$bits(elen_t) +: $bits(elen_t)];
+    end else begin
+      reduced_word = deshuffled_word[word_lane_ptr_q*$bits(elen_t) +: $bits(elen_t)];
+    end
     idx_addr = reduced_word;
 
     case (state_q)
@@ -314,7 +318,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
           // Compose the address
           idx_final_addr_d = pe_req_q.scalar_op + idx_addr;
-
           // When the data is accepted
           if (idx_addr_ready_q) begin
             // Consumed one element
@@ -324,9 +327,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // Bump lane pointer
               elm_ptr_d       = '0;
               word_lane_ptr_d += 1;
-              if (word_lane_ptr_q == NrLanes - 1)
-              // Ready for the next full word
-              addrgen_operand_ready_o = 1'b1;
+              if (NrLanes == 1)
+                if (word_lane_ptr_q == NrLanes - 1)
+                  // Ready for the next full word
+                  addrgen_operand_ready_o = 1'b1;
+              else
+                addrgen_operand_ready_o = 1'b1;
             end else begin
               // Bump element pointer
               elm_ptr_d += 1;
