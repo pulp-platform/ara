@@ -38,6 +38,13 @@ package ara_pkg;
     FixedPointEnable  = 1'b1
   } fixpt_support_e;
 
+  // FP support outside of the FPU (external)
+  // vfrec7, vfrsqrt7, round-toward-odd
+  typedef enum logic {
+    FPExtSupportDisable = 1'b0,
+    FPExtSupportEnable  = 1'b1
+  } fpext_support_e;
+
   // The three bits correspond to {RVVD, RVVF, RVVH}
   typedef enum logic [2:0] {
     FPUSupportNone             = 3'b000,

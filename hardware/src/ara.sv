@@ -11,8 +11,10 @@ module ara import ara_pkg::*; #(
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // External support for vfrec7, vfrsqrt7, rounding-toward-odd
+    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter  logic                  FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
@@ -236,6 +238,7 @@ module ara import ara_pkg::*; #(
     lane #(
       .NrLanes     (NrLanes     ),
       .FPUSupport  (FPUSupport  ),
+      .FPExtSupport(FPExtSupport),
       .FixPtSupport(FixPtSupport)
     ) i_lane (
       .clk_i                           (clk_i                               ),

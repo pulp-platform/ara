@@ -8,15 +8,15 @@
 // in a SIMD fashion, always operating on 64 bits.
 
 module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int  unsigned NrLanes      = 0,
+    parameter  int    unsigned NrLanes      = 0,
     // Support for fixed-point data types
-    parameter  logic         FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type          vaddr_t      = logic,
+    parameter  type            vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth    = $bits(elen_t),
-    localparam int  unsigned StrbWidth    = DataWidth/8,
-    localparam type          strb_t       = logic [StrbWidth-1:0]
+    localparam int    unsigned DataWidth    = $bits(elen_t),
+    localparam int    unsigned StrbWidth    = DataWidth/8,
+    localparam type            strb_t       = logic [StrbWidth-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
