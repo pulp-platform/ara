@@ -305,10 +305,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // iteration count for masked and permute instrctions
   always_comb begin
-    if (vinsn_issue_valid && masku_operand_a_valid_i && vinsn_issue.op inside {[VMSBF:VID]} && (iteration_count_q <= max_iteration-1)) begin
-      iteration_count_d = (max_iteration > 1) ? iteration_count_q + 1'b1 : 1;
+    if (vinsn_issue_valid && masku_operand_a_valid_i && vinsn_issue.op inside {[VMSBF:VID], [VCPOP:VFIRST]} && (iteration_count_q <= max_iteration-1)) begin
+      iteration_count_d = (max_iteration >= 1) ? iteration_count_q + 1'b1 : 1;
     end else if (vinsn_issue_valid && alu_operand_a_valid_i && (iteration_count_q <= max_iteration-1)) begin
-      iteration_count_d = (max_iteration > 1) ? iteration_count_q + 1'b1 : 1;
+      iteration_count_d = (max_iteration >= 1) ? iteration_count_q + 1'b1 : 1;
     end else if (pe_req_ready_o && !vinsn_issue_valid) begin
       iteration_count_d = '0;
     end else begin
@@ -901,14 +901,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               end
             end
             EW64: begin
-              if (&(|alu_operand_a_valid_i) && alu_operand_b_valid_i && (iteration_count_d >= max_iteration)) begin
+              if (alu_operand_a_valid_i && alu_operand_b_valid_i /*&& (iteration_count_d >= max_iteration)*/) begin
                 for (int i=0; i<16; i++) begin
                   alu_op_b_global_r [(i*(NrLanes*DataWidth)) +: NrLanes*DataWidth] = alu_op_b_global [i];
                   for (int k=0; k<(DataWidth*NrLanes)/64; k++) begin
                     alu_src_idx [i][(k*64) +: 64] = (iteration_count_d > 1) ? (((iteration_count_d-1)*2) + k) : k;
                     alu_src_idx_m [i] = alu_src_idx[i] & mask_global[i];
                     j = alu_src_idx_m [i][(k*64) +: 64];
-                    alu_result_global [i][(k*64) +: 64] = alu_op_b_global [i][(j*64) +: 64];
+                    alu_result_global [i][(k*64) +: 64] = alu_op_b_global_r [(j*64) +: 64];
                   end
                   alu_result_global_m [i] = alu_result_global [i] & mask_global [i];
                   for (int index = 0; index < ((NrLanes*DataWidth)/64)-1; index++) begin
@@ -1290,7 +1290,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 element_cnt += 1;
 
               result_queue_d[result_queue_write_pnt_q][lane] = '{
-                wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result_vm_seq_ff[(lane*64)+:63],
+                wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result_vm_seq_f[(lane*64)+:63],
                 be   : '1,
                 addr : vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)),
                 id   : vinsn_issue.id
