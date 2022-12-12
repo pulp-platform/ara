@@ -341,9 +341,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Store the request
             requester_d = '{
               id             : operand_request_i[requester].id,
-              addr           : vaddr(operand_request_i[requester].vs, NrLanes) +
-                                 (operand_request_i[requester].vstart >>
-                                 (int'(EW64) - int'(operand_request_i[requester].eew))),
+              addr           : vaddr_offset(vaddr(operand_request_i[requester].vs, NrLanes),
+                vaddr_t'(operand_request_i[requester].vstart >>
+                (int'(EW64) - int'(operand_request_i[requester].eew))), operand_request_i[requester].vs),
               vs             : operand_request_i[requester].vs[idx_width(NrBanks)-1:0],
               // For memory operations, the number of elements initially refers to the new EEW (vsew here),
               // but the requester must refer to the old EEW (eew here)
@@ -437,9 +437,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 // Store the request
                 requester_d = '{
                   id             : operand_request_i[requester].id,
-                  addr           : vaddr(operand_request_i[requester].vs, NrLanes) +
-                                     (operand_request_i[requester].vstart >>
-                                     (int'(EW64) - int'(operand_request_i[requester].eew))),
+                  addr           : vaddr_offset(vaddr(operand_request_i[requester].vs, NrLanes),
+                    vaddr_t'(operand_request_i[requester].vstart >>
+                    (int'(EW64) - int'(operand_request_i[requester].eew))), operand_request_i[requester].vs),
                   vs             : operand_request_i[requester].vs[idx_width(NrBanks)-1:0],
                   len            : (operand_request_i[requester].scale_vl) ?
                                      ((operand_request_i[requester].vl <<
