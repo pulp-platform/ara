@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Extend the riscv-tests MASKU-related tests
  - Add support for vrgather/vcompress
  - Add parametrized support for 8-alt, 8, 16-alt floating-point
+ - Add lavaMD `app`, benchmark, and performance plot
 
 ### Changed
 
