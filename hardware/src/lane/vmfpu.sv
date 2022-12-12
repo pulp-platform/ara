@@ -927,62 +927,74 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // vfrsqrt7 //
     //////////////
 
-    elen_t operand_a_delay, vfrsqrt7_result_o;
+    if (FPExtSupport) begin
+      elen_t operand_a_delay, vfrsqrt7_result_o;
 
-    fpu_mask_t vfpu_flag_mask;
+      fpu_mask_t vfpu_flag_mask;
 
-    vf7_flag_out_e16 vfrsqrt7_out_e16[4];
-    vf7_flag_out_e32 vfrsqrt7_out_e32[2];
-    vf7_flag_out_e64 vfrsqrt7_out_e64[1];
+      vf7_flag_out_e16 vfrsqrt7_out_e16[4];
+      vf7_flag_out_e32 vfrsqrt7_out_e32[2];
+      vf7_flag_out_e64 vfrsqrt7_out_e64[1];
 
-    status_t vfrsqrt7_ex_flag;
+      status_t vfrsqrt7_ex_flag;
 
-    elen_t [LatFNonComp-1:0] operand_a_q;
-    elen_t [LatFNonComp:0]   operand_a_d;
+      elen_t [LatFNonComp-1:0] operand_a_q;
+      elen_t [LatFNonComp:0]   operand_a_d;
 
-    // Delay for vfpu mask
-    `FF(vfpu_flag_mask, vfpu_simd_mask, '0, clk_i, rst_ni);
+      // Delay for vfpu mask
+      `FF(vfpu_flag_mask, vfpu_simd_mask, '0, clk_i, rst_ni);
 
-    // Pipeline for operand_a
-    assign operand_a_d[0] = operand_a;
-    for (genvar i = 0; i < LatFNonComp; i++) begin
-      assign operand_a_d[i+1] = operand_a_q[i];
+      // Pipeline for operand_a
+      assign operand_a_d[0] = operand_a;
+      for (genvar i = 0; i < LatFNonComp; i++) begin
+        assign operand_a_d[i+1] = operand_a_q[i];
 
-       `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
-    end
+         `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
+      end
 
-    assign operand_a_delay = operand_a_d[LatFNonComp];
+      assign operand_a_delay = operand_a_d[LatFNonComp];
 
-    // Leading zeros modules
-    localparam int unsigned SIG_BITS_E16   = 10;
-    localparam int unsigned SIG_BITS_E32   = 23;
-    localparam int unsigned SIG_BITS_E64   = 52;
+      // Leading zeros modules
+      localparam int unsigned SIG_BITS_E16   = 10;
+      localparam int unsigned SIG_BITS_E32   = 23;
+      localparam int unsigned SIG_BITS_E64   = 52;
 
-    logic [15:0] lzc_e16;
-    logic [9:0]  lzc_e32;
-    logic [5:0]  lzc_e64;
+      logic [15:0] lzc_e16;
+      logic [9:0]  lzc_e32;
+      logic [5:0]  lzc_e64;
 
-    // sew: 16-bit
-    for (genvar i = 0; i < 4; i = i + 1) begin
+      // sew: 16-bit
+      for (genvar i = 0; i < 4; i = i + 1) begin
+        lzc #(
+          .WIDTH(SIG_BITS_E16),
+          .MODE (1           )
+        ) leading_zero_e16_i (
+           .in_i    (operand_a_delay[(16*i)+(SIG_BITS_E16-1):(16*i)]),
+           .cnt_o   (lzc_e16[(4*i)+3:(4*i)]                         ),
+           .empty_o ( /*Unused*/                                    )
+        );
+      end
+
+      // sew: 32-bit
+      for (genvar j = 0; j < 2; j = j + 1) begin
+        lzc #(
+          .WIDTH(SIG_BITS_E32),
+          .MODE (1           )
+        ) leading_zero_e32_i (
+          .in_i    (operand_a_delay[(32*j)+(SIG_BITS_E32-1):(32*j)]),
+          .cnt_o   (lzc_e32[(5*j)+4:(5*j)]                         ),
+          .empty_o (                                               )
+        );
+      end
+
+      // sew: 64-bit
       lzc #(
-        .WIDTH(SIG_BITS_E16),
+        .WIDTH(SIG_BITS_E64),
         .MODE (1           )
-      ) leading_zero_e16_i (
-         .in_i    (operand_a_delay[(16*i)+(SIG_BITS_E16-1):(16*i)]),
-         .cnt_o   (lzc_e16[(4*i)+3:(4*i)]                         ),
-         .empty_o ( /*Unused*/                                    )
-      );
-    end
-
-    // sew: 32-bit
-    for (genvar j = 0; j < 2; j = j + 1) begin
-      lzc #(
-        .WIDTH(SIG_BITS_E32),
-        .MODE (1           )
-      ) leading_zero_e32_i (
-        .in_i    (operand_a_delay[(32*j)+(SIG_BITS_E32-1):(32*j)]),
-        .cnt_o   (lzc_e32[(5*j)+4:(5*j)]                         ),
-        .empty_o (                                               )
+      ) leading_zero_e64 (
+        .in_i    (operand_a_delay[SIG_BITS_E64-1:0]),
+        .cnt_o   (lzc_e64                          ),
+        .empty_o (                                 )
       );
     end
 
@@ -1076,38 +1088,39 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           for (int h = 0; h < 4; h++) vfrsqrt7_out_e16[h] =
             vfrsqrt7_fp16(vfpu_result[h*16 +: 10], operand_a_delay[h*16 +: 16], lzc_e16[h*4 +: 4]);
 
-          vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vf7_e16, vfrsqrt7_out_e16[2].vf7_e16,
-                               vfrsqrt7_out_e16[1].vf7_e16, vfrsqrt7_out_e16[0].vf7_e16};
+            vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vf7_e16, vfrsqrt7_out_e16[2].vf7_e16,
+                                 vfrsqrt7_out_e16[1].vf7_e16, vfrsqrt7_out_e16[0].vf7_e16};
 
-          vfrsqrt7_ex_flag = (vfrsqrt7_out_e16[3].ex_flag & {5{vfpu_flag_mask[3]}})
-                           | (vfrsqrt7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
-                           | (vfrsqrt7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
-                           | (vfrsqrt7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
-        end
-        EW32: begin
-          for (int w = 0; w < 2; w++) vfrsqrt7_out_e32[w] =
-            vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
+            vfrsqrt7_ex_flag = (vfrsqrt7_out_e16[3].ex_flag & {5{vfpu_flag_mask[3]}})
+                             | (vfrsqrt7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
+                             | (vfrsqrt7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
+                             | (vfrsqrt7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
+          end
+          EW32: begin
+            for (int w = 0; w < 2; w++) vfrsqrt7_out_e32[w] =
+              vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
 
-          vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32, vfrsqrt7_out_e32[0].vf7_e32};
+            vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32, vfrsqrt7_out_e32[0].vf7_e32};
 
-          vfrsqrt7_ex_flag = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}})
-                           | (vfrsqrt7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
-        end
-        EW64: begin
-          for (int d = 0; d < 1; d++) vfrsqrt7_out_e64[d] =
-            vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
+            vfrsqrt7_ex_flag = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}})
+                             | (vfrsqrt7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
+          end
+          EW64: begin
+            for (int d = 0; d < 1; d++) vfrsqrt7_out_e64[d] =
+              vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
 
-          vfrsqrt7_result_o = vfrsqrt7_out_e64[0].vf7_e64;
+            vfrsqrt7_result_o = vfrsqrt7_out_e64[0].vf7_e64;
 
-          vfrsqrt7_ex_flag = vfrsqrt7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
-        end
-        default: begin
-          vfrsqrt7_result_o = 'x;
-          vfrsqrt7_ex_flag  = 'x;
-        end
-      endcase
+            vfrsqrt7_ex_flag = vfrsqrt7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
+          end
+          default: begin
+            vfrsqrt7_result_o = 'x;
+            vfrsqrt7_ex_flag  = 'x;
+          end
+        endcase
 
         // Forward the result
+<<<<<<< HEAD
         if (vinsn_processing_q.op == VFREC7) begin
           vfpu_processed_result = vfrec7_result_o;
           vfpu_ex_flag          = vfrec7_ex_flag;
@@ -1120,6 +1133,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       end
       end else begin
         // NO vfrec7, vfrsqrt7, rto support
+=======
+        if (vinsn_processing_q.op == VFRSQRT7) begin
+          vfpu_processed_result = vfrsqrt7_result_o;
+          vfpu_ex_flag          = vfrsqrt7_ex_flag;
+        end else begin
+          vfpu_processed_result = vfpu_result;
+          vfpu_ex_flag          = vfpu_ex_flag_fn;
+        end
+      end else begin
+        // NO vfrec, vfrsqrt7, rto support
+>>>>>>> [hardware] Parametrize vfrsqrt7 support
         vfpu_processed_result = vfpu_result;
         vfpu_ex_flag          = vfpu_ex_flag_fn;
       end

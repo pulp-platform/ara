@@ -3024,8 +3024,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       if (ara_req_valid_d && (ara_req_d.op inside {[VSADDU:VNCLIPU], VSMUL}) && (FixPtSupport == FixedPointDisable))
         illegal_insn = 1'b1;
 
-      // Check that we have we have vfrec7 support
-      if (ara_req_valid_d && (ara_req_d.op inside {VFREC7}) && (FPExtSupport == FPExtSupportDisable))
+      // Check that we have we have vfrec7 and vfrsqrt7 support
+      if (ara_req_valid_d && (ara_req_d.op inside {VFREC7,VFRSQRT7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
 
       // Check if we need to reshuffle our vector registers involved in the operation
