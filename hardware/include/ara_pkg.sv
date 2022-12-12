@@ -1344,6 +1344,7 @@ package ara_pkg;
         // The output sign equals the input sign.
         vfrsqrt7_o.vf7_e32.s = vfrsqrt7_i.s;
       end
+      default:;
     endcase
     return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp32
@@ -1418,6 +1419,7 @@ package ara_pkg;
          // The output sign equals the input sign.
          vfrsqrt7_o.vf7_e64.s = vfrsqrt7_i.s;
       end
+      default:;
     endcase
     return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp64
