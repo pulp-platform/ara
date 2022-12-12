@@ -927,19 +927,24 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // vfrsqrt7 //
     //////////////
 
+    elen_t operand_a_delay, vfrsqrt7_result_o;
+
+    fpu_mask_t vfpu_flag_mask;
+
+    vf7_flag_out_e16 vfrsqrt7_out_e16[4];
+    vf7_flag_out_e32 vfrsqrt7_out_e32[2];
+    vf7_flag_out_e64 vfrsqrt7_out_e64[1];
+
+    status_t vfrsqrt7_ex_flag;
+
+    elen_t [LatFNonComp-1:0] operand_a_q;
+    elen_t [LatFNonComp:0]   operand_a_d;
+
+    logic [15:0] lzc_e16;
+    logic [9:0]  lzc_e32;
+    logic [5:0]  lzc_e64;
+
     if (FPExtSupport) begin
-      elen_t operand_a_delay, vfrsqrt7_result_o;
-
-      fpu_mask_t vfpu_flag_mask;
-
-      vf7_flag_out_e16 vfrsqrt7_out_e16[4];
-      vf7_flag_out_e32 vfrsqrt7_out_e32[2];
-      vf7_flag_out_e64 vfrsqrt7_out_e64[1];
-
-      status_t vfrsqrt7_ex_flag;
-
-      elen_t [LatFNonComp-1:0] operand_a_q;
-      elen_t [LatFNonComp:0]   operand_a_d;
 
       // Delay for vfpu mask
       `FF(vfpu_flag_mask, vfpu_simd_mask, '0, clk_i, rst_ni);
@@ -949,7 +954,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       for (genvar i = 0; i < LatFNonComp; i++) begin
         assign operand_a_d[i+1] = operand_a_q[i];
 
-         `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
+        `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
       end
 
       assign operand_a_delay = operand_a_d[LatFNonComp];
@@ -958,10 +963,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       localparam int unsigned SIG_BITS_E16   = 10;
       localparam int unsigned SIG_BITS_E32   = 23;
       localparam int unsigned SIG_BITS_E64   = 52;
-
-      logic [15:0] lzc_e16;
-      logic [9:0]  lzc_e32;
-      logic [5:0]  lzc_e64;
 
       // sew: 16-bit
       for (genvar i = 0; i < 4; i = i + 1) begin
