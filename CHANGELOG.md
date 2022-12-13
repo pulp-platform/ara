@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Don't mute instructions on mask vectors in the lane sequencer when `vl == 0` in that lane
  - Remove unintentional latches from `valu`, `simd_mul`, `lane_sequencer`
  - Fix `vxsat` CSR update in `dispatcher`
+ - Fix parameter passing through the hierarchy for fixed point support
 
 ### Added
 
@@ -116,6 +117,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add HW/SW environment for automatic VCD dumping
  - Support for vector floating-point reciprocal estimate instruction: `vfrec7`
  - Support for vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
+ - Parametrize `vfrsqrt7` support
 
 ### Changed
 
