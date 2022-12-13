@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Solve duplicate verify function in `roi_align`
  - Don't let the lanes sample more than once the same instruction when the workload is unbalanced and the instruction stalls in the main sequencer
  - Don't mute instructions on mask vectors in the lane sequencer when `vl == 0` in that lane
+ - Fix parameter passing through the hierarchy for fixed point support
 
 ### Added
 
@@ -112,6 +113,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for cache warming before benchmarks
  - Add support to check the results of the ideal dispatcher runs
  - Support for vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
+ - Parametrize `vfrsqrt7` support
 
 ### Changed
 
