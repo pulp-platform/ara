@@ -376,6 +376,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   elen_t  valu_result;
   logic   valu_valid;
   vxsat_t alu_vxsat, alu_vxsat_q, alu_vxsat_d;
+  vxsat_t alu_op_vxsat_q, alu_op_vxsat_d;
 
   assign alu_vxsat_d = alu_vxsat;
 
@@ -407,9 +408,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   always_comb begin: p_valu
     // Maintain state
-    vinsn_queue_d = vinsn_queue_q;
-    issue_cnt_d   = issue_cnt_q;
-    commit_cnt_d  = commit_cnt_q;
+    vinsn_queue_d  = vinsn_queue_q;
+    issue_cnt_d    = issue_cnt_q;
+    commit_cnt_d   = commit_cnt_q;
+    alu_op_vxsat_d = (vinsn_commit_valid) ? (|alu_vxsat_q) ? alu_vxsat_q : alu_op_vxsat_q : '0;
 
     result_queue_d           = result_queue_q;
     result_queue_valid_d     = result_queue_valid_q;
@@ -747,7 +749,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
     // alu saturation calculation
     if (|result_queue_valid_q)
-      vxsat_flag_o = |(alu_vxsat_q & result_queue_q[result_queue_read_pnt_q].be);
+      vxsat_flag_o = |(alu_op_vxsat_d & result_queue_q[result_queue_read_pnt_q].be);
 
     // Received a grant from the VRF.
     // Deactivate the request.
@@ -877,6 +879,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       simd_red_cnt_max_q      <= '0;
       alu_red_ready_q         <= 1'b0;
       alu_vxsat_q             <= '0;
+      alu_op_vxsat_q          <= '0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       commit_cnt_q            <= commit_cnt_d;
@@ -890,6 +893,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       simd_red_cnt_max_q      <= simd_red_cnt_max_d;
       alu_red_ready_q         <= alu_red_ready_i;
       alu_vxsat_q             <= alu_vxsat_d;
+      alu_op_vxsat_q          <= alu_op_vxsat_d;
     end
   end
 

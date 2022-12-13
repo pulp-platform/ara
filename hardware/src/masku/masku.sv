@@ -80,7 +80,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end: gen_masku_operand_ready
 
     assign masku_operand_b_i[lane]        = masku_operand_i[lane][1];
-    assign masku_operand_b_valid_i[lane]  = /*(vinsn_issue.op inside {[VMSBF:VID]}) ? '1 : */masku_operand_valid_i[lane][1];
+    assign masku_operand_b_valid_i[lane]  = (vinsn_issue.op inside {[VMSBF:VID]}) ? '1 : masku_operand_valid_i[lane][1];
     assign masku_operand_ready_o[lane][1] = masku_operand_b_ready_o[lane];
 
     assign masku_operand_m_i[lane]        = masku_operand_i[lane][0];
@@ -297,7 +297,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [$clog2(DataWidth*NrLanes):0]   popcount;
   logic  [$clog2(VLEN):0]                popcount_d, popcount_q;
   logic  [$clog2(DataWidth*NrLanes)-1:0] vfirst_count;
-  logic  [$clog2(VLEN):0]                vfirst_count_d, vfirst_count_q;
+  logic  [$clog2(VLEN)-1:0]              vfirst_count_d, vfirst_count_q;
   logic                                  vfirst_empty;
 
   // Pointers
@@ -587,7 +587,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             endcase
           end
         end
-        VCPOP, VFIRST : begin
+        [VCPOP:VFIRST] : begin
           vcpop_operand = (!vinsn_issue.vm) ? masku_operand_a_i & bit_enable_mask : masku_operand_a_i;
         end
         default: begin
