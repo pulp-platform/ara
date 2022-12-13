@@ -667,11 +667,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // default length is 0, when AXIDataWidth >= (8 << sew)
               strided_length = 0;
               eff_stride_size = axi_addrgen_q.vew;
-
-              if ( AxiDataWidth < (8 << axi_addrgen_q.vew)) begin
-                strided_length = (8 << axi_addrgen_q.vew) / AxiDataWidth - 1;
-                eff_stride_size = $clog2(AxiDataWidth/8);
-              end
+              if (NrLanes == 1)
+                if ( AxiDataWidth < (8 << axi_addrgen_q.vew)) begin
+                  strided_length = (8 << axi_addrgen_q.vew) / AxiDataWidth - 1;
+                  eff_stride_size = $clog2(AxiDataWidth/8);
+                end
 
               // AR Channel
               if (axi_addrgen_q.is_load) begin
@@ -729,11 +729,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // default length is 0, when AXIDataWidth >= (8 << sew)
               indexed_length = 0;
               eff_index_size = axi_addrgen_q.vew;
-
-              if ( AxiDataWidth < (8 << axi_addrgen_q.vew)) begin
-                indexed_length = (8 << axi_addrgen_q.vew) / AxiDataWidth - 1;
-                eff_index_size = $clog2(AxiDataWidth/8);
-              end
+              if (NrLanes == 1)
+                if ( AxiDataWidth < (8 << axi_addrgen_q.vew)) begin
+                  indexed_length = (8 << axi_addrgen_q.vew) / AxiDataWidth - 1;
+                  eff_index_size = $clog2(AxiDataWidth/8);
+                end
 
               if (idx_addr_valid_q) begin
                 // We consumed a word
