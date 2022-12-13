@@ -781,7 +781,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
         // if this is the last beat, commit the result to the scalar_result queue
         if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes))) begin
-          result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : (vfirst_empty) ? -1 : vfirst_count_d;
+          result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : (&vfirst_count_d) ? -1 : vfirst_count_d;
           result_scalar_valid_d = '1;
 
           // Decrement the commit counter by the entire number of elements,
