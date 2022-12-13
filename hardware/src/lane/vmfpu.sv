@@ -1360,8 +1360,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // fpnew allows out-of-order execution and different instruction
     // types have different latencies. We have to enforce in-order execution.
     // If we are about to issue an instruction while another one is processing,
-    // issue only if the new instruction is slower than the previous one
-    latency_problem_d = vinsn_issue_lat_d < vinsn_processing_lat_d;
+    // issue only if the new instruction is slower than the previous one.
+    // VFDIV-like instructions have variable latency, so stall them not to create
+    // problems.
+    latency_problem_d = (vinsn_issue_lat_d < vinsn_processing_lat_d)           ||
+                        (vinsn_issue_d.op      inside {VFDIV, VFRDIV, VFSQRT}) ||
+                        (vinsn_processing_d.op inside {VFDIV, VFRDIV, VFSQRT});
     latency_stall     = vinsn_issue_q_valid & vinsn_processing_q_valid & latency_problem_q;
 
     operand_a = (vinsn_issue_q.op == VFRDIV) ? scalar_op : mfpu_operand_i[1]; // vs2
