@@ -756,7 +756,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           fp_op = MINMAX;
           fp_rm = RTZ;
         end
-        VFCLASS: fp_op = CLASSIFY;
+        VFCLASS,
         VFREC7: begin
            fp_op = CLASSIFY;
         end
@@ -920,34 +920,38 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .out_ready_i   (vfpu_out_ready ),
       .busy_o        (/* Unused */   )
     );
-   elen_t operand_a_delay,
-          vfrec7_result_o;
-   fpu_mask_t vfpu_flag_mask;
 
-   vf7_flag_out_e16 vfrec7_out_e16[4];
-   vf7_flag_out_e32 vfrec7_out_e32[2];
-   vf7_flag_out_e64 vfrec7_out_e64[1];
+    ////////////
+    // vfrec7 //
+    ////////////
 
-   status_t    vfrec7_ex_flag;
-   roundmode_e fp_rm_process;
+    elen_t operand_a_delay, vfrec7_result_o;
 
-   elen_t [LatFNonComp-1:0] operand_a_q;
-   elen_t [LatFNonComp:0]   operand_a_d;
+    fpu_mask_t vfpu_flag_mask;
 
+    vf7_flag_out_e16 vfrec7_out_e16[4];
+    vf7_flag_out_e32 vfrec7_out_e32[2];
+    vf7_flag_out_e64 vfrec7_out_e64[1];
 
-   //Delay for vfpu mask
-   `FF(vfpu_flag_mask,vfpu_simd_mask,'0,clk_i,rst_ni);
+    status_t    vfrec7_ex_flag;
 
-   //Pipeline for operand_a
-   assign operand_a_d[0]   = operand_a;
-   for (genvar i = 0; i < LatFNonComp; i++) begin
-     assign operand_a_d[i+1]   = operand_a_q[i];
+    roundmode_e fp_rm_process;
 
-      `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
-   end
+    elen_t [LatFNonComp:0]   operand_a_d, vfpu_flag_mask_d;
 
-   assign operand_a_delay = operand_a_d[LatFNonComp];
-   assign   fp_rm_process = vinsn_processing_q.fp_rm;
+      //Pipeline Stages
+      assign operand_a_d[0]     = operand_a;
+      assign vfpu_flag_mask_d[0]= vfpu_simd_mask;
+      for (genvar i = 0; i < LatFNonComp; i++) begin
+
+        `FF(operand_a_d[i+1], operand_a_d[i], '0, clk_i, rst_ni);
+
+        `FF(vfpu_flag_mask_d[i+1], vfpu_flag_mask_d[i],'0,clk_i,rst_ni);
+        end
+
+      assign operand_a_delay = operand_a_d[LatFNonComp];
+      assign vfpu_flag_mask  = vfpu_flag_mask_d[LatFNonComp];
+      assign   fp_rm_process = vinsn_processing_q.fp_rm;
 
 
     always_comb begin: fpu_result_processing_p
