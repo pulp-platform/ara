@@ -937,27 +937,25 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     status_t vfrsqrt7_ex_flag;
 
-    elen_t [LatFNonComp-1:0] operand_a_q;
-    elen_t [LatFNonComp:0]   operand_a_d;
+    elen_t [LatFNonComp:0]   operand_a_d, vfpu_flag_mask_d;
 
     logic [15:0] lzc_e16;
     logic [9:0]  lzc_e32;
     logic [5:0]  lzc_e64;
 
     if (FPExtSupport) begin
-
-      // Delay for vfpu mask
-      `FF(vfpu_flag_mask, vfpu_simd_mask, '0, clk_i, rst_ni);
-
-      // Pipeline for operand_a
-      assign operand_a_d[0] = operand_a;
+      //Pipeline Stages
+      assign operand_a_d[0]     = operand_a;
+      assign vfpu_flag_mask_d[0]= vfpu_simd_mask;
       for (genvar i = 0; i < LatFNonComp; i++) begin
-        assign operand_a_d[i+1] = operand_a_q[i];
 
-        `FF(operand_a_q[i], operand_a_d[i], '0, clk_i, rst_ni);
-      end
+        `FF(operand_a_d[i+1], operand_a_d[i], '0, clk_i, rst_ni);
+
+        `FF(vfpu_flag_mask_d[i+1], vfpu_flag_mask_d[i],'0,clk_i,rst_ni);
+        end
 
       assign operand_a_delay = operand_a_d[LatFNonComp];
+      assign vfpu_flag_mask  = vfpu_flag_mask_d[LatFNonComp];
 
       // Leading zeros modules
       localparam int unsigned SIG_BITS_E16   = 10;
@@ -984,7 +982,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         ) leading_zero_e32_i (
           .in_i    (operand_a_delay[(32*j)+(SIG_BITS_E32-1):(32*j)]),
           .cnt_o   (lzc_e32[(5*j)+4:(5*j)]                         ),
-          .empty_o (                                               )
+          .empty_o ( /*Unused*/                                    )
         );
       end
 
@@ -995,7 +993,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       ) leading_zero_e64 (
         .in_i    (operand_a_delay[SIG_BITS_E64-1:0]),
         .cnt_o   (lzc_e64                          ),
-        .empty_o (                                 )
+        .empty_o ( /*Unused*/                      )
       );
     end
 
