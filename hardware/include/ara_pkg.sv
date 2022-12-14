@@ -1014,10 +1014,10 @@ package ara_pkg;
   } addrgen_axi_req_t;
 
 
-  /////////////
-<<<<<<< HEAD
-  // VFREC7 //
-  ///////////
+
+  ///////////////////////
+  // VFREC7 & VFRSQRT7 //
+  //////////////////////
 
   localparam int unsigned LUT_BITS = 7;
 
