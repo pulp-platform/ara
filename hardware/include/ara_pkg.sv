@@ -1278,9 +1278,9 @@ package ara_pkg;
         //Output exponent can be found by
         //exp_o = 2*B-1-exp_i
         //      = 2*B+(~exp_i)
-        vfrec7_n_excep.e = E16_2xB +(~vfrec7_i.e)
+        vfrec7_n_excep.e = E16_2xB +(~vfrec7_i.e);
         //Output significand(mantissa) can be found by using lookup table
-        vfrec7_n_excep.m[9:3] = vfrec7_lut(vfrec7_i.m[9:3])
+        vfrec7_n_excep.m[9:3] = vfrec7_lut(vfrec7_i.m[9:3]);
 
          //if output is subnormal
          // output exponent is equal to zero
