@@ -12,8 +12,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     parameter  int           unsigned NrLanes      = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // External support for vfrec7, vfrsqrt7, rounding-toward-odd
+    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter  logic                  FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
     parameter  type                   vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
@@ -670,7 +672,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // fp_sign is used in control block
   logic [2:0] fp_sign;
-
   // Is the FPU enabled?
   if (FPUSupport != FPUSupportNone) begin : fpu_gen
     // Features (enabled formats, vectors etc.)
@@ -939,6 +940,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     elen_t [LatFNonComp:0]   operand_a_d, vfpu_flag_mask_d;
 
+    if (FPExtSupport) begin
       //Pipeline Stages
       assign operand_a_d[0]     = operand_a;
       assign vfpu_flag_mask_d[0]= vfpu_simd_mask;
@@ -952,53 +954,62 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       assign operand_a_delay = operand_a_d[LatFNonComp];
       assign vfpu_flag_mask  = vfpu_flag_mask_d[LatFNonComp];
       assign   fp_rm_process = vinsn_processing_q.fp_rm;
-
+    end
 
     always_comb begin: fpu_result_processing_p
 
-                   //vfrec7
-      unique case (vinsn_processing_q.vtype.vsew)
-         EW16: begin
-          for (int h = 0; h < 4; h++)  vfrec7_out_e16[h] =
-           vfrec7_fp16(vfpu_result[h*16 +: 10], operand_a_delay[h*16 +: 16], fp_rm_process);
+      // vfrec7
+      if (FPExtSupport) begin
+        unique case (vinsn_processing_q.vtype.vsew)
+          EW16: begin
+            for (int h = 0; h < 4; h++) vfrec7_out_e16[h] =
+              vfrec7_fp16(vfpu_result[h*16 +: 10], operand_a_delay[h*16 +: 16], fp_rm_process);
 
-           vfrec7_result_o = {vfrec7_out_e16[3].vf7_e16,vfrec7_out_e16[2].vf7_e16,vfrec7_out_e16[1].vf7_e16,vfrec7_out_e16[0].vf7_e16};
-           vfrec7_ex_flag  = (vfrec7_out_e16[3].ex_flag   & {5{vfpu_flag_mask[3]}})
-                                 | (vfrec7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
-                                 | (vfrec7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
-                                 | (vfrec7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
+            vfrec7_result_o = {vfrec7_out_e16[3].vf7_e16, vfrec7_out_e16[2].vf7_e16,
+                               vfrec7_out_e16[1].vf7_e16, vfrec7_out_e16[0].vf7_e16};
 
-         end
-         EW32: begin
-          for (int w = 0; w < 2; w++) vfrec7_out_e32[w] =
-           vfrec7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], fp_rm_process);
+            vfrec7_ex_flag  = (vfrec7_out_e16[3].ex_flag & {5{vfpu_flag_mask[3]}})
+                            | (vfrec7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
+                            | (vfrec7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
+                            | (vfrec7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
+          end
+          EW32: begin
+            for (int w = 0; w < 2; w++) vfrec7_out_e32[w] =
+              vfrec7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], fp_rm_process);
 
-           vfrec7_result_o = {vfrec7_out_e32[1].vf7_e32,vfrec7_out_e32[0].vf7_e32};
-           vfrec7_ex_flag  = (vfrec7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}} )
-                                 | (vfrec7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
+            vfrec7_result_o = {vfrec7_out_e32[1].vf7_e32, vfrec7_out_e32[0].vf7_e32};
 
-         end
-         EW64: begin
+            vfrec7_ex_flag  = (vfrec7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}})
+                            | (vfrec7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
+          end
+          EW64: begin
             for (int d = 0; d < 1; d++) vfrec7_out_e64[d] =
-             vfrec7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], fp_rm_process);
+              vfrec7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], fp_rm_process);
 
-             vfrec7_result_o  =  vfrec7_out_e64[0].vf7_e64;
-             vfrec7_ex_flag   =  vfrec7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
-         end
-         default: begin
-             vfrec7_result_o='x;
-             vfrec7_ex_flag ='x;
-         end
-      endcase
+            vfrec7_result_o  =  vfrec7_out_e64[0].vf7_e64;
 
-         // Forward the result
-      if(vinsn_processing_q.op==VFREC7)  begin
-         vfpu_processed_result = vfrec7_result_o;
-         vfpu_ex_flag          = vfrec7_ex_flag;
+            vfrec7_ex_flag   =  vfrec7_out_e64[0].ex_flag & {5{vfpu_flag_mask[0]}};
+          end
+          default: begin
+            vfrec7_result_o = 'x;
+            vfrec7_ex_flag  = 'x;
+          end
+        endcase
+
+        // Forward the result
+        if (vinsn_processing_q.op == VFREC7) begin
+          vfpu_processed_result = vfrec7_result_o;
+          vfpu_ex_flag          = vfrec7_ex_flag;
+        end else begin
+          vfpu_processed_result = vfpu_result;
+          vfpu_ex_flag          = vfpu_ex_flag_fn;
+        end
       end else begin
-           vfpu_processed_result = vfpu_result;
-           vfpu_ex_flag          = vfpu_ex_flag_fn;
+        // NO vfrec7, vfrsqrt7, rto support
+        vfpu_processed_result = vfpu_result;
+        vfpu_ex_flag          = vfpu_ex_flag_fn;
       end
+
       // After a comparison, send the mask back to the mask unit
       // 1) Negate the result if op == VMFNE (fpnew does not natively support a not-equal comparison)
       // 2) Encode the mask in the bit after each comparison result
