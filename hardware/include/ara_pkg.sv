@@ -1719,12 +1719,10 @@ package ara_pkg;
 
     logic [EXP_BITS_E16:0] vfrsqrt7_exp_i, vfrsqrt7_exp_o;
 
-    vfrsqrt7_o.vf7_e16 = 16'd0;
-    vfrsqrt7_o.ex_flag = 5'b0;
-
-    vfrsqrt7_i     = 16'd0;
-    vfrsqrt7_exp_o = 6'd0;
-    vfrsqrt7_exp_i = 6'd0;
+    vfrsqrt7_o.vf7_e16 = 21'd0;
+    vfrsqrt7_i         = 16'd0;
+    vfrsqrt7_exp_o     = 6'd0;
+    vfrsqrt7_exp_i     = 6'd0;
 
     unique case (vfpu_result[6:5])
       // POSSUBNORM
@@ -1794,12 +1792,10 @@ package ara_pkg;
 
     logic [EXP_BITS_E32:0] vfrsqrt7_exp_i, vfrsqrt7_exp_o;
 
-    vfrsqrt7_o.vf7_e32 = 32'd0;
-    vfrsqrt7_o.ex_flag = 5'b0;
-
-    vfrsqrt7_i     = 32'd0;
-    vfrsqrt7_exp_o = 9'd0;
-    vfrsqrt7_exp_i = 9'd0;
+    vfrsqrt7_o.vf7_e32 = 37'd0;
+    vfrsqrt7_i         = 32'd0;
+    vfrsqrt7_exp_o     = 9'd0;
+    vfrsqrt7_exp_i     = 9'd0;
 
     unique case (vfpu_result[6:5])
       // POSSUBNORM
@@ -1862,7 +1858,6 @@ package ara_pkg;
     return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp32
 
-
   // vfrsqrt7 result (sew: 64 bit)
   function automatic vf7_flag_out_e64 vfrsqrt7_fp64(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E64_BITS-1:0] operand_a_delay, logic [5:0] leading_zeros_count);
     vf7_flag_out_e64 vfrsqrt7_o;
@@ -1870,12 +1865,10 @@ package ara_pkg;
 
     logic [EXP_BITS_E64:0] vfrsqrt7_exp_i, vfrsqrt7_exp_o;
 
-    vfrsqrt7_o.vf7_e64 = 64'd0;
-    vfrsqrt7_o.ex_flag = 5'b0;
-
-    vfrsqrt7_i     = 64'd0;
-    vfrsqrt7_exp_o = 12'd0;
-    vfrsqrt7_exp_i = 12'd0;
+    vfrsqrt7_o.vf7_e64 = 69'd0;
+    vfrsqrt7_i         = 64'd0;
+    vfrsqrt7_exp_o     = 12'd0;
+    vfrsqrt7_exp_i     = 12'd0;
 
     unique case (vfpu_result[6:5])
     // POSSUBNORM
