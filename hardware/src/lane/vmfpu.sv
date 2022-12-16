@@ -1119,7 +1119,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         endcase
 
         // Forward the result
-<<<<<<< HEAD
         if (vinsn_processing_q.op == VFREC7) begin
           vfpu_processed_result = vfrec7_result_o;
           vfpu_ex_flag          = vfrec7_ex_flag;
@@ -1132,17 +1131,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       end
       end else begin
         // NO vfrec7, vfrsqrt7, rto support
-=======
-        if (vinsn_processing_q.op == VFRSQRT7) begin
-          vfpu_processed_result = vfrsqrt7_result_o;
-          vfpu_ex_flag          = vfrsqrt7_ex_flag;
-        end else begin
-          vfpu_processed_result = vfpu_result;
-          vfpu_ex_flag          = vfpu_ex_flag_fn;
-        end
-      end else begin
-        // NO vfrec, vfrsqrt7, rto support
->>>>>>> [hardware] Parametrize vfrsqrt7 support
         vfpu_processed_result = vfpu_result;
         vfpu_ex_flag          = vfpu_ex_flag_fn;
       end
