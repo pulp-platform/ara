@@ -12,8 +12,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // External support for vfrec7, vfrsqrt7, rounding-toward-odd
+    parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter logic                  FixPtSupport = FixedPointEnable
+    parameter fixpt_support_e        FixPtSupport = FixedPointEnable
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -1978,8 +1980,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                     unique case (insn.varith_type.rs1)
                       5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
-                      5'b10000: ara_req_d.op = ara_pkg::VFCLASS;
                       5'b00101: ara_req_d.op = ara_pkg::VFREC7;
+                      5'b10000: ara_req_d.op = ara_pkg::VFCLASS;
                       default : illegal_insn = 1'b1;
                     endcase
 
@@ -3016,6 +3018,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Check that we have fixed-point support if requested
       // vxsat and vxrm are always accessible anyway
       if (ara_req_valid_d && (ara_req_d.op inside {[VSADDU:VNCLIPU], VSMUL}) && (FixPtSupport == FixedPointDisable))
+        illegal_insn = 1'b1;
+
+      // Check that we have we have vfrec7 support
+      if (ara_req_valid_d && (ara_req_d.op inside {VFREC7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
 
       // Check if we need to reshuffle our vector registers involved in the operation

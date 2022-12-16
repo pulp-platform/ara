@@ -11,8 +11,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     parameter  int           unsigned NrLanes      = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    // External support for vfrec7, vfrsqrt7, rounding-toward-odd
+    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter  logic                  FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
     parameter  type                   vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
@@ -145,6 +147,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   vmfpu #(
     .NrLanes   (NrLanes   ),
     .FPUSupport(FPUSupport),
+    .FPExtSupport(FPExtSupport),
     .FixPtSupport(FixPtSupport),
     .vaddr_t   (vaddr_t   )
   ) i_vmfpu (
