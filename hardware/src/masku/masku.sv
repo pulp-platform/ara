@@ -562,25 +562,25 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             unique case (vinsn_issue.vtype.vsew)
               EW8 : begin
                 for (int index = 1; index < (NrLanes*DataWidth)/8; index++) begin
-                  alu_result_vm [(index*8) +: 7] = (((NrLanes * DataWidth)/8) <= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*32);
+                  alu_result_vm [(index*8) +: 7] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*32);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
               EW16: begin
                 for (int index = 1; index < (NrLanes*DataWidth)/16; index++) begin
-                  alu_result_vm [(index*16) +: 15] = (((NrLanes * DataWidth)/8) <= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*16);
+                  alu_result_vm [(index*16) +: 15] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*16);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
               EW32: begin
                 for (int index = 1; index < (NrLanes*DataWidth)/32; index++) begin
-                  alu_result_vm [(index*32) +: 31] = (((NrLanes * DataWidth)/8) <= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*8);
+                  alu_result_vm [(index*32) +: 31] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*8);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
               EW64: begin
                 for (int index = 1; index < (NrLanes*DataWidth)/64; index++) begin
-                  alu_result_vm [(index*64) +: 63] = (((NrLanes * DataWidth)/8) <= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*4);
+                  alu_result_vm [(index*64) +: 63] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*4);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
