@@ -235,6 +235,7 @@ jobs:
   compile-ara:
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-verilator", "tc-isa-sim"]
