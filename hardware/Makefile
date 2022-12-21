@@ -169,6 +169,8 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
   -O3                                                                           \
+  -Wno-fatal                                                                    \
+  -Wno-PINCONNECTEMPTY                                                          \
   -Wno-BLKANDNBLK                                                               \
   -Wno-CASEINCOMPLETE                                                           \
   -Wno-CMPCONST                                                                 \
@@ -180,7 +182,9 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -Wno-WIDTH                                                                    \
   -Wno-WIDTHCONCAT                                                              \
   -Wno-ENUMVALUE                                                                \
-  -Wno-COMBDLY \
+  -Wno-COMBDLY
+     \
+  -Wall                                                                         \
   --hierarchical                                                                \
   tb/verilator/waiver.vlt                                                       \
   --Mdir $(veril_library)                                                       \
