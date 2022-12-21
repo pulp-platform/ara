@@ -1,0 +1,115 @@
+diff --git a/src/rtl/tc_sram.sv b/src/rtl/tc_sram.sv
+index 53530e0..075dcea 100644
+--- a/src/rtl/tc_sram.sv
++++ b/src/rtl/tc_sram.sv
+@@ -124,9 +124,11 @@ module tc_sram #(
+   // write memory array
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+     if (!rst_ni) begin
++      `ifndef VERILATOR
+       for (int unsigned i = 0; i < NumWords; i++) begin
+         sram[i] <= init_val[i];
+       end
++      `endif
+       for (int i = 0; i < NumPorts; i++) begin
+         r_addr_q[i] <= {AddrWidth{1'b0}};
+         // initialize the read output register for each port
+@@ -149,12 +151,14 @@ module tc_sram #(
+       for (int unsigned i = 0; i < NumPorts; i++) begin
+         if (req_i[i]) begin
+           if (we_i[i]) begin
++            `ifndef VERILATOR
+             // update value when write is set at clock
+             for (int unsigned j = 0; j < DataWidth; j++) begin
+               if (be_i[i][j/ByteWidth]) begin
+                 sram[addr_i[i]][j] <= wdata_i[i][j];
+               end
+             end
++            `endif
+           end else begin
+             // otherwise update read address for subsequent non request cycles
+             r_addr_q[i] <= addr_i[i];
+@@ -164,6 +168,23 @@ module tc_sram #(
+     end // if !rst_ni
+   end
+
++  `ifdef VERILATOR
++  for (genvar i = 0; i < NumPorts; i++) begin
++    // update value when write is set at clock
++    for (genvar j = 0; j < DataWidth; j++) begin
++      always_ff @(posedge clk_i or negedge rst_ni) begin
++        if (!rst_ni) begin
++        end else begin
++          if (req_i[i])
++            if (we_i[i])
++              if (be_i[i][j/ByteWidth])
++                sram[addr_i[i]][j] <= wdata_i[i][j];
++        end
++      end
++    end
++  end
++  `endif
++
+ // Validate parameters.
+ // pragma translate_off
+ `ifndef VERILATOR
+@@ -204,4 +225,59 @@ module tc_sram #(
+ `endif
+ `endif
+ // pragma translate_on
++
++  // Copyright lowRISC contributors.
++  // Licensed under the Apache License, Version 2.0, see LICENSE for details.
++  // SPDX-License-Identifier: Apache-2.0
++
++  /**
++   * Memory loader for simulation
++   *
++   * Include this file in a memory primitive to load a memory array from
++   * simulation.
++   *
++   * Requirements:
++   * - A memory array named `sram`.
++   * - A parameter `DataWidth` giving the memory width (word size) in bit.
++   * - A parameter `NumWords` giving the memory depth in words.
++   */
++
++  `ifndef SYNTHESIS
++  // Task for loading 'sram' with SystemVerilog system task $readmemh()
++  export "DPI-C" task simutil_memload;
++
++  task simutil_memload;
++    input string file;
++    $readmemh(file, sram);
++  endtask
++
++  // Function for setting a specific element in |sram|
++  // Returns 1 (true) for success, 0 (false) for errors.
++  export "DPI-C" function simutil_set_mem;
++  function int simutil_set_mem(input int index, input bit [511:0] val);
++    // Function will only work for memories <= 512 bits
++    if (DataWidth > 512)
++      return 0;
++    if (index >= NumWords)
++      return 0;
++
++    sram[index] = val[DataWidth-1:0];
++    return 1;
++  endfunction
++
++  // Function for getting a specific element in |sram|
++  export "DPI-C" function simutil_get_mem;
++  function int simutil_get_mem(input int index, output bit [511:0] val);
++    // Function will only work for memories <= 512 bits
++    if (DataWidth > 512)
++      return 0;
++    if (index >= NumWords)
++      return 0;
++
++    val                = 0;
++    val[DataWidth-1:0] = sram[index];
++    return 1;
++  endfunction
++  `endif
++
+ endmodule
