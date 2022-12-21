@@ -120,7 +120,7 @@ bender:
 # Patches
 .PHONY: apply-patches
 apply-patches: patches
-	cd deps/tech_cells_generic && git apply ../../patches/0001-tc_sram-Add-memory-preloader.patch
+	cd deps/tech_cells_generic && git apply ../../patches/0001-tech-cells-generic-sram.patch
 
 # Library
 .PHONY: lib
