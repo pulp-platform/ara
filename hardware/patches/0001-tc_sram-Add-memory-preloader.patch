@@ -1,0 +1,78 @@
+From cbf4f71b44a99176af037a0ed755fdf4d8c5e60b Mon Sep 17 00:00:00 2001
+From: Nils Wistoff <nwistoff@iis.ee.ethz.ch>
+Date: Wed, 21 Dec 2022 02:42:01 +0100
+Subject: [PATCH] tc_sram: Add memory preloader
+
+Signed-off-by: Nils Wistoff <nwistoff@iis.ee.ethz.ch>
+---
+ src/rtl/tc_sram.sv | 55 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
+
+diff --git a/src/rtl/tc_sram.sv b/src/rtl/tc_sram.sv
+index 91a29e7..a414dd9 100644
+--- a/src/rtl/tc_sram.sv
++++ b/src/rtl/tc_sram.sv
+@@ -239,5 +239,60 @@ module tc_sram #(
+ 
+ `endif
+ `endif
++
++// Copyright lowRISC contributors.
++// Licensed under the Apache License, Version 2.0, see LICENSE for details.
++// SPDX-License-Identifier: Apache-2.0
++
++/**
++ * Memory loader for simulation
++ *
++ * Include this file in a memory primitive to load a memory array from
++ * simulation.
++ *
++ * Requirements:
++ * - A memory array named `sram`.
++ * - A parameter `DataWidth` giving the memory width (word size) in bit.
++ * - A parameter `NumWords` giving the memory depth in words.
++ */
++
++`ifndef SYNTHESIS
++// Task for loading 'sram' with SystemVerilog system task $readmemh()
++export "DPI-C" task simutil_memload;
++
++task simutil_memload;
++  input string file;
++  $readmemh(file, sram);
++endtask
++
++// Function for setting a specific element in |sram|
++// Returns 1 (true) for success, 0 (false) for errors.
++export "DPI-C" function simutil_set_mem;
++function int simutil_set_mem(input int index, input bit [511:0] val);
++  // Function will only work for memories <= 512 bits
++  if (DataWidth > 512)
++    return 0;
++  if (index >= NumWords)
++    return 0;
++
++  sram[index] = val[DataWidth-1:0];
++  return 1;
++endfunction
++
++// Function for getting a specific element in |sram|
++export "DPI-C" function simutil_get_mem;
++function int simutil_get_mem(input int index, output bit [511:0] val);
++  // Function will only work for memories <= 512 bits
++  if (DataWidth > 512)
++    return 0;
++  if (index >= NumWords)
++    return 0;
++
++  val                = 0;
++  val[DataWidth-1:0] = sram[index];
++  return 1;
++endfunction
++`endif
++
+ // pragma translate_on
+ endmodule
+-- 
+2.16.5
+
