@@ -1719,10 +1719,10 @@ package ara_pkg;
 
     logic [EXP_BITS_E16:0] vfrsqrt7_exp_i, vfrsqrt7_exp_o;
 
-    vfrsqrt7_o.vf7_e16 = 21'd0;
-    vfrsqrt7_i         = 16'd0;
-    vfrsqrt7_exp_o     = 6'd0;
-    vfrsqrt7_exp_i     = 6'd0;
+    vfrsqrt7_o     = 21'd0;
+    vfrsqrt7_i     = 16'd0;
+    vfrsqrt7_exp_o = 6'd0;
+    vfrsqrt7_exp_i = 6'd0;
 
     unique case (vfpu_result[6:5])
       // POSSUBNORM
@@ -1792,10 +1792,10 @@ package ara_pkg;
 
     logic [EXP_BITS_E32:0] vfrsqrt7_exp_i, vfrsqrt7_exp_o;
 
-    vfrsqrt7_o.vf7_e32 = 37'd0;
-    vfrsqrt7_i         = 32'd0;
-    vfrsqrt7_exp_o     = 9'd0;
-    vfrsqrt7_exp_i     = 9'd0;
+    vfrsqrt7_o     = 37'd0;
+    vfrsqrt7_i     = 32'd0;
+    vfrsqrt7_exp_o = 9'd0;
+    vfrsqrt7_exp_i = 9'd0;
 
     unique case (vfpu_result[6:5])
       // POSSUBNORM
@@ -1865,10 +1865,10 @@ package ara_pkg;
 
     logic [EXP_BITS_E64:0] vfrsqrt7_exp_i, vfrsqrt7_exp_o;
 
-    vfrsqrt7_o.vf7_e64 = 69'd0;
-    vfrsqrt7_i         = 64'd0;
-    vfrsqrt7_exp_o     = 12'd0;
-    vfrsqrt7_exp_i     = 12'd0;
+    vfrsqrt7_o     = 69'd0;
+    vfrsqrt7_i     = 64'd0;
+    vfrsqrt7_exp_o = 12'd0;
+    vfrsqrt7_exp_i = 12'd0;
 
     unique case (vfpu_result[6:5])
     // POSSUBNORM
