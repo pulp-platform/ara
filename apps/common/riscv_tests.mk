@@ -8,7 +8,11 @@ include $(TESTS_DIR)/rv64um/Makefrag
 include $(TESTS_DIR)/rv64ua/Makefrag
 include $(TESTS_DIR)/rv64uf/Makefrag
 include $(TESTS_DIR)/rv64ud/Makefrag
-include $(TESTS_DIR)/rv64uv/Makefrag
+ifeq ($(nr_lanes), 1)
+	include $(TESTS_DIR)/rv64uv/1_lane_tests/Makefrag
+else
+	include $(TESTS_DIR)/rv64uv/Makefrag
+endif
 include $(TESTS_DIR)/rv64si/Makefrag
 
 rv64ui_ara_tests := $(addprefix rv64ui-ara-, $(rv64ui_sc_tests))

@@ -1,40 +1,178 @@
-#Copyright 2021 ETH Zurich and University of Bologna.
-#Solderpad Hardware License, Version 0.51, see LICENSE for details.
-#SPDX - License - Identifier : SHL - 0.51
+# Copyright 2021 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
 #
-#Author : Matheus Cavalcante < matheusd @iis.ee.ethz.ch>
-#Basile Bougenot < bbougenot @student.ethz.ch>
+# Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+#         Basile Bougenot <bbougenot@student.ethz.ch>
 
-rv64uv_sc_tests = vaadd vaaddu vsadd vsaddu vsmul vssra vssrl vnclip vnclipu vadd
-    vsub vrsub vwaddu vwsubu vwadd vwsub vsext vzext vadc vmadc vsbc vmsbc vand vor
-        vxor vsll vsrl vsra vnsrl vnsra vmseq vmsne vmsltu vmslt vmsleu vmsle vmsgtu
-            vmsgt vminu vmin vmaxu vmax vmul vmulh vmulhu vmulhsu vdivu vdiv vremu
-                vrem vwmul vwmulu vwmulsu vmacc vnmsac vmadd vnmsub vwmaccu vwmacc
-                    vwmaccsu vwmaccus vmerge vmv vmvxs vmvsx vfmvfs vfmvsf vmvnrr
-                        vredsum vredmaxu vredmax vredminu vredmin vredand vredor
-                            vredxor vwredsumu vwredsum vfadd vfsub vfrsub vfwadd
-                                vfwsub vfmul vfdiv vfrdiv vfwmul vfmacc vfnmacc vfmsac
-                                    vfnmsac vfmadd vfnmadd vfmsub vfnmsub vfwmacc
-                                        vfwnmacc vfwmsac vfwnmsac vfsqrt vfmin vfmax vfredusum vfredosum vfredmin vfredmax
-                                            vfwredusum vfwredosum vfclass vfsgnj vfsgnjn vfsgnjx vfmerge
-                                                vfmv vmfeq vmfne vmflt vmfle vmfgt vmfge vfcvt vfwcvt vfncvt
-                                                    vmand vmnand vmandnot vmor vmnor vmornot vmxor vmxnor vslideup vslidedown
-                                                        vslide1up vfslide1up vslide1down vfslide1down vl
-                                                            vl1r vle1 vls vluxei vs
-                                                                vs1r vse1 vss vsuxei vsetivli vsetvli
-                                                                    vsetvl vmsbf vmsof vmsif viota vid vcpop vfirst vle8
-                                                                        vse8 vle16 vse16 vle32 vse32 vle64 vse64
+rv64uv_sc_tests = vaadd \
+                  vaaddu\
+                  vsadd \
+                  vsaddu \
+                  vsmul \
+                  vssra \
+                  vssrl \
+                  vnclip \
+                  vnclipu \
+                  vadd \
+                  vsub \
+                  vrsub \
+                  vwaddu \
+                  vwsubu \
+                  vwadd \
+                  vwsub \
+                  vsext \
+                  vzext \
+                  vadc \
+                  vmadc \
+                  vsbc \
+                  vmsbc \
+                  vand \
+                  vor \
+                  vxor \
+                  vsll \
+                  vsrl \
+                  vsra \
+                  vnsrl \
+                  vnsra \
+                  vmseq \
+                  vmsne \
+                  vmsltu \
+                  vmslt \
+                  vmsleu \
+                  vmsle \
+                  vmsgtu \
+                  vmsgt \
+                  vminu \
+                  vmin \
+                  vmaxu \
+                  vmax \
+                  vmul \
+                  vmulh \
+                  vmulhu \
+                  vmulhsu \
+                  vdivu \
+                  vdiv \
+                  vremu \
+                  vrem \
+                  vwmul \
+                  vwmulu \
+                  vwmulsu \
+                  vmacc \
+                  vnmsac \
+                  vmadd \
+                  vnmsub \
+                  vwmaccu \
+                  vwmacc \
+                  vwmaccsu \
+                  vwmaccus \
+                  vmerge \
+                  vmv \
+                  vmvxs \
+                  vmvsx \
+                  vfmvfs \
+                  vfmvsf \
+                  vmvnrr \
+                  vredsum \
+                  vredmaxu \
+                  vredmax \
+                  vredminu \
+                  vredmin \
+                  vredand \
+                  vredor \
+                  vredxor \
+                  vwredsumu \
+                  vwredsum \
+                  vfadd \
+                  vfsub \
+                  vfrsub \
+                  vfwadd \
+                  vfwsub \
+                  vfmul \
+                  vfdiv \
+                  vfrdiv \
+                  vfwmul \
+                  vfmacc \
+                  vfnmacc \
+                  vfmsac \
+                  vfnmsac \
+                  vfmadd \
+                  vfnmadd \
+                  vfmsub \
+                  vfnmsub \
+                  vfwmacc \
+                  vfwnmacc \
+                  vfwmsac \
+                  vfwnmsac \
+                  vfsqrt \
+                  vfmin \
+                  vfmax \
+                  vfredusum \
+                  vfredosum \
+                  vfredmin \
+                  vfredmax \
+                  vfwredusum \
+                  vfwredosum \
+                  vfclass \
+                  vfsgnj \
+                  vfsgnjn \
+                  vfsgnjx \
+                  vfmerge \
+                  vfmv \
+                  vmfeq \
+                  vmfne \
+                  vmflt \
+                  vmfle \
+                  vmfgt \
+                  vmfge \
+                  vfcvt \
+                  vfwcvt \
+                  vfncvt \
+                  vmand \
+                  vmnand \
+                  vmandnot \
+                  vmor \
+                  vmnor \
+                  vmornot \
+                  vmxor \
+                  vmxnor \
+                  vslideup \
+                  vslidedown \
+                  vslide1up \
+                  vfslide1up \
+                  vslide1down \
+                  vfslide1down \
+                  vl \
+                  vl1r \
+                  vle1 \
+                  vls \
+                  vluxei \
+                  vs \
+                  vs1r \
+                  vse1 \
+                  vss \
+                  vsuxei \
+                  vsetivli\
+                  vsetvli\
+                  vsetvl\
+                  vmsbf \
+                  vmsof \
+                  vmsif \
+                  viota \
+                  vid \
+                  vcpop \
+                  vfirst \
+                  vle8 \
+                  vse8 \
+                  vle16 \
+                  vse16 \
+                  vle32 \
+                  vse32 \
+                  vle64 \
+                  vse64
 
-#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfirst vid viota \
-    vl vlff vl_nocheck vlx vmsbf vmsif vmsof vpopc_m vrgather vsadd vsaddu   \
-        vsetvl vsetivli vsetvli vsmul vssra vssrl vssub vssubu vsux vsx
+#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfirst vid viota vl vlff vl_nocheck vlx vmsbf vmsif vmsof vpopc_m vrgather vsadd vsaddu vsetvl vsetivli vsetvli vsmul vssra vssrl vssub vssubu vsux vsx
 
-                                                                            rv64uv_p_tests = $(
-                                                                                addprefix
-                                                                                        rv64uv -
-                                                                                    p -
-                                                                                ,
-                                                                                $(rv64uv_sc_tests))
+rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
-                                                                                spike_ctests +=
-    $(rv64uv_p_tests)
+spike_ctests += $(rv64uv_p_tests)
