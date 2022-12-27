@@ -116,6 +116,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support to check the results of the ideal dispatcher runs
  - Add HW/SW environment for automatic VCD dumping
  - Support for vector floating-point reciprocal estimate instruction: `vfrec7`
+ - Parametrize `vfrec7` support
  - Support for vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
  - Parametrize `vfrsqrt7` support
 
@@ -432,3 +433,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Software support for RISC-V Vector code
 
 - Continuous integration tests through riscv-tests executed both with Spike and on Ara
+

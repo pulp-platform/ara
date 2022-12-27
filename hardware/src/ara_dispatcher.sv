@@ -1982,6 +1982,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
                       5'b00101: ara_req_d.op = ara_pkg::VFREC7;
                       5'b00100: ara_req_d.op = ara_pkg::VFRSQRT7;
+                      5'b00101: ara_req_d.op = ara_pkg::VFREC7;
                       5'b10000: ara_req_d.op = ara_pkg::VFCLASS;
                       default : illegal_insn = 1'b1;
                     endcase
