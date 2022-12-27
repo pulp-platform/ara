@@ -1015,9 +1015,9 @@ package ara_pkg;
 
 
 
-  ///////////////////////
-  // VFREC7 & VFRSQRT7 //
-  //////////////////////
+    ////////////////////////
+    // VFREC7 & VFRSQRT7 //
+    ///////////////////////
 
   localparam int unsigned LUT_BITS = 7;
 
@@ -1041,12 +1041,19 @@ package ara_pkg;
   localparam logic [14:0] E16_Max  = 15'h7bff;
   localparam logic [14:0] E16_Inf  = 15'h7c00;
 
+  localparam logic [14:0] E16_Max  = 15'h7bff;     // Max Number without sign
+  localparam logic [14:0] E16_Inf  = 15'h7c00;     // Inf without sign
+
+
   localparam logic [31:0] E32_NaN  = 32'h7fc00000;
   localparam logic [31:0] E32_pInf = 32'h7f800000;
   localparam logic [31:0] E32_mInf = 32'hff800000;
   localparam logic [30:0] E32_Max  = 31'h7f7fffff;
   localparam logic [30:0] E32_Inf  = 31'hff800000;
 
+
+  localparam logic [30:0] E32_Max  = 31'h7f7fffff;  // Max Number without sign
+  localparam logic [30:0] E32_Inf  = 31'hff800000;  // Inf without sign
 
   localparam logic [63:0] E64_NaN  = 64'h7ff8000000000000;
   localparam logic [63:0] E64_pInf = 64'h7ff0000000000000;
@@ -1057,6 +1064,9 @@ package ara_pkg;
   localparam logic  [5:0] E16_3xB = 6'd45;
   localparam logic  [8:0] E32_3xB = 9'd381;
   localparam logic [11:0] E64_3xB = 12'd3069;
+
+  localparam logic [62:0] E64_Max  = 63'h7fefffffffffffff; // Max Number without sign
+  localparam logic [62:0] E64_Inf  = 63'h7ff0000000000000; // Inf without sign
 
   // Structure containing 5 bit flag and desired output
  typedef struct packed {
@@ -1711,6 +1721,8 @@ package ara_pkg;
     endcase
     return vfrsqrt7_lut_out;
   endfunction : vfrsqrt7_lut
+
+  // vfrsqrt7 results
 
   // vfrsqrt7 result (sew: 16 bit)
   function automatic vf7_flag_out_e16 vfrsqrt7_fp16(logic [VF_TYPE_SEL_BITS-1:0] vfpu_result, logic [E16_BITS-1:0] operand_a_delay, logic [3:0] leading_zeros_count);
