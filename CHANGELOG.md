@@ -433,4 +433,3 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Software support for RISC-V Vector code
 
 - Continuous integration tests through riscv-tests executed both with Spike and on Ara
-

@@ -179,4 +179,3 @@ rv64uv_sc_tests = vaadd \
 rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
 spike_ctests += $(rv64uv_p_tests)
-
