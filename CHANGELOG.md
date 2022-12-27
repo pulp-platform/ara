@@ -156,6 +156,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Generate data for `fmatmul` at compile time
  - SIMD multipliers are now power gated
  - Roll-back to Verilator v4.214
+ - Shifted popcount logic from mask unit to lanes
 
 ## 2.2.0 - 2021-11-02
 
