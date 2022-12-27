@@ -38,6 +38,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     output strb_t    [NrLanes-1:0]                     masku_result_be_o,
     input  logic     [NrLanes-1:0]                     masku_result_gnt_i,
     input  logic     [NrLanes-1:0]                     masku_result_final_gnt_i,
+    input            [(NrLanes*DataWidth)-1:0]         vcpop_operand_i,
     // Interface with the VFUs
     output strb_t    [NrLanes-1:0]                     mask_o,
     output logic     [NrLanes-1:0]                     mask_valid_o,
@@ -293,7 +294,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes*ELEN-1:0]              bit_enable_shuffle;
   logic  [NrLanes*ELEN-1:0]              bit_enable_mask;
   logic  [NrLanes*ELEN-1:0]              mask;
-  logic  [NrLanes*ELEN-1:0]              vcpop_operand;
+  logic  [NrLanes*ELEN-1:0]              vcpop_operand, vfirst_operand;
   logic  [$clog2(DataWidth*NrLanes):0]   popcount;
   logic  [$clog2(VLEN):0]                popcount_d, popcount_q;
   logic  [$clog2(DataWidth*NrLanes)-1:0] vfirst_count;
@@ -314,22 +315,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
-  // Population count for vcpop.m instruction
-  popcount #(
-    .INPUT_WIDTH (DataWidth*NrLanes)
-  ) i_popcount (
-    .data_i    (vcpop_operand),
-    .popcount_o(popcount     )
-  );
-
   // Trailing zero counter
   lzc #(
     .WIDTH(DataWidth*NrLanes),
     .MODE (0)
   ) i_clz (
-    .in_i    (vcpop_operand),
-    .cnt_o   (vfirst_count ),
-    .empty_o (vfirst_empty )
+    .in_i    (vfirst_operand),
+    .cnt_o   (vfirst_count  ),
+    .empty_o (vfirst_empty  )
   );
 
   always_comb begin: p_mask_alu
@@ -345,7 +338,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     alu_operand_b_seq_m = '0;
     mask                = '0;
     masku_operand_vd    = '0;
-    vcpop_operand       = '0;
+    vfirst_operand      = '0;
 
     if (vinsn_issue_valid) begin
       // Calculate bit enable
@@ -385,6 +378,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         automatic int deshuffle_byte             = deshuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
         alu_operand_b_seq[8*deshuffle_byte +: 8] = alu_operand_a[8*b +: 8];
         masku_operand_vd [8*deshuffle_byte +: 8] = alu_operand_b[8*b +: 8];
+      end
+
+      // Deshuffle the results from valu for vcpop
+      for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
+        automatic int deshuffle_byte         = deshuffle_index(b, NrLanes, 0);
+        vcpop_operand[8*deshuffle_byte +: 8] = vcpop_operand_i[8*b +: 8];
       end
 
       // Mask generation
@@ -587,8 +586,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             endcase
           end
         end
-        [VCPOP:VFIRST] : begin
-          vcpop_operand = (!vinsn_issue.vm) ? masku_operand_a_i & bit_enable_mask : masku_operand_a_i;
+        VFIRST : begin
+          vfirst_operand = (!vinsn_issue.vm) ? masku_operand_a_i & bit_enable_mask : masku_operand_a_i;
+        end
+        VCPOP : begin
+          popcount = '0;
+          for (int i=0; i<NrLanes; i++) begin
+            popcount = popcount + vcpop_operand[(i*8)+:8];
+          end
         end
         default: begin
           alu_result    = '0;
@@ -761,6 +766,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid && vd_scalar(vinsn_issue.op)) begin
+      // Ask for the stream of the mask operand (v0)
+      if (!vinsn_issue.vm) begin
+        masku_operand_m_ready_o = '1;
+      end
       if (masku_operand_a_valid_i) begin
 
         masku_operand_a_ready_o = masku_operand_a_valid_i;
@@ -769,9 +778,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         issue_cnt_d = issue_cnt_q - ((NrLanes*DataWidth)/(8 << vinsn_issue.vtype.vsew));
         if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes)))
           issue_cnt_d = '0;
-
-        // Acknowledge the operands, also triggers another beat if necessary
-        if (!vinsn_issue.vm) masku_operand_m_ready_o = '1;
 
         // Adding the popcount and vfirst_count from all streams of operands
         if (|masku_operand_a_valid_i) begin

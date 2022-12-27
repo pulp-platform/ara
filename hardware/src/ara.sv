@@ -233,6 +233,7 @@ module ara import ara_pkg::*; #(
   strb_t     [NrLanes-1:0]                     masku_result_be;
   logic      [NrLanes-1:0]                     masku_result_gnt;
   logic      [NrLanes-1:0]                     masku_result_final_gnt;
+  elen_t     [NrLanes-1:0]                     vcpop_operand;
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
@@ -302,7 +303,8 @@ module ara import ara_pkg::*; #(
       .masku_result_final_gnt_o        (masku_result_final_gnt[lane]        ),
       .mask_i                          (mask[lane]                          ),
       .mask_valid_i                    (mask_valid[lane] & mask_valid_lane  ),
-      .mask_ready_o                    (lane_mask_ready[lane]               )
+      .mask_ready_o                    (lane_mask_ready[lane]               ),
+      .vcpop_operand_o                 (vcpop_operand[lane]                 )
     );
   end: gen_lanes
 
@@ -440,6 +442,7 @@ module ara import ara_pkg::*; #(
     .masku_result_be_o       (masku_result_be                 ),
     .masku_result_gnt_i      (masku_result_gnt                ),
     .masku_result_final_gnt_i(masku_result_final_gnt          ),
+    .vcpop_operand_i         (vcpop_operand                   ),
     // Interface with the VFUs
     .mask_o                  (mask                            ),
     .mask_valid_o            (mask_valid                      ),

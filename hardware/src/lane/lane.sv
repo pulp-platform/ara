@@ -89,11 +89,18 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          masku_result_be_i,
     output logic                                           masku_result_gnt_o,
     output logic                                           masku_result_final_gnt_o,
+    output elen_t                                          vcpop_operand_o,
     // Interface between the Mask unit and the VFUs
     input  strb_t                                          mask_i,
     input  logic                                           mask_valid_i,
     output logic                                           mask_ready_o
   );
+
+  // vcpop.m variables
+
+  pe_req_t pe_req;
+
+  assign pe_req = pe_req_i;
 
   /////////////////
   //  Spill Reg  //
@@ -417,6 +424,20 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_i               (mask                                   ),
     .mask_valid_i         (mask_valid                             ),
     .mask_ready_o         (mask_ready                             )
+  );
+
+  //////////////
+  // POPCOUNT //
+  //////////////
+
+  logic [ELEN-1:0] popcount;
+
+  // Population count for vcpop.m instruction
+  popcount #(
+    .INPUT_WIDTH (DataWidth*NrLanes)
+  ) i_popcount (
+    .data_i     ((!pe_req.vm) ? mask_operand_o[2] & mask_operand_o[0] : mask_operand_o[2]),
+    .popcount_o (vcpop_operand_o                                                         )
   );
 
   /********************
