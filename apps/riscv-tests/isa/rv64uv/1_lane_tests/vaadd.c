@@ -8,7 +8,7 @@
 #include "vector_macros.h"
 
 void TEST_CASE1(void) {
-  set_vxrm(0);  // setting vxrm to rnu rounding mode
+  set_vxrm(0); // setting vxrm to rnu rounding mode
   VSET(4, e8, m1);
   VLOAD_8(v1, 1, -2, -3, 4);
   VLOAD_8(v2, 1, 2, -3, 3);
@@ -17,7 +17,7 @@ void TEST_CASE1(void) {
 }
 
 void TEST_CASE2(void) {
-  set_vxrm(1);  // setting vxrm to rne rounding mode
+  set_vxrm(1); // setting vxrm to rne rounding mode
   VSET(4, e8, m1);
   VLOAD_8(v1, 1, -2, -3, 4);
   VLOAD_8(v2, 1, 9, -3, 5);
@@ -28,7 +28,7 @@ void TEST_CASE2(void) {
 }
 
 void TEST_CASE3(void) {
-  set_vxrm(2);  // setting vxrm to rdn rounding mode
+  set_vxrm(2); // setting vxrm to rdn rounding mode
   VSET(4, e32, m1);
   VLOAD_32(v1, 1, -2, 3, -4);
   const uint32_t scalar = 5;
@@ -38,7 +38,7 @@ void TEST_CASE3(void) {
 
 // Dont use VCLEAR here, it results in a glitch where are values are off by 1
 void TEST_CASE4(void) {
-  set_vxrm(3);  // setting vxrm to rod rounding mode
+  set_vxrm(3); // setting vxrm to rod rounding mode
   VSET(4, e32, m1);
   VLOAD_32(v1, 1, 2, 3, 4);
   const uint32_t scalar = 5;

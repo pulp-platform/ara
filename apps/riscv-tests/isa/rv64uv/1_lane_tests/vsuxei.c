@@ -11,16 +11,20 @@
 #define INIT 98
 
 void reset_vec8(volatile uint8_t *vec, int rst_val, uint64_t len) {
-  for (uint64_t i = 0; i < len; ++i) vec[i] = rst_val;
+  for (uint64_t i = 0; i < len; ++i)
+    vec[i] = rst_val;
 }
 void reset_vec16(volatile uint16_t *vec, int rst_val, uint64_t len) {
-  for (uint64_t i = 0; i < len; ++i) vec[i] = rst_val;
+  for (uint64_t i = 0; i < len; ++i)
+    vec[i] = rst_val;
 }
 void reset_vec32(volatile uint32_t *vec, int rst_val, uint64_t len) {
-  for (uint64_t i = 0; i < len; ++i) vec[i] = rst_val;
+  for (uint64_t i = 0; i < len; ++i)
+    vec[i] = rst_val;
 }
 void reset_vec64(volatile uint64_t *vec, int rst_val, uint64_t len) {
-  for (uint64_t i = 0; i < len; ++i) vec[i] = rst_val;
+  for (uint64_t i = 0; i < len; ++i)
+    vec[i] = rst_val;
 }
 static volatile uint8_t BUFFER_O8[16] __attribute__((aligned(AXI_DWIDTH))) = {
     INIT, INIT, INIT, INIT, INIT, INIT, INIT, INIT,

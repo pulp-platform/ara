@@ -9,7 +9,7 @@
 // Exception Handler for rtl
 
 void mtvec_handler(void) {
-  asm volatile("csrr t0, mcause");  // Read mcause
+  asm volatile("csrr t0, mcause"); // Read mcause
 
   // Read mepc
   asm volatile("csrr t1, mepc");

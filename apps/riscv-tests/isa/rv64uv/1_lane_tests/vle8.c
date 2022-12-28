@@ -10,7 +10,7 @@
 // Exception Handler for rtl
 
 void mtvec_handler(void) {
-  asm volatile("csrr t0, mcause");  // Read mcause
+  asm volatile("csrr t0, mcause"); // Read mcause
 
   // Read mepc
   asm volatile("csrr t1, mepc");
@@ -193,7 +193,7 @@ void TEST_CASE10(void) {
 void TEST_CASE11(void) {
   VSET(16, e8, m1);
   VLOAD_8(v6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-  VSET(16, e8, m1);  // Setting vl=16
+  VSET(16, e8, m1); // Setting vl=16
   asm volatile("vle8.v v6, (%0)" ::"r"(&ALIGNED_I8[0]));
   VSET(16, e8, m1);
   VCMP_U8(11, v6, 0xe0, 0xd3, 0x40, 0xd1, 0x84, 0x48, 0x89, 0x88, 0x88, 0xae,
@@ -205,7 +205,7 @@ void TEST_CASE12(void) {
   VSET(16, e8, m1);
   VLOAD_8(v6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
   __asm__ volatile("vsetivli %[A], 0, e8, m1, ta, ma"
-                   : [A] "=r"(avl));  // Setting vl=0
+                   : [A] "=r"(avl)); // Setting vl=0
   asm volatile("vle8.v v6, (%0)" ::"r"(&ALIGNED_I8[0]));
   VSET(16, e8, m1);
   VCMP_U8(12, v6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
@@ -214,7 +214,7 @@ void TEST_CASE12(void) {
 void TEST_CASE13(void) {
   VSET(16, e8, m1);
   VLOAD_8(v6, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-  VSET(13, e8, m1);  // Setting vl =13
+  VSET(13, e8, m1); // Setting vl =13
   asm volatile("vle8.v v6, (%0)" ::"r"(&ALIGNED_I8[0]));
   VSET(16, e8, m1);
   VCMP_U8(13, v6, 0xe0, 0xd3, 0x40, 0xd1, 0x84, 0x48, 0x89, 0x88, 0x88, 0xae,

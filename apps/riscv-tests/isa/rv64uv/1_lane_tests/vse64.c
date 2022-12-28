@@ -6,7 +6,7 @@
 
 #define AXI_DWIDTH 128
 void mtvec_handler(void) {
-  asm volatile("csrr t0, mcause");  // Read mcause
+  asm volatile("csrr t0, mcause"); // Read mcause
 
   // Read mepc
   asm volatile("csrr t1, mepc");
@@ -15,7 +15,7 @@ void mtvec_handler(void) {
   asm volatile("addi t1, t1, 4");
   asm volatile("csrw mepc, t1");
 
-  // Filter with mcause and handle here
+  // Filter with mcause and handle hereZ
 
   asm volatile("mret");
 }
@@ -73,7 +73,8 @@ void handle_trap(void) {
 }
 
 void reset_vec64(volatile uint64_t *vec) {
-  for (uint64_t i = 0; i < 1024; ++i) vec[i] = 0;
+  for (uint64_t i = 0; i < 1024; ++i)
+    vec[i] = 0;
 }
 
 static volatile uint64_t ALIGNED_I64[1024] __attribute__((aligned(AXI_DWIDTH)));

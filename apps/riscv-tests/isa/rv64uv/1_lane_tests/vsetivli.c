@@ -9,22 +9,22 @@
 //***********LMUL = 1**********//
 void TEST_CASE1(void) {
   uint64_t avl, vtype,
-      vl;  // Declaring avl,vtype and vl variables to pass for comparison
-  uint64_t vlmul = 0;     // Setting value of vlmul
-  uint64_t vsew = 0;      // Setting value of vsew
-  uint64_t vta = 1;       // Setting value of vta
-  uint64_t vma = 1;       // Setting value of vma
-  uint64_t golden_vtype;  // Declaring variable to use as a reference value
+      vl; // Declaring avl,vtype and vl variables to pass for comparison
+  uint64_t vlmul = 0;    // Setting value of vlmul
+  uint64_t vsew = 0;     // Setting value of vsew
+  uint64_t vta = 1;      // Setting value of vta
+  uint64_t vma = 1;      // Setting value of vma
+  uint64_t golden_vtype; // Declaring variable to use as a reference value
   vtype(golden_vtype, vlmul, vsew, vta,
-        vma);  // Setting up reference variable golden_vtype by assigning
-               // different fields of configurations
+        vma); // Setting up reference variable golden_vtype by assigning
+              // different fields of configurations
   __asm__ volatile("vsetivli %[A], 30, e8, m1, ta, ma"
-                   : [A] "=r"(avl));  // Executing vsetivli instruction
-  read_vtype(vtype);                  // Reading vtype CSR
-  read_vl(vl);                        // Reading vl CSR
+                   : [A] "=r"(avl)); // Executing vsetivli instruction
+  read_vtype(vtype);                 // Reading vtype CSR
+  read_vl(vl);                       // Reading vl CSR
   check_vtype_vl(
       1, vtype, golden_vtype, avl, vl, vsew,
-      vlmul);  // Passsing actual values and reference values for comparison
+      vlmul); // Passsing actual values and reference values for comparison
 }
 
 void TEST_CASE2(void) {
