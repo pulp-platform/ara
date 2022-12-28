@@ -31,3 +31,6 @@ uart
 *.o
 install
 .project
+pyenv_ara/
+docs/build/
+docs/source/_templates/
