@@ -110,7 +110,11 @@ define rvtest_compile_template
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
 ifeq ($(nr_lanes), 1)
+ifeq ($(1), rv64uv)
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/1_lane_tests/%.$(2) $(RUNTIME_GCC) linker_script
+else
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_GCC) linker_script
+endif
 else
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_GCC) linker_script
 endif
@@ -124,7 +128,11 @@ define rvtest_compile_template_c
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
 ifeq ($(nr_lanes), 1)
+ifeq ($(1), rv64uv)
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/1_lane_tests/%.$(2) $(RUNTIME_LLVM) linker_script
+else
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_LLVM) linker_script
+endif
 else
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_LLVM) linker_script
 endif
