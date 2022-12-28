@@ -825,6 +825,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           fp_rm    = RTZ;
         end
         VFCVTFF: fp_op = F2F;
+        VFNCVTRODFF: begin
+          fp_op = F2F;
+          fp_rm = RTZ;
+        end
         VFREDUSUM, VFWREDUSUM, VFREDOSUM, VFWREDOSUM: fp_op = ADD;
         VFREDMIN: begin
           fp_op = MINMAX;
@@ -920,7 +924,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .tag_o         (vfpu_tag_out   ),
       .out_valid_o   (vfpu_out_valid ),
       .out_ready_i   (vfpu_out_ready ),
-      .busy_o        (/* Unused */   )
+      .busy_o        (/* Unused */   ),
+      .flags_status_o(flags_status_o )
     );
 
     ////////////////////////
@@ -1044,6 +1049,23 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             vfrec7_result_o = 'x;
             vfrec7_ex_flag  = 'x;
           end
+        endcase
+        //rod
+        unique case (vinsn_processing_q.vtype.vsew)
+          EW16: begin
+            rod_result = {vfpu_result[63:49], flags_status_o[3].NX,
+                          vfpu_result[47:33], flags_status_o[2].NX,
+                          vfpu_result[31:17], flags_status_o[1].NX,
+                          vfpu_result[15:1] , flags_status_o[0].NX};
+          end
+          EW32: begin
+            rod_result = {vfpu_result[63:33], flags_status_o[1].NX,
+                          vfpu_result[31:1] , flags_status_o[0].NX};
+          end
+          EW64: begin
+            rod_result = {vfpu_result[63:1], flags_status_o[0].NX};
+          end
+          default: rod_result = 'x;
         endcase
 
        //vfrsqrt7

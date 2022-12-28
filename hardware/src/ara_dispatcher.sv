@@ -1956,6 +1956,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                           ara_req_d.cvt_resize     = CVT_NARROW;
                           ara_req_d.eew_vs2        = vtype_q.vsew.next();
                         end
+                        5'b10101: begin // Narrowing VFNCVTRODFF
+                          ara_req_d.op             = VFNCVTRODFF;
+                          ara_req_d.cvt_resize     = CVT_NARROW;
+                          ara_req_d.eew_vs2        = vtype_q.vsew.next();
+                        end
                         5'b10110: begin // Narrowing VFCVTRTZXUF
                           ara_req_d.op             = VFCVTRTZXUF;
                           ara_req_d.cvt_resize     = CVT_NARROW;
