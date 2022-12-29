@@ -253,6 +253,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     current_field_d = current_field_q;
     eq_idx_d = eq_idx_q;
 
+    // segmented loads
+    consumed_bytes = '0;
+
     ////////////////////////////////////
     //  Read data from the R channel  //
     ////////////////////////////////////
