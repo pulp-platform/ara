@@ -765,13 +765,9 @@ int main(void) {
 
   TEST_CASE13();
   TEST_CASE14();
-
-  /*
-  vfncvt.rod.f.f is not supported yet
-
-  //  TEST_CASE15();
-  //  TEST_CASE16();
-  */
+  
+  TEST_CASE15();
+  TEST_CASE16();
 
   EXIT_CHECK();
 }
