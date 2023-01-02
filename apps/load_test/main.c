@@ -51,33 +51,35 @@ int main() {
 
   int64_t vecSize = N;
 
-  asm volatile("vsetvli zero, %0, e32, m1, ta, ma" :: "r"(vecSize));
+  asm volatile("vsetvli zero, %0, e32, m1, ta, ma" ::"r"(vecSize));
 
   //  asm volatile("vle32.v v0, (%0)" :: "r"(originalVec));
-  asm volatile("vlseg4e32.v v0, (%0)" :: "r"(originalVec));
+  asm volatile("vlseg4e32.v v0, (%0)" ::"r"(originalVec));
 
-  for(ind=0; ind<1000; ind++);
+  for (ind = 0; ind < 1000; ind++)
+    ;
 
-  asm volatile("vse32.v v0, (%0)" :: "r"(arr0) );
-  asm volatile("vse32.v v1, (%0)" :: "r"(arr1) );
-  asm volatile("vse32.v v2, (%0)" :: "r"(arr2) );
-  asm volatile("vse32.v v3, (%0)" :: "r"(arr3) );
+  asm volatile("vse32.v v0, (%0)" ::"r"(arr0));
+  asm volatile("vse32.v v1, (%0)" ::"r"(arr1));
+  asm volatile("vse32.v v2, (%0)" ::"r"(arr2));
+  asm volatile("vse32.v v3, (%0)" ::"r"(arr3));
 
-  for (int i=0; i<N; i++){
+  for (int i = 0; i < N; i++) {
     if (arr0[i] != checkArr0[i])
-      printf("Error at %d in arr0\n\tExpected = %d\n\tActual = %d\n", i, checkArr0[i], arr0[i]);
+      printf("Error at %d in arr0\n\tExpected = %d\n\tActual = %d\n", i,
+             checkArr0[i], arr0[i]);
   }
 
-  for (int i=0; i<N; i++){
+  for (int i = 0; i < N; i++) {
     if (arr1[i] != checkArr1[i])
       printf("Error at %d in arr1\n", i);
   }
 
-  for (int i=0; i<N; i++){
+  for (int i = 0; i < N; i++) {
     if (arr2[i] != checkArr2[i])
       printf("Error at %d in arr2\n", i);
   }
-  for (int i=0; i<N; i++){
+  for (int i = 0; i < N; i++) {
     if (arr3[i] != checkArr3[i])
       printf("Error at %d in arr3\n", i);
   }

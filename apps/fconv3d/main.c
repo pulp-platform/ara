@@ -46,17 +46,19 @@ extern int64_t OCH;
 extern int64_t F;
 
 // Verify the matrices
-int verify_matrix(double *matrix, double *golden_matrix, int64_t R, int64_t C, int64_t OCH,
-                  double threshold) {
+int verify_matrix(double *matrix, double *golden_matrix, int64_t R, int64_t C,
+                  int64_t OCH, double threshold) {
   for (int oc = 0; oc < OCH; ++oc)
     for (int r = 0; r < R; ++r)
       for (int c = 0; c < C; ++c)
-        if (!similarity_check(matrix[c + C * r + (C*R) * oc], golden_matrix[c + C * r + (C*R) * oc],
+        if (!similarity_check(matrix[c + C * r + (C * R) * oc],
+                              golden_matrix[c + C * r + (C * R) * oc],
                               threshold)) {
           printf("Error: o[%d][%d][%d] = %lf, instead of %lf\n", oc, r, c,
-                 matrix[c + C * r + (C*R) * oc], golden_matrix[c + C * r + (C*R) * oc]);
+                 matrix[c + C * r + (C * R) * oc],
+                 golden_matrix[c + C * r + (C * R) * oc]);
           return 1;
-      }
+        }
   return 0;
 }
 
