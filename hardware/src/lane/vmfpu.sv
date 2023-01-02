@@ -1053,17 +1053,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         //rod
         unique case (vinsn_processing_q.vtype.vsew)
           EW16: begin
-            rod_result = {vfpu_result[63:49], flags_status_o[3].NX,
-                          vfpu_result[47:33], flags_status_o[2].NX,
-                          vfpu_result[31:17], flags_status_o[1].NX,
-                          vfpu_result[15:1] , flags_status_o[0].NX};
+            rod_result = {vfpu_result[63:49], vfpu_result[48] | flags_status_o[3].NX,
+                          vfpu_result[47:33], vfpu_result[32] | flags_status_o[2].NX,
+                          vfpu_result[31:17], vfpu_result[16] | flags_status_o[1].NX,
+                          vfpu_result[15:1] , vfpu_result[0]  | flags_status_o[0].NX};
           end
           EW32: begin
-            rod_result = {vfpu_result[63:33], flags_status_o[1].NX,
-                          vfpu_result[31:1] , flags_status_o[0].NX};
+            rod_result = {vfpu_result[63:33], vfpu_result[32] | flags_status_o[1].NX,
+                          vfpu_result[31:1] , vfpu_result[0]  | flags_status_o[0].NX};
           end
           EW64: begin
-            rod_result = {vfpu_result[63:1], flags_status_o[0].NX};
+            rod_result = {vfpu_result[63:1], vfpu_result[0] |  flags_status_o[0].NX};
           end
           default: rod_result = 'x;
         endcase
