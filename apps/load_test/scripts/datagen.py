@@ -17,7 +17,7 @@ def check_segments(seg_data, vec_length, segment_size):
 
     for seg in range(segment_size):
         list_arr.append([])
-    
+
     for idx in range(vec_length):
         for current_seg in range(segment_size):
             list_arr[current_seg].append(seg_data[idx*segment_size+current_seg])
