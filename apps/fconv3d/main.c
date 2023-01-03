@@ -41,24 +41,20 @@ extern double golden_o[] __attribute__((aligned(4 * NR_LANES))); // [ M*N ]
 // M, N, F defined in data.S
 extern int64_t M;
 extern int64_t N;
-extern int64_t ICH;
-extern int64_t OCH;
+extern int64_t CH;
 extern int64_t F;
 
 // Verify the matrices
 int verify_matrix(double *matrix, double *golden_matrix, int64_t R, int64_t C,
-                  int64_t OCH, double threshold) {
-  for (int oc = 0; oc < OCH; ++oc)
-    for (int r = 0; r < R; ++r)
-      for (int c = 0; c < C; ++c)
-        if (!similarity_check(matrix[c + C * r + (C * R) * oc],
-                              golden_matrix[c + C * r + (C * R) * oc],
-                              threshold)) {
-          printf("Error: o[%d][%d][%d] = %lf, instead of %lf\n", oc, r, c,
-                 matrix[c + C * r + (C * R) * oc],
-                 golden_matrix[c + C * r + (C * R) * oc]);
-          return 1;
-        }
+                  double threshold) {
+  for (int r = 0; r < R; ++r)
+    for (int c = 0; c < C; ++c)
+      if (!similarity_check(matrix[c + C * r], golden_matrix[c + C * r],
+                            threshold)) {
+        printf("Error: o[%d][%d] = %lf, instead of %lf\n", r, c,
+               matrix[c + C * r], golden_matrix[c + C * r]);
+        return 1;
+      }
   return 0;
 }
 
@@ -84,21 +80,19 @@ int main() {
   printf("Input Mtx size: %dx%d\n", M + F - 1, N + F - 1);
   printf("Output Mtx size: %dx%d\n", M, N);
   printf("Filter size: %dx%d\n", F, F);
-  printf("Channels: %d\n", ICH);
+  printf("Channels: %d\n", CH);
 
   // Call the main kernel, and measure cycles
   start_timer();
   if (F == 7)
-    fconv3d_CHx7x7(o, i, f, M, N, ICH, F);
-  else if (F == 3)
-    fconv3d_CHx3x3(o, i, f, M, N, ICH, OCH, F);
+    fconv3d_CHx7x7(o, i, f, M, N, CH, F);
   else
-    printf("Error: the filter size is different from 7 or 3.\n");
+    printf("Error: the filter size is different from 7.\n");
   stop_timer();
 
   // Performance metrics
   int64_t runtime = get_timer();
-  float performance = 2.0 * OCH * ICH * F * F * M * N / runtime;
+  float performance = 2.0 * CH * F * F * M * N / runtime;
   float utilization = 100 * performance / (2.0 * NR_LANES);
 
   printf("The execution took %d cycles.\n", runtime);
@@ -107,7 +101,7 @@ int main() {
 
   // Verify correctness
   printf("Verifying result...\n");
-  int error = verify_matrix(o, golden_o, M, N, OCH, THRESHOLD);
+  int error = verify_matrix(o, golden_o, M, N, THRESHOLD);
   if (error != 0) {
     printf("Fail.\n");
   } else {
