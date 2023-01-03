@@ -425,11 +425,11 @@ package ara_pkg;
 
 /*
  This function is used for two reasons:
- 		1: Understand the starting field of the next axi beat (Sum to the current one).
- 		2: When the number of fields * ew is not a multiple of AxibusWidth, understand how many bytes
- 			 you have per field. E.g. with a EW32 and NF = 3 and 4 lanes the axi bus will have the follwing elements:
+    1: Understand the starting field of the next axi beat (Sum to the current one).
+    2: When the number of fields * ew is not a multiple of AxibusWidth, understand how many bytes
+       you have per field. E.g. with a EW32 and NF = 3 and 4 lanes the axi bus will have the follwing elements:
        | 0 | 1 | 2 | 0 | --> 0 has 1 extra element (this function will output 1).
- 		   If we had EW16, NF = 3 and 4 lanes:
+       If we had EW16, NF = 3 and 4 lanes:
        | 0 | 1 | 2 | 0 | 1 | 2 | 0 | 1 | --> 0 and 1 have an extra elemnt (this function will output 2).
  */
 
