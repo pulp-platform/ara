@@ -312,7 +312,7 @@ package ara_pkg;
     vlen_t vl;
     vlen_t vstart;
     rvv_pkg::vtype_t vtype;
-
+    logic [2:0] nf; //Number of fields, used in segmented load/stores
     // Request token, for registration in the sequencer
     logic token;
   } ara_req_t;
@@ -415,12 +415,150 @@ package ara_pkg;
     logic [NrVInsn-1:0] hazard_vs2;
     logic [NrVInsn-1:0] hazard_vm;
     logic [NrVInsn-1:0] hazard_vd;
+    logic [2:0]        nf;
   } pe_req_t;
 
   typedef struct packed {
     // Each set bit indicates that the corresponding vector loop has finished execution
     logic [NrVInsn-1:0] vinsn_done;
   } pe_resp_t;
+
+/*
+ This function is used for two reasons:
+ 		1: Understand the starting field of the next axi beat (Sum to the current one).
+ 		2: When the number of fields * ew is not a multiple of AxibusWidth, understand how many bytes
+ 			 you have per field. E.g. with a EW32 and NF = 3 and 4 lanes the axi bus will have the follwing elements:
+       | 0 | 1 | 2 | 0 | --> 0 has 1 extra element (this function will output 1).
+ 		   If we had EW16, NF = 3 and 4 lanes:
+       | 0 | 1 | 2 | 0 | 1 | 2 | 0 | 1 | --> 0 and 1 have an extra elemnt (this function will output 2).
+ */
+
+   function automatic logic [5:0] seg_reminder (int NrLanes, rvv_pkg::vew_e ew, logic [2:0] num_fields);
+      int axibus_width = NrLanes * 4; //The axibus is always half the size of the vrf_word
+
+      unique case (num_fields)
+        1: begin //Segment of 2 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 2 * (1<<int'(ew))))/(1<<int'(ew));
+
+           return num_reminder;
+
+        end // case: 1
+
+        2: begin //segment of 3 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 3 * (1<<int'(ew))))/(1<<int'(ew));
+           return num_reminder;
+
+        end // case: 2
+
+        3: begin //Segment of 4 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 4 * (1<<int'(ew))))/(1<<int'(ew));
+           return num_reminder;
+        end
+
+        4: begin //Segment of 5 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 5 * (1<<int'(ew))))/(1<<int'(ew));
+           return num_reminder;
+        end
+
+        5: begin //Segment of 6 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 6 * (1<<int'(ew))))/(1<<int'(ew));
+           return num_reminder;
+        end
+
+        6: begin //Segments of 7 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 7 * (1<<int'(ew))))/(1<<int'(ew));
+           return num_reminder;
+        end
+
+        7: begin //Segment of 8 fields
+           automatic logic [5:0] num_reminder;
+
+           num_reminder = (axibus_width % ( 8 * (1<<int'(ew))))/(1<<int'(ew));
+           return num_reminder;
+        end
+
+      endcase
+   endfunction
+
+/*
+ This function is used to get the number of elements per segment you have in an axi-beat. The results have to be
+ adjusted with the function seg_reminder.
+ E.g. with a EW32 and NF = 3 and 4 lanes the axi bus will have the follwing elements:
+ | 0 | 1 | 2 | 0 | --> The function take the does axiwidth/(NF * EEW) = 16/(3*4) = 1.
+ Using the seg_reminder we have an output of 1 which means that the first field has 1 extra element.
+ */
+
+   function automatic logic [5:0] element_per_beat (int NrLanes, rvv_pkg::vew_e ew, logic [2:0] num_fields);
+      int axibus_width = NrLanes * 4; //The axibus is always half the size of the vrf_word
+
+      unique case (num_fields)
+        1: begin //Segment of 2 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 2 * (1<<int'(ew))));
+           return el_per_beat;
+        end // case: 1
+
+
+        2: begin //segment of 3 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 3 * (1<<int'(ew))));
+           return el_per_beat;
+
+        end // case: 2
+
+
+        3: begin //Segment of 4 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 4 * (1<<int'(ew))));
+           return el_per_beat;
+
+        end
+
+        4: begin //Segment of 5 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 5 * (1<<int'(ew))));
+           return el_per_beat;
+        end
+
+        5: begin //Segment of 6 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 6 * (1<<int'(ew))));
+           return el_per_beat;
+        end
+
+        6: begin //Segments of 7 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 7 * (1<<int'(ew))));
+           return el_per_beat;
+        end
+
+        7: begin //Segment of 8 fields
+           automatic logic [5:0] el_per_beat;
+
+           el_per_beat = (axibus_width / ( 8 * (1<<int'(ew))));
+           return el_per_beat;
+        end
+
+      endcase
+   endfunction
 
   /* The VRF data is stored into the lanes in a shuffled way, similar to how it was done
    * in version 0.9 of the RISC-V Vector Specification, when SLEN < VLEN. In fact, VRF

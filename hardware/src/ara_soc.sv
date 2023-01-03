@@ -235,7 +235,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .NumWords (L2NumWords  ),
     .NumPorts (1           ),
     .DataWidth(AxiDataWidth),
-    .SimInit("random")
+    .SimInit ("zeros")
   ) i_dram (
     .clk_i  (clk_i                                                                      ),
     .rst_ni (rst_ni                                                                     ),
