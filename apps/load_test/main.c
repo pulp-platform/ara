@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Author: Matteo Perotti
+// Author: Matteo Perotti, Muhammad Ijaz
 
 #include <stdint.h>
 #include <stdio.h>
@@ -39,6 +39,7 @@ extern int32_t checkArr2[] __attribute__((aligned(32)));
 extern int32_t checkArr3[] __attribute__((aligned(32)));
 
 int64_t segment_size = 4;
+int64_t pass_count_0, pass_count_1, pass_count_2, pass_count_3 = 0;
 
 int32_t arr0[64] __attribute__((aligned(32)));
 int32_t arr1[64] __attribute__((aligned(32)));
@@ -65,23 +66,70 @@ int main() {
   asm volatile("vse32.v v3, (%0)" ::"r"(arr3));
 
   for (int i = 0; i < N; i++) {
-    if (arr0[i] != checkArr0[i])
+    if (arr0[i] != checkArr0[i]) {
       printf("Error at %d in arr0\n\tExpected = %d\n\tActual = %d\n", i,
              checkArr0[i], arr0[i]);
+      pass_count_0 = pass_count_0;
+    } else {
+      pass_count_0++;
+    }
   }
 
   for (int i = 0; i < N; i++) {
-    if (arr1[i] != checkArr1[i])
-      printf("Error at %d in arr1\n", i);
+    if (arr1[i] != checkArr1[i]) {
+      printf("Error at %d in arr1\n\tExpected = %d\n\tActual = %d\n", i,
+             checkArr1[i], arr1[i]);
+      pass_count_1 = pass_count_1;
+    } else {
+      pass_count_1++;
+    }
   }
 
   for (int i = 0; i < N; i++) {
-    if (arr2[i] != checkArr2[i])
-      printf("Error at %d in arr2\n", i);
+    if (arr2[i] != checkArr2[i]) {
+      printf("Error at %d in arr2\n\tExpected = %d\n\tActual = %d\n", i,
+             checkArr2[i], arr2[i]);
+      pass_count_2 = pass_count_2;
+    } else {
+      pass_count_2++;
+    }
   }
   for (int i = 0; i < N; i++) {
-    if (arr3[i] != checkArr3[i])
-      printf("Error at %d in arr3\n", i);
+    if (arr3[i] != checkArr3[i]) {
+      printf("Error at %d in arr3\n\tExpected = %d\n\tActual = %d\n", i,
+             checkArr3[i], arr3[i]);
+      pass_count_3 = pass_count_3;
+    } else {
+      pass_count_3++;
+    }
+  }
+
+  printf("Checking the result of Array#0:\n");
+  if (pass_count_0 == N) {
+    printf("PASSING\n");
+  } else {
+    printf("%d index out of %d indices FAILING\n", N - pass_count_0, N);
+  }
+
+  printf("Checking the result of Array#1:\n");
+  if (pass_count_1 == N) {
+    printf("PASSING\n");
+  } else {
+    printf("%d index out of %d indices FAILING\n", N - pass_count_1, N);
+  }
+
+  printf("Checking the result of Array#2:\n");
+  if (pass_count_2 == N) {
+    printf("PASSING\n");
+  } else {
+    printf("%d index out of %d indices FAILING\n", N - pass_count_2, N);
+  }
+
+  printf("Checking the result of Array#3:\n");
+  if (pass_count_3 == N) {
+    printf("PASSING\n");
+  } else {
+    printf("%d index out of %d indices FAILING\n", N - pass_count_3, N);
   }
 
   return 0;
