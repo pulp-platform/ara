@@ -2492,16 +2492,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             unique case (insn.vmem_type.mop)
               2'b00: begin
                 ara_req_d.op = VLE;
-                //The segmented LOAD can't use more than 8 Registers.
+
+                // The segmented LOAD can't use more than 8 Registers
                 if (ara_req_d.nf) begin
-                   illegal_insn = (ara_req_d.emul inside {LMUL_1_8, LMUL_1_4, LMUL_1_2}) || ( ((ara_req_d.nf + 1) * (ara_req_d.emul << 1)) > 8);
+                  illegal_insn = (ara_req_d.emul inside {LMUL_1_8, LMUL_1_4, LMUL_1_2}) || ( ((ara_req_d.nf + 1) * (ara_req_d.emul << 1)) > 8);
                 end
 
                 // Decode the lumop field
                 case (insn.vmem_type.rs2)
                   5'b00000: begin      // Unit-strided
-                     ara_req_d.nf = insn.vmem_type.nf;
-                     ara_req_d.vl = vl_q * (ara_req_d.nf + 1'b1);
+                    ara_req_d.nf = insn.vmem_type.nf;
+                    ara_req_d.vl = vl_q * (ara_req_d.nf + 1'b1);
                   end
                   5'b01000:;      // Unit-strided, whole registers
                   5'b01011: begin // Unit-strided, mask load, EEW=1
@@ -3106,9 +3107,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       automatic logic [3:0] vrf_utilization;
 
       if ((ara_req_d.emul inside {LMUL_1_8, LMUL_1_4, LMUL_1_2}) || ( (1 << ara_req_d.emul) * (ara_req_d.nf + 1) > 8)) begin
-         vrf_utilization = '0;
+        vrf_utilization = '0;
       end else begin
-         vrf_utilization = (1 << ara_req_d.emul) * (ara_req_d.nf + 1);
+        vrf_utilization = (1 << ara_req_d.emul) * (ara_req_d.nf + 1);
       end
 
       unique case (vrf_utilization)
