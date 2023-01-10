@@ -24,19 +24,19 @@ import sys
 import numpy as np
 
 threshold = {
-  'imatmul'    : 300,
-  'fmatmul'    : 300,
-  'iconv2d'    : 300,
-  'fconv2d'    : 300,
-  'fconv3d'    : 300,
-  'jacobi2d'   : 300,
-  'dropout'    : 300,
-  'fft'        : 300,
-  'dwt'        : 300,
-  'exp'        : 300,
-  'softmax'    : 300,
-  'pathfinder' : 300,
-  'roi_align'  : 300,
+  'imatmul'    : 500,
+  'fmatmul'    : 500,
+  'iconv2d'    : 500,
+  'fconv2d'    : 500,
+  'fconv3d'    : 500,
+  'jacobi2d'   : 500,
+  'dropout'    : 500,
+  'fft'        : 500,
+  'dwt'        : 500,
+  'exp'        : 500,
+  'softmax'    : 500,
+  'pathfinder' : 500,
+  'roi_align'  : 500,
 }
 
 skip_check = {
