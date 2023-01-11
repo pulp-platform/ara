@@ -7,7 +7,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Ara'
-copyright = '2022, Sharafat Hussain'
 author = 'Sharafat Hussain'
 release = '1.0'
 
