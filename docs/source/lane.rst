@@ -8,9 +8,9 @@ The Vector Register File (VRF) of Ara is implemented using a set of single porte
 
 Size of Vector register  (VLEN) = 4096 bit
 
-Size of Vector Register File = 4096 * 32 = 217 bits = 16 KB
+Size of Vector Register File = 4096 * 32 = 217 bits = 16 KiB
 
-Number of Lanes in Ara can vary from 1 to 16 (implementation dependent). So for a 4 lane system the VRF will be divided into 4 lanes with 4KB of memory per lane.
+Number of Lanes in Ara can vary from 1 to 16 (implementation dependent). So for a 4 lane system the VRF will be divided into 4 lanes with 4KiB of memory per lane.
 
 ..  image:: /images/VRFSize.png
     :alt: VRF Size pre Lane
@@ -28,7 +28,7 @@ Benefits of splitting VRF across lanes:
 
 Division of VRF into Banks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-As indicated earlier the portion of VRF inside a lane is further divided into eight 64-bit wide banks. Each bank is implemented using a single-ported SRAM memory. Being a single ported memory it has only one address port for both reads and writes. In steady state, under worst case conditions, 5 banks are accessed simultaneously in order to support predicated multiply-accumulate instructions (which require 3 source registers plus the mask register resulting in 4 reads, and one destination register -resulting in a single write).
+As indicated earlier the portion of VRF inside a lane is further divided into eight 64-bit wide banks. Each bank is implemented using a single-ported SRAM memory. Being a single ported memory it has only one address port for both reads and writes. In steady state, under worst case conditions, 5 banks are accessed simultaneously in order to support predicated multiply-accumulate instructions (which require 3 source registers plus the mask register resulting in 4 reads, and one destination register -resulting in a single write). This is the worst case for a single instruction. But more instructions can be executed at the same time in different units (e.g. vload + vslide + vmacc.m) and they can access up to 8 banks per lane at the same time all together.
 
 
 ..  image:: /images/VRFPerLanePerBank.png
@@ -37,9 +37,9 @@ As indicated earlier the portion of VRF inside a lane is further divided into ei
 
 |
 
-Continuing with the earlier example, where each of the four lanes has 4KB of memory, each lane will as such have 8 banks of 512B (4096B / 8 =  512B) memory. Given that each bank is 64-bits wide there will be 64 (512B/8B = 64) 8B wide addressable locations within each bank.
+Continuing with the earlier example, where each of the four lanes has 4KiB of memory, each lane will as such have 8 banks of 512B (4096B / 8 =  512B) memory. Given that each bank is 64-bits wide there will be 64 (512B/8B = 64) 8B wide addressable locations within each bank.
 
-Since each lane has  4KB of VRF memory the address bus, going to each lane,  will be 12-bits wide. Since there are 8 banks within a lane the least significant 3 bits of the address are used for addressing the 8 banks and the remaining 9-bits are used to address the byte within the bank. Of these remaining 9-bits, 6-bits are used to address 1-of-the-64 64-bit locations within the bank and the remaining 3 bits of the address are used to address the individual byte within the 64-bits.
+Since each lane has  4KiB of VRF memory the address bus, going to each lane,  will be 12-bits wide. Since there are 8 banks within a lane the least significant 3 bits of the address are used for addressing the 8 banks and the remaining 9-bits are used to address the byte within the bank. Of these remaining 9-bits, 6-bits are used to address 1-of-the-64 64-bit locations within the bank and the remaining 3 bits of the address are used to address the individual byte within the 64-bits.
 
 ..  figure:: /images/addressPerLane.png
     :alt: Address distribution inside a lane
