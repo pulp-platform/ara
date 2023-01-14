@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Solve duplicate verify function in `roi_align`
  - Don't let the lanes sample more than once the same instruction when the workload is unbalanced and the instruction stalls in the main sequencer
  - Don't mute instructions on mask vectors in the lane sequencer when `vl == 0` in that lane
+ - Remove unintentional latches from `valu`, `simd_mul`, `lane_sequencer`
+ - Fix `vxsat` CSR update in `dispatcher`
 
 ### Added
 
