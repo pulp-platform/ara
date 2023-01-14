@@ -71,6 +71,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   );
 
   always_comb begin
+    // Default assignment
+    last_id_d      = last_id_q;
+    en_sync_mask_d = en_sync_mask_q;
+
     // If the sync mask is enabled and the ID is the same
     // as before, avoid to re-sample the same instruction
     // more than once.

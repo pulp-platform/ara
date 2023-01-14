@@ -430,6 +430,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     simd_red_operand        = '0;
     red_mask                = '0;
 
+    vxsat_flag_o            = '0;
+
     // Do not issue any operations
     valu_valid  = 1'b0;
     alu_state_d = alu_state_q;
