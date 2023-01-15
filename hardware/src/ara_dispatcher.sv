@@ -2935,7 +2935,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = acc_req_i.insn.itype.rs1[0];
+                    // logic [19:15] rs1; So, LSB is [15]
+                    vxsat_d           = acc_req_i.insn.itype.rs1[15];
                     acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2964,7 +2965,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     else acc_resp_o.error                                 = 1'b1;
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q | vxsat_e'(acc_req_i.insn.itype.rs1[0]);
+                    // logic [19:15] rs1; So, LSB is [15]
+                    vxsat_d           = vxsat_q | vxsat_e'(acc_req_i.insn.itype.rs1[15]);
                     acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
@@ -2993,7 +2995,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     else acc_resp_o.error                                 = 1'b1;
                   end
                   riscv::CSR_VXSAT: begin
-                    vxsat_d           = vxsat_q & ~vxsat_e'(acc_req_i.insn.itype.rs1[0]);
+                    // logic [19:15] rs1; So, LSB is [15]
+                    vxsat_d           = vxsat_q & ~vxsat_e'(acc_req_i.insn.itype.rs1[15]);
                     acc_resp_o.result = vxsat_q;
                   end
                   default: acc_resp_o.error = 1'b1;
