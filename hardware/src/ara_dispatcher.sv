@@ -245,7 +245,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     illegal_insn = 1'b0;
     vxsat_d      = vxsat_q;
-    vxrm_d      = vxrm_q;
+    vxrm_d       = vxrm_q;
 
     is_vload      = 1'b0;
     is_vstore     = 1'b0;
@@ -295,7 +295,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
 
     // Saturation in any lane will raise vxsat flag
-    vxsat_d = |vxsat_flag_i;
+    vxsat_d |= |vxsat_flag_i;
     // Fixed-point rounding mode is applied to all lanes
     for (int lane = 0; lane < NrLanes; lane++) alu_vxrm_o[lane] = vxrm_q;
     // Rounding mode is shared between all lanes
