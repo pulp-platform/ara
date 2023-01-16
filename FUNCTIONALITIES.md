@@ -56,6 +56,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector narrowing floating-point/integer type-convert instructions: `vfncvt.xu.f`, `vfncvt.x.f`, `vfncvt.rtz.xu.f`, `vfncvt.rtz.x.f`, `vfncvt.f.xu`, `vfncvt.f.x`, `vfncvt.f.f`
 - Vector floating-point reciprocal estimate instruction: `vfrec7`
 - Vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
+- Vector narrowing floating-point convert instructions: `vfncvt.rod.f.f`
 
 ## Vector Reduction Operations
 
