@@ -117,9 +117,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support to check the results of the ideal dispatcher runs
  - Add HW/SW environment for automatic VCD dumping
  - Support for vector floating-point reciprocal estimate instruction: `vfrec7`
- - Parametrize `vfrec7` support
  - Support for vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
- - Parametrize `vfrsqrt7` support
+ - Support for vector narrowing floating-point convert instruction: `vfncvt.rod.f.f`
+ - Parametrize `vfrec7`, `vfrsqrt7` and `vfncvt.rod.f.f` support
 
 ### Changed
 
