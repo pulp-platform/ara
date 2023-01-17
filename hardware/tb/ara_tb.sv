@@ -142,6 +142,7 @@ module ara_tb;
    *  PRINT STORED VALUES  *
    *************************/
 
+`ifndef TARGET_GATESIM
   // This is useful to check that the ideal dispatcher simulation was correct
 
 `ifndef IDEAL_DISPATCHER
@@ -182,6 +183,7 @@ module ara_tb;
         for (int b = 0; b < AxiWideBeWidth; b++)
           if (ara_w_strb[b])
             $fdisplay(fd, "%0x", ara_w[b*8 +: 8]);
+`endif
 
   /*********
    *  EOC  *
@@ -193,11 +195,14 @@ module ara_tb;
         $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
       end else begin
         // Print vector HW runtime
+`ifndef TARGET_GATESIM
         $display("[hw-cycles]: %d", int'(dut.runtime_buf_q));
+`endif
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end
-
+`ifndef TARGET_GATESIM
       $fclose(fd);
+`endif
       $finish(exit >> 1);
     end
   end

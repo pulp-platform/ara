@@ -112,6 +112,8 @@ module ara_testharness #(
    *  V_RUNTIME  *
    ***************/
 
+`ifndef TARGET_GATESIM
+
   // Software runtime measurements are not precise since there is some overhead when the vector
   // function starts and when it's over. Moreover, the csr value should be retreived.
   // When the vector function runtime is short, these overhead can compromise the measurement.
@@ -201,5 +203,5 @@ module ara_testharness #(
       runtime_buf_q           <= runtime_buf_d;
     end
   end
-
+`endif
 endmodule : ara_testharness
