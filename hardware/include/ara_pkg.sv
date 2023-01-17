@@ -1014,7 +1014,6 @@ package ara_pkg;
   } addrgen_axi_req_t;
 
 
-
     ////////////////////////
     // VFREC7 & VFRSQRT7 //
     ///////////////////////
@@ -1038,19 +1037,13 @@ package ara_pkg;
   localparam logic [15:0] E16_NaN  = 16'h7e00;
   localparam logic [15:0] E16_pInf = 16'h7c00;
   localparam logic [15:0] E16_mInf = 16'hfc00;
-  localparam logic [14:0] E16_Max  = 15'h7bff;
-  localparam logic [14:0] E16_Inf  = 15'h7c00;
 
   localparam logic [14:0] E16_Max  = 15'h7bff;     // Max Number without sign
   localparam logic [14:0] E16_Inf  = 15'h7c00;     // Inf without sign
 
-
   localparam logic [31:0] E32_NaN  = 32'h7fc00000;
   localparam logic [31:0] E32_pInf = 32'h7f800000;
   localparam logic [31:0] E32_mInf = 32'hff800000;
-  localparam logic [30:0] E32_Max  = 31'h7f7fffff;
-  localparam logic [30:0] E32_Inf  = 31'hff800000;
-
 
   localparam logic [30:0] E32_Max  = 31'h7f7fffff;  // Max Number without sign
   localparam logic [30:0] E32_Inf  = 31'hff800000;  // Inf without sign
@@ -1058,8 +1051,6 @@ package ara_pkg;
   localparam logic [63:0] E64_NaN  = 64'h7ff8000000000000;
   localparam logic [63:0] E64_pInf = 64'h7ff0000000000000;
   localparam logic [63:0] E64_mInf = 64'hfff0000000000000;
-  localparam logic [62:0] E64_Max  = 63'h7fefffffffffffff;
-  localparam logic [62:0] E64_Inf  = 63'h7ff0000000000000;
 
   localparam logic  [5:0] E16_3xB = 6'd45;
   localparam logic  [8:0] E32_3xB = 9'd381;
