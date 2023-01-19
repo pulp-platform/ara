@@ -3102,8 +3102,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Update the EEW
-    if (((ara_req_valid_d && ara_req_d.use_vd) || state_d == RESHUFFLE)
-       && state_q != RESHUFFLE) begin
+    if (ara_req_valid_d && ara_req_d.use_vd && ara_req_ready_i) begin
       automatic logic [3:0] vrf_utilization;
 
       if ((ara_req_d.emul inside {LMUL_1_8, LMUL_1_4, LMUL_1_2}) || ( (1 << ara_req_d.emul) * (ara_req_d.nf + 1) > 8)) begin
