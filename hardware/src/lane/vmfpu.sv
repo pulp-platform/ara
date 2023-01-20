@@ -1201,9 +1201,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     vfpu_in_valid = 1'b0;
 
     // If the result queue is not full, it is ready to accept a result
-    vmul_out_ready = ~result_queue_full;
-    vdiv_out_ready = ~result_queue_full;
-    vfpu_out_ready = ~result_queue_full;
+    vmul_out_ready = ~result_queue_full && (vinsn_processing_q.op inside {[VMUL:VSMUL]});
+    vdiv_out_ready = ~result_queue_full && (vinsn_processing_q.op inside {[VDIVU:VREM]});
+    vfpu_out_ready = ~result_queue_full && (vinsn_processing_q.op inside {[VFADD:VMFGE]});
 
     // Valid of the unit in use (i.e., result queue input valid) is not asserted by default
     unit_out_valid  = 1'b0;
@@ -1383,7 +1383,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             unit_out_result = vdiv_result;
             unit_out_mask   = vdiv_mask;
           end
-          [VFADD:VFCVTFF], [VMFEQ:VMFGE]: begin
+          [VFADD:VMFGE]: begin
             unit_out_valid  = vfpu_out_valid;
             unit_out_result = vfpu_processed_result;
             unit_out_mask   = vfpu_mask;
