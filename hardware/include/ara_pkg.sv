@@ -1364,6 +1364,7 @@ package ara_pkg;
         vfrec7_sub.e = 8'd0;                          //0 minus number of leading zeros in sig
         vfrec7_sub.m = {operand_a_delay[21:0], 1'b0};  //left-shifting by 1
       end
+      default;
     endcase
 
     unique case (vfpu_result)
@@ -1431,6 +1432,7 @@ package ara_pkg;
         //The output sign equals the input sign.
         vfrec7_o.vf7_e32.s = operand_a_delay[31];
       end
+      default:;
     endcase
 
     // check if input number is subnormal number  with sig=00..
