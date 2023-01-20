@@ -122,6 +122,41 @@ perfExtr = {
   'roi_align'  : roi_align,
 }
 
+# Maximum performance if Ara's BW can be fully utilized
+ideal_maxPerf = {
+  'imatmul'    : lambda l, s : 2 * l * 8/s,
+  'fmatmul'    : lambda l, s : 2 * l * 8/s,
+  'iconv2d'    : lambda l, s : 2 * l * 8/s,
+  'fconv2d'    : lambda l, s : 2 * l * 8/s,
+  'fconv3d'    : lambda l, s : 2 * l * 8/s,
+  'jacobi2d'   : lambda l, s : l * 8/s,
+  'dropout'    : lambda l, s : 4 * l / (2*s + 1/8),
+  'fft'        : lambda l, s : 6/5 * l * 8/s,
+  'dwt'        : lambda l, s : 4 * l / s,
+  'exp'        : lambda l, s : 28/23 * l * 8/s,
+  'softmax'    : lambda l, s : 32/25 * l * 8/s,
+  'pathfinder' : lambda l, s : l * 8/s,
+  'roi_align'  : lambda l, s : l * 8/s,
+}
+
+# Maximum performance taking into account Ara's limited BW
+# when performing strided/indexed memory accesses
+real_maxPerf = {
+  'imatmul'    : lambda l, s : 2 * l * 8/s,
+  'fmatmul'    : lambda l, s : 2 * l * 8/s,
+  'iconv2d'    : lambda l, s : 2 * l * 8/s,
+  'fconv2d'    : lambda l, s : 2 * l * 8/s,
+  'fconv3d'    : lambda l, s : 2 * l * 8/s,
+  'jacobi2d'   : lambda l, s : l * 8/s,
+  'dropout'    : lambda l, s : 4 * l / (2*s + 1/8),
+  'fft'        : lambda l, s : 6/5 * l * 8/s,
+  'dwt'        : lambda l, s : 1/3 * l * 8/s + 1/3,
+  'exp'        : lambda l, s : 28/23 * l * 8/s,
+  'softmax'    : lambda l, s : 32/25 * l * 8/s,
+  'pathfinder' : lambda l, s : 1/3 * l * 8/s,
+  'roi_align'  : lambda l, s : 3/5 * l * 8/s,
+}
+
 def main():
   kernel   = str(sys.argv[1])
   args     = str(sys.argv[2]).split()
@@ -133,7 +168,11 @@ def main():
     sys.exit('Error: the kernel "' + kernel + '" is not valid')
 
   # Print performance information on file
+#  if args.mode == 'perf':
   print(result[0], result[1])
+#  elif args.mode == 'max_perf':
+#    max_perf = real_maxPerf(kernel)(4, 8);
+#    print(kernel, max_perf)
 
 if __name__ == '__main__':
   main()
