@@ -173,6 +173,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Roll-back to Verilator v4.214
  - Parametrize `addrgen` queue depth
  - SIMD-multipliers are now gated singularly depending on VSEW
+ - Optimize `pathfinder` kernel
+ - Optimize `dwt` kernel
+ - Optimize `dotproduct` kernel
+ - Optimize `fft` kernel
 
 ## 2.2.0 - 2021-11-02
 
