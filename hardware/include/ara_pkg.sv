@@ -94,7 +94,7 @@ package ara_pkg;
   localparam int unsigned VlduInsnQueueDepth = 4;
   localparam int unsigned VstuInsnQueueDepth = 4;
   localparam int unsigned VaddrgenInsnQueueDepth = 4;
-  localparam int unsigned SlduInsnQueueDepth = 2;
+  localparam int unsigned SlduInsnQueueDepth = 4;
   localparam int unsigned NoneInsnQueueDepth = 1;
   // Ara supports MaskuInsnQueueDepth = 1 only.
   localparam int unsigned MaskuInsnQueueDepth = 1;
