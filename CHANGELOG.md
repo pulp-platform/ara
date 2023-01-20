@@ -69,6 +69,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix `vxsat` CSR update in `dispatcher`
  - Fix parameter passing through the hierarchy for fixed point support
  - Decouple `cmdBuffer` and `dataBuffer` depths in opQueues
+ - Avoid handshaking wrong results in VMFPU
+ - Fix eew reshuffle for mask logical operations
+ - Fix eew reshuffle for `vmv.v.v` operations
 
 ### Added
 
