@@ -199,6 +199,8 @@ matmul() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   # Measure the following matrix sizes
   for size in 4 8 16 32 64 128; do
@@ -236,6 +238,8 @@ conv2d() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   # Measure the following matrix and filter sizes
   # The input image is also padded, and the max vl is 128
@@ -277,6 +281,8 @@ fconv3d() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   # Measure the following matrix and filter sizes
   # The input image is also padded, and the max vl is 128
@@ -318,6 +324,8 @@ jacobi2d() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for vsize_unpadded in 4 8 16 32 64 128; do
     vsize=$(($vsize_unpadded + 2))
@@ -354,6 +362,8 @@ dropout() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for vsize in 4 8 16 32 64 128 256 512 1024 2048; do
 
@@ -388,6 +398,8 @@ fft() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   # Type should be in the format "floatXY"
   dtype="float32"
@@ -429,6 +441,8 @@ dwt() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for vsize in 4 8 16 32 64 128 256 512; do
 
@@ -464,6 +478,8 @@ exp() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for vsize in 4 8 16 32 64 128 256 512; do
 
@@ -501,6 +517,8 @@ softmax() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for insize in 4 8 16 32 64 128 256 512; do
 
@@ -534,6 +552,8 @@ fdotproduct() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for dtype in double float _Float16; do
     for bsize in 16 32 64 128 256 512 1024 2048 4096; do
@@ -573,6 +593,8 @@ dotproduct() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for dtype in int64_t int32_t int16_t int8_t; do
     for bsize in 16 32 64 128 256 512 1024 2048 4096; do
@@ -615,6 +637,8 @@ pathfinder() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for cols in 4 8 16 32 64 128 256 512 1024; do
     for rows in 64; do
@@ -659,6 +683,8 @@ roi_align() {
   # Log the performance results
   > ${kernel}_${nr_lanes}.benchmark
   > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
 
   for depth in 4 8 16 32 64 128 256 512; do
 
