@@ -24,7 +24,7 @@
 [submodule "hardware/deps/cva6"]
 	path = hardware/deps/cva6
 	url = https://github.com/Shafi10x/cva6.git
-	branch = flags_out
+	branch = round_towards_odd
 [submodule "toolchain/newlib"]
 	path = toolchain/newlib
 	url = https://sourceware.org/git/newlib-cygwin.git
