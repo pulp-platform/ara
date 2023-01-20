@@ -1258,35 +1258,70 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001011: ara_req_d.op = ara_pkg::VASUB;
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMANDNOT;
-                    ara_req_d.use_vd_op = 1'b1;
+                    // Prefer mask operation on EW8 encoding
+                    // In mask operations, vs1, vs2, vd should
+                    // have the same encoding.
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011001: begin
-                    ara_req_d.op        = ara_pkg::VMAND;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMAND;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011010: begin
-                    ara_req_d.op        = ara_pkg::VMOR;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMOR;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011011: begin
-                    ara_req_d.op        = ara_pkg::VMXOR;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMXOR;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011100: begin
-                    ara_req_d.op        = ara_pkg::VMORNOT;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMORNOT;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011101: begin
-                    ara_req_d.op        = ara_pkg::VMNAND;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMNAND;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011110: begin
-                    ara_req_d.op        = ara_pkg::VMNOR;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMNOR;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011111: begin
-                    ara_req_d.op        = ara_pkg::VMXNOR;
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.op         = ara_pkg::VMXNOR;
+                    ara_req_d.eew_vs1    = EW8;
+                    ara_req_d.eew_vs2    = EW8;
+                    ara_req_d.eew_vd_op  = EW8;
+                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
@@ -3039,7 +3074,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
-        in_lane_op = ara_req_d.op inside {[VADD:VNSRA]} || ara_req_d.op inside {[VREDSUM:VMSBC]};
+        in_lane_op = ara_req_d.op inside {[VADD:VNSRA]} || ara_req_d.op inside {[VREDSUM:VMSBC]} ||
+                     ara_req_d.op inside {[VMANDNOT:VMXNOR]};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
