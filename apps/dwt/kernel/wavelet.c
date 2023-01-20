@@ -83,10 +83,10 @@ static inline void dwt_step_vector(const gsl_wavelet *w, float *samples,
                                    size_t n, float *buf) {
 
   size_t avl = n;
-  vfloat32m1_t sample_vec_0;
-  vfloat32m1_t sample_vec_1;
-  vfloat32m1_t g_vec;
-  vfloat32m1_t h_vec;
+  vfloat32m4_t sample_vec_0;
+  vfloat32m4_t sample_vec_1;
+  vfloat32m4_t g_vec;
+  vfloat32m4_t h_vec;
 
   float *samples_r = samples;
   float *samples_w = samples;
@@ -94,34 +94,34 @@ static inline void dwt_step_vector(const gsl_wavelet *w, float *samples,
   float *buf_w = buf;
 
   // Strip-Mining loop
-  for (size_t vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
-    vl = vsetvl_e32m1(avl);
+  for (size_t vl = vsetvl_e32m4(avl); avl > 0; avl -= vl) {
+    vl = vsetvl_e32m4(avl);
     // If we have enough samples, fill the vector registers!
     if (avl >= 2 * vl)
       vl *= 2;
 #ifdef SEGMENT
     // Segment load the vectors. ToDo: check if vl/2 is correct
-    vlseg2e32_v_f32m1(sample_vec_0, sample_vec_1, samples_r, vl / 2);
+    vlseg2e32_v_f32m4(sample_vec_0, sample_vec_1, samples_r, vl / 2);
 #else
     // Strided load (inefficient!)
-    sample_vec_0 = vlse32_v_f32m1(samples_r, 2 * sizeof(*samples_r), vl / 2);
+    sample_vec_0 = vlse32_v_f32m4(samples_r, 2 * sizeof(*samples_r), vl / 2);
     sample_vec_1 =
-        vlse32_v_f32m1(samples_r + 1, 2 * sizeof(*samples_r), vl / 2);
+        vlse32_v_f32m4(samples_r + 1, 2 * sizeof(*samples_r), vl / 2);
 #endif
 
     // First implementation
     // nc == 2!
 
     // Generate the g vector and store it back
-    g_vec = vfmul_vf_f32m1(sample_vec_0, w->g1[0], vl / 2);
-    g_vec = vfmacc_vf_f32m1(g_vec, w->g1[1], sample_vec_1, vl / 2);
-
     // Generate the h vector and store it back
-    h_vec = vfmul_vf_f32m1(sample_vec_0, w->h1[0], vl / 2);
-    h_vec = vfmacc_vf_f32m1(h_vec, w->h1[1], sample_vec_1, vl / 2);
+    g_vec = vfmul_vf_f32m4(sample_vec_0, w->g1[0], vl / 2);
+    h_vec = vfmul_vf_f32m4(sample_vec_0, w->h1[0], vl / 2);
 
-    vse32_v_f32m1(samples_w, g_vec, vl / 2);
-    vse32_v_f32m1(buf_w, h_vec, vl / 2);
+    g_vec = vfmacc_vf_f32m4(g_vec, w->g1[1], sample_vec_1, vl / 2);
+    h_vec = vfmacc_vf_f32m4(h_vec, w->h1[1], sample_vec_1, vl / 2);
+
+    vse32_v_f32m4(samples_w, g_vec, vl / 2);
+    vse32_v_f32m4(buf_w, h_vec, vl / 2);
 
     // Bump pointers
     samples_r += vl;
@@ -131,9 +131,9 @@ static inline void dwt_step_vector(const gsl_wavelet *w, float *samples,
 
   // Memcpy h_vec to the samples vector
   avl = n / 2;
-  for (size_t vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
-    h_vec = vle32_v_f32m1(buf_r, vl);
-    vse32_v_f32m1(samples_w, h_vec, vl);
+  for (size_t vl = vsetvl_e32m4(avl); avl > 0; avl -= vl) {
+    h_vec = vle32_v_f32m4(buf_r, vl);
+    vse32_v_f32m4(samples_w, h_vec, vl);
     buf_r += vl;
     samples_w += vl;
   }
