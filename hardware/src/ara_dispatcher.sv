@@ -618,6 +618,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req_d.op      = ara_pkg::VMERGE;
                     ara_req_d.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
+                    // With a normal vmv.v.v, copy input eew to output
+                    // to avoid unnecessary reshuffles
+                    if (insn.varith_type.vm) begin
+                      ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                      ara_req_d.vtype.vsew = eew_q[ara_req_d.vs1];
+                      ara_req_d.vl         = (vl_q << vtype_q.vsew[1:0]) >> ara_req_d.eew_vs1[1:0];
+                    end
                   end
                   6'b100000: ara_req_d.op = ara_pkg::VSADDU;
                   6'b100001: ara_req_d.op = ara_pkg::VSADD;
@@ -3074,7 +3081,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
-        in_lane_op = ara_req_d.op inside {[VADD:VNSRA]} || ara_req_d.op inside {[VREDSUM:VMSBC]} ||
+        in_lane_op = ara_req_d.op inside {[VADD:VMERGE]} || ara_req_d.op inside {[VREDSUM:VMSBC]} ||
                      ara_req_d.op inside {[VMANDNOT:VMXNOR]};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
