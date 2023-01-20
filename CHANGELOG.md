@@ -68,6 +68,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Remove unintentional latches from `valu`, `simd_mul`, `lane_sequencer`
  - Fix `vxsat` CSR update in `dispatcher`
  - Fix parameter passing through the hierarchy for fixed point support
+ - Decouple `cmdBuffer` and `dataBuffer` depths in opQueues
 
 ### Added
 
@@ -160,6 +161,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Generate data for `fmatmul` at compile time
  - SIMD multipliers are now power gated
  - Roll-back to Verilator v4.214
+ - Parametrize `addrgen` queue depth
 
 ## 2.2.0 - 2021-11-02
 
