@@ -44,7 +44,7 @@ if len(sys.argv) == 4:
   cols = int(sys.argv[2])
   rows = int(sys.argv[3])
 else:
-  print("Error. Give me three arguments: num_runs, rows, and cols.")
+  print("Error. Give me three arguments: num_runs, cols, and rows.")
   sys.exit()
 
 dtype = np.int32

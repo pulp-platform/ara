@@ -94,6 +94,96 @@ void run_vector(int *wall, int *result_v, uint32_t cols, uint32_t rows,
 // This function is optimized for program sizes that satisfy:
 // cols < (m * L * 128) / (2**sew)
 // With m4, int32_t, 8 lanes -> cols < (4 * 8 * 128) / (4) -> cols <= 1024
+// With m4, int32_t, 4 lanes -> cols < (4 * 4 * 128) / (4) -> cols <= 512
+// Introduced preloading to boost performance
+void run_vector_short_m4(int *wall, int *result_v, uint32_t cols, uint32_t rows,
+                         uint32_t num_runs, int neutral_value) {
+
+  size_t gvl;
+
+  vint32m4_t temp;
+  vint32m4_t xSrc_slideup;
+  vint32m4_t xSrc_slidedown;
+  vint32m4_t xSrc;
+  vint32m4_t xNextrow, xNextNextrow;
+
+  int aux, aux2;
+  aux = neutral_value;
+  aux2 = neutral_value;
+
+  gvl = vsetvl_e32m4(cols);
+
+  for (uint32_t j = 0; j < num_runs; j++) {
+
+    asm volatile("vle32.v v16, (%0)" ::"r"(wall)); // xNextNextrow
+
+    uint32_t t;
+    for (t = 0; t < rows - 1; t += 3) {
+      // Iteration 1
+      asm volatile("vslide1up.vx v12, v16, %0" ::"r"(
+          aux)); // xSrc_slideup   <- xNextNextrow
+      asm volatile("vslide1down.vx v24, v16, %0" ::"r"(
+          aux2)); // xSrc_slidedown <- xNextNextrow
+
+      // Preload for iteration 2
+      asm volatile("vle32.v v0, (%0)" ::"r"(&wall[(t + 1) * cols])); // xNextrow
+
+      asm volatile(
+          "vmin.vv v28, v16, v12"); // acc <- xNextNextrow, xSrc_slideup
+      asm volatile("vmin.vv v28, v28, v24"); // acc <- acc, xSrc_slidedown
+
+      // Preload for iteration 3
+      if (t + 1 < rows - 1)
+        asm volatile(
+            "vle32.v v4, (%0)" ::"r"(&wall[(t + 2) * cols])); // xNextNextrow
+
+      asm volatile("vadd.vv v0, v0, v28"); // xNextNextrow
+
+      // Iteration 2
+      if (t + 1 < rows - 1) {
+        asm volatile("vslide1up.vx v8, v0, %0" ::"r"(
+            aux)); // xSrc_slideup   <- xNextNextrow
+        asm volatile("vslide1down.vx v12, v0, %0" ::"r"(
+            aux2)); // xSrc_slidedown <- xNextNextrow
+
+        // Preload for iteration 1
+        if (t + 2 < rows - 1)
+          asm volatile(
+              "vle32.v v16, (%0)" ::"r"(&wall[(t + 3) * cols])); // xNextNextrow
+
+        asm volatile("vmin.vv v28, v0, v8");   // acc <- xNextrow, xSrc_slideup
+        asm volatile("vmin.vv v28, v28, v12"); // acc <- acc, xSrc_slidedown
+
+        asm volatile("vadd.vv v4, v4, v28"); // xNextNextrow
+
+        // Iteration 3
+        if (t + 2 < rows - 1) {
+          asm volatile("vslide1up.vx v20, v4, %0" ::"r"(
+              aux)); // xSrc_slideup   <- xNextNextrow
+          asm volatile("vslide1down.vx v8, v4, %0" ::"r"(
+              aux2)); // xSrc_slidedown <- xNextNextrow
+
+          asm volatile("vmin.vv v28, v4, v20"); // acc <- xNextrow, xSrc_slideup
+          asm volatile("vmin.vv v28, v28, v8"); // acc <- acc, xSrc_slidedown
+
+          asm volatile("vadd.vv v16, v16, v28"); // xNextNextrow
+        }
+      }
+      if (t - 2 >= rows - 1)
+        asm volatile("vse32.v v0, (%0)" ::"r"(result_v)); // xNextNextrow
+      else if (t - 1 < rows - 1)
+        asm volatile("vse32.v v16, (%0)" ::"r"(result_v)); // xNextNextrow
+      else
+        asm volatile("vse32.v v4, (%0)" ::"r"(result_v)); // xNextNextrow
+    }
+  }
+}
+
+/*
+// This function is optimized for program sizes that satisfy:
+// cols < (m * L * 128) / (2**sew)
+// With m4, int32_t, 8 lanes -> cols < (4 * 8 * 128) / (4) -> cols <= 1024
+// With m4, int32_t, 4 lanes -> cols < (4 * 4 * 128) / (4) -> cols <= 512
 void run_vector_short_m4(int *wall, int *result_v, uint32_t cols, uint32_t rows,
                          uint32_t num_runs, int neutral_value) {
 
@@ -131,3 +221,4 @@ void run_vector_short_m4(int *wall, int *result_v, uint32_t cols, uint32_t rows,
     vse32_v_i32m4(result_v, xNextrow, gvl);
   }
 }
+*/
