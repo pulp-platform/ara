@@ -89,6 +89,7 @@ package ara_pkg;
   // Define the maximum instruction queue depth
   localparam MaxVInsnQueueDepth = 8;
   // FUs instruction queue depth.
+
   localparam int unsigned MfpuInsnQueueDepth = 8;
   localparam int unsigned ValuInsnQueueDepth = 8;
   localparam int unsigned VlduInsnQueueDepth = 8;
