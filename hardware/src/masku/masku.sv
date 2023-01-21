@@ -292,6 +292,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes*ELEN-1:0]              bit_enable;
   logic  [NrLanes*ELEN-1:0]              bit_enable_shuffle;
   logic  [NrLanes*ELEN-1:0]              bit_enable_mask;
+  rvv_pkg::vew_e                         bit_enable_shuffle_eew;
   logic  [NrLanes*ELEN-1:0]              mask;
   logic  [NrLanes*ELEN-1:0]              vcpop_operand;
   logic  [$clog2(DataWidth*NrLanes):0]   popcount;
@@ -347,6 +348,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     masku_operand_vd    = '0;
     vcpop_operand       = '0;
 
+    // Comparisons work on vtype.vsew from VALU or VMFPU
+    bit_enable_shuffle_eew = vinsn_issue.op inside {[VMFEQ:VMSGTU], [VMSGT:VMSBC]}
+                           ? vinsn_issue.vtype.vsew
+                           : vinsn_issue.eew_vd_op;
+
     if (vinsn_issue_valid) begin
       // Calculate bit enable
       // The result can be taken either from the result of an operation (mask_operand_a_i), or
@@ -362,7 +368,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Shuffle the bit enable signal
       for (int b = 0; b < NrLanes*StrbWidth; b++) begin
-        automatic int vrf_byte              = shuffle_index(b, NrLanes, vinsn_issue.eew_vd_op);
+        automatic int vrf_byte              = shuffle_index(b, NrLanes, bit_enable_shuffle_eew);
         bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*b +: 8];
 
         // Take the mask into account
