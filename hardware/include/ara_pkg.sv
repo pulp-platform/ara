@@ -1243,6 +1243,7 @@ package ara_pkg;
         vfrec7_sub.e = 5'd0;                          //0 minus number of leading zeros in sig
         vfrec7_sub.m = {operand_a_delay[8:0], 1'b0};  //left-shifting by 1
       end
+      default:;
     endcase
 
     unique case (vfpu_result)
@@ -1309,6 +1310,7 @@ package ara_pkg;
          //The output sign equals the input sign.
         vfrec7_o.vf7_e16.s = operand_a_delay[15];
       end
+      default:;
     endcase
 
     // check if input number is subnormal number  with sig=00..
@@ -1326,11 +1328,13 @@ package ara_pkg;
         unique case (en_rm)
           1'b0: vfrec7_out.vf7_e16 = {vfrec7_o.vf7_e16.s, E16_Inf}; // infinity
           1'b1: vfrec7_out.vf7_e16 = {vfrec7_o.vf7_e16.s, E16_Max}; // greatest magnitude
+          default:;
         endcase
 
         vfrec7_out.ex_flag.NX  = 1'b1;
         vfrec7_out.ex_flag.OF  = 1'b1;
       end
+      default:;
     endcase
     return vfrec7_out;
   endfunction : vfrec7_fp16
@@ -1364,7 +1368,7 @@ package ara_pkg;
         vfrec7_sub.e = 8'd0;                          //0 minus number of leading zeros in sig
         vfrec7_sub.m = {operand_a_delay[21:0], 1'b0};  //left-shifting by 1
       end
-      default;
+      default:;
     endcase
 
     unique case (vfpu_result)
@@ -1449,11 +1453,13 @@ package ara_pkg;
         unique case (en_rm)
           1'b0: vfrec7_out.vf7_e32 = {vfrec7_o.vf7_e32.s, E32_Inf}; // infinity
           1'b1: vfrec7_out.vf7_e32 = {vfrec7_o.vf7_e32.s, E32_Max}; // greatest magnitude
+          default:;
         endcase
 
         vfrec7_out.ex_flag.NX  = 1'b1;
         vfrec7_out.ex_flag.OF  = 1'b1;
       end
+      default:;
     endcase
     return vfrec7_out;
   endfunction : vfrec7_fp32
@@ -1487,6 +1493,7 @@ package ara_pkg;
         vfrec7_sub.e = 11'd0;                          //0 minus number of leading zeros in sig
         vfrec7_sub.m = {operand_a_delay[50:0], 1'b0};  //left-shifting by 1
       end
+      default:;
     endcase
 
     unique case (vfpu_result)
@@ -1554,6 +1561,7 @@ package ara_pkg;
         //The output sign equals the input sign.
         vfrec7_o.vf7_e64.s = operand_a_delay[63];
       end
+      default:;
     endcase
 
     // check if input number is subnormal number  with sig=00..
@@ -1570,11 +1578,13 @@ package ara_pkg;
         unique case (en_rm)
           1'b0:vfrec7_out.vf7_e64 = {vfrec7_o.vf7_e64.s, E64_Inf}; // infinity
           1'b1:vfrec7_out.vf7_e64 = {vfrec7_o.vf7_e64.s, E64_Max}; // greatest magnitude
+          default:;
         endcase
 
         vfrec7_out.ex_flag.NX  = 1'b1;
         vfrec7_out.ex_flag.OF  = 1'b1;
       end
+      default:;
     endcase
     return vfrec7_out;
   endfunction : vfrec7_fp64
