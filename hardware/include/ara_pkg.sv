@@ -306,6 +306,8 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
+    // Widening and vslide1x instructions have different hazard stall policies
+    logic special_hazard;
 
     // Vector machine metadata
     vlen_t vl;
@@ -403,6 +405,8 @@ package ara_pkg;
     logic wide_fp_imm;
     // Resizing of FP conversions
     resize_e cvt_resize;
+    // Widening and vslide1x instructions have different hazard stall policies
+    logic special_hazard;
 
     // Vector machine metadata
     vlen_t vl;
@@ -905,6 +909,7 @@ package ara_pkg;
     logic scale_vl; // Rescale vl taking into account the new and old EEW
 
     resize_e cvt_resize;    // Resizing of FP conversions
+    logic special_hazard; // Widening and vslide1x instructions have different hazard stall policies
 
     logic is_reduct; // Is this a reduction?
 
