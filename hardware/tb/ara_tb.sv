@@ -138,6 +138,8 @@ module ara_tb;
     end
   end : dram_init
 
+`ifndef TARGET_GATESIM
+
   /*************************
    *  PRINT STORED VALUES  *
    *************************/
@@ -183,6 +185,8 @@ module ara_tb;
           if (ara_w_strb[b])
             $fdisplay(fd, "%0x", ara_w[b*8 +: 8]);
 
+`endif
+
   /*********
    *  EOC  *
    *********/
@@ -193,11 +197,15 @@ module ara_tb;
         $warning("Core Test ", $sformatf("*** FAILED *** (tohost = %0d)", (exit >> 1)));
       end else begin
         // Print vector HW runtime
+`ifndef TARGET_GATESIM
         $display("[hw-cycles]: %d", int'(dut.runtime_buf_q));
+`endif
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end
 
+`ifndef TARGET_GATESIM
       $fclose(fd);
+`endif
       $finish(exit >> 1);
     end
   end
