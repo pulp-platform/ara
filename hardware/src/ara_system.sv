@@ -47,6 +47,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     input  logic                    clk_i,
     input  logic                    rst_ni,
     input  logic             [63:0] boot_addr_i,
+    input                     [2:0] hart_id_i,
     // Scan chain
     input  logic                    scan_enable_i,
     input  logic                    scan_data_i,
@@ -87,6 +88,10 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   logic                                 inval_valid;
   logic                                 inval_ready;
 
+  // Support max 8 cores, for now
+  logic [63:0] hart_id;
+  assign hart_id = {'0, hart_id_i};
+
 `ifdef IDEAL_DISPATCHER
   // Perfect dispatcher to Ara
   accel_dispatcher_ideal i_accel_dispatcher_ideal (
@@ -106,7 +111,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .clk_i            (clk_i                 ),
     .rst_ni           (rst_ni                ),
     .boot_addr_i      (boot_addr_i           ),
-    .hart_id_i        ('0                    ),
+    .hart_id_i        (hart_id               ),
     .irq_i            ('0                    ),
     .ipi_i            ('0                    ),
     .time_irq_i       ('0                    ),
