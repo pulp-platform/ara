@@ -101,6 +101,15 @@ void imatmul_vec_4x4(int64_t *c, const int64_t *a, const int64_t *b,
   unsigned long int n = 0;
 
   while (n < N) {
+#ifdef VCD_DUMP
+    // Start dumping VCD
+    if (n == 8)
+      event_trigger = +1;
+    // Stop dumping VCD
+    if (n == 12)
+      event_trigger = -1;
+#endif
+
     // Calculate pointer to the matrix A
     a = a_ + ++n;
 
@@ -226,6 +235,15 @@ void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b,
   unsigned long int n = 0;
 
   while (n < N) {
+#ifdef VCD_DUMP
+    // Start dumping VCD
+    if (n == 8)
+      event_trigger = +1;
+    // Stop dumping VCD
+    if (n == 12)
+      event_trigger = -1;
+#endif
+
     // Calculate pointer to the matrix A
     a = a_ + ++n;
 
