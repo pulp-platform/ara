@@ -108,6 +108,8 @@ module ara_testharness #(
     .pslverr_o(uart_pslverr)
   );
 
+`ifndef TARGET_GATESIM
+
   /***************
    *  V_RUNTIME  *
    ***************/
@@ -202,4 +204,5 @@ module ara_testharness #(
     end
   end
 
+`endif
 endmodule : ara_testharness
