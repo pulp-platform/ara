@@ -40,4 +40,6 @@ void imatmul_vec_8x8_slice_init();
 void imatmul_vec_8x8(int64_t *c, const int64_t *a, const int64_t *b,
                      const unsigned long int n, const unsigned long int p);
 
+extern int64_t event_trigger;
+
 #endif

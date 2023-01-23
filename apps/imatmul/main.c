@@ -62,7 +62,12 @@ int main() {
   printf("\n");
   printf("\n");
 
+#ifdef VCD_DUMP
+  // Measure only the full-size matmul
+  for (uint64_t s = M; s <= M; s *= 2) {
+#else
   for (int s = 4; s <= M; s *= 2) {
+#endif
     printf("\n");
     printf("------------------------------------------------------------\n");
     printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", s,
