@@ -429,6 +429,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   //  System  //
   //////////////
 
+  logic [2:0] hart_id;
+
+  assign hart_id = '0;
+
   localparam ariane_pkg::ariane_cfg_t ArianeAraConfig = '{
     RASDepth             : 2,
     BTBEntries           : 32,
@@ -492,6 +496,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .clk_i        (clk_i                    ),
     .rst_ni       (rst_ni                   ),
     .boot_addr_i  (DRAMBase                 ), // start fetching from DRAM
+    .hart_id_i    (hart_id                  ),
     .scan_enable_i(1'b0                     ),
     .scan_data_i  (1'b0                     ),
     .scan_data_o  (/* Unconnected */        ),
