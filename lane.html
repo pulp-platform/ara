@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lane &mdash; Ara 1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Dispatcher and Sequencer" href="dispatcher_sequencer.html" />
+    <link rel="prev" title="Vector Load Store Unit" href="vlsu.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="ara.html">Ara</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cva6.html">CVA6</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="vu1_0.html">Vector Unit 1.0</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="vlsu.html">Vector Load Store Unit</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Lane</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ara-vector-register-file">Ara Vector Register File</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dispatcher_sequencer.html">Dispatcher and Sequencer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sldu.html">Slide Unit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="masku.html">Mask Unit</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="ara.html">Ara</a> &raquo;</li>
+          <li><a href="vu1_0.html">Vector Unit 1.0</a> &raquo;</li>
+      <li>Lane</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/lane.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="lane">
+<h1>Lane<a class="headerlink" href="#lane" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="ara-vector-register-file">
+<h2>Ara Vector Register File<a class="headerlink" href="#ara-vector-register-file" title="Permalink to this headline">¶</a></h2>
+<p>The Vector Register File (VRF) of Ara is implemented using a set of single ported (1RW) memory banks. The width of each bank is 64-bits which is the same as the width of the datapath of each lane. There are eight banks per lane resulting in eight single ported memory banks per lane. In the RVV ISA there are 32 vector registers. The size of each vector register, in bits, is implementation dependent (minimum = 128 bit).  Let’s look at the size of VRF by using an example.</p>
+<p>Size of Vector register  (VLEN) = 4096 bit</p>
+<p>Size of Vector Register File = 4096 * 32 = 217 bits = 16 KiB</p>
+<p>Number of Lanes in Ara can vary from 1 to 16 (implementation dependent). So for a 4 lane system the VRF will be divided into 4 lanes with 4KiB of memory per lane.</p>
+<a class="reference internal image-reference" href="_images/VRFSize.png"><img alt="VRF Size pre Lane" class="align-center" src="_images/VRFSize.png" style="width: 322.0px; height: 152.0px;" /></a>
+<p>Benefits of splitting VRF across lanes:</p>
+<ul class="simple">
+<li><p>As lanes are our processing elements so most computation constrained within one lane makes hardware implementation easy.</p></li>
+<li><p>Removes the dependency of the execution units  on the number of lanes which makes Ara scalable.</p></li>
+<li><p>As VRF is internal to the lane routing between VRF and lane execution logic is simplified.</p></li>
+</ul>
+<div class="section" id="division-of-vrf-into-banks">
+<h3>Division of VRF into Banks<a class="headerlink" href="#division-of-vrf-into-banks" title="Permalink to this headline">¶</a></h3>
+<p>As indicated earlier the portion of VRF inside a lane is further divided into eight 64-bit wide banks. Each bank is implemented using a single-ported SRAM memory. Being a single ported memory it has only one address port for both reads and writes. In steady state, under worst case conditions, 5 banks are accessed simultaneously in order to support predicated multiply-accumulate instructions (which require 3 source registers plus the mask register resulting in 4 reads, and one destination register -resulting in a single write). This is the worst case for a single instruction. But more instructions can be executed at the same time in different units (e.g. vload + vslide + vmacc.m) and they can access up to 8 banks per lane at the same time all together.</p>
+<img alt="VRF Size per Banks" class="align-center" src="_images/VRFPerLanePerBank.png" />
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Continuing with the earlier example, where each of the four lanes has 4KiB of memory, each lane will as such have 8 banks of 512B (4096B / 8 =  512B) memory. Given that each bank is 64-bits wide there will be 64 (512B/8B = 64) 8B wide addressable locations within each bank.</p>
+<p>Since each lane has  4KiB of VRF memory the address bus, going to each lane,  will be 12-bits wide. Since there are 8 banks within a lane the least significant 3 bits of the address are used for addressing the 8 banks and the remaining 9-bits are used to address the byte within the bank. Of these remaining 9-bits, 6-bits are used to address 1-of-the-64 64-bit locations within the bank and the remaining 3 bits of the address are used to address the individual byte within the 64-bits.</p>
+<div class="figure align-center">
+<a class="reference internal image-reference" href="_images/addressPerLane.png"><img alt="Address distribution inside a lane" src="_images/addressPerLane.png" style="width: 328.40000000000003px; height: 77.60000000000001px;" /></a>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+</div>
+<div class="section" id="translating-vector-register-number-to-sram-memory-bank">
+<h3>Translating Vector Register Number to SRAM memory Bank<a class="headerlink" href="#translating-vector-register-number-to-sram-memory-bank" title="Permalink to this headline">¶</a></h3>
+<p>Vector register number fields ranging in value from 0 to 31 (5-bits) are present in the instruction. They are decoded and used to determine the starting address of that vector register in the VRF memory. Within a lane the vector registers are stored as a contiguous set of bytes. The register number (vid) is multiplied by a factor which is equal to the number of bytes in a single vector register divided by the number of lanes. The resulting number gives the starting address of the vector register in the VRF memory.</p>
+<p>For normal cases the starting address of every vector register is a multiple of 8 given that the multiplying factor that is used is a  power of 2 and  greater than or equal to 8. For our continuing example this factor is equal to 128 [(4096/8)/4].  In some cases where VLEN is small e.g.128, and number of lanes are high e.g. 16 this is not true.  So if the address is a multiple of 8  then the least significant three bits of the address are always 0.  As indicated earlier the least significant 3 bits of the address are used to select the bank. As such every vector register has its first element (its starting point) in the first bank i.e., bank 0 and this will cause bank conflicts which are discussed later.</p>
+<p>Continuing with our example the following table gives the starting address in the VRF memory for all 32 vector registers. As can be seen the last nibble of every address is 0 implying that the last 3 address bits are always 0 and as such always pointing to bank 0.</p>
+<p>This arrangement causes bank conflicts because banks are composed of single ported memories and as such only a single request to read or write an operand can be sent to a bank. However functional units can request multiple operands simultaneously and as such need to access the same bank at the same time causing bank conflicts.</p>
+<p>To resolve bank conflicts Ara uses a weighted round robin priority arbiter per bank. Mask register (v0) has the highest priority, followed by reading of operands A, B, C, and then writing a destination register.</p>
+</div>
+<div class="section" id="organization-of-elements-in-vector-register-file">
+<h3>Organization of Elements in Vector Register File<a class="headerlink" href="#organization-of-elements-in-vector-register-file" title="Permalink to this headline">¶</a></h3>
+<p>Elements of a  vector register are mapped to consecutive lanes in the VRF. Each lane’s  datapath width is 64 bits which matches the width of an individual register file bank. The  figure below shows 4 lanes, numbered 0-3  with each lane having 8 bytes (64 bits) and the consecutive bytes numbered 0 - 1F. Since there are functional units present in each lane, groups of elements can be processed in parallel. For example if we have four 64-bit elements and four lanes then each element is placed in a different lane shown by the numbers 0-3 below. All 4 of these elements can be accessed simultaneously from the VRF and can be operated upon in parallel.</p>
+<div class="figure align-center">
+<img alt="Elements split across lanes" src="_images/VLEN512_SEW64_Lane4.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Continuing with the previous arrangement across lanes, elements within a single lane are also arranged in an order such that when the element width changes the mapping between some of the elements and lanes remains the same. Due to this, the mapping between consecutive bytes in a lane and consecutive bytes of an element is not the same. This is resolved by using shuffle logic described in the next section.</p>
+<p>As an example with a vector length of 256B (2048-bits) and 4 lanes each of which are  64-bits wide the mapping of bytes for various sizes of SEW are shown below:</p>
+<div class="figure align-center">
+<img alt="Organiation of elements in Lanes with variation in SEW" src="_images/elem_lane_organization.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>For the first case (SEW = 64) the arrangement is simple and obvious. Each 64-bit element is mapped into a different lane and the bytes of each element are contiguously stored within the lane. For the second case (SEW = 32) elements 0, 1, 2 and 3 are mapped in the lower half (32-bit) of lane 0 through lane 3. Element 4 then gets mapped to the upper half of lane 0 and so on until element 7 gets mapped to the upper half of lane 3. It is important to note that the least significant byte of  elements 0, 1, 2 and 3 for both cases of SEW are mapped to the same byte location within the corresponding lanes.  This process continues to be repeated for the remaining values of SEW.</p>
+<p>In the case of SEW = 16 and 8 there is an additional thing to observe. When we start from lane 0 to start assigning the first byte of a new element we also observe which half of the lane (upper or lower 32-bits) the last element in the lane was assigned.  For the new assignment we pick the half which was not used the previous time. So in the case of SEW = 16  when it comes time to assigning element 8 it is placed in Lane 0’s byte position 2 (lower half of lane 0) and not byte position 6 (upper half of lane 0)  since the last element assigned in lane 0, element 4, was assigned in byte position 4 (upper half of lane 0).</p>
+<p>The above arrangement of elements and their corresponding bytes in the VRF is constrained within the lane. Data outside the lane i.e in memory, is arranged with bytes packed simply from the least-significant byte to the most-significant byte in increasing memory addresses. As such when data is moved between the memory and the VRF bytes get shuffled/de-shuffled to match the appropriate required ordering. These two ordering of elements and bytes is referred to as Lane Organization of bytes and Natural Packing of bytes.</p>
+<p><strong>Lane Organization:</strong> The manner in which elements and their corresponding bytes are stored in the VRF as discussed above.</p>
+<p><strong>Natural Packing:</strong> The elements and bytes packed in memory with the least-significant bye to the most-significant byte in increasing memory addresses.</p>
+</div>
+<div class="section" id="shuffle-logic">
+<h3>Shuffle Logic<a class="headerlink" href="#shuffle-logic" title="Permalink to this headline">¶</a></h3>
+<p>As shown in the figure below the shuffle/de-shuffle logic sits between the memory subsystem and the VRF. When data is moved from memory to the VRF (via a load instruction) it gets shuffled from the Natural Packing arrangement to the Lane Organization arrangement. Similarly When data is moved from VRF to memory (via a store instruction) it gets de-shuffled from the  Lane Organization to the Natural Packing arrangement.</p>
+<div class="figure align-center">
+<a class="reference internal image-reference" href="_images/shuffle_interconnect.png"><img alt="Shuffle logic interconnect between memory and VRF" src="_images/shuffle_interconnect.png" style="width: 312.8px; height: 104.80000000000001px;" /></a>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>The mapping of bytes from Natural Packing to Lane Organization for 4 lanes and SEW of 16 is shown in the figure below.  For element 0, byte indices are the same, 0 &amp; 1, for Natural Packing and Lane Organization. Element 1 is mapped  to byte index 8 in the VRF with its two bytes in indices 8 &amp; 9 in the VRF. Shuffle logic takes the sequential bytes from memory as shown in the natural Packing row and converts it into the Lane Organization arrangement as shown in the Lane Organization row. De-shuffle logic does the opposite.</p>
+<div class="figure align-center">
+<img alt="Shuffle logic for SEW=16" src="_images/shuffling_logic_SEW16.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>The arrangement of the shuffle/de-shuffle logic is a function of the vector’s SEW. This means that when a vector is moved from Memory to the VRF bytes get shuffled based on the value of the vector’s SEW. Similarly when a vector is moved from the VRF to memory bytes get reshuffled based on the vector’s SEW. As such in addition to the bytes of a vector being stored in the VRF it also gets tagged, in hardware, with its SEW. This tag is subsequently used by the de-shuffle logic when data is moved back to memory.</p>
+<p>The following figure shows how bytes are stored in memory (Natural Packing) and how they get stored in the VRF (Lane Organization.) Thirty two bytes named A0 to H3 are stored sequentially in memory locations 0 through 31 (natural ordering)  as shown in the Memory image below. Subsequently these 32 bytes are stored in the VRF using different SEW values as shown in the VRF image below.</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image17.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>For example Lane 1’s byte location 11 can have memory bytes C3, B3, E3 or G1 for SEW values 64, 32, 16 and 8 respectively . So the shuffle multiplexor for this byte is as follows:</p>
+<p>Lane 1 [ location 11]  =  (SEW = = 64) ? C3 : ((SEW == 32) ? B3 : ((SEW == 16) ? E3 : G1))</p>
+<p>Similarly the deshuffle multiplexor for memory location 11 is as follows:</p>
+<p>Memory [location 11] =   (SEW = = 64) ? Lane 1[location 11)] :  ((SEW == 32) ? Lane 2[location 19] : ((SEW == 16) ? Lane 1[location 13] : Lane 3[location 25]))</p>
+<p>These byte multiplexores get replicated in both directions for every byte coming from memory into the VRF and every byte going out from the VRF to memory.</p>
+</div>
+<div class="section" id="reshuffle-logic">
+<h3>Reshuffle Logic<a class="headerlink" href="#reshuffle-logic" title="Permalink to this headline">¶</a></h3>
+<p>In a multi-lane architecture with the VRF distributed across multiple lanes, certain peculiar issues arise for instructions which cross lane boundaries (e.g., the narrowing and widening instruction). These issues get further exacerbated because of the architectural requirement of supporting the tail-undisturbed policy i.e., the requirement that elements past the vector length should not be modified. When an instruction writes to a vector register, vd, that was originally encoded with a EEW different than the new EEW and the old contents of vd are not fully overwritten then the old contents of vd get corrupted and the tail undisturbed policy gets violated. To avoid this corruption of the tail elements the slide unit, which has access to all the lanes, performs a shuffling operation on the vector register. This shuffling operation is called reshuffle.</p>
+<p>Let us take the example of a simple vector unit with a 256bit (32B) wide vector register and four lanes with each lane being 64bit (8B) wide. Each lane has a single 256B SRAM bank configured as 32x64bit wide 1R1W port memory. As such each bank implements a ¼ of the VRF. The examples below are limited to SEW values of 16 and 32.</p>
+<p>Mapping of vector elements, in the SRAM, based on Natural Packing is shown below:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image15.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Mapping of vector elements, in the SRAM, based on Lane Organization is shown below:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image7.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Each lane has 8 bytes of the vector and the vector elements are mapped starting from Lane 0 all the way to Lane 3.
+For Natural Packing &amp; SEW = 32 Lane 0 contains elements 0 and 1, Lane 1 contains elements 2 and 3, Lane 2 contains elements 4 and 5 and Lane 3 contains elements 6 and 7. Similarly the mappings of the 16 elements for SEW = 16 are also shown. As such consecutive elements of the vector register are stored in consecutive lanes.
+For Lane Organization &amp; SEW = 32 Lane 0 contains elements 0 and 4, Lane 1 contains elements 1 and 5, Lane 2 contains elements 2 and 6 and Lane 3 contains elements 3 and 7. Similarly the mappings of the 16 elements for SEW = 16 are also shown. Here consecutive elements are stored in different lanes.
+The following memory image is used in the examples below. Consecutive vector bytes are stored in consecutive locations in memory.</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image19.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Bytes are numbered from A0 through Q”3 with A0 stored in memory location 0 and Q”3 stored in memory location 191.
+In the case of Natural Packing data movement between memory and the VRF is fairly straight forward and there is a one to one mapping between the memory image and the VRF image of individual bytes. In case of Lane organization, as discussed above,  the mapping is not straight forward and requires a shuffle/deshuffle unit between the memory and the VRF to get the data bytes in the correct position.</p>
+<div class="section" id="natural-packing">
+<h4>Natural Packing<a class="headerlink" href="#natural-packing" title="Permalink to this headline">¶</a></h4>
+<p>Let us take an example of a Narrowing instruction with source SEW = 32 and LMUL = 2 and a destination EEW = 16 and the corresponding EMUL = 1. Taking the case of Natural Packing we look at the case with the destination register initially having a SEW of 32. Below the source registers are identified as Vs and Vs+1. The destination register before the instruction is executed is identified as Vd’:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image22.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Since the source SEW = 32 there are 8 elements in each source register for a total of 16 elements and 64 bytes. These 64 bytes A0 – Q3 are loaded from memory locations 0 to 63 into the source registers.</p>
+<p>The vector length, vl, for the narrowing instruction is set to 11. This means that only the first 11 elements of the destination register, Vd, should be modified and the remaining 5 elements of the destination register are part of the tail and should not be disturbed. Taking the Vector Narrowing Integer Right Shift Instruction as an example:</p>
+<p>Narrowing Instruction (source 4 bytes, shift amount = 0) -&gt; Destination 2 bytes</p>
+<p>e.g., for the first source element A3A2A1A0:</p>
+<p>Narrowing Instruction (A3A2A1A0, 0) -&gt; A”1A”0</p>
+<p>with A”0 being the least significant byte and A”1 being the most significant byte of the resulting 16bit result. Note the bytes are identified with a (“) but they are the source’s least significant bytes A0 and A1.</p>
+<p>Vd” shows the content of Vd’ after the instruction is executed:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image12.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Result bytes move across lanes, requiring the use of the Slide unit. The destination bytes (from Vd’) that should remain unchanged get preserved and transferred to Vd” as shown above in a straightforward manner.</p>
+<p>The case with Vd’ having a SEW of 16 before the execution of the instruction is shown below:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image8.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Once again destination bytes that should be unchanged (from F’2 to H’3) get preserved and transferred to Vd”. Hence if bytes are mapped in the VRF according to Natural Packing order the tail undisturbed policy gets implemented without requiring any special logic.</p>
+</div>
+<div class="section" id="lane-organiation">
+<h4>Lane Organiation<a class="headerlink" href="#lane-organiation" title="Permalink to this headline">¶</a></h4>
+<p>Now let’s look at the case of Lane Organization of the VRF. The source registers and the destination register (before instruction execution) are shown below. This is the case where initially the destination register has a vector with SEW = 32 stored in it. As can seen in this organization consecutive bytes from memory are not stored in consecutive lanes because the elements are not stored in consecutive lanes.</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image20.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>After the Vector Narrowing Integer Right Shift Instruction is executed Vd changes as shown below from Vd’ to Vd”:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image23.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>The last 5 tail elements are unchanged between Vd’ and Vd”. However because these elements are not stored in consecutive locations they are now distributed across all four lanes. Now de-shuffling these (using the de-shuffle multiplexor discussed earlier) so that it can be written to memory in the correct order we get:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image4.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Comparing this with Natural ordering we see that two of the tail elements are totally incorrect and two are in the wrong position (only one element is correct and in the correct position.) These discrepancies can be resolved by shuffling the contents of the destination register before the instruction is executed and ordering the elements of the destination in line with the new destination EEW. This step is called reshuffle and is shown in the figure below. For ease of understanding this reshuffle process is shown as a two-step process below.</p>
+<blockquote>
+<div><p>Step 1: the destination is de-shuffled  into natural ordering based on its existing EEW</p>
+<p>Step 2: the result of step 1 is shuffled  into lane organization based on the new EEW.</p>
+</div></blockquote>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image10.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Now using this new reshuffled Vd’ and executing the narrowing instruction we get:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image18.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Now de-shuffling these so that it can be written to memory in the correct order we get:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image9.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Comparing this with Natural Ordering we see that the correct tail elements are preserved in the correct locations. Hence by reshuffling the destination register so that it’s SEW matches the EEW of the instruction’s destination register EEW we can correctly implement the tail undisturbed policy.  As is obvious from the figure above if the SEW &amp; EEW match then reshuffling is not required.</p>
+</div>
+</div>
+<div class="section" id="mapping-of-vector-elements-to-the-memory-banks">
+<h3>Mapping of Vector Elements to the Memory Banks<a class="headerlink" href="#mapping-of-vector-elements-to-the-memory-banks" title="Permalink to this headline">¶</a></h3>
+<p>Continuing on let’s look at the mapping between the elements of an individual vector register and the VRF memory banks. As an example with VLEN=4096, SEW=64 and 4 lanes, we have a total 64 elements which are numbered from 0 to 63. In Natural packing vector representation V0 is shown below with Vn[x] indicating the xth 64-bit element of the vector register Vn:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image11.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>In the VRF the individual vector registers and their corresponding elements are distributed across 4 lanes. Continuing with our example elements of vector register V0 are distributed across lanes and memory banks as shown below:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image5.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>For 4 lanes a 4096-bit (512B) vector requires 64 memory banks with each bank being 64-bits wide. Since there are 4 lanes with each lane having 8 banks there are a total of 32 banks in a single “row” location. Hence two memory row locations are needed for the full vector. This can be seen in the figure above, for SEW = 64, where memory row locations 0 and 1 are occupied  by V0, locations 2 &amp; 3 are occupied by V1 all the way to locations 62 &amp; 63 being occupied by V31.</p>
+<p>Taking another example for the same vector size of 4096-bit but with a SEW = 32 we have a total 128 elements which are numbered from 0 to 127. In Natural packing vector representation V0 is shown below:</p>
+<div class="figure align-center">
+<a class="reference internal image-reference" href="_images/image24.png"><img alt="Image Here" src="_images/image24.png" style="width: 476.0px; height: 32.3px;" /></a>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Once again, as discussed above, each vector register occupies two rows of memory banks. Since the element width is 32-bits and the bank width is 64-bits each bank contains two elements. This is shown in the figure below:</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image26.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+</div>
+<div class="section" id="vector-register-file-and-operand-delivery-interconnect">
+<h3>Vector Register File and Operand-Delivery Interconnect<a class="headerlink" href="#vector-register-file-and-operand-delivery-interconnect" title="Permalink to this headline">¶</a></h3>
+<p>Each lane of the vector processor has 3 functional units:</p>
+<ol class="arabic simple">
+<li><p>Vector Floating-point Unit (VFPU)</p></li>
+<li><p>Vector Multiplier (VMUL)</p></li>
+<li><p>Vector Integer ALU (VALU)</p></li>
+</ol>
+<p>A Vector Load &amp; Store unit (VLSU) for Lector Load and Store instructions and a Slide unit (SLDU) for Vector Slide instructions are present as separate units outside the lanes.</p>
+<p>The datapath of each functional unit matches the VRF memory bank width of 64-bits.</p>
+<p>The lanes receive requests from the main Ara sequencer to execute vector instructions. The request contains the following information about the vector instruction:</p>
+<ul class="simple">
+<li><p>Vector and scalar source operand register numbers</p></li>
+<li><p>Mask register number</p></li>
+<li><p>Vector &amp; scalar destination register numbers</p></li>
+<li><p>Effective length multiplier</p></li>
+<li><p>Value of the vector length</p></li>
+<li><p>Value of the vector start</p></li>
+<li><p>Vector type (values from the vtype CSR register)</p></li>
+<li><p>etc.</p></li>
+</ul>
+<p>Every lane has its own sequencer (Lane Sequencer) that receives the requests and interfaces with the Operand Requester and the functional units.</p>
+<p>The Operand Requester along with the Vector Register File Arbiter requests individual operand elements from the VRF banks. The target functional unit information etc., is also passed along with the request. The fetched operands from the VRF, for the functional units, are then passed to the Operand Queues. As discussed earlier the multi-banked organization of the VRF leads to banking conflicts when several functional units try to access operands in the same bank. Each lane is provided with a set of operand queues between the VRF and the functional units to absorb delays due to such banking conflicts. Similarly writing results back into the VRF can also cause bank conflicts. Write Back  queues present at the output of each functional unit are provided to absorb any delays due to banking conflicts. All the queues are 64-bits wide.</p>
+<p>There are nine Operand Queues connecting the VRF banks to the functional units:</p>
+<ul class="simple">
+<li><p>Three are dedicated to the VFPU/VMUL.</p></li>
+<li><p>Two are dedicated to the VALU.</p></li>
+<li><p>Two are dedicated to the Mask Unit.</p></li>
+<li><p>One is dedicated to the VLSU.</p></li>
+<li><p>One is dedicated to the SLDU.</p></li>
+</ul>
+<p>Operand Queues send their operands to the functional units as the operands become available and the functional unit is ready for the next operation.</p>
+<p>There are six Write Back Queues one from each of the Functional units. Each Functional unit has a Write Back queue inside the unit.</p>
+<div class="figure align-center">
+<img alt="Image Here" src="_images/image16.png" />
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="vlsu.html" class="btn btn-neutral float-left" title="Vector Load Store Unit" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dispatcher_sequencer.html" class="btn btn-neutral float-right" title="Dispatcher and Sequencer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
