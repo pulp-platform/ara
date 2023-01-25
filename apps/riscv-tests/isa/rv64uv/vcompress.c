@@ -11,10 +11,10 @@ void TEST_CASE1() {
   VSET(4, e64, m1);
   VLOAD_64(v4, 1, 2, 3, 4);
   VLOAD_64(v0, 12, 0, 0, 0);
-  CLEAR(v2);
+  VCLEAR(v2);
   __asm__ volatile("vcompress.vm v2, v4, v0");
-  DEBUG_64(v2);
-  VEC_CMP_64(1, v2, 3, 4, 0, 0);
+  // DEBUG_64(v2);
+  VCMP_I64(1, v2, 3, 4, 0, 0);
 }
 
 int main(void) {
