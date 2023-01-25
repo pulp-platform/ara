@@ -56,24 +56,14 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::beat_upper_byte;
   import axi_pkg::BURST_INCR;
 
-  ////////////////////////////////
-  // Changed the automatic variables for debugging purposes, need to be fixed.
-  ///////////////////////////////
-   shortint unsigned                       lower_byte, upper_byte;
-   vlen_t vrf_valid_bytes, vinsn_valid_bytes, axi_valid_bytes;
-   logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
-   int                                      vrf_seq_byte, vrf_byte, vrf_lane, vrf_offset;
+  // Vector Segment Loads
+  logic [2:0] starting_field_q, starting_field_d, current_field_q, current_field_d;
+  int         vrf_seq_byte, vrf_byte, vrf_lane, vrf_offset;
+  int         field, field_byte;
+  int         consumed_bytes;
+  shortint    eq_idx;
+  byte        byte_curr_field, eq_idx_n; //to make automatic
 
-   logic [2:0]                              starting_field_q, starting_field_d, current_field_q, current_field_d;
-
-   int                                      field_byte;
-   int                                      field;
-
-   shortint                                 eq_idx;
-
-   int                                      consumed_bytes, axi_byte;
-
-   byte                                     byte_curr_field, eq_idx_n; //to make automatic
   ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
@@ -81,9 +71,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   // We store a certain number of in-flight vector instructions
   localparam VInsnQueueDepth = VlduInsnQueueDepth;
 
-
   struct packed {
     pe_req_t [VInsnQueueDepth-1:0] vinsn;
+
     // Each instruction can be in one of the three execution phases.
     // - Being accepted (i.e., it is being stored for future execution in this
     //   vector functional unit).
@@ -110,10 +100,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Do we have a vector instruction ready to be issued?
   pe_req_t vinsn_issue_d, vinsn_issue_q;
-  logic [7:0][idx_width(DataWidth*NrLanes/8):0] eq_idx_q, eq_idx_d;
   logic    vinsn_issue_valid;
+  logic [7:0][idx_width(DataWidth*NrLanes/8):0] eq_idx_q, eq_idx_d;
   assign vinsn_issue_d     = vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt];
-
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
   // Do we have a vector instruction with results being committed?
@@ -148,10 +137,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   } payload_t;
 
   // Result queue
-  payload_t [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_d, result_queue_q;
-  logic     [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_valid_d, result_queue_valid_q;
+  payload_t [ResultQueueDepth-1:0][NrLanes-1:0]                   result_queue_d, result_queue_q;
+  logic     [ResultQueueDepth-1:0][NrLanes-1:0]                   result_queue_valid_d, result_queue_valid_q;
   logic     [ResultQueueDepth-1:0][idx_width(AxiDataWidth/8)+1:0] result_queue_consumed_bytes_d, result_queue_consumed_bytes_q;
-
   // We need two pointers in the result queue. One pointer to
   // indicate with `payload_t` we are currently writing into (write_pnt),
   // and one pointer to indicate which `payload_t` we are currently
@@ -174,18 +162,18 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_result_queue_ff
     if (!rst_ni) begin
-      result_queue_q           <= '0;
-      result_queue_valid_q     <= '0;
-      result_queue_write_pnt_q <= '0;
-      result_queue_read_pnt_q  <= '0;
-      result_queue_cnt_q       <= '0;
+      result_queue_q                <= '0;
+      result_queue_valid_q          <= '0;
+      result_queue_write_pnt_q      <= '0;
+      result_queue_read_pnt_q       <= '0;
+      result_queue_cnt_q            <= '0;
       result_queue_consumed_bytes_q <= '0;
     end else begin
-      result_queue_q           <= result_queue_d;
-      result_queue_valid_q     <= result_queue_valid_d;
-      result_queue_write_pnt_q <= result_queue_write_pnt_d;
-      result_queue_read_pnt_q  <= result_queue_read_pnt_d;
-      result_queue_cnt_q       <= result_queue_cnt_d;
+      result_queue_q                <= result_queue_d;
+      result_queue_valid_q          <= result_queue_valid_d;
+      result_queue_write_pnt_q      <= result_queue_write_pnt_d;
+      result_queue_read_pnt_q       <= result_queue_read_pnt_d;
+      result_queue_cnt_q            <= result_queue_cnt_d;
       result_queue_consumed_bytes_q <= result_queue_consumed_bytes_d;
     end
   end
@@ -226,13 +214,12 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     r_pnt_d   = r_pnt_q;
     vrf_pnt_d = vrf_pnt_q;
 
-    result_queue_d           = result_queue_q;
-    result_queue_valid_d     = result_queue_valid_q;
-    result_queue_read_pnt_d  = result_queue_read_pnt_q;
-    result_queue_write_pnt_d = result_queue_write_pnt_q;
-    result_queue_cnt_d       = result_queue_cnt_q;
+    result_queue_d                = result_queue_q;
+    result_queue_valid_d          = result_queue_valid_q;
+    result_queue_read_pnt_d       = result_queue_read_pnt_q;
+    result_queue_write_pnt_d      = result_queue_write_pnt_q;
+    result_queue_cnt_d            = result_queue_cnt_q;
     result_queue_consumed_bytes_d = result_queue_consumed_bytes_q;
-
 
     result_final_gnt_d = result_final_gnt_q;
 
@@ -247,14 +234,14 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     load_complete_o         = 1'b0;
 
     // Inform the main sequencer if we are idle
-    pe_req_ready_o = !vinsn_queue_full;
+    pe_req_ready_o   = !vinsn_queue_full;
 
     starting_field_d = starting_field_q;
-    current_field_d = current_field_q;
-    eq_idx_d = eq_idx_q;
+    current_field_d  = current_field_q;
+    eq_idx_d         = eq_idx_q;
 
-    // segmented loads
-    consumed_bytes = '0;
+    // vector segment loads
+    consumed_bytes   = '0;
 
     ////////////////////////////////////
     //  Read data from the R channel  //
@@ -268,9 +255,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         && axi_addrgen_req_i.is_load && !result_queue_full) begin
       // Bytes valid in the current R beat
       // If non-unit strided load, we do not progress within the beat
-       lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
+      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
         axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
-       upper_byte = beat_upper_byte(axi_addrgen_req_i.addr,
+      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr,
         axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, len_q);
 
       // Is there a vector instruction ready to be issued?
@@ -278,14 +265,14 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_i)) && !(|vinsn_issue_q.nf)) begin
         // Account for the issued bytes
         // How many bytes are valid in this VRF word
-        vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
+        automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
         // How many bytes are valid in this instruction
-        vinsn_valid_bytes = issue_cnt_q - vrf_pnt_q;
+        automatic vlen_t vinsn_valid_bytes = issue_cnt_q - vrf_pnt_q;
         // How many bytes are valid in this AXI word
-        axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
+        automatic vlen_t axi_valid_bytes   = upper_byte - lower_byte - r_pnt_q + 1;
 
         // How many bytes are we committing?
-
+        automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
         valid_bytes = issue_cnt_q < NrLanes * 8     ? vinsn_valid_bytes : vrf_valid_bytes;
         valid_bytes = valid_bytes < axi_valid_bytes ? valid_bytes       : axi_valid_bytes;
 
@@ -293,7 +280,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
 
         // Copy data from the R channel into the result queue
-        for (axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
+        for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
           // Is this byte a valid byte in the R beat?
           if (axi_byte >= lower_byte + r_pnt_q && axi_byte <= upper_byte) begin
             // Map axi_byte to the corresponding byte in the VRF word (sequential)
@@ -323,73 +310,67 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             (((vinsn_issue_q.vl - (issue_cnt_q >> int'(vinsn_issue_q.vtype.vsew))) / NrLanes) >>
             (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         end
-      end else if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_i))) begin   // if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_i)) !vinsn_issue_q.nf)
+      end else if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_i))) begin
 
-          field_byte = 0;
-          field      = starting_field_q;
-
-          eq_idx = eq_idx_q[current_field_q];
-
+        field_byte = 0;
+        field      = starting_field_q;
+        eq_idx     = eq_idx_q[current_field_q];
 
         // Copy data from the R channel into the result queue
-        for (axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
-
+        for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin
           // Is this byte a valid byte in the R beat?
           if (axi_byte >= lower_byte && axi_byte <= upper_byte && field == current_field_q) begin
-             consumed_bytes++;
-             // Map axi_byte to the corresponding byte in the VRF word (sequential)
-             // vrf_seq_byte = axi_byte - lower_byte + eq_idx;
-             vrf_seq_byte = eq_idx;
-             eq_idx = (eq_idx < (NrLanes*8) - 1) ? eq_idx + 1 : 0;
+            consumed_bytes++;
+            // Map axi_byte to the corresponding byte in the VRF word (sequential)
+            // vrf_seq_byte = axi_byte - lower_byte + eq_idx;
+            vrf_seq_byte = eq_idx;
+            eq_idx = (eq_idx < (NrLanes*8) - 1) ? eq_idx + 1 : 0;
 
-             // And then shuffle it
-             vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
+            // And then shuffle it
+            vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
             if (vrf_seq_byte < NrLanes * 8) begin //Maybe add another check for nf > 0
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
-               vrf_lane   = vrf_byte >> 3;
-               vrf_offset = vrf_byte[2:0];
+              vrf_lane   = vrf_byte >> 3;
+              vrf_offset = vrf_byte[2:0];
 
               // Copy data and byte strobe
               result_queue_d[result_queue_write_pnt_q][vrf_lane].wdata[8*vrf_offset +: 8] =
                 axi_r_i.data[8*axi_byte +: 8];
               result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset] =
                 vinsn_issue_q.vm || mask_i[vrf_lane][vrf_offset];
-            end // if (vrf_seq_byte < issue_cnt_q && vrf_seq_byte < NrLanes * 8)
-          end // if (axi_byte >= lower_byte && axi_byte <= upper_byte && field == starting_field_q)
+            end
+          end
            field_byte++;
            if (field_byte == (1 << int'(vinsn_issue_q.vtype.vsew))) begin
               field_byte = 0;
-              //field = (field < vinsn_issue_q.nf) ? field + 1 : 0;
               if (field == vinsn_issue_q.nf) begin
-                 field = 0;
+                field = 0;
               end else begin
-                 field++;
+                field++;
               end
-
            end
-        end // for (int axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++)
+        end
 
-         //byte byte_curr_field, eq_idx_n; //to make automatic
-         byte_curr_field = (element_per_beat(NrLanes, vinsn_issue_q.vtype.vsew, vinsn_issue_q.nf) << int'(vinsn_issue_q.vtype.vsew));
-         byte_curr_field = ( (current_field_q - starting_field_q) < seg_reminder(NrLanes, vinsn_issue_q.vtype.vsew, vinsn_issue_q.nf)) ?
+        //byte byte_curr_field, eq_idx_n; //to make automatic
+        byte_curr_field = (element_per_beat(NrLanes, vinsn_issue_q.vtype.vsew, vinsn_issue_q.nf) << int'(vinsn_issue_q.vtype.vsew));
+        byte_curr_field = ((current_field_q - starting_field_q) < seg_reminder(NrLanes, vinsn_issue_q.vtype.vsew, vinsn_issue_q.nf)) ?
                            byte_curr_field + (1<< int'(vinsn_issue_q.vtype.vsew)) :
                            byte_curr_field;
-         eq_idx_n = (eq_idx_q[current_field_q] + byte_curr_field < NrLanes * 8) ?
+        eq_idx_n = (eq_idx_q[current_field_q] + byte_curr_field < NrLanes * 8) ?
                     eq_idx_q[current_field_q] + byte_curr_field :
                     eq_idx_q[current_field_q] + byte_curr_field - NrLanes * 8;
 
-         eq_idx_d[current_field_q] = eq_idx_n;
+        eq_idx_d[current_field_q] = eq_idx_n;
 
-         current_field_d = current_field_q + 1'b1;
+        current_field_d = current_field_q + 1'b1;
 
-         result_queue_consumed_bytes_d[result_queue_write_pnt_q] = byte_curr_field;
-         //issue_cnt_d = issue_cnt_q - byte_curr_field;
+        result_queue_consumed_bytes_d[result_queue_write_pnt_q] = byte_curr_field;
 
-         if (!(current_field_d < (vinsn_issue_q.nf + 1'b1)))begin
-            current_field_d = '0;
-         end
+        if (!(current_field_d < (vinsn_issue_q.nf + 1'b1)))begin
+          current_field_d = '0;
+        end
 
         // Initialize id and addr fields of the result queue requests
         for (int lane = 0; lane < NrLanes; lane++) begin
@@ -399,136 +380,131 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         end
 
-         r_pnt_d = r_pnt_q + byte_curr_field;
-      end // if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_i)))
+        r_pnt_d = r_pnt_q + byte_curr_field;
+      end
 
 
-     if (vinsn_issue_q.nf) begin
+      if (vinsn_issue_q.nf) begin
         // We have a word ready to be sent to the lanes
         if (issue_cnt_d) begin
-           // Increment result queue pointers and counters
-           result_queue_cnt_d += 1;
-           if (result_queue_write_pnt_q == ResultQueueDepth-1)
-             result_queue_write_pnt_d = '0;
-           else
-             result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+          // Increment result queue pointers and counters
+          result_queue_cnt_d += 1;
+          if (result_queue_write_pnt_q == ResultQueueDepth-1)
+            result_queue_write_pnt_d = '0;
+          else
+            result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
 
-           // Trigger the request signal
-           for (int lane = 0; lane < NrLanes; lane++) begin
-              result_queue_valid_d[result_queue_write_pnt_q][lane] = |result_queue_d[result_queue_write_pnt_q][lane].be;
-           end
-           // Acknowledge the mask operands
-           mask_ready_o = !vinsn_issue_q.vm;
+          // Trigger the request signal
+          for (int lane = 0; lane < NrLanes; lane++) begin
+            result_queue_valid_d[result_queue_write_pnt_q][lane] = |result_queue_d[result_queue_write_pnt_q][lane].be;
+          end
+          // Acknowledge the mask operands
+          mask_ready_o = !vinsn_issue_q.vm;
 
-           // Account for the results that were issued
-           //issue_cnt_d = issue_cnt_q - (r_pnt_d - r_pnt_q);
-
-           if (issue_cnt_q == (r_pnt_d - r_pnt_q))
-             issue_cnt_d = '0;
-        end // if (r_pnt_d != r_pnt_q)
+          // Account for the results that were issued
+          if (issue_cnt_q == (r_pnt_d - r_pnt_q))
+            issue_cnt_d = '0;
+        end
 
 
         // Consumed all valid bytes in this R beat
         if (r_pnt_d == upper_byte - lower_byte + 1 || issue_cnt_d == '0) begin
-           // Request another beat
-           axi_r_ready_o = 1'b1;
-           r_pnt_d       = '0;
+          // Request another beat
+          axi_r_ready_o = 1'b1;
+          r_pnt_d       = '0;
 
-           issue_cnt_d = issue_cnt_q - (NrLanes * 4);
-           // Account for the beat we consumed
-           len_d = len_q + 1'b1;
+          issue_cnt_d = issue_cnt_q - (NrLanes * 4);
+          // Account for the beat we consumed
+          len_d = len_q + 1'b1;
 
-           starting_field_d = starting_field_q + seg_reminder(NrLanes, vinsn_issue_q.vtype.vsew, vinsn_issue_q.nf);
-           starting_field_d = !(starting_field_d < vinsn_issue_q.nf + 1'b1) ? starting_field_d - (vinsn_issue_q.nf + 1'b1) : starting_field_d;
-           current_field_d  = starting_field_d;
+          starting_field_d = starting_field_q + seg_reminder(NrLanes, vinsn_issue_q.vtype.vsew, vinsn_issue_q.nf);
+          starting_field_d = !(starting_field_d < vinsn_issue_q.nf + 1'b1) ? starting_field_d - (vinsn_issue_q.nf + 1'b1) : starting_field_d;
+          current_field_d  = starting_field_d;
         end
 
         // Consumed all beats from this burst
         if ($unsigned(len_d) == axi_pkg::len_t'($unsigned(axi_addrgen_req_i.len) + 1)) begin
-           // Reset AXI pointers
-           len_d                   = '0;
-           r_pnt_d                 = '0;
-           // Wait for another AXI request
-           axi_addrgen_req_ready_o = 1'b1;
+          // Reset AXI pointers
+          len_d   = '0;
+          r_pnt_d = '0;
+
+          // Wait for another AXI request
+          axi_addrgen_req_ready_o = 1'b1;
         end
 
         // Finished issuing results
         if (vinsn_issue_valid && issue_cnt_d == '0) begin
-           // Increment vector instruction queue pointers and counters
-           vinsn_queue_d.issue_cnt -= 1;
-           if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
-             vinsn_queue_d.issue_pnt = '0;
-           else
-             vinsn_queue_d.issue_pnt += 1;
+          // Increment vector instruction queue pointers and counters
+          vinsn_queue_d.issue_cnt -= 1;
+          if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+            vinsn_queue_d.issue_pnt = '0;
+          else
+            vinsn_queue_d.issue_pnt += 1;
 
-           // Prepare for the next vector instruction
-           if (vinsn_queue_d.issue_cnt != 0)
-             issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
-                           int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
-      end
-     end else if (!vinsn_issue_q.nf) begin // if (vinsn_issue_valid && issue_cnt_d == '0)
+          // Prepare for the next vector instruction
+          if (vinsn_queue_d.issue_cnt != 0)
+            issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
+                          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
+        end
+      end else if (!vinsn_issue_q.nf) begin
         // We have a word ready to be sent to the lanes
         if (vrf_pnt_d == NrLanes*8 || vrf_pnt_d == issue_cnt_q) begin
-           // Increment result queue pointers and counters
-           result_queue_cnt_d += 1;
-           if (result_queue_write_pnt_q == ResultQueueDepth-1)
-             result_queue_write_pnt_d = '0;
-           else
-             result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+          // Increment result queue pointers and counters
+          result_queue_cnt_d += 1;
+          if (result_queue_write_pnt_q == ResultQueueDepth-1)
+            result_queue_write_pnt_d = '0;
+          else
+            result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
 
-           // Trigger the request signal
-           result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
+          // Trigger the request signal
+          result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
-           // Acknowledge the mask operands
-           mask_ready_o = !vinsn_issue_q.vm;
+          // Acknowledge the mask operands
+          mask_ready_o = !vinsn_issue_q.vm;
 
-           result_queue_consumed_bytes_d[result_queue_write_pnt_q] = vrf_pnt_d;
-           // Reset the pointer in the VRF word
-           vrf_pnt_d   = '0;
-           // Account for the results that were issued
-           issue_cnt_d = issue_cnt_q - NrLanes * 8;
-           if (issue_cnt_q < NrLanes * 8)
-             issue_cnt_d = '0;
+          result_queue_consumed_bytes_d[result_queue_write_pnt_q] = vrf_pnt_d;
+          // Reset the pointer in the VRF word
+          vrf_pnt_d   = '0;
+          // Account for the results that were issued
+          issue_cnt_d = issue_cnt_q - NrLanes * 8;
+          if (issue_cnt_q < NrLanes * 8)
+            issue_cnt_d = '0;
         end
 
         // Consumed all valid bytes in this R beat
         if (r_pnt_d == upper_byte - lower_byte + 1 || issue_cnt_d == '0) begin
-           // Request another beat
-           axi_r_ready_o = 1'b1;
-           r_pnt_d       = '0;
-           // Account for the beat we consumed
-           len_d         = len_q + 1;
+          // Request another beat
+          axi_r_ready_o = 1'b1;
+          r_pnt_d       = '0;
+          // Account for the beat we consumed
+          len_d         = len_q + 1;
         end
 
         // Consumed all beats from this burst
         if ($unsigned(len_d) == axi_pkg::len_t'($unsigned(axi_addrgen_req_i.len) + 1)) begin
-           // Reset AXI pointers
-           len_d                   = '0;
-           r_pnt_d                 = '0;
-           // Wait for another AXI request
-           axi_addrgen_req_ready_o = 1'b1;
+          // Reset AXI pointers
+          len_d                   = '0;
+          r_pnt_d                 = '0;
+          // Wait for another AXI request
+          axi_addrgen_req_ready_o = 1'b1;
         end
 
         // Finished issuing results
         if (vinsn_issue_valid && issue_cnt_d == '0) begin
-           // Increment vector instruction queue pointers and counters
-           vinsn_queue_d.issue_cnt -= 1;
-           if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
-             vinsn_queue_d.issue_pnt = '0;
-           else
-             vinsn_queue_d.issue_pnt += 1;
+          // Increment vector instruction queue pointers and counters
+          vinsn_queue_d.issue_cnt -= 1;
+          if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+            vinsn_queue_d.issue_pnt = '0;
+          else
+            vinsn_queue_d.issue_pnt += 1;
 
-           // Prepare for the next vector instruction
-           if (vinsn_queue_d.issue_cnt != 0)
-             issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
-                           int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
+          // Prepare for the next vector instruction
+          if (vinsn_queue_d.issue_cnt != 0)
+            issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl <<
+                          int'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
+        end
       end
-
-     end // if (vinsn_issue_q.nf)
-    end // if (axi_r_valid_i && axi_addrgen_req_valid_i...
-
-
-
+    end
 
     //////////////////////////////////
     //  Write results into the VRF  //
@@ -570,10 +546,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_cnt_d -= 1;
 
         // Decrement the counter of remaining vector elements waiting to be written
-        //commit_cnt_d = commit_cnt_q - NrLanes * 8;
          commit_cnt_d = commit_cnt_q - result_queue_consumed_bytes_q[result_queue_read_pnt_q];
-//        if (commit_cnt_q < (NrLanes * 8))
-//          commit_cnt_d = '0;
       end
 
     // Finished committing the results of a vector instruction
@@ -604,24 +577,20 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
       pe_req_i.vfu == VFU_LoadUnit) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
-//      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].nf = 2'd2;
-//      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vl = pe_req_i.vl * 2'b11;
-
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0)
-        issue_cnt_d = (pe_req_i.vl/* * 2'b11*/) << int'(pe_req_i.vtype.vsew);
+        issue_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
       if (vinsn_queue_d.commit_cnt == '0)
-        commit_cnt_d = (pe_req_i.vl/* * 2'b11*/) << int'(pe_req_i.vtype.vsew);
+        commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
 
       // Bump pointers and counters of the vector instruction queue
       vinsn_queue_d.accept_pnt += 1;
       vinsn_queue_d.issue_cnt += 1;
       vinsn_queue_d.commit_cnt += 1;
     end
-  end//: p_vldu
-
+  end: p_vldu
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
