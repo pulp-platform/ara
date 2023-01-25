@@ -482,7 +482,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Mask generation
       unique case (vinsn_issue.op) inside
         [VMSBF:VID] : begin
-          if ((masku_operand_a_valid_i && vinsn_issue.op inside {[VMSBF:VID]}) || (alu_operand_a_valid_i && vinsn_issue.op inside {[VRGATHER:VCOMPRESS]})) begin
+          if (masku_operand_a_valid_i && vinsn_issue.op inside {[VMSBF:VID]}) begin
             unique case (vinsn_issue.vtype.vsew)
               EW8 : for (int i = 0; i < (DataWidth * NrLanes)/8; i++)
                       mask [(i*8) +: 8]   = {8{bit_enable_mask [i+(((DataWidth * NrLanes)/8)*(iteration_count_d-1))]}};
@@ -1290,7 +1290,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 element_cnt += 1;
 
               result_queue_d[result_queue_write_pnt_q][lane] = '{
-                wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result_vm_seq_f[(lane*64)+:63],
+                wdata: (vinsn_commit.op == VCOMPRESS) ? result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result_vm_seq_f[(lane*64)+:63] :
+                        result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result_vm_seq_ff[(lane*64)+:63],
                 be   : '1,
                 addr : vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)),
                 id   : vinsn_issue.id
@@ -1313,10 +1314,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
 
-    /////////////////////////////////////
-    //// Masked + Permute Instruction ///
-    /////////////////////////////////////
-    if (vinsn_commit_valid && vinsn_commit.op inside {[VMSBF:VCOMPRESS]}) begin
+    ////////////////////////////
+    //// Masked Instruction ////
+    ////////////////////////////
+    if (vinsn_commit_valid && vinsn_commit.op inside {[VMSBF:VID]}) begin
       if (masku_operand_a_valid_i && (masku_operand_m_valid_i || vinsn_issue.vm)) begin
         // if this is the last beat, commit the result to the scalar_result queue
         commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));

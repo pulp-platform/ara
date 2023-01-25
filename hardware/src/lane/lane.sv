@@ -122,7 +122,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   end
 
-  // Getting operand for vmsbf, vmsif, vmsof, viota and vid mask instructions + vrgather instruction
+  // Getting operands for permute instruction
   assign alu_operand_a_o         = (vfu_operation.use_scalar_op) ? scalar_op : alu_operand[0];
   assign alu_operand_a_valid_o   = (vfu_operation.use_scalar_op) ? (vfu_operation.use_scalar_op & scalar_op) : alu_operand_valid[0];
   assign alu_operand_b_o         = alu_operand[1];
