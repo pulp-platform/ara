@@ -3,6 +3,7 @@
 # Matrix sizes
 def_args_imatmul     = "128 128 128"
 def_args_fmatmul     = "128 128 128"
+def_args_fmatmul_mc  = "128 128 128"
 # Matrix size, filter size
 def_args_iconv2d     = "112 7"
 def_args_fconv2d     = "112 7"
