@@ -8,10 +8,11 @@ package:
     - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
 
 dependencies:
-  axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.29.1 }
-  common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1 }
-  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: acc_port   }
-  tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.1  }
+  axi:                  { git: "https://github.com/pulp-platform/axi.git",                  version: 0.29.1 }
+  common_cells:         { git: "https://github.com/pulp-platform/common_cells.git",         version: 1.22.1 }
+  cva6:                 { git: "https://github.com/pulp-platform/cva6.git",                 rev: acc_port   }
+  tech_cells_generic:   { git: "https://github.com/pulp-platform/tech_cells_generic.git",   version: 0.2.1  }
+  cluster_interconnect: { git: "https://github.com/pulp-platform/cluster_interconnect.git", version: 1.2.1  }
 
 workspace:
   checkout_dir: "hardware/deps"
