@@ -152,19 +152,19 @@ module ara_tb;
               // This requires the sections to be aligned to AxiWideByteOffset,
               // otherwise, they can be over-written.
               dut.i_ara_soc.gen_l2_banks[bank].l2_mem.init_val[(address - DRAMAddrBase + (w << L2ByteOffset)) >> L2ByteOffset] = mem_row;
-            end else
+            end else begin
               $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
+            end
           end
         end
+      end else begin
+        $error("Expecting a firmware to run, none was provided!");
+        $finish;
       end
-    end else begin
-      $error("Expecting a firmware to run, none was provided!");
-      $finish;
     end : dram_init
   end : gen_l2_banks_init
 
 `ifndef TARGET_GATESIM
-
   /*************************
    *  PRINT STORED VALUES  *
    *************************/

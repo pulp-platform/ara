@@ -148,6 +148,11 @@ module ara_testharness #(
   // The counter can start only if it's enabled. When it's disabled, it will go on counting until
   // the last vector instruciton is over.
   logic cnt_en_mask;
+
+  // Additional signals for multicore system
+  logic [NrAraSystems-1:0] ara_idle, fifo_empty, valid_insn;
+  logic                    full_ara_idle, full_fifo_empty, any_valid_insn;
+
 `ifndef IDEAL_DISPATCHER
   assign cnt_en_mask = i_ara_soc.hw_cnt_en_o[0];
 `else
@@ -159,16 +164,12 @@ module ara_testharness #(
     // If disabled
     if (!runtime_cnt_en_q)
       // Start only if the software allowed the enable and we detect the first V instruction
-      runtime_cnt_en_d = i_ara_soc.i_system.i_ara.acc_req_valid_i & cnt_en_mask;
+      runtime_cnt_en_d = any_valid_insn & cnt_en_mask;
     // If enabled
     if (runtime_cnt_en_q)
       // Stop counting only if the software disabled the counter and Ara returned idle
-      runtime_cnt_en_d = cnt_en_mask | ~i_ara_soc.i_system.i_ara.ara_idle;
+      runtime_cnt_en_d = cnt_en_mask | ~ara_idle;
   end
-
-  // Additional signals for multicore system
-  logic [NrAraSystems-1:0] ara_idle, fifo_empty, valid_insn;
-  logic                    full_ara_idle, full_fifo_empty, any_valid_insn;
 
   // Vector runtime counter
   always_comb begin
@@ -197,9 +198,6 @@ module ara_testharness #(
     // Update only when all the cores are idle and there are no new valid instructions
     full_ara_idle   = &ara_idle;
     full_fifo_empty = &fifo_empty;
-
-    // Once the counter starts, it will go on forever
-    runtime_cnt_en_d = any_valid_insn | runtime_cnt_en_q;
 
     // Assert the update flag upon a new valid vector instruction
     if (!runtime_to_be_updated_q && any_valid_insn) begin
