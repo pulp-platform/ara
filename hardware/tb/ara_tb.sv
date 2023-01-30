@@ -35,9 +35,9 @@ module ara_tb;
   localparam NrLanes = 0;
   `endif
 
-  localparam ClockPeriod  = 1ns;
+  localparam ClockPeriod  = 2ns;
   // Axi response delay [ps]
-  localparam int unsigned AxiRespDelay = 200;
+  localparam int unsigned AxiRespDelay = 100;
 
   localparam AxiAddrWidth      = 64;
   localparam AxiWideDataWidth  = 64 * NrLanes / 2;
@@ -165,6 +165,7 @@ module ara_tb;
   end : gen_l2_banks_init
 
 `ifndef TARGET_GATESIM
+
   /*************************
    *  PRINT STORED VALUES  *
    *************************/
@@ -192,10 +193,10 @@ module ara_tb;
     $display("Dump results on %s", OutResultFile);
   end
 
-  assign ara_w       = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_req.w.data;
-  assign ara_w_strb  = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_req.w.strb;
-  assign ara_w_valid = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_req.w_valid;
-  assign ara_w_ready = dut.i_ara_soc.i_system.i_ara.i_vlsu.axi_resp.w_ready;
+  assign ara_w       = dut.i_ara_soc.gen_ara_systems[0].i_system.i_ara.i_vlsu.axi_req.w.data;
+  assign ara_w_strb  = dut.i_ara_soc.gen_ara_systems[0].i_system.i_ara.i_vlsu.axi_req.w.strb;
+  assign ara_w_valid = dut.i_ara_soc.gen_ara_systems[0].i_system.i_ara.i_vlsu.axi_req.w_valid;
+  assign ara_w_ready = dut.i_ara_soc.gen_ara_systems[0].i_system.i_ara.i_vlsu.axi_resp.w_ready;
 
 `ifndef IDEAL_DISPATCHER
   assign dump_en_mask = dut.i_ara_soc.hw_cnt_en_o[0];
