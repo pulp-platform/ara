@@ -57,8 +57,8 @@ SECTIONS {
   event_trigger          = 0xD0000018;
   hw_cnt_en_reg          = 0xD0000020;
 
-  sync_reg_wait          = 0xD0000018;
-  sync_reg_go            = 0xD0000020;
+  sync_reg_wait          = 0xD0000028;
+  sync_reg_go            = 0xD0000030;
 
   fake_uart              = 0xC0000000;
 }
