@@ -29,17 +29,17 @@ ifndef config
 		config := default
 	endif
 endif
-ifndef mc_config
-	ifdef ARA_MC_CONFIGURATION
-		mc_config := $(ARA_MC_CONFIGURATION)
+ifndef config_mc
+	ifdef ARA_CONFIGURATION_MC
+		config_mc := $(ARA_CONFIGURATION_MC)
 	else
-		mc_config := mc_default
+		config_mc := mc_default
 	endif
 endif
 
 # Include configuration
 include $(ARA_DIR)/config/$(config).mk
-include $(ARA_DIR)/config/$(mc_config).mk
+include $(ARA_DIR)/config/$(config_mc).mk
 
 INSTALL_DIR             ?= $(ARA_DIR)/install
 GCC_INSTALL_DIR         ?= $(INSTALL_DIR)/riscv-gcc
