@@ -300,10 +300,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // Only for power-saving purposes
   // The pipeline inside the multipliers is passive and always enabled
   // Masking the inputs is almost necessary since their logic cone is huge
-  elen_t vmul_simd_op_a_gated, vmul_simd_op_b_gated, vmul_simd_op_c_gated;
-  strb_t vmul_simd_mask_gated;
-  ara_op_e vmul_simd_op_gated;
-  logic [3:0] vmul_simd_in_valid_gated;
+  elen_t vmul_simd_op_a_q, vmul_simd_op_b_q, vmul_simd_op_c_q;
+  strb_t vmul_simd_mask_q;
+  ara_op_e vmul_simd_op_q;
+  elen_t [3:0] vmul_simd_op_a_q_gated;
+  elen_t [3:0] vmul_simd_op_b_q_gated;
+  elen_t [3:0] vmul_simd_op_c_q_gated;
+  strb_t [3:0] vmul_simd_mask_q_gated;
+  ara_op_e [3:0] vmul_simd_op_q_gated;
+  logic [3:0] vmul_simd_in_valid_q;
   logic gate_ff_en, gate_ff_clr;
 
   // Enable if the next stage is ready
@@ -312,18 +317,81 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   assign gate_ff_clr = vmul_simd_in_ready[vinsn_processing_q.vtype.vsew] &
                       ~vmul_simd_in_valid[vinsn_issue_q.vtype.vsew];
 
-  `FFLSR(vmul_simd_op_a_gated, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
+  `FFLSR(vmul_simd_op_a_q, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
     gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_op_b_gated, mfpu_operand_i[1],
+  `FFLSR(vmul_simd_op_b_q, mfpu_operand_i[1],
     gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_op_c_gated, mfpu_operand_i[2],
+  `FFLSR(vmul_simd_op_c_q, mfpu_operand_i[2],
     gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_mask_gated, mask_i,
+  `FFLSR(vmul_simd_mask_q, mask_i,
     gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_op_gated, vinsn_issue_q.op,
+  `FFLSR(vmul_simd_op_q, vinsn_issue_q.op,
     gate_ff_en, ara_op_e'('0), clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_in_valid_gated, vmul_simd_in_valid,
+  `FFLSR(vmul_simd_in_valid_q, vmul_simd_in_valid,
     gate_ff_en, '0, clk_i, gate_ff_clr);
+
+  for (genvar i = 0; i < 4; i++) begin
+`ifdef GF22
+    power_gating_gf22 #(
+`else
+    power_gating_generic #(
+`endif
+      .T        (elen_t),
+      .NO_GLITCH(1'b0  )
+    ) i_simd_mul_gating_op_a (
+      .in_i (vmul_simd_op_a_q         ),
+      .en_i (vmul_simd_in_valid_q[i]  ),
+      .out_o(vmul_simd_op_a_q_gated[i])
+    );
+`ifdef GF22
+    power_gating_gf22 #(
+`else
+    power_gating_generic #(
+`endif
+      .T(elen_t),
+      .NO_GLITCH(1'b0  )
+    ) i_simd_mul_gating_op_b (
+      .in_i  (vmul_simd_op_b_q         ),
+      .en_i  (vmul_simd_in_valid_q[i]  ),
+      .out_o (vmul_simd_op_b_q_gated[i])
+    );
+`ifdef GF22
+    power_gating_gf22 #(
+`else
+    power_gating_generic #(
+`endif
+      .T(elen_t),
+      .NO_GLITCH(1'b0  )
+    ) i_simd_mul_gating_op_c (
+      .in_i  (vmul_simd_op_c_q         ),
+      .en_i  (vmul_simd_in_valid_q[i]  ),
+      .out_o (vmul_simd_op_c_q_gated[i])
+    );
+`ifdef GF22
+    power_gating_gf22 #(
+`else
+    power_gating_generic #(
+`endif
+      .T(strb_t),
+      .NO_GLITCH(1'b0  )
+    ) i_simd_mul_gating_mask (
+      .in_i  (vmul_simd_mask_q         ),
+      .en_i  (vmul_simd_in_valid_q[i]  ),
+      .out_o (vmul_simd_mask_q_gated[i])
+    );
+`ifdef GF22
+    power_gating_gf22 #(
+`else
+    power_gating_generic #(
+`endif
+      .T(ara_op_e),
+      .NO_GLITCH(1'b0  )
+    ) i_simd_mul_gating_op (
+      .in_i  (vmul_simd_op_q         ),
+      .en_i  (vmul_simd_in_valid_q[i]),
+      .out_o (vmul_simd_op_q_gated[i])
+    );
+  end
 
   simd_mul #(
     .FixPtSupport(FixPtSupport     ),
@@ -332,16 +400,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   ) i_simd_mul_ew64 (
     .clk_i      (clk_i                         ),
     .rst_ni     (rst_ni                        ),
-    .operand_a_i(vmul_simd_op_a_gated          ),
-    .operand_b_i(vmul_simd_op_b_gated          ),
-    .operand_c_i(vmul_simd_op_c_gated          ),
-    .mask_i     (vmul_simd_mask_gated          ),
-    .op_i       (vmul_simd_op_gated            ),
+    .operand_a_i(vmul_simd_op_a_q_gated[EW64]  ),
+    .operand_b_i(vmul_simd_op_b_q_gated[EW64]  ),
+    .operand_c_i(vmul_simd_op_c_q_gated[EW64]  ),
+    .mask_i     (vmul_simd_mask_q_gated[EW64]  ),
+    .op_i       (vmul_simd_op_q_gated[EW64]    ),
     .vxsat_o    (mfpu_vxsat[EW64]              ),
     .vxrm_i     (mfpu_vxrm_i                   ),
     .result_o   (vmul_simd_result[EW64]        ),
     .mask_o     (vmul_simd_mask[EW64]          ),
-    .valid_i    (vmul_simd_in_valid_gated[EW64]),
+    .valid_i    (vmul_simd_in_valid_q[EW64]    ),
     .ready_o    (vmul_simd_in_ready[EW64]      ),
     .ready_i    (vmul_simd_out_ready[EW64]     ),
     .valid_o    (vmul_simd_out_valid[EW64]     )
@@ -354,16 +422,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   ) i_simd_mul_ew32 (
     .clk_i      (clk_i                         ),
     .rst_ni     (rst_ni                        ),
-    .operand_a_i(vmul_simd_op_a_gated          ),
-    .operand_b_i(vmul_simd_op_b_gated          ),
-    .operand_c_i(vmul_simd_op_c_gated          ),
-    .mask_i     (vmul_simd_mask_gated          ),
-    .op_i       (vmul_simd_op_gated            ),
+    .operand_a_i(vmul_simd_op_a_q_gated[EW32]  ),
+    .operand_b_i(vmul_simd_op_b_q_gated[EW32]  ),
+    .operand_c_i(vmul_simd_op_c_q_gated[EW32]  ),
+    .mask_i     (vmul_simd_mask_q_gated[EW32]  ),
+    .op_i       (vmul_simd_op_q_gated[EW32]    ),
     .vxsat_o    (mfpu_vxsat[EW32]              ),
     .vxrm_i     (mfpu_vxrm_i                   ),
     .result_o   (vmul_simd_result[EW32]        ),
     .mask_o     (vmul_simd_mask[EW32]          ),
-    .valid_i    (vmul_simd_in_valid_gated[EW32]),
+    .valid_i    (vmul_simd_in_valid_q[EW32]    ),
     .ready_o    (vmul_simd_in_ready[EW32]      ),
     .ready_i    (vmul_simd_out_ready[EW32]     ),
     .valid_o    (vmul_simd_out_valid[EW32]     )
@@ -376,16 +444,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   ) i_simd_mul_ew16 (
     .clk_i      (clk_i                         ),
     .rst_ni     (rst_ni                        ),
-    .operand_a_i(vmul_simd_op_a_gated          ),
-    .operand_b_i(vmul_simd_op_b_gated          ),
-    .operand_c_i(vmul_simd_op_c_gated          ),
-    .mask_i     (vmul_simd_mask_gated          ),
-    .op_i       (vmul_simd_op_gated            ),
+    .operand_a_i(vmul_simd_op_a_q_gated[EW16]  ),
+    .operand_b_i(vmul_simd_op_b_q_gated[EW16]  ),
+    .operand_c_i(vmul_simd_op_c_q_gated[EW16]  ),
+    .mask_i     (vmul_simd_mask_q_gated[EW16]  ),
+    .op_i       (vmul_simd_op_q_gated[EW16]    ),
     .result_o   (vmul_simd_result[EW16]        ),
     .vxsat_o    (mfpu_vxsat[EW16]              ),
     .vxrm_i     (mfpu_vxrm_i                   ),
     .mask_o     (vmul_simd_mask[EW16]          ),
-    .valid_i    (vmul_simd_in_valid_gated[EW16]),
+    .valid_i    (vmul_simd_in_valid_q[EW16]    ),
     .ready_o    (vmul_simd_in_ready[EW16]      ),
     .ready_i    (vmul_simd_out_ready[EW16]     ),
     .valid_o    (vmul_simd_out_valid[EW16]     )
@@ -398,16 +466,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   ) i_simd_mul_ew8 (
     .clk_i      (clk_i                         ),
     .rst_ni     (rst_ni                        ),
-    .operand_a_i(vmul_simd_op_a_gated          ),
-    .operand_b_i(vmul_simd_op_b_gated          ),
-    .operand_c_i(vmul_simd_op_c_gated          ),
-    .mask_i     (vmul_simd_mask_gated          ),
-    .op_i       (vmul_simd_op_gated            ),
+    .operand_a_i(vmul_simd_op_a_q_gated[EW8]   ),
+    .operand_b_i(vmul_simd_op_b_q_gated[EW8]   ),
+    .operand_c_i(vmul_simd_op_c_q_gated[EW8]   ),
+    .mask_i     (vmul_simd_mask_q_gated[EW8]   ),
+    .op_i       (vmul_simd_op_q_gated[EW8]     ),
     .vxsat_o    (mfpu_vxsat[EW8]               ),
     .vxrm_i     (mfpu_vxrm_i                   ),
     .result_o   (vmul_simd_result[EW8]         ),
     .mask_o     (vmul_simd_mask[EW8]           ),
-    .valid_i    (vmul_simd_in_valid_gated[EW8] ),
+    .valid_i    (vmul_simd_in_valid_q[EW8]     ),
     .ready_o    (vmul_simd_in_ready[EW8]       ),
     .ready_i    (vmul_simd_out_ready[EW8]      ),
     .valid_o    (vmul_simd_out_valid[EW8]      )

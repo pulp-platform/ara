@@ -40,6 +40,7 @@ sources:
     - hardware/src/lane/simd_div.sv
     - hardware/src/lane/simd_mul.sv
     - hardware/src/lane/vector_regfile.sv
+    - hardware/src/lane/power_gating_generic.sv
     - hardware/src/masku/masku.sv
     - hardware/src/sldu/sldu.sv
     - hardware/src/vlsu/addrgen.sv
