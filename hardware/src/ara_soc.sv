@@ -412,7 +412,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     tc_sram #(
       .DataWidth(L2BankWidth   ),
       .NumWords (L2BankNumWords),
-      .NumPorts (1             )
+      .NumPorts (1             ),
+      .SimInit  ("random"      )
     ) l2_mem (
       .clk_i  (clk_i        ),
       .rst_ni (rst_ni       ),
@@ -575,7 +576,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .dram_base_addr_o     (/* Unused */                ),
     .dram_end_addr_o      (/* Unused */                ),
     .exit_o               (exit_o                      ),
-    .event_trigger_o      (event_trigger)
+    .event_trigger_o      (event_trigger               ),
+    .sync_reg_wait_o      (/* Unused */                ),
+    .sync_reg_go_o        (/* Unused */                )
   );
 
   axi_dw_converter #(
