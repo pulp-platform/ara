@@ -23,8 +23,8 @@
 	url = https://github.com/pulp-platform/common_verification.git
 [submodule "hardware/deps/cva6"]
 	path = hardware/deps/cva6
-	url = https://github.com/Shafi10x/cva6.git
-	branch = round_towards_odd
+	url = https://github.com/pulp-platform/cva6.git
+	branch = acc_port
 [submodule "toolchain/newlib"]
 	path = toolchain/newlib
 	url = https://sourceware.org/git/newlib-cygwin.git
