@@ -1099,7 +1099,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           vfpu_ex_flag          = vfpu_ex_flag_fn;
         end
       end else begin
-        // NO vfrec7, vfrsqrt7, rod support
+        // NO vfrec7, vfrsqrt7
         vfpu_processed_result = vfpu_result;
         vfpu_ex_flag          = vfpu_ex_flag_fn;
       end

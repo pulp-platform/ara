@@ -12,7 +12,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
-    // External support for vfrec7, vfrsqrt7, rounding-toward-odd
+    // External support for vfrec7, vfrsqrt7
     parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter fixpt_support_e        FixPtSupport = FixedPointEnable
@@ -3029,8 +3029,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       if (ara_req_valid_d && (ara_req_d.op inside {[VSADDU:VNCLIPU], VSMUL}) && (FixPtSupport == FixedPointDisable))
         illegal_insn = 1'b1;
 
-      // Check that we have we have vfrec7, vfrsqrt7 and rod support
-      if (ara_req_valid_d && (ara_req_d.op inside {VFREC7, VFRSQRT7, VFNCVTRODFF}) && (FPExtSupport == FPExtSupportDisable))
+      // Check that we have we have vfrec7, vfrsqrt7
+      if (ara_req_valid_d && (ara_req_d.op inside {VFREC7, VFRSQRT7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
 
       // Check if we need to reshuffle our vector registers involved in the operation
