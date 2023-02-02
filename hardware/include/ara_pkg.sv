@@ -1047,7 +1047,7 @@ package ara_pkg;
   localparam logic [31:0] E32_mInf = 32'hff800000;
 
   localparam logic [30:0] E32_Max  = 31'h7f7fffff;  // Max Number without sign
-  localparam logic [30:0] E32_Inf  = 31'hff800000;  // Inf without sign
+  localparam logic [30:0] E32_Inf  = 31'h7f800000;  // Inf without sign
 
   localparam logic [63:0] E64_NaN  = 64'h7ff8000000000000;
   localparam logic [63:0] E64_pInf = 64'h7ff0000000000000;
