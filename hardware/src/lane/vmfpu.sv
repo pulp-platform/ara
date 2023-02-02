@@ -1943,7 +1943,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     // Send result information to the VRF
     // Use mfpu_result_gnt register instead of mfpu_state, because the state could be changed
-    if (mfpu_state_q inside {NO_REDUCTION, MFPU_WAIT} || ((lane_id_i == '0) && commit_cnt_d == '0))
+    if (mfpu_state_q inside {NO_REDUCTION, MFPU_WAIT})
       mfpu_result_req_o = (result_queue_valid_q[result_queue_read_pnt_q] && !result_queue_q[result_queue_read_pnt_q].mask) ? 1'b1 : 1'b0;
     else
       mfpu_result_req_o = 1'b0;
