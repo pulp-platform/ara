@@ -263,7 +263,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               issue_cnt_d = vinsn_issue_q.vl << int'(vinsn_issue_q.vtype.vsew);
 
               // Trim vector elements which are not touched by the slide unit
-              issue_cnt_d -= vinsn_issue_q.stride;
+              issue_cnt_d -= vinsn_issue_q.stride[$bits(issue_cnt_d)-1:0];
 
               // Start writing at the middle of the destination vector
               vrf_pnt_d = vinsn_issue_q.stride >> $clog2(8*NrLanes);
@@ -314,8 +314,12 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
         // During a reduction (vinsn_issue_q.vfu == VFU_Alu/VFU_MFPU) don't wait for mask bits
-        if ((&sldu_operand_valid_i || (((vinsn_issue_q.stride >> vinsn_issue_q.vtype.vsew) >= vinsn_issue_q.vl) && (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD))) &&
-          (sldu_operand_target_fu_i[0] == ALU_SLDU || is_issue_reduction) && !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_i)))
+        if ((&sldu_operand_valid_i ||
+           ((((vinsn_issue_q.stride[$bits(vinsn_issue_q.vl)-1:0] >> vinsn_issue_q.vtype.vsew) >= vinsn_issue_q.vl) || |vinsn_issue_q.stride[ELEN-1:$bits(vinsn_issue_q.vl)]) &&
+           (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD))) &&
+           (sldu_operand_target_fu_i[0] == ALU_SLDU || is_issue_reduction) &&
+           !result_queue_full &&
+           (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_i)))
         begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
           automatic int in_byte_count = NrLanes * 8 - in_pnt_q;
@@ -342,7 +346,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] =
                 sldu_operand_i[src_lane][8*src_lane_offset +: 8];
               result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset] =
-                vinsn_issue_q.vm || mask_i[tgt_lane][tgt_lane_offset];
+                vinsn_issue_q.vm | mask_i[tgt_lane][tgt_lane_offset];
             end
           end
 
@@ -486,7 +490,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata =
                 sldu_operand_i[lane];
               result_queue_d[result_queue_write_pnt_q][tgt_lane].be =
-                vinsn_issue_q.vm || mask_i[tgt_lane];
+                {8{vinsn_issue_q.vm}} | mask_i[tgt_lane];
               result_queue_valid_d[result_queue_write_pnt_q][tgt_lane] = '1;
 
               issue_cnt_d = issue_cnt_q - 1;
@@ -527,7 +531,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Received a grant from the VRF (slide) or from the FUs (reduction).
       // Deactivate the request, but do not bump the pointers for now.
-      if (((vinsn_commit.vfu inside {VFU_Alu, VFU_MFpu} && sldu_red_valid_o) || sldu_result_req_o[lane]) && sldu_result_gnt_i[lane]) begin
+      if (((vinsn_commit.vfu inside {VFU_Alu, VFU_MFpu} && sldu_red_valid_o[lane]) || sldu_result_req_o[lane]) && sldu_result_gnt_i[lane]) begin
         result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
         result_queue_d[result_queue_read_pnt_q][lane]       = '0;
         // Reset the final gnt vector since we are now waiting for another final gnt
@@ -577,7 +581,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Trim vector elements which are not written by the slide unit
         if (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op == VSLIDEUP)
-          commit_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride;
+          commit_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride[$bits(commit_cnt_d)-1:0];
       end
     end
 
@@ -606,7 +610,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         // Trim vector elements which are not written by the slide unit
         // VSLIDE1UP always writes at least 1 element
         if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op)
-          issue_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride;
+          issue_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride[$bits(issue_cnt_d)-1:0];
       end
       if (vinsn_queue_d.commit_cnt == '0) begin
         commit_cnt_d = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN}
@@ -615,7 +619,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         // Trim vector elements which are not written by the slide unit
         // VSLIDE1UP always writes at least 1 element
         if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op) begin
-          commit_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride;
+          commit_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride[$bits(commit_cnt_d)-1:0];
         end
       end
 
