@@ -2931,7 +2931,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     else acc_resp_o.error                                 = 1'b1;
                   end
                   riscv::CSR_VXRM: begin
-                    vxrm_d            = vxrm_q | vlen_t'(acc_req_i.rs1[1:0]);
+                    vxrm_d            = vxrm_q | vxrm_t'(acc_req_i.rs1[1:0]);
                     acc_resp_o.result = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
