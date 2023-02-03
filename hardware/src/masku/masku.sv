@@ -685,6 +685,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     result_scalar_d       = result_scalar_o;
     result_scalar_valid_d = result_scalar_valid_o;
 
+    // Balance the incoming valid
+    unbalanced_a = (|commit_cnt_q[idx_width(NrLanes)-1:0] != 1'b0) ? 1'b1 : 1'b0;
+    last_incoming_a = ((commit_cnt_q - vrf_pnt_q) < NrLanes) ? 1'b1 : 1'b0;
+    fake_a_valid[0] = 1'b0;
+    for (int unsigned i = 1; i < NrLanes; i++)
+      if (i >= {1'b0, commit_cnt_q[idx_width(NrLanes)-1:0]})
+        fake_a_valid[i] = last_incoming_a & unbalanced_a;
+      else
+        fake_a_valid = 1'b0;
+
     /////////////////////
     //  Mask Operands  //
     /////////////////////
@@ -767,7 +777,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid && vd_scalar(vinsn_issue.op)) begin
-      if (&masku_operand_a_valid_i) begin
+      if (&(masku_operand_a_valid_i | fake_a_valid) && (&masku_operand_m_valid_i || vinsn_issue.vm)) begin
 
         masku_operand_a_ready_o = masku_operand_a_valid_i;
 
@@ -779,11 +789,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Acknowledge the operands, also triggers another beat if necessary
         if (!vinsn_issue.vm) masku_operand_m_ready_o = '1;
 
-        // Adding the popcount and vfirst_count from all streams of operands
-        if (&masku_operand_a_valid_i) begin
-          popcount_d     = popcount_q + popcount;
-          vfirst_count_d = vfirst_count_q + vfirst_count;
-        end
+        popcount_d     = popcount_q + popcount;
+        vfirst_count_d = vfirst_count_q + vfirst_count;
 
         // if this is the last beat, commit the result to the scalar_result queue
         if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes))) begin
@@ -800,15 +807,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////////
     //  Write results to the lanes  //
     //////////////////////////////////
-
-    unbalanced_a = (|commit_cnt_q[idx_width(NrLanes)-1:0] != 1'b0) ? 1'b1 : 1'b0;
-    last_incoming_a = ((commit_cnt_q - vrf_pnt_q) < NrLanes) ? 1'b1 : 1'b0;
-    fake_a_valid[0] = 1'b0;
-    for (int unsigned i = 1; i < NrLanes; i++)
-      if (i >= {1'b0, commit_cnt_q[idx_width(NrLanes)-1:0]})
-        fake_a_valid[i] = last_incoming_a & unbalanced_a;
-      else
-        fake_a_valid = 1'b0;
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid && !vd_scalar(vinsn_issue.op)) begin
