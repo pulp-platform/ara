@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Avoid handshaking wrong results in VMFPU
  - Fix eew reshuffle for mask logical operations
  - Fix eew reshuffle for `vmv.v.v` operations
+ - Remove timing loop between `vmfpu` and `operand_requesters`
 
 ### Added
 
