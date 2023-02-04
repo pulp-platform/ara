@@ -595,8 +595,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // Signal to indicate the state of the MFPU
   typedef enum logic [2:0] {
-    NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION,
-    WAIT_STATE, SIMD_REDUCTION, OSUM_REDUCTION, MFPU_WAIT
+    NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_TX,
+    INTER_LANES_REDUCTION_RX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION,
+    OSUM_REDUCTION, MFPU_WAIT
   } mfpu_state_e;
   mfpu_state_e mfpu_state_d, mfpu_state_q;
 
@@ -1609,7 +1610,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             first_result_op_valid_d = 1'b1;
 
             // Finished processing the micro-operations of this vector instruction
-            if (to_process_cnt_d == '0) mfpu_state_d = INTER_LANES_REDUCTION;
+            if (to_process_cnt_d == '0) mfpu_state_d = INTER_LANES_REDUCTION_TX;
           end else
             result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
 
@@ -1720,91 +1721,107 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           end
         end
       end
-      INTER_LANES_REDUCTION: begin
+      INTER_LANES_REDUCTION_TX: begin
         // If the workload is unbalanced and some lanes already have commit_cnt == '0,
         // delay the commit until we are over with the inter-lanes phase
         prevent_commit = 1'b1;
+        // If the lane is inactive, don't wait for a valid FPU output
         if (reduction_rx_cnt_q == '0) begin
+          mfpu_red_valid_o = 1'b1;
+          if (mfpu_red_ready_i) begin
+            mfpu_state_d = INTER_LANES_REDUCTION_RX;
+            // Clear the result queue
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
+          end
+        end else begin
           // Wait until the operand is valid in the result queue
           if (result_queue_valid_q[result_queue_write_pnt_q]) begin
             // This unit has finished processing data for this reduction instruction, send the partial result to the sliding unit
             mfpu_red_valid_o = 1'b1;
-            // We can simply delay the ready since we will immediately change state,
-            // so, no risk to re-sample alu_red_ready_i with side effects
-            if (mfpu_red_ready_q) begin
-              mfpu_state_d = WAIT_STATE;
-              // Disable the used operand
-              result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
+            if (mfpu_red_ready_i) begin
+              mfpu_state_d = INTER_LANES_REDUCTION_RX;
             end
           end
-        end else begin
-          // This unit should still process data for the inter-lane reduction.
-          // Ready to accept incoming operands from the slide unit.
-          mfpu_red_valid_o = red_hs_synch_q;
-
-          operand_a = sldu_operand_q;
-          operand_b = result_queue_q[result_queue_write_pnt_q].wdata;
-          operand_c = sldu_operand_q;
-          // operand_b comes from the result_queue, operand_c comes from other lanes throught the slide unit
-          operands_valid = result_queue_valid_q[result_queue_write_pnt_q] && sldu_mfpu_valid_q;
-
-          if (operands_valid) begin
-            // Issue the operation
-            vfpu_in_valid = 1'b1;
-            if (vfpu_in_ready) begin
-              // Acknowledge operand_c from the slide unit
-              sldu_mfpu_ready_d = 1'b1;
-              // Disable the used operand
-              result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
-              reduction_rx_cnt_d = reduction_rx_cnt_q - 1;
-            end
-          end
-        end
-
-        // Count the successful transaction with the SLDU
-        if (sldu_mfpu_valid_q && sldu_mfpu_ready_d) sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
-        if (mfpu_red_valid_o && mfpu_red_ready_i) red_hs_synch_d = 1'b0;
-        if (sldu_mfpu_valid_q && sldu_mfpu_ready_d) red_hs_synch_d = 1'b1;
-
-        // Accumulate the result
-        if (vfpu_out_valid && !result_queue_full) begin
-          result_queue_d[result_queue_write_pnt_q].wdata = vfpu_processed_result;
-          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
         end
       end
-      WAIT_STATE: begin
+      INTER_LANES_REDUCTION_RX: begin
         // If the workload is unbalanced and some lanes already have commit_cnt == '0,
         // delay the commit until we are over with the inter-lanes phase
         prevent_commit = 1'b1;
-        // Acknowledge the sliding unit even if it is not forwarding anything useful
-        sldu_mfpu_ready_d = sldu_mfpu_valid_q;
-        mfpu_red_valid_o  = red_hs_synch_q;
-        // If lane 0, wait for the inter-lane reduced operand, to perform a SIMD reduction
-        if (lane_id_i == '0) begin
-          if (sldu_mfpu_valid_q) begin
+        // This unit should either still participate to the reduction or
+        // just handshake the SLDU to sync with the still active lanes
+        if (sldu_mfpu_valid_q) begin
+          // If the lane is still active, issue the operands
+          if (reduction_rx_cnt_q != '0) begin
+            operand_a = sldu_operand_q;
+            operand_b = result_queue_q[result_queue_write_pnt_q].wdata;
+            operand_c = sldu_operand_q;
+            // Wait for operand_b to be valid
+            if (result_queue_valid_q[result_queue_write_pnt_q]) begin
+              // Issue the operation
+              vfpu_in_valid = 1'b1;
+              // Wait for the unit
+              if (vfpu_in_ready) begin
+                // Handshake the SLDU
+                sldu_mfpu_ready_d = 1'b1;
+                // Count the successful transaction with the SLDU
+                sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
+                // Send the result to the SLDU during next cycle
+                reduction_rx_cnt_d = reduction_rx_cnt_q - 1;
+                // Disable the used operand
+                result_queue_valid_d[result_queue_write_pnt_q] = 1'b0;
+              end
+            end
+          // If the lane is not active anymore, just sync with the other lanes
+          end else begin
+            // Handshake the SLDU
+            sldu_mfpu_ready_d = 1'b1;
+            // Count the successful transaction with the SLDU
+            sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
+            // Is this the last cycle for the INTER-LANES phase?
             if (sldu_transactions_cnt_q == 1) begin
-              result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
-              result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
-              unique case (vinsn_issue_q.vtype.vsew)
-                  EW8 : simd_red_cnt_max_d = 2'd3;
-                  EW16: simd_red_cnt_max_d = 2'd2;
-                  EW32: simd_red_cnt_max_d = 2'd1;
-                  EW64: simd_red_cnt_max_d = 2'd0;
-              endcase
-              simd_red_cnt_d = '0;
-              mfpu_state_d = SIMD_REDUCTION;
+              // Lane 0 is receiving an already processed result
+              // and needs to SIMD-reduce the result
+              if (lane_id_i == '0) begin
+                result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
+                result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+                unique case (vinsn_commit.vtype.vsew)
+                    EW8 : simd_red_cnt_max_d = 2'd3;
+                    EW16: simd_red_cnt_max_d = 2'd2;
+                    EW32: simd_red_cnt_max_d = 2'd1;
+                    EW64: simd_red_cnt_max_d = 2'd0;
+                endcase
+                simd_red_cnt_d = '0;
+                mfpu_state_d = SIMD_REDUCTION;
+              // The other lanes can commit
+              end else begin
+                // From this lane's perspective, the reduction is over
+                mfpu_state_d = LN0_REDUCTION_COMMIT;
+              end
+            // This lane is inactive, it can go to the TX state immediately
+            end else begin
+              mfpu_state_d = INTER_LANES_REDUCTION_TX;
             end
           end
-        end else if (sldu_transactions_cnt_q == '0) begin
-          // If not lane 0, wait for the completion of the reduction
-          mfpu_state_d = MFPU_WAIT;
-
-          // Give the done to the main sequencer
-          commit_cnt_d = '0;
         end
-        if (sldu_mfpu_valid_q && sldu_mfpu_ready_d) sldu_transactions_cnt_d = sldu_transactions_cnt_q - 1;
-        if (mfpu_red_valid_o && mfpu_red_ready_i) red_hs_synch_d = 1'b0;
-        if (sldu_mfpu_valid_q && sldu_mfpu_ready_d && sldu_transactions_cnt_d != '0) red_hs_synch_d = 1'b1;
+        // If we have a valid result from the FPU,
+        // write it in the queue and send it to the SLDU
+        if (vfpu_out_valid && !result_queue_full) begin
+          result_queue_d[result_queue_write_pnt_q].wdata = vfpu_processed_result;
+          result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+          mfpu_state_d = INTER_LANES_REDUCTION_TX;
+        end
+      end
+      LN0_REDUCTION_COMMIT: begin
+        // If the workload is unbalanced and some lanes already have commit_cnt == '0,
+        // delay the commit until we are over with the inter-lanes phase
+        prevent_commit = 1'b1;
+
+        // Wait for the completion of the reduction
+        mfpu_state_d = MFPU_WAIT;
+
+        // Give the done to the main sequencer
+        commit_cnt_d = '0;
       end
       SIMD_REDUCTION: begin // only lane 0 can enter this state
         unique case (simd_red_cnt_q)
