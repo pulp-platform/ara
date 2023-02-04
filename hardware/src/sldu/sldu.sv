@@ -49,6 +49,46 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   import cf_math_pkg::idx_width;
 
   ////////////////////////////////
+  //  Spill-reg from the lanes  //
+  ////////////////////////////////
+
+  elen_t [NrLanes-1:0] sldu_operand;
+  logic  [NrLanes-1:0] sldu_operand_valid;
+  logic  [NrLanes-1:0] sldu_operand_ready;
+  target_fu_e [NrLanes-1:0] sldu_operand_target_fu_d, sldu_operand_target_fu_q;
+
+  // Don't handshake if the operands target the addrgen!
+  logic [NrLanes-1:0] sldu_operand_valid_i_msk;
+  logic [NrLanes-1:0] sldu_operand_ready_q;
+
+  for (genvar l = 0; l < NrLanes; l++) begin
+    spill_register #(
+      .T(elen_t)
+    ) i_sldu_spill_register (
+      .clk_i  (clk_i                      ),
+      .rst_ni (rst_ni                     ),
+      .valid_i(sldu_operand_valid_i_msk[l]),
+      .ready_o(sldu_operand_ready_q[l]    ),
+      .data_i (sldu_operand_i[l]          ),
+      .valid_o(sldu_operand_valid[l]      ),
+      .ready_i(sldu_operand_ready[l]      ),
+      .data_o (sldu_operand[l]            )
+    );
+
+    assign sldu_operand_valid_i_msk[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU) ? sldu_operand_valid_i[l] : 1'b0;
+    assign sldu_operand_ready_o[l]     = (sldu_operand_target_fu_q[l] == ALU_SLDU) ? sldu_operand_ready_q[l] : 1'b0;
+  end
+
+  assign sldu_operand_target_fu_d = sldu_operand_target_fu_i;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni)
+      sldu_operand_target_fu_q <= target_fu_e'(1'b0);
+    else
+      sldu_operand_target_fu_q <= sldu_operand_target_fu_d;
+  end
+
+  ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
 
@@ -233,9 +273,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
 
     // We are not ready, by default
-    pe_resp              = '0;
-    mask_ready_o         = 1'b0;
-    sldu_operand_ready_o = '0;
+    pe_resp            = '0;
+    mask_ready_o       = 1'b0;
+    sldu_operand_ready = '0;
 
     red_stride_cnt_d = red_stride_cnt_q;
 
@@ -314,12 +354,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD: begin
         // Are we ready?
         // During a reduction (vinsn_issue_q.vfu == VFU_Alu/VFU_MFPU) don't wait for mask bits
-        if ((&sldu_operand_valid_i ||
-           ((((vinsn_issue_q.stride[$bits(vinsn_issue_q.vl)-1:0] >> vinsn_issue_q.vtype.vsew) >= vinsn_issue_q.vl) || |vinsn_issue_q.stride[ELEN-1:$bits(vinsn_issue_q.vl)]) &&
+        if ((&sldu_operand_valid ||
+           ((((vinsn_issue_q.stride[$bits(vinsn_issue_q.vl)-1:0] >> vinsn_issue_q.vtype.vsew) >= vinsn_issue_q.vl) ||
+           |vinsn_issue_q.stride[ELEN-1:$bits(vinsn_issue_q.vl)]) &&
            (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD))) &&
-           (sldu_operand_target_fu_i[0] == ALU_SLDU || is_issue_reduction) &&
-           !result_queue_full &&
-           (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_i)))
+           !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_i)))
         begin
           // How many bytes are we copying from the operand to the destination, in this cycle?
           automatic int in_byte_count = NrLanes * 8 - in_pnt_q;
@@ -344,7 +383,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               automatic int tgt_lane_offset = out_byte[2:0];
 
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata[8*tgt_lane_offset +: 8] =
-                sldu_operand_i[src_lane][8*src_lane_offset +: 8];
+                sldu_operand[src_lane][8*src_lane_offset +: 8];
               result_queue_d[result_queue_write_pnt_q][tgt_lane].be[tgt_lane_offset] =
                 vinsn_issue_q.vm | mask_i[tgt_lane][tgt_lane_offset];
             end
@@ -396,8 +435,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Read a full word from the VRF or finished the instruction
           if (in_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
             // Reset the pointer and ask for a new operand
-            in_pnt_d             = '0;
-            sldu_operand_ready_o = '1;
+            in_pnt_d           = '0;
+            sldu_operand_ready = '1;
             // Left-rotate the logarithmic counter. Hacky way to write it, but it's to
             // deal with the 2-lanes design without complaints from Verilator...
             // wide signal to please the tool
@@ -478,17 +517,17 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         // Don't wait for mask bits
         if (!result_queue_full) begin
           for (int lane = 0; lane < NrLanes; lane++) begin
-            if (sldu_operand_valid_i[lane]) begin
+            if (sldu_operand_valid[lane]) begin
               automatic int tgt_lane = (lane == NrLanes - 1) ? 0 : lane + 1;
               // Send result to lane 0
               if (issue_cnt_q == 1) tgt_lane = 0;
 
               // Acknowledge the received operand
-              sldu_operand_ready_o[lane] = 1'b1;
+              sldu_operand_ready[lane] = 1'b1;
 
               // Send result to next lane
               result_queue_d[result_queue_write_pnt_q][tgt_lane].wdata =
-                sldu_operand_i[lane];
+                sldu_operand[lane];
               result_queue_d[result_queue_write_pnt_q][tgt_lane].be =
                 {8{vinsn_issue_q.vm}} | mask_i[tgt_lane];
               result_queue_valid_d[result_queue_write_pnt_q][tgt_lane] = '1;
