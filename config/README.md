@@ -6,6 +6,7 @@ parameters such as the number of lanes in the design. This will automatically
 generate the correct software runtime and the correct hardware.
 
 Ara currently has four configurations, which differ on the amount of lanes:
+- `1_lane.mk`
 - `2_lanes.mk`
 - `4_lanes.mk`
 - `8_lanes.mk`

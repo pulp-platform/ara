@@ -167,7 +167,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: tc-llvm
     steps:
     - uses: actions/checkout@v3
@@ -198,7 +198,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-llvm", "tc-gcc", "tc-isa-sim"]
     steps:
     - uses: actions/checkout@v3
@@ -236,7 +236,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-verilator", "tc-isa-sim"]
     steps:
     - uses: actions/checkout@v3
@@ -286,7 +286,7 @@ jobs:
     strategy:
       matrix:
         app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align]
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v3
@@ -318,7 +318,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v3
@@ -450,7 +450,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v3
@@ -668,7 +668,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        ara_config: [1_lane, 2_lanes, 4_lanes, 8_lanes, 16_lanes]
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:

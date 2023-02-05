@@ -568,25 +568,25 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             unique case (vinsn_issue.vtype.vsew)
               EW8 : begin
                 for (int index = 1; index < (NrLanes*DataWidth)/8; index++) begin
-                  alu_result_vm [(index*8) +: 7] = (((NrLanes * DataWidth)/8) >= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*32);
+                  alu_result_vm [(index*8) +: 7] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*32);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
               EW16: begin
                 for (int index = 1; index < (NrLanes*DataWidth)/16; index++) begin
-                  alu_result_vm [(index*16) +: 15] = (((NrLanes * DataWidth)/8) >= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*16);
+                  alu_result_vm [(index*16) +: 15] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*16);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
               EW32: begin
                 for (int index = 1; index < (NrLanes*DataWidth)/32; index++) begin
-                  alu_result_vm [(index*32) +: 31] = (((NrLanes * DataWidth)/8) >= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*8);
+                  alu_result_vm [(index*32) +: 31] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*8);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
               EW64: begin
                 for (int index = 1; index < (NrLanes*DataWidth)/64; index++) begin
-                  alu_result_vm [(index*64) +: 63] = (((NrLanes * DataWidth)/8) >= vinsn_issue.vl) ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*4);
+                  alu_result_vm [(index*64) +: 63] = (iteration_count_d <= 1)/*(((NrLanes * DataWidth)/8) <= vinsn_issue.vl)*/ ? index : index-(((vinsn_issue.vl/((NrLanes * DataWidth)/8))-iteration_count_d)*4);
                   alu_result_vm_m = alu_result_vm & mask;
                 end
               end
@@ -782,12 +782,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Adding the popcount and vfirst_count from all streams of operands
         if (|masku_operand_a_valid_i) begin
           popcount_d     = popcount_q + popcount;
-          vfirst_count_d = vfirst_count_q + vfirst_count;
+          vfirst_count_d = (|vfirst_count_d) ? vfirst_count_q + 0 : (vfirst_empty) ? -1 : vfirst_count_q + vfirst_count;
         end
 
         // if this is the last beat, commit the result to the scalar_result queue
         if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes))) begin
-          result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : (vfirst_empty) ? -1 : vfirst_count_d;
+          result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : (&vfirst_count_d) ? -1 : vfirst_count_d;
           result_scalar_valid_d = '1;
 
           // Decrement the commit counter by the entire number of elements,
@@ -1100,8 +1100,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 1)) << $clog2(NrLanes << 1);
             end
             EW64: begin
-              read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes)) << $clog2(NrLanes);
-              mask_pnt_d  = (vlen_t'(trimmed_stride) >> $clog2(NrLanes)) << $clog2(NrLanes);
+              read_cnt_d -= (vlen_t'(trimmed_stride) >> idx_width(NrLanes)) << idx_width(NrLanes);
+              mask_pnt_d  = (vlen_t'(trimmed_stride) >> idx_width(NrLanes)) << idx_width(NrLanes);
             end
             default:;
           endcase
