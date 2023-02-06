@@ -131,6 +131,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add VCD dumping features to `imatmul`
  - `core_id_i` added to the interface of the system
  - Clock-gate the system bank macros when not used (VRF, D$, I$)
+ - Spill register on `sldu` input signals to better isolate the unit
 
 ### Changed
 
@@ -178,6 +179,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Optimize `dwt` kernel
  - Optimize `dotproduct` kernel
  - Optimize `fft` kernel
+ - Simplify the reduction engine for both `valu` and `vmfpu`, to avoid spurious valid signals to the `sldu`
 
 ## 2.2.0 - 2021-11-02
 
