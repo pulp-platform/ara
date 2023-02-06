@@ -127,6 +127,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Support for vector floating-point reciprocal square-root estimate instruction: `vfrsqrt7`
  - Support for vector narrowing floating-point convert instruction: `vfncvt.rod.f.f`
  - Parametrize `vfrec7`, `vfrsqrt7` and `vfncvt.rod.f.f` support
+ - Add guards in the testbench to successfully compile in post-layout simulations
+ - Add VCD dumping features to `imatmul`
+ - `core_id_i` added to the interface of the system
 
 ### Changed
 
@@ -169,6 +172,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - SIMD multipliers are now power gated
  - Roll-back to Verilator v4.214
  - Parametrize `addrgen` queue depth
+ - SIMD-multipliers are now gated singularly depending on VSEW
 
 ## 2.2.0 - 2021-11-02
 
