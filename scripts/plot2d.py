@@ -99,6 +99,7 @@ def main():
     pkv_db.update(d)
   pkv_db = pd.DataFrame(pkv_db);
   pkv_db.index = kernel_list;
+  pkv_db.sort_index(axis=0, inplace=True)
 
   print(pkv_db)
 
