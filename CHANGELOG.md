@@ -73,6 +73,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix eew reshuffle for mask logical operations
  - Fix eew reshuffle for `vmv.v.v` operations
  - Remove timing loop between `vmfpu` and `operand_requesters`
+ - Solve some of the Warnings from SpyGlass run
+ - Fix masku handshake. All the lanes should handshake together in input
+ - Start solving `sldu` counter widths warnings
 
 ### Added
 
