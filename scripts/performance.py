@@ -95,6 +95,14 @@ def pathfinder(args, cycles):
   rows     = int(args[2])
   performance = 2 * num_runs * (cols - 1) * (rows - 1) / cycles
   return [cols, performance]
+def dotproduct(args, cycles):
+  size        = int(args[0])
+  performance = 2 * size / cycles
+  return [size, performance]
+def fdotproduct(args, cycles):
+  size        = int(args[0])
+  performance = 2 * size / cycles
+  return [size, performance]
 def roi_align(args, cycles):
   batch   = int(args[0])
   depth   = int(args[1])
@@ -119,6 +127,8 @@ perfExtr = {
   'exp'        : exp,
   'softmax'    : softmax,
   'pathfinder' : pathfinder,
+  'dotproduct' : dotproduct,
+  'fdotproduct': fdotproduct,
   'roi_align'  : roi_align,
 }
 
@@ -136,11 +146,13 @@ ideal_maxPerf = {
   'exp'        : lambda l, s : 28/23 * l * 8/s,
   'softmax'    : lambda l, s : 32/25 * l * 8/s,
   'pathfinder' : lambda l, s : l * 8/s,
+  'dotproduct' : lambda l, s : l * 8/s,
+  'fdotproduct': lambda l, s : l * 8/s,
   'roi_align'  : lambda l, s : l * 8/s,
 }
 
-# Maximum performance taking into account Ara's limited BW
-# when performing strided/indexed memory accesses
+# Maximum performance taking into account Ara's limited
+# memory BW
 real_maxPerf = {
   'imatmul'    : lambda l, s : 2 * l * 8/s,
   'fmatmul'    : lambda l, s : 2 * l * 8/s,
@@ -150,29 +162,31 @@ real_maxPerf = {
   'jacobi2d'   : lambda l, s : l * 8/s,
   'dropout'    : lambda l, s : 4 * l / (2*s + 1/8),
   'fft'        : lambda l, s : 6/5 * l * 8/s,
-  'dwt'        : lambda l, s : 1/3 * l * 8/s + 1/3,
+  'dwt'        : lambda l, s : 4 * l / s,
   'exp'        : lambda l, s : 28/23 * l * 8/s,
   'softmax'    : lambda l, s : 32/25 * l * 8/s,
   'pathfinder' : lambda l, s : 1/3 * l * 8/s,
+  'dotproduct' : lambda l, s : 4 * l/s,
+  'fdotproduct': lambda l, s : 4 * l/s,
   'roi_align'  : lambda l, s : 3/5 * l * 8/s,
 }
 
 def main():
-  kernel   = str(sys.argv[1])
-  args     = str(sys.argv[2]).split()
-  cycles   = int(sys.argv[3])
+  # kernel lanes vsize sew ideal_dispatcher
+  metadata    = str(sys.argv[1]).split()
+  args        = str(sys.argv[2]).split()
+  cycles      = int(sys.argv[3])
   # Extract performance information
   try:
-    result = perfExtr[kernel](args, cycles)
+    result   = perfExtr[metadata[0]](args, cycles)
+    real_max_perf  = real_maxPerf[metadata[0]](int(metadata[1]), int(metadata[3]))
+    ideal_max_perf = ideal_maxPerf[metadata[0]](int(metadata[1]), int(metadata[3]))
   except KeyError:
-    sys.exit('Error: the kernel "' + kernel + '" is not valid')
+    sys.exit('Error: the kernel "' + metadata[0] + '" is not valid')
 
   # Print performance information on file
-#  if args.mode == 'perf':
-  print(result[0], result[1])
-#  elif args.mode == 'max_perf':
-#    max_perf = real_maxPerf(kernel)(4, 8);
-#    print(kernel, max_perf)
+  # kernel, lanes, vsize, sew, perf, max_perf, ideal_disp
+  print(metadata[0], metadata[1], result[0], metadata[3], result[1], real_max_perf, metadata[4])
 
 if __name__ == '__main__':
   main()
