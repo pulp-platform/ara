@@ -40,9 +40,9 @@ else:
   # Default: no stripmine
   vsize = 64
 
-avl64 = int(vsize / 8)
-avl32 = int(vsize / 4)
-avl16 = int(vsize / 2)
+avl64 = int(vsize)
+avl32 = int(vsize)
+avl16 = int(vsize)
 
 # Create the vectors
 v64a = np.random.rand(avl64).astype(np.float64)

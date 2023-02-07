@@ -52,6 +52,8 @@ skip_check = {
   'exp'        : 0,
   'softmax'    : 0,
   'pathfinder' : 0,
+  'dotproduct' : 0,
+  'fdotproduct': 0,
   'roi_align'  : 1, # This program has a larger scalar component
 }
 
