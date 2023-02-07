@@ -36,6 +36,8 @@ threshold = {
   'exp'        : 300,
   'softmax'    : 300,
   'pathfinder' : 300,
+  'dotproduct' : 300,
+  'fdotproduct': 300,
   'roi_align'  : 300,
 }
 
@@ -52,6 +54,8 @@ skip_check = {
   'exp'        : 0,
   'softmax'    : 0,
   'pathfinder' : 0,
+  'dotproduct' : 0,
+  'fdotproduct': 0,
   'roi_align'  : 1, # This program has a larger scalar component
 }
 
