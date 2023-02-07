@@ -83,9 +83,10 @@ compile_and_run() {
 
 extract_performance() {
   kernel=$1
-  args=$2
-  tempfile=$3
-  outfile=$4
+  metadata=$2
+  args=$3
+  tempfile=$4
+  outfile=$5
 
   echo "Extracting cycle count measure"
   hw_cycles=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d: -f 2)
@@ -96,7 +97,7 @@ extract_performance() {
     $python ./scripts/check_cycles.py $kernel $hw_cycles $sw_cycles || exit
   fi
   echo "Extracting performance from cycle count"
-  $python ./scripts/performance.py $kernel "$args" $hw_cycles >> $outfile || exit
+  $python ./scripts/performance.py "$metadata" "$args" $hw_cycles >> $outfile || exit
 }
 
 extract_performance_dotp() {
@@ -159,20 +160,20 @@ verify_id_results() {
 
 sew_from_dtype() {
   case $1 in
-    "double" | "int64_t" | "uint64_t")
-    echo '64'
+    "double" | "float64" | "int64_t" | "uint64_t")
+    echo '8'
     ;;
 
-    "float" | "int32_t" | "uint32_t")
-    echo '32'
+    "float32" | "float" | "int32_t" | "uint32_t")
+    echo '4'
     ;;
 
     "_Float16" | "int16_t" | "uint16_t")
-    echo '16'
+    echo '2'
     ;;
 
     "_Float8" | "int8_t" | "uint8_t")
-    echo '8'
+    echo '1'
     ;;
 
     *)
@@ -193,6 +194,8 @@ matmul() {
 
   kernel=$1
   defines=""
+  # sew in bytes (uint64_t -> sew: 8)
+  sew=8
 
   tempfile=`mktemp`
 
@@ -206,18 +209,19 @@ matmul() {
   for size in 4 8 16 32 64 128; do
 
     args="$size $size $size"
+    metadata="$kernel $nr_lanes $size $sew"
 
     # Clean
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
-    compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    compile_and_run $kernel "$defines" $tempfile 0                                      || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
-      compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      compile_and_run $kernel "$defines" $tempfile 1                                            || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -232,6 +236,8 @@ conv2d() {
 
   kernel=$1
   defines=""
+  # sew in bytes (uint64_t -> sew: 8)
+  sew=8
 
   tempfile=`mktemp`
 
@@ -249,17 +255,18 @@ conv2d() {
     for fsize in 3; do
 
       args="$msize $fsize"
+      metadata="$kernel $nr_lanes $msize $sew"
 
       clean_and_gen_data $kernel "$args" || exit
 
       # Default System
-      compile_and_run $kernel "$defines" $tempfile 0                                || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+      compile_and_run $kernel "$defines" $tempfile 0                                      || exit
+      extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
-        compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-        extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        compile_and_run $kernel "$defines" $tempfile 1                                            || exit
+        extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
@@ -275,6 +282,7 @@ fconv3d() {
 
   kernel=fconv3d
   defines=""
+  sew=8
 
   tempfile=`mktemp`
 
@@ -292,17 +300,18 @@ fconv3d() {
     for fsize in 7; do
 
       args="$msize $fsize"
+      metadata="$kernel $nr_lanes $msize $sew"
 
       clean_and_gen_data $kernel "$args" || exit
 
       # Default System
-      compile_and_run $kernel "$defines" $tempfile 0                                || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+      compile_and_run $kernel "$defines" $tempfile 0                                      || exit
+      extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
-        compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-        extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        compile_and_run $kernel "$defines" $tempfile 1                                            || exit
+        extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
@@ -318,6 +327,7 @@ jacobi2d() {
 
   kernel=jacobi2d
   defines=""
+  sew=8
 
   tempfile=`mktemp`
 
@@ -331,17 +341,18 @@ jacobi2d() {
     vsize=$(($vsize_unpadded + 2))
 
     args="$vsize $vsize"
+    metadata="$kernel $nr_lanes $vsize $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
-    compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    compile_and_run $kernel "$defines" $tempfile 0                                      || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
-      compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      compile_and_run $kernel "$defines" $tempfile 1                                            || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -356,6 +367,7 @@ dropout() {
 
   kernel=dropout
   defines=""
+  sew=4
 
   tempfile=`mktemp`
 
@@ -368,17 +380,18 @@ dropout() {
   for vsize in 4 8 16 32 64 128 256 512 1024 2048; do
 
     args="$vsize"
+    metadata="$kernel $nr_lanes $vsize $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
     compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -403,24 +416,26 @@ fft() {
 
   # Type should be in the format "floatXY"
   dtype="float32"
-  dbits=${dtype:5:2}
+  sew=$(sew_from_dtype $dtype)
+  dbits=$(( 8 * $sew ))
 
   # 2-lanes and vlen == 4096 cannot contain 256 float32 elements
   for vsize in 4 8 16 32 64 128 $(test $vlen -ge $(( 256 * ${dtype:5:2} )) && echo 256); do
 
     args="$vsize $dtype"
     defines="-DFFT_SAMPLES=${vsize}"
+    metadata="$kernel $nr_lanes $vsize $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
     compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -435,6 +450,7 @@ dwt() {
 
   kernel=dwt
   defines=""
+  sew=4
 
   tempfile=`mktemp`
 
@@ -447,17 +463,18 @@ dwt() {
   for vsize in 4 8 16 32 64 128 256 512; do
 
     args="$vsize"
+    metadata="$kernel $nr_lanes $vsize $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
     compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -472,6 +489,7 @@ exp() {
 
   kernel=exp
   defines=""
+  sew=8
 
   tempfile=`mktemp`
 
@@ -484,17 +502,18 @@ exp() {
   for vsize in 4 8 16 32 64 128 256 512; do
 
     args="$vsize"
+    metadata="$kernel $nr_lanes $vsize $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
     compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -509,6 +528,7 @@ softmax() {
 
   kernel=softmax
   defines=""
+  sew=4
 
   chsize=32
 
@@ -523,17 +543,18 @@ softmax() {
   for insize in 4 8 16 32 64 128 256 512; do
 
     args="$chsize $insize"
+    metadata="$kernel $nr_lanes $insize $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
     compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
@@ -555,24 +576,25 @@ fdotproduct() {
   # Init error report
   echo "kernel: $kernel" >> ${error_rpt}
 
-  for dtype in double float _Float16; do
-    for bsize in 16 32 64 128 256 512 1024 2048 4096; do
+  for dtype in double; do
+    for vsize in 4 8 16 32 64 128 256 512; do
 
       sew=$(sew_from_dtype $dtype)
 
-      args="$bsize"
+      args="$vsize"
       defines="-Ddtype=${dtype}"
+      metadata="$kernel $nr_lanes $vsize $sew"
 
       clean_and_gen_data $kernel "$args" || exit
 
       # Default System
-      compile_and_run $kernel "$defines" $tempfile 0                                           || exit
-      extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}.benchmark  || exit
+      compile_and_run $kernel "$defines" $tempfile 0                                 || exit
+      extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark  || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
-        compile_and_run $kernel "$defines" $tempfile 1                                                || exit
-        extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        compile_and_run $kernel "$defines" $tempfile 1                                      || exit
+        extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
@@ -596,24 +618,25 @@ dotproduct() {
   # Init error report
   echo "kernel: $kernel" >> ${error_rpt}
 
-  for dtype in int64_t int32_t int16_t int8_t; do
-    for bsize in 16 32 64 128 256 512 1024 2048 4096; do
+  for dtype in int64_t; do
+    for vsize in 4 8 16 32 64 128 256 512; do
 
       sew=$(sew_from_dtype $dtype)
 
-      args="$bsize"
+      args="$vsize"
       defines="-Ddtype=${dtype}"
+      metadata="$kernel $nr_lanes $vsize $sew"
 
       clean_and_gen_data $kernel "$args" || exit
 
       # Default System
-      compile_and_run $kernel "$defines" $tempfile 0                                           || exit
-      extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}.benchmark  || exit
+      compile_and_run $kernel "$defines" $tempfile 0                                 || exit
+      extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark  || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
-        compile_and_run $kernel "$defines" $tempfile 1                                                || exit
-        extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        compile_and_run $kernel "$defines" $tempfile 1                                      || exit
+        extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
@@ -629,6 +652,7 @@ pathfinder() {
 
   kernel=pathfinder
   defines=""
+  sew=4
 
   runs=1
 
@@ -644,17 +668,18 @@ pathfinder() {
     for rows in 64; do
 
       args="$runs $cols $rows"
+      metadata="$kernel $nr_lanes $cols $sew"
 
       clean_and_gen_data $kernel "$args" || exit
 
       # Default System
       compile_and_run $kernel "$defines" $tempfile 0                                || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+      extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-        extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
@@ -670,6 +695,7 @@ roi_align() {
 
   kernel=roi_align
   defines=""
+  sew=4
 
   batch_size=1
   height=16
@@ -689,17 +715,18 @@ roi_align() {
   for depth in 4 8 16 32 64 128 256 512; do
 
     args="$batch_size $depth $height $width $n_boxes $crop_h $crop_w"
+    metadata="$kernel $nr_lanes $depth $sew"
 
     clean_and_gen_data $kernel "$args" || exit
 
     # Default System
     compile_and_run $kernel "$defines" $tempfile 0                                || exit
-    extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
     # Ideal Dispatcher System, if QuestaSim is available
     if [ "$ci" == 0 ]; then
       compile_and_run $kernel "$defines" $tempfile 1                                      || exit
-      extract_performance $kernel "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
       # Verify ID results is non-blocking! Check the report afterwards
       verify_id_results 0 | tee -a ${error_rpt}
     fi
