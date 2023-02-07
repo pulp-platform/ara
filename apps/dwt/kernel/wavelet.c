@@ -20,6 +20,11 @@
 #include "wavelet.h"
 #include <stdio.h>
 
+// Reduce scalar code overhead for problems that can fit with LMUL == 4.
+// The worst case if with 2 lanes, in which the problem size should be lower than
+// 2k float numbers.
+#define SMALL_PROBLEM
+
 extern int64_t event_trigger;
 
 static inline void dwt_step(const gsl_wavelet *w, float *a, size_t n,
@@ -94,8 +99,10 @@ static inline void dwt_step_vector(const gsl_wavelet *w, float *samples,
   float *buf_w = buf;
 
   // Strip-Mining loop
+#ifndef SMALL_PROBLEM
   for (size_t vl = vsetvl_e32m4(avl); avl > 0; avl -= vl) {
-    vl = vsetvl_e32m4(avl);
+#endif
+    size_t vl = vsetvl_e32m4(avl);
     // If we have enough samples, fill the vector registers!
     if (avl >= 2 * vl)
       vl *= 2;
@@ -127,16 +134,24 @@ static inline void dwt_step_vector(const gsl_wavelet *w, float *samples,
     samples_r += vl;
     samples_w += vl / 2;
     buf_w += vl / 2;
+#ifndef SMALL_PROBLEM
   }
+#endif
 
   // Memcpy h_vec to the samples vector
   avl = n / 2;
+#ifndef SMALL_PROBLEM
   for (size_t vl = vsetvl_e32m4(avl); avl > 0; avl -= vl) {
+#else
+  vl = vsetvl_e32m4(avl);
+#endif
     h_vec = vle32_v_f32m4(buf_r, vl);
     vse32_v_f32m4(samples_w, h_vec, vl);
     buf_r += vl;
     samples_w += vl;
+#ifndef SMALL_PROBLEM
   }
+#endif
 }
 
 // The signal should be already padded
