@@ -68,38 +68,30 @@ int main() {
 #endif
 
   uint64_t v_sw_runtime;
+  size_t avl = vsize;
 
   HW_CNT_READY;
   // This benchmark is executed for one dtype only to ensure the same initial conditions.
   // If not, Ara would reshuffle some registers because of different EEWs and this would
   // lead to artificial slow-down
   if (sizeof(r) == 8) {
-    size_t avl = vsize >> 3;
     start_timer();
     res64_v = fdotp_v64b(v64a, v64b, avl);
     stop_timer();
-    v_sw_runtime = get_timer();
-    // [kernel]: lanes vsize vsew cycles
-    printf("[fdotproduct]: %u %u %u\n", NR_LANES, vsize, 8);
   } else
   if (sizeof(r) == 4) {
-    size_t avl = vsize >> 2;
     start_timer();
     res32_v = fdotp_v32b(v32a, v32b, avl);
     stop_timer();
-    v_sw_runtime = get_timer();
-    // [kernel]: lanes vsize vsew cycles
-    printf("[fdotproduct]: %u %u %u\n", NR_LANES, vsize, 4);
   } else
   if (sizeof(r) == 2) {
-    size_t avl = vsize >> 1;
     start_timer();
     res16_v = fdotp_v16b(v16a, v16b, avl);
     stop_timer();
-    v_sw_runtime = get_timer();
-    // [kernel]: lanes vsize vsew cycles
-    printf("[fdotproduct]: %u %u %u\n", NR_LANES, vsize, 2);
   }
+
+  v_sw_runtime = get_timer();
+  printf("[sw-cycles]: %ld\n", v_sw_runtime);
 
   return 0;
 }
