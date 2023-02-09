@@ -64,12 +64,15 @@ patch-spike-crt0: $(spike_env_dir)/benchmarks/common/crt.S
 
 # Only some applications need to generate and then compile the data file
 # Generate a dummy data file for applications that do not need it
+ifeq ($(old_data),1)
+else
 define app_gen_data_template
 .PHONY: $1/data.S
 $1/data.S:
 	cd $1 && if [ -d script ]; then ${PYTHON} script/gen_data.py $(subst ",,$(def_args_$1)) > data.S ; else touch data.S; fi
 endef
 $(foreach app,$(APPS),$(eval $(call app_gen_data_template,$(app))))
+endif
 
 define vector_trace_template
 ideal_dispatcher/vtrace/$1.vtrace: bin/$1.spike $(VTRACE_SCRIPTS)
