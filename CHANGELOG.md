@@ -76,6 +76,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Solve some of the Warnings from SpyGlass run
  - Fix masku handshake. All the lanes should handshake together in input
  - Start solving `sldu` counter widths warnings
+ - Fix ideal-dispatcher tracer for `vsetvli` with non-zero retreg
 
 ### Added
 
@@ -130,6 +131,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add guards in the testbench to successfully compile in post-layout simulations
  - Add VCD dumping features to `imatmul`
  - `core_id_i` added to the interface of the system
+ - `apps` can be compiled also keeping the already generated data in place. This is useful when debugging
 
 ### Changed
 
