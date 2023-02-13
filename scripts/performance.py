@@ -105,6 +105,14 @@ def roi_align(args, cycles):
   crop_w  = int(args[6])
   performance = 9 * batch * depth * n_boxes * crop_h * crop_w / cycles
   return [depth, performance]
+def lavamd(args, cycles):
+  box1d   = int(args[0])
+  par4box = int(args[1])
+  alpha   = float(args[2])
+  maxelm  = int(args[3])
+  # pseudo lavaMD iteration bounds: 1, 2, 4, par4box
+  performance = (1 * 2 * 4 * (51 * par4box + 4 * min(par4box, maxelm))) / cycles
+  return [par4box, performance]
 
 perfExtr = {
   'imatmul'    : imatmul,
@@ -120,6 +128,7 @@ perfExtr = {
   'softmax'    : softmax,
   'pathfinder' : pathfinder,
   'roi_align'  : roi_align,
+  'lavamd'     : lavamd,
 }
 
 def main():

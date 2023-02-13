@@ -285,7 +285,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align]
+        app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align, lavamd]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
@@ -643,6 +643,11 @@ jobs:
       with:
         name: roi_align_roofline
         path: roi_align.png
+    - name: Upload the lavamd roofline
+      uses: actions/upload-artifact@v2
+      with:
+        name: lavamd_roofline
+        path: lavamd.png
 
 ####################
 #  Clean-up stage  #

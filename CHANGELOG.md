@@ -130,6 +130,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add guards in the testbench to successfully compile in post-layout simulations
  - Add VCD dumping features to `imatmul`
  - `core_id_i` added to the interface of the system
+ - Add lavaMD `app`, benchmark, and performance plot
 
 ### Changed
 

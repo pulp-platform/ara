@@ -37,6 +37,7 @@ threshold = {
   'softmax'    : 300,
   'pathfinder' : 300,
   'roi_align'  : 300,
+  'lavamd'     : 300,
 }
 
 skip_check = {
@@ -53,6 +54,7 @@ skip_check = {
   'softmax'    : 0,
   'pathfinder' : 0,
   'roi_align'  : 1, # This program has a larger scalar component
+  'lavamd'     : 0,
 }
 
 def main():
