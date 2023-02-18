@@ -290,6 +290,7 @@ package ara_pkg;
     // 2nd scalar operand: stride for constant-strided vector load/stores, slide offset for vector
     // slides
     elen_t stride;
+    logic is_stride_np2;
 
     // Destination vector register
     logic [4:0] vd;
@@ -390,6 +391,7 @@ package ara_pkg;
 
     // 2nd scalar operand: stride for constant-strided vector load/stores
     elen_t stride;
+    logic is_stride_np2;
 
     // Destination vector register
     logic [4:0] vd;
