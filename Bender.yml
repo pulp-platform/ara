@@ -42,6 +42,8 @@ sources:
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/lane/power_gating_generic.sv
     - hardware/src/masku/masku.sv
+    - hardware/src/sldu/p2_stride_gen.sv
+    - hardware/src/sldu/sldu_op_dp.sv
     - hardware/src/sldu/sldu.sv
     - hardware/src/vlsu/addrgen.sv
     - hardware/src/vlsu/vldu.sv
