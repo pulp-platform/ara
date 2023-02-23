@@ -215,8 +215,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete_q;
   logic store_complete_q;
-  `FF(load_complete_q, load_complete_i, 1'b0)
-  `FF(store_complete_q, store_complete_i, 1'b0)
+  `FF(load_complete_q, load_complete_i || illegal_insn_load, 1'b0)
+  `FF(store_complete_q, store_complete_i || illegal_insn_store, 1'b0)
 
   // NP2 Slide support
   logic is_stride_np2;
@@ -237,6 +237,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   ///////////////
 
   logic illegal_insn;
+  logic illegal_insn_load;
+  logic illegal_insn_store;
 
   always_comb begin: p_decoder
     // Default values
@@ -259,6 +261,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     rs_mask_request_d   = 1'b0;
 
     illegal_insn = 1'b0;
+    illegal_insn_load  = 1'b0;
+    illegal_insn_store = 1'b0;
     vxsat_d      = vxsat_q;
     vxrm_d       = vxrm_q;
 
@@ -2567,12 +2571,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   5'b10000: begin // Unit-strided, fault-only first
                     // TODO: Not implemented
-                    illegal_insn     = 1'b1;
+                    illegal_insn_load     = 1'b1;
                     acc_req_ready_o  = 1'b1;
                     acc_resp_valid_o = 1'b1;
                   end
                   default: begin // Reserved
-                    illegal_insn     = 1'b1;
+                    illegal_insn_load     = 1'b1;
                     acc_req_ready_o  = 1'b1;
                     acc_resp_valid_o = 1'b1;
                   end
@@ -2602,7 +2606,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               2'b01: begin
                 // But the new eew is greater than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
-                  illegal_insn     = 1'b1;
+                  illegal_insn_load     = 1'b1;
                   acc_resp_valid_o = 1'b1;
                 end
               end
@@ -2610,7 +2614,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               2'b10: begin
                 // But the new eew is lower than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
-                  illegal_insn     = 1'b1;
+                  illegal_insn_load     = 1'b1;
                   acc_resp_valid_o = 1'b1;
                 end
               end
@@ -2621,19 +2625,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // access.
             unique case (ara_req_d.emul)
               LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                illegal_insn     = 1'b1;
+                illegal_insn_load     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                illegal_insn     = 1'b1;
+                illegal_insn_load     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
-                illegal_insn     = 1'b1;
+                illegal_insn_load     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               LMUL_RSVD: begin
-                illegal_insn     = 1'b1;
+                illegal_insn_load     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               default:;
@@ -2644,7 +2648,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Execute also if vl == 0
               ignore_zero_vl_check = 1'b1;
               // The LMUL value is kept in the instruction itself
-              illegal_insn     = 1'b0;
+              illegal_insn_load     = 1'b0;
               acc_req_ready_o  = 1'b0;
               acc_resp_valid_o = 1'b0;
               ara_req_valid_d  = 1'b1;
@@ -2670,7 +2674,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 default: begin
                   // Trigger an error for the reserved simm values
-                  illegal_insn     = 1'b1;
+                  illegal_insn_load     = 1'b1;
                 end
               endcase
             end
@@ -2779,7 +2783,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.vtype.vsew = EW8;
                   end
                   default: begin // Reserved
-                    illegal_insn     = 1'b1;
+                    illegal_insn_store     = 1'b1;
                     acc_req_ready_o  = 1'b1;
                     acc_resp_valid_o = 1'b1;
                   end
@@ -2809,7 +2813,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               2'b01: begin
                 // But the new eew is greater than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
-                  illegal_insn     = 1'b1;
+                  illegal_insn_store     = 1'b1;
                   acc_resp_valid_o = 1'b1;
                 end
               end
@@ -2817,7 +2821,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               2'b10: begin
                 // But the new eew is lower than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
-                  illegal_insn     = 1'b1;
+                  illegal_insn_store     = 1'b1;
                   acc_resp_valid_o = 1'b1;
                 end
               end
@@ -2828,19 +2832,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // access.
             unique case (ara_req_d.emul)
               LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                illegal_insn     = 1'b1;
+                illegal_insn_store     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                illegal_insn     = 1'b1;
+                illegal_insn_store     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
-                illegal_insn     = 1'b1;
+                illegal_insn_store     = 1'b1;
                 acc_resp_valid_o = 1'b1;
               end
               LMUL_RSVD: begin
-                  illegal_insn     = 1'b1;
+                  illegal_insn_store     = 1'b1;
                   acc_resp_valid_o = 1'b1;
               end
               default:;
@@ -2873,14 +2877,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 default: begin
                   // Trigger an error for the reserved simm values
-                  illegal_insn     = 1'b1;
+                  illegal_insn_store     = 1'b1;
                 end
               endcase
 
-              illegal_insn     = 1'b0;
-              acc_req_ready_o  = 1'b0;
-              acc_resp_valid_o = 1'b0;
-              ara_req_valid_d  = 1'b1;
+              illegal_insn_store    = 1'b0;
+              acc_req_ready_o       = 1'b0;
+              acc_resp_valid_o      = 1'b0;
+              ara_req_valid_d       = 1'b1;
             end
 
             // Wait until the back-end answers to acknowledge those instructions
@@ -3093,7 +3097,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
-      if (ara_req_valid_d && !acc_resp_o.error) begin
+      if (ara_req_valid_d && !acc_resp_o.error && !illegal_insn_load && !illegal_insn_store) begin
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
@@ -3152,7 +3156,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Raise an illegal instruction exception
-    if (illegal_insn) begin
+    if (illegal_insn || illegal_insn_load || illegal_insn_store) begin
       acc_resp_o.error = 1'b1;
       ara_req_valid_d  = 1'b0;
     end
