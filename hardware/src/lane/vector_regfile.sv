@@ -29,6 +29,8 @@ module vector_regfile import ara_pkg::*; #(
     output logic     [NrOperandQueues-1:0] operand_valid_o
   );
 
+`include "common_cells/registers.svh"
+
   //////////////////
   //  Parameters  //
   //////////////////
@@ -59,12 +61,30 @@ module vector_regfile import ara_pkg::*; #(
   /////////////
 
   for (genvar bank = 0; bank < NrBanks; bank++) begin: gen_banks
+`ifndef VERILATOR
+    // Clock gate
+    logic vrf_clk;
+    logic sram_active_q;
+    `FF(sram_active_q, req_i[bank], 1'b0)
+
+    tc_clk_gating i_vrf_ckg (
+      .clk_i    (clk_i                       ),
+      .test_en_i(1'b0                        ),
+      .en_i     (req_i[bank] || sram_active_q),
+      .clk_o    (vrf_clk                     )
+    );
+`else
+    logic vrf_clk;
+
+    assign vrf_clk = clk_i;
+`endif
+
     tc_sram #(
       .NumWords (NumWords ),
       .DataWidth(DataWidth),
       .NumPorts (1        )
     ) data_sram (
-      .clk_i  (clk_i                             ),
+      .clk_i  (vrf_clk                           ),
       .rst_ni (rst_ni                            ),
       .req_i  (req_i[bank]                       ),
       .we_i   (wen_i[bank]                       ),
