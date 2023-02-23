@@ -472,6 +472,12 @@ package ara_pkg;
             idx[3] = 6; idx[2] = 2; idx[1] = 4; idx[0] = 0;
             return idx[byte_idx[2:0]];
           end
+          default: begin
+            automatic vlen_t [7:0] idx;
+            idx[7] = 7; idx[6] = 6; idx[5] = 5; idx[4] = 4;
+            idx[3] = 3; idx[2] = 2; idx[1] = 1; idx[0] = 0;
+            return idx[byte_idx[2:0]];
+          end
         endcase
       2: unique case (ew)
           rvv_pkg::EW64: begin
@@ -504,6 +510,14 @@ package ara_pkg;
             idx[11] = 13; idx[10] = 05; idx[09] = 09; idx[08] = 01;
             idx[07] = 14; idx[06] = 06; idx[05] = 10; idx[04] = 02;
             idx[03] = 12; idx[02] = 04; idx[01] = 08; idx[00] = 00;
+            return idx[byte_idx[3:0]];
+          end
+          default: begin
+            automatic vlen_t [15:0] idx;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12;
+            idx[11] = 11; idx[10] = 10; idx[09] = 09; idx[08] = 08;
+            idx[07] = 07; idx[06] = 06; idx[05] = 05; idx[04] = 04;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
             return idx[byte_idx[3:0]];
           end
         endcase
@@ -554,6 +568,18 @@ package ara_pkg;
             idx[11] = 26; idx[10] = 18; idx[09] = 10; idx[08] = 02;
             idx[07] = 28; idx[06] = 20; idx[05] = 12; idx[04] = 04;
             idx[03] = 24; idx[02] = 16; idx[01] = 08; idx[00] = 00;
+            return idx[byte_idx[4:0]];
+          end
+          default: begin
+            automatic vlen_t [31:0] idx;
+            idx[31] = 31; idx[30] = 30; idx[29] = 29; idx[28] = 28;
+            idx[27] = 27; idx[26] = 26; idx[25] = 25; idx[24] = 24;
+            idx[23] = 23; idx[22] = 22; idx[21] = 21; idx[20] = 20;
+            idx[19] = 19; idx[18] = 18; idx[17] = 17; idx[16] = 16;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12;
+            idx[11] = 11; idx[10] = 10; idx[09] = 09; idx[08] = 08;
+            idx[07] = 07; idx[06] = 06; idx[05] = 05; idx[04] = 04;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
             return idx[byte_idx[4:0]];
           end
         endcase
@@ -636,6 +662,26 @@ package ara_pkg;
             idx[11] = 28; idx[10] = 20; idx[09] = 12; idx[08] = 04;
             idx[07] = 56; idx[06] = 48; idx[05] = 40; idx[04] = 32;
             idx[03] = 24; idx[02] = 16; idx[01] = 08; idx[00] = 00;
+            return idx[byte_idx[5:0]];
+          end
+          default: begin
+            automatic vlen_t [63:0] idx;
+            idx[63] = 63; idx[62] = 62; idx[61] = 61; idx[60] = 60;
+            idx[59] = 59; idx[58] = 58; idx[57] = 57; idx[56] = 56;
+            idx[55] = 55; idx[54] = 54; idx[53] = 53; idx[52] = 52;
+            idx[51] = 51; idx[50] = 50; idx[49] = 49; idx[48] = 48;
+            idx[47] = 47; idx[46] = 46; idx[45] = 45; idx[44] = 44;
+            idx[43] = 43; idx[42] = 42; idx[41] = 41; idx[40] = 40;
+            idx[39] = 39; idx[38] = 38; idx[37] = 37; idx[36] = 36;
+            idx[35] = 35; idx[34] = 34; idx[33] = 33; idx[32] = 32;
+            idx[31] = 31; idx[30] = 30; idx[29] = 29; idx[28] = 28;
+            idx[27] = 27; idx[26] = 26; idx[25] = 25; idx[24] = 24;
+            idx[23] = 23; idx[22] = 22; idx[21] = 21; idx[20] = 20;
+            idx[19] = 19; idx[18] = 18; idx[17] = 17; idx[16] = 16;
+            idx[15] = 15; idx[14] = 14; idx[13] = 13; idx[12] = 12;
+            idx[11] = 11; idx[10] = 10; idx[09] = 09; idx[08] = 08;
+            idx[07] = 07; idx[06] = 06; idx[05] = 05; idx[04] = 04;
+            idx[03] = 03; idx[02] = 02; idx[01] = 01; idx[00] = 00;
             return idx[byte_idx[5:0]];
           end
         endcase
@@ -784,7 +830,44 @@ package ara_pkg;
             idx[003] = 024; idx[002] = 016; idx[001] = 008; idx[000] = 000;
             return idx[byte_idx[6:0]];
           end
+          default: begin
+            automatic vlen_t [127:0] idx;
+            idx[127] = 127; idx[126] = 126; idx[125] = 125; idx[124] = 124;
+            idx[123] = 123; idx[122] = 122; idx[121] = 121; idx[120] = 120;
+            idx[119] = 119; idx[118] = 118; idx[117] = 117; idx[116] = 116;
+            idx[115] = 115; idx[114] = 114; idx[113] = 113; idx[112] = 112;
+            idx[111] = 111; idx[110] = 110; idx[109] = 109; idx[108] = 108;
+            idx[107] = 107; idx[106] = 106; idx[105] = 105; idx[104] = 104;
+            idx[103] = 103; idx[102] = 102; idx[101] = 101; idx[100] = 100;
+            idx[099] = 099; idx[098] = 098; idx[097] = 097; idx[096] = 096;
+            idx[095] = 095; idx[094] = 094; idx[093] = 093; idx[092] = 092;
+            idx[091] = 091; idx[090] = 090; idx[089] = 089; idx[088] = 088;
+            idx[087] = 087; idx[086] = 086; idx[085] = 085; idx[084] = 084;
+            idx[083] = 083; idx[082] = 082; idx[081] = 081; idx[080] = 080;
+            idx[079] = 079; idx[078] = 078; idx[077] = 077; idx[076] = 076;
+            idx[075] = 075; idx[074] = 074; idx[073] = 073; idx[072] = 072;
+            idx[071] = 071; idx[070] = 070; idx[069] = 069; idx[068] = 068;
+            idx[067] = 067; idx[066] = 066; idx[065] = 065; idx[064] = 064;
+            idx[063] = 063; idx[062] = 062; idx[061] = 061; idx[060] = 060;
+            idx[059] = 059; idx[058] = 058; idx[057] = 057; idx[056] = 056;
+            idx[055] = 055; idx[054] = 054; idx[053] = 053; idx[052] = 052;
+            idx[051] = 051; idx[050] = 050; idx[049] = 049; idx[048] = 048;
+            idx[047] = 047; idx[046] = 046; idx[045] = 045; idx[044] = 044;
+            idx[043] = 043; idx[042] = 042; idx[041] = 041; idx[040] = 040;
+            idx[039] = 039; idx[038] = 038; idx[037] = 037; idx[036] = 036;
+            idx[035] = 035; idx[034] = 034; idx[033] = 033; idx[032] = 032;
+            idx[031] = 031; idx[030] = 030; idx[029] = 029; idx[028] = 028;
+            idx[027] = 027; idx[026] = 026; idx[025] = 025; idx[024] = 024;
+            idx[023] = 023; idx[022] = 022; idx[021] = 021; idx[020] = 020;
+            idx[019] = 019; idx[018] = 018; idx[017] = 017; idx[016] = 016;
+            idx[015] = 015; idx[014] = 014; idx[013] = 013; idx[012] = 012;
+            idx[011] = 011; idx[010] = 010; idx[009] = 009; idx[008] = 008;
+            idx[007] = 007; idx[006] = 006; idx[005] = 005; idx[004] = 004;
+            idx[003] = 003; idx[002] = 002; idx[001] = 001; idx[000] = 000;
+            return idx[byte_idx[6:0]];
+          end
         endcase
+      default: $error("Error. Supported number of lanes are 1, 2, 4, 8, 16.");
     endcase
 
   /*automatic vlen_t [8*MaxNrLanes-1:0] element_shuffle_index;
@@ -844,6 +927,12 @@ package ara_pkg;
         for (int b = 0; b < 128; b++)
           index[shuffle_index(b, NrLanes, ew)] = b;
         return index[byte_index[6:0]];
+      end
+      default: begin
+        automatic vlen_t [31:0] index;
+        for (int b = 0; b < 32; b++)
+          index[shuffle_index(b, NrLanes, ew)] = b;
+        return index[byte_index[4:0]];
       end
     endcase
   endfunction : deshuffle_index
