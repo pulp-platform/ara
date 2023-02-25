@@ -56,6 +56,41 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::beat_upper_byte;
   import axi_pkg::BURST_INCR;
 
+  ////////////////
+  //  MASK cut  //
+  ////////////////
+
+  strb_t [NrLanes-1:0] mask_q;
+  logic  [NrLanes-1:0] mask_valid_d, mask_valid_q;
+  logic                mask_ready_d;
+  logic  [NrLanes-1:0] mask_ready_q;
+  // Insn queue related signal
+  pe_req_t vinsn_issue_d, vinsn_issue_q;
+  logic vinsn_issue_valid;
+
+  for (genvar l = 0; l < NrLanes; l++) begin
+    stream_register #(
+      .T(strb_t)
+    ) i_vldu_mask_register (
+      .clk_i     (clk_i           ),
+      .rst_ni    (rst_ni          ),
+      .clr_i     (1'b0            ),
+      .testmode_i(1'b0            ),
+      .data_o    (mask_q[l]       ),
+      .valid_o   (mask_valid_q[l] ),
+      .ready_i   (mask_ready_d    ),
+      .data_i    (mask_i[l]       ),
+      .valid_i   (mask_valid_d[l] ),
+      .ready_o   (mask_ready_q[l] )
+    );
+
+    // Sample only SLDU mask valid
+    assign mask_valid_d[l] = mask_valid_i[l] & ~vinsn_issue_q.vm & vinsn_issue_valid;
+  end
+
+  // Don't upset the masku with a spurious ready
+  assign mask_ready_o = mask_ready_q[0] & mask_valid_i[0] & ~vinsn_issue_q.vm & vinsn_issue_valid;
+
   ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
@@ -91,8 +126,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue_d, vinsn_issue_q;
-  logic    vinsn_issue_valid;
   assign vinsn_issue_d     = vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
@@ -217,7 +250,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     axi_addrgen_req_ready_o = 1'b0;
     pe_resp                 = '0;
     axi_r_ready_o           = 1'b0;
-    mask_ready_o            = 1'b0;
+    mask_ready_d            = 1'b0;
     load_complete_o         = 1'b0;
 
     // Inform the main sequencer if we are idle
@@ -242,7 +275,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Is there a vector instruction ready to be issued?
       // Do we have the operands for it?
-      if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_i))) begin
+      if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_q))) begin
         // Account for the issued bytes
         // How many bytes are valid in this VRF word
         automatic vlen_t vrf_valid_bytes   = NrLanes * 8 - vrf_pnt_q;
@@ -278,7 +311,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
               result_queue_d[result_queue_write_pnt_q][vrf_lane].wdata[8*vrf_offset +: 8] =
                 axi_r_i.data[8*axi_byte +: 8];
               result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset] =
-                vinsn_issue_q.vm || mask_i[vrf_lane][vrf_offset];
+                vinsn_issue_q.vm || mask_q[vrf_lane][vrf_offset];
             end
           end
         end
@@ -305,7 +338,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
         // Acknowledge the mask operands
-        mask_ready_o = !vinsn_issue_q.vm;
+        mask_ready_d = !vinsn_issue_q.vm;
 
         // Reset the pointer in the VRF word
         vrf_pnt_d   = '0;
