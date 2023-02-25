@@ -401,13 +401,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           if (&masku_operand_a_valid_i) begin
             unique case (vinsn_issue.vtype.vsew)
               EW8 : for (int i = 0; i < (DataWidth * NrLanes)/8; i++)
-                      mask [(i*8) +: 8]   = {8{bit_enable_mask [i+(((DataWidth * NrLanes)/8)*(iteration_count_d-1))]}};
+                      mask [(i*8) +: 8]   = {8{bit_enable_mask [i+(((DataWidth * NrLanes)/8)*(iteration_count_q))]}};
               EW16: for (int i = 0; i < (DataWidth * NrLanes)/16; i++)
-                      mask [(i*16) +: 16] = {16{bit_enable_mask [i+(((DataWidth * NrLanes)/16)*(iteration_count_d-1))]}};
+                      mask [(i*16) +: 16] = {16{bit_enable_mask [i+(((DataWidth * NrLanes)/16)*(iteration_count_q))]}};
               EW32: for (int i = 0; i < (DataWidth * NrLanes)/32; i++)
-                      mask [(i*32) +: 32] = {32{bit_enable_mask [i+(((DataWidth * NrLanes)/32)*(iteration_count_d-1))]}};
+                      mask [(i*32) +: 32] = {32{bit_enable_mask [i+(((DataWidth * NrLanes)/32)*(iteration_count_q))]}};
               EW64: for (int i = 0; i < (DataWidth * NrLanes)/64; i++)
-                      mask [(i*64) +: 64] = {64{bit_enable_mask [i+(((DataWidth * NrLanes)/64)*(iteration_count_d-1))]}};
+                      mask [(i*64) +: 64] = {64{bit_enable_mask [i+(((DataWidth * NrLanes)/64)*(iteration_count_q))]}};
             endcase
           end else begin
             mask = '0;
@@ -520,45 +520,45 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             unique case (vinsn_issue.vtype.vsew)
               EW8 : begin
                 if (issue_cnt_q < vinsn_issue.vl) begin
-                  alu_result_vm [7:0] = alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:8] + alu_result_ff [(NrLanes*DataWidth)-1-:8];
+                  alu_result_vm [7:0] = vlen_t'(alu_operand_b_seq_ff[(NrLanes*DataWidth)-1-:8]) + vlen_t'(alu_result_ff [(NrLanes*DataWidth)-1-:8]);
                 end else begin
                   alu_result_vm [7:0] = '0;
                 end
                 for (int index = 1; index < (NrLanes*DataWidth)/8; index++) begin
-                  alu_result_vm   [(index*8) +: 7] = alu_operand_b_seq_m [index-1] + alu_result_vm [((index-1)*8) +: 7];
+                  alu_result_vm   [(index*8) +: 7] = alu_operand_b_seq_m [index-1] + vlen_t'(alu_result_vm [((index-1)*8) +: 7]);
                   alu_result_vm_m [(index*8) +: 7] = (|mask[(index*8) +: 7]) ? alu_result_vm [(index*8) +: 7] : masku_operand_vd [(index*8) +: 7];
                 end
               end
               EW16: begin
                 if (issue_cnt_q < vinsn_issue.vl) begin
-                  alu_result_vm [15:0] = alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:16] + alu_result_ff [(NrLanes*DataWidth)-1-:16];
+                  alu_result_vm [15:0] = vlen_t'(alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:16]) + vlen_t'(alu_result_ff [(NrLanes*DataWidth)-1-:16]);
                 end else begin
                   alu_result_vm [15:0] = '0;
                 end
                 for (int index = 1; index < (NrLanes*DataWidth)/16; index++) begin
-                  alu_result_vm   [(index*16) +: 15] = alu_operand_b_seq_m [index-1] + alu_result_vm [((index-1)*16) +: 15];
+                  alu_result_vm   [(index*16) +: 15] = alu_operand_b_seq_m [index-1] + vlen_t'(alu_result_vm [((index-1)*16) +: 15]);
                   alu_result_vm_m [(index*16) +: 15] = (|mask[(index*16) +: 15]) ? alu_result_vm [(index*16) +: 15] : masku_operand_vd [(index*16) +: 15];
                 end
               end
               EW32: begin
                 if (issue_cnt_q < vinsn_issue.vl) begin
-                  alu_result_vm [31:0] = alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:32] + alu_result_ff [(NrLanes*DataWidth)-1-:32];
+                  alu_result_vm [31:0] = vlen_t'(alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:32]) + vlen_t'(alu_result_ff [(NrLanes*DataWidth)-1-:32]);
                 end else begin
                   alu_result_vm [31:0] = '0;
                 end
                 for (int index = 1; index < (NrLanes*DataWidth)/32; index++) begin
-                  alu_result_vm   [(index*32) +: 31] = alu_operand_b_seq_m [index-1] + alu_result_vm [((index-1)*32) +: 31];
+                  alu_result_vm   [(index*32) +: 31] = alu_operand_b_seq_m [index-1] + vlen_t'(alu_result_vm [((index-1)*32) +: 31]);
                   alu_result_vm_m [(index*32) +: 31] = (|mask[(index*32) +: 31]) ? alu_result_vm [(index*32) +: 31] : masku_operand_vd [(index*32) +: 31];
                 end
               end
               EW64: begin
                 if (issue_cnt_q < vinsn_issue.vl) begin
-                  alu_result_vm [63:0] = alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:64] + alu_result_ff [(NrLanes*DataWidth)-1-:64];
+                  alu_result_vm [63:0] = vlen_t'(alu_operand_b_seq_ff [(NrLanes*DataWidth)-1-:64]) + vlen_t'(alu_result_ff [(NrLanes*DataWidth)-1-:64]);
                 end else begin
                   alu_result_vm [63:0] = '0;
                 end
                 for (int index = 1; index < (NrLanes*DataWidth)/64; index++) begin
-                  alu_result_vm   [(index*64) +: 63] = alu_operand_b_seq_m [index-1] + alu_result_vm [((index-1)*64) +: 63];
+                  alu_result_vm   [(index*64) +: 63] = alu_operand_b_seq_m [index-1] + vlen_t'(alu_result_vm [((index-1)*64) +: 63]);
                   alu_result_vm_m [(index*64) +: 63] = (|mask[(index*64) +: 63]) ? alu_result_vm [(index*64) +: 63] : masku_operand_vd [(index*64) +: 63];
                 end
               end
