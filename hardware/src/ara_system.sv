@@ -12,9 +12,11 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     // Support for floating-point data types
     parameter fpu_support_e                     FPUSupport         = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter fpext_support_e                   FPExtSupport       = FPExtSupportEnable,
+    parameter fpext_support_e                   FPExtSupport       = FPExtSupportDisable,
     // Support for fixed-point data types
-    parameter fixpt_support_e                   FixPtSupport       = FixedPointEnable,
+    parameter fixpt_support_e                   FixPtSupport       = FixedPointDisable,
+    // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+    parameter spmask_support_e                  SpMskSupport       = SpecialMaskDisable,
     // Ariane configuration
     parameter ariane_pkg::ariane_cfg_t          ArianeCfg          = ariane_pkg::ArianeDefaultConfig,
     // AXI Interface
@@ -195,6 +197,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .FPUSupport  (FPUSupport      ),
     .FPExtSupport(FPExtSupport    ),
     .FixPtSupport(FixPtSupport    ),
+    .SpMskSupport(SpMskSupport    ),
     .AxiDataWidth(AxiWideDataWidth),
     .AxiAddrWidth(AxiAddrWidth    ),
     .axi_ar_t    (ara_axi_ar_t    ),

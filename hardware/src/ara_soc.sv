@@ -12,9 +12,11 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    parameter  fpext_support_e        FPExtSupport = FPExtSupportDisable,
     // Support for fixed-point data types
-    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport = FixedPointDisable,
+    // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+    parameter  spmask_support_e       SpMskSupport = SpecialMaskDisable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
@@ -463,6 +465,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
+    .SpMskSupport      (SpMskSupport         ),
     .ArianeCfg         (ArianeAraConfig      ),
     .AxiAddrWidth      (AxiAddrWidth         ),
     .AxiIdWidth        (AxiCoreIdWidth       ),

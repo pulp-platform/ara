@@ -45,6 +45,13 @@ package ara_pkg;
     FPExtSupportEnable  = 1'b1
   } fpext_support_e;
 
+  // Special mask instructions
+  // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+  typedef enum logic {
+    SpecialMaskDisable = 1'b0,
+    SpecialMaskEnable  = 1'b1
+  } spmask_support_e;
+
   // The three bits correspond to {RVVD, RVVF, RVVH}
   typedef enum logic [2:0] {
     FPUSupportNone             = 3'b000,

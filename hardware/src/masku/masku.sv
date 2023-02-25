@@ -10,12 +10,14 @@
 // predicated instructions.
 
 module masku import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int  unsigned   NrLanes      = 0,
+    // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+    parameter spmask_support_e SpMskSupport = SpecialMaskDisable,
+    parameter  type            vaddr_t      = logic, // Type used to address vector register file elements
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
-    localparam int  unsigned StrbWidth = DataWidth/8,
-    localparam type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
+    localparam int  unsigned   DataWidth    = $bits(elen_t), // Width of the lane datapath
+    localparam int  unsigned   StrbWidth    = DataWidth/8,
+    localparam type            strb_t       = logic [StrbWidth-1:0] // Byte-strobe type
   ) (
     input  logic                                       clk_i,
     input  logic                                       rst_ni,
@@ -83,7 +85,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end: gen_masku_operand_ready
 
     assign masku_operand_b_i[lane]        = masku_operand_i[lane][1];
-    assign masku_operand_b_valid_i[lane]  = (vinsn_issue.op inside {[VMSBF:VID]}) ? '1 : masku_operand_valid_i[lane][1];
+    assign masku_operand_b_valid_i[lane]  = (vinsn_issue.op inside {[VMSBF:VID]} && (SpMskSupport == SpecialMaskEnable)) ? '1 : masku_operand_valid_i[lane][1];
     assign masku_operand_ready_o[lane][1] = masku_operand_b_ready_o[lane];
 
     assign masku_operand_m_i[lane]        = masku_operand_i[lane][0];
@@ -246,7 +248,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       result_queue_valid_q     <= result_queue_valid_d;
       result_queue_write_pnt_q <= result_queue_write_pnt_d;
       result_queue_read_pnt_m  <= result_queue_write_pnt_q;
-      result_queue_read_pnt_q  <= (vinsn_issue.op inside {[VMSBF:VID]}) ? result_queue_read_pnt_m : result_queue_read_pnt_d;
+      result_queue_read_pnt_q  <= (vinsn_issue.op inside {[VMSBF:VID]} && (SpMskSupport == SpecialMaskEnable)) ? result_queue_read_pnt_m : result_queue_read_pnt_d;
       result_queue_cnt_q       <= result_queue_cnt_d;
       alu_result_f             <= (pe_req_ready_o) ? '0 : (!vinsn_issue.vm) ? alu_result_vm : alu_result_vm_seq;
       alu_result_ff            <= alu_result_f;
@@ -317,6 +319,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
+if (SpMskSupport == SpecialMaskEnable) begin
   // Population count for vcpop.m instruction
   popcount #(
     .INPUT_WIDTH (DataWidth*NrLanes)
@@ -334,6 +337,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .cnt_o   (vfirst_count ),
     .empty_o (vfirst_empty )
   );
+end else begin
+  assign popcount = '0;
+
+  assign vfirst_count = '0;
+  assign vfirst_empty = '0;
+end
 
   always_comb begin: p_mask_alu
     alu_result          = '0;
@@ -388,32 +397,34 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       alu_operand_a = masku_operand_a_i;
       alu_operand_b = masku_operand_b_i;
 
-      // Deshuffle the operands for the mask instructions
-      for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
-        automatic int deshuffle_byte             = deshuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
-        alu_operand_b_seq[8*deshuffle_byte +: 8] = alu_operand_a[8*b +: 8];
-        masku_operand_vd [8*deshuffle_byte +: 8] = alu_operand_b[8*b +: 8];
-      end
+      if (SpMskSupport == SpecialMaskEnable) begin
+        // Deshuffle the operands for the mask instructions
+        for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
+          automatic int deshuffle_byte             = deshuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
+          alu_operand_b_seq[8*deshuffle_byte +: 8] = alu_operand_a[8*b +: 8];
+          masku_operand_vd [8*deshuffle_byte +: 8] = alu_operand_b[8*b +: 8];
+        end
 
-      // Mask generation
-      unique case (vinsn_issue.op) inside
-        [VMSBF:VID] :
-          if (&masku_operand_a_valid_i) begin
-            unique case (vinsn_issue.vtype.vsew)
-              EW8 : for (int i = 0; i < (DataWidth * NrLanes)/8; i++)
-                      mask [(i*8) +: 8]   = {8{bit_enable_mask [i+(((DataWidth * NrLanes)/8)*(iteration_count_q))]}};
-              EW16: for (int i = 0; i < (DataWidth * NrLanes)/16; i++)
-                      mask [(i*16) +: 16] = {16{bit_enable_mask [i+(((DataWidth * NrLanes)/16)*(iteration_count_q))]}};
-              EW32: for (int i = 0; i < (DataWidth * NrLanes)/32; i++)
-                      mask [(i*32) +: 32] = {32{bit_enable_mask [i+(((DataWidth * NrLanes)/32)*(iteration_count_q))]}};
-              EW64: for (int i = 0; i < (DataWidth * NrLanes)/64; i++)
-                      mask [(i*64) +: 64] = {64{bit_enable_mask [i+(((DataWidth * NrLanes)/64)*(iteration_count_q))]}};
-            endcase
-          end else begin
-            mask = '0;
-          end
-        default:;
-      endcase
+        // Mask generation
+        unique case (vinsn_issue.op) inside
+          [VMSBF:VID] :
+            if (&masku_operand_a_valid_i) begin
+              unique case (vinsn_issue.vtype.vsew)
+                EW8 : for (int i = 0; i < (DataWidth * NrLanes)/8; i++)
+                        mask [(i*8) +: 8]   = {8{bit_enable_mask [i+(((DataWidth * NrLanes)/8)*(iteration_count_q))]}};
+                EW16: for (int i = 0; i < (DataWidth * NrLanes)/16; i++)
+                        mask [(i*16) +: 16] = {16{bit_enable_mask [i+(((DataWidth * NrLanes)/16)*(iteration_count_q))]}};
+                EW32: for (int i = 0; i < (DataWidth * NrLanes)/32; i++)
+                        mask [(i*32) +: 32] = {32{bit_enable_mask [i+(((DataWidth * NrLanes)/32)*(iteration_count_q))]}};
+                EW64: for (int i = 0; i < (DataWidth * NrLanes)/64; i++)
+                        mask [(i*64) +: 64] = {64{bit_enable_mask [i+(((DataWidth * NrLanes)/64)*(iteration_count_q))]}};
+              endcase
+            end else begin
+              mask = '0;
+            end
+          default:;
+        endcase
+      end
 
       // Evaluate the instruction
       unique case (vinsn_issue.op) inside
@@ -498,7 +509,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           alu_result = (alu_result_flat & bit_enable_shuffle) |
             (masku_operand_b_i & ~bit_enable_shuffle);
         end
-        [VMSBF:VMSIF] : begin
+        [VMSBF:VMSIF] : if (SpMskSupport == SpecialMaskEnable) begin
             if (&masku_operand_a_valid_i) begin
                 for (int i = 0; i < NrLanes * DataWidth; i++) begin
                     if (alu_operand_b_seq[i] == 1'b0) begin
@@ -514,7 +525,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 alu_result_vm = '0;
             end
         end
-        VIOTA: begin
+        VIOTA: if (SpMskSupport == SpecialMaskEnable) begin
           if (&masku_operand_a_valid_i) begin
             alu_operand_b_seq_m = alu_operand_b_seq & bit_enable_mask;
             unique case (vinsn_issue.vtype.vsew)
@@ -565,7 +576,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             endcase
           end
         end
-        VID: begin
+        VID: if (SpMskSupport == SpecialMaskEnable) begin
           if (&masku_operand_a_valid_i) begin
             unique case (vinsn_issue.vtype.vsew)
               EW8 : begin
@@ -595,7 +606,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             endcase
           end
         end
-        [VCPOP:VFIRST] : begin
+        [VCPOP:VFIRST] : if (SpMskSupport == SpecialMaskEnable) begin
           vcpop_operand = (!vinsn_issue.vm) ? masku_operand_a_i & bit_enable_mask : masku_operand_a_i;
         end
         default: begin
@@ -605,14 +616,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       endcase
     end
 
-    // Shuffle result for masked instructions
-    for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
-      automatic int shuffle_byte             = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
-      alu_result_vm_seq[8*shuffle_byte +: 8] = alu_result_vm_m[8*b +: 8];
+    if (SpMskSupport == SpecialMaskEnable) begin
+      // Shuffle result for masked instructions
+      for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
+        automatic int shuffle_byte             = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
+        alu_result_vm_seq[8*shuffle_byte +: 8] = alu_result_vm_m[8*b +: 8];
+      end
     end
 
     // alu_result propagation mux
-    if (vinsn_issue.op inside {[VMSBF:VID]})
+    if (vinsn_issue.op inside {[VMSBF:VID]} && (SpMskSupport == SpecialMaskEnable))
       alu_result = alu_result_vm_seq;
 
   end: p_mask_alu
@@ -778,7 +791,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid && vd_scalar(vinsn_issue.op)) begin
+    if (vinsn_issue_valid && vd_scalar(vinsn_issue.op) && (SpMskSupport == SpecialMaskEnable)) begin
       if (&(masku_operand_a_valid_i | fake_a_valid) && (&masku_operand_m_valid_i || vinsn_issue.vm)) begin
 
         masku_operand_a_ready_o = masku_operand_a_valid_i;
@@ -843,9 +856,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
             result_queue_d[result_queue_write_pnt_q][lane] = '{
               wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata | alu_result[lane],
-              be   : (vinsn_issue.op inside {[VMSBF:VID]}) ? '1 : be(element_cnt, vinsn_issue.vtype.vsew),
-              addr : (vinsn_issue.op inside {[VMSBF:VID]}) ? vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew)) : vaddr(vinsn_issue.vd, NrLanes) +
-                (((vinsn_issue.vl - issue_cnt_q) / NrLanes / DataWidth)),
+              be   : ((vinsn_issue.op inside {[VMSBF:VID]}) && (SpMskSupport == SpecialMaskEnable)) ? '1 : be(element_cnt, vinsn_issue.vtype.vsew),
+              addr : ((vinsn_issue.op inside {[VMSBF:VID]}) && (SpMskSupport == SpecialMaskEnable))
+                     ? vaddr(vinsn_issue.vd, NrLanes) + ((vinsn_issue.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue.vtype.vsew))
+                     : vaddr(vinsn_issue.vd, NrLanes) + (((vinsn_issue.vl - issue_cnt_q) / NrLanes / DataWidth)),
               id : vinsn_issue.id
             };
           end
@@ -876,7 +890,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               if (issue_cnt_q < NrLanes * DataWidth)
                 issue_cnt_d = '0;
             end
-          end else if (vinsn_issue.op inside {[VMSBF:VID]}) begin
+          end else if (vinsn_issue.op inside {[VMSBF:VID]} && (SpMskSupport == SpecialMaskEnable)) begin
             result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
 
             // Acknowledge the previous value of the destination vector register.
@@ -923,7 +937,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     ///////////////////////////
     //// Masked Instruction ///
     ///////////////////////////
-    if (vinsn_commit_valid && vinsn_commit.op inside {[VMSBF:VID]}) begin
+    if (vinsn_commit_valid && vinsn_commit.op inside {[VMSBF:VID]} && (SpMskSupport == SpecialMaskEnable)) begin
       if (&masku_operand_a_valid_i && (&masku_operand_m_valid_i || vinsn_issue.vm)) begin
         // if this is the last beat, commit the result to the scalar_result queue
         commit_cnt_d = commit_cnt_q - (1 << (int'(EW64) - vinsn_commit.vtype.vsew));
@@ -1040,7 +1054,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     ///////////////////////////
 
     // The scalar result has been sent to and acknowledged by the dispatcher
-    if (vinsn_commit.op inside {[VCPOP:VFIRST]} && result_scalar_valid_o == 1) begin
+    if (vinsn_commit.op inside {[VCPOP:VFIRST]} && (result_scalar_valid_o == 1) && (SpMskSupport == SpecialMaskEnable)) begin
 
       // reset result_scalar
       result_scalar_d       = '0;

@@ -13,9 +13,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    parameter fpext_support_e        FPExtSupport = FPExtSupportDisable,
     // Support for fixed-point data types
-    parameter fixpt_support_e        FixPtSupport = FixedPointEnable
+    parameter fixpt_support_e        FixPtSupport = FixedPointDisable,
+    // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+    parameter spmask_support_e       SpMskSupport = SpecialMaskDisable
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -3085,6 +3087,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Check that we have fixed-point support if requested
       // vxsat and vxrm are always accessible anyway
       if (ara_req_valid_d && (ara_req_d.op inside {[VSADDU:VNCLIPU], VSMUL}) && (FixPtSupport == FixedPointDisable))
+        illegal_insn = 1'b1;
+
+      // Check that we have special-mask support if requested
+      if (ara_req_valid_d && (ara_req_d.op inside {[VMSBF:VFIRST]}) && (SpMskSupport == SpecialMaskDisable))
         illegal_insn = 1'b1;
 
       // Check that we have we have vfrec7, vfrsqrt7

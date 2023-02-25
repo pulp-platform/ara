@@ -12,9 +12,11 @@ module ara import ara_pkg::*; #(
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    parameter  fpext_support_e        FPExtSupport = FPExtSupportDisable,
     // Support for fixed-point data types
-    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport = FixedPointDisable,
+    // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+    parameter  spmask_support_e       SpMskSupport = SpecialMaskDisable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
@@ -89,7 +91,11 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
 
   ara_dispatcher #(
-    .NrLanes(NrLanes)
+    .FPUSupport  (FPUSupport  ),
+    .FPExtSupport(FPExtSupport),
+    .FixPtSupport(FixPtSupport),
+    .SpMskSupport(SpMskSupport),
+    .NrLanes     (NrLanes     )
   ) i_dispatcher (
     .clk_i             (clk_i           ),
     .rst_ni            (rst_ni          ),
@@ -416,8 +422,9 @@ module ara import ara_pkg::*; #(
   /////////////////
 
   masku #(
-    .NrLanes(NrLanes),
-    .vaddr_t(vaddr_t)
+    .NrLanes     (NrLanes     ),
+    .SpMskSupport(SpMskSupport),
+    .vaddr_t     (vaddr_t     )
   ) i_masku (
     .clk_i                   (clk_i                           ),
     .rst_ni                  (rst_ni                          ),
