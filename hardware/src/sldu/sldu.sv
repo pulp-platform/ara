@@ -49,109 +49,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   import cf_math_pkg::idx_width;
 
   ////////////////////////////////
-  //  Spill-reg from the lanes  //
-  ////////////////////////////////
-
-  elen_t [NrLanes-1:0] sldu_operand;
-  logic  [NrLanes-1:0] sldu_operand_valid;
-  logic  [NrLanes-1:0] sldu_operand_ready;
-  target_fu_e [NrLanes-1:0] sldu_operand_target_fu_d, sldu_operand_target_fu_q;
-
-  // Don't handshake if the operands target the addrgen!
-  // Moreover, when computing NP2 slides, loop over the same data!
-  elen_t [NrLanes-1:0] sldu_operand_d;
-  logic [NrLanes-1:0]  sldu_operand_valid_d;
-  logic [NrLanes-1:0]  sldu_operand_ready_q;
-
-  typedef enum logic {
-    NP2_BUFFER_PNT,
-    NP2_RESULT_PNT
-  } np2_result_queue_pnt_e;
-
-  typedef enum logic {
-    NP2_EXT_SEL,
-    NP2_LOOP_SEL
-  } np2_loop_mux_e;
-  np2_loop_mux_e np2_loop_mux_sel_d, np2_loop_mux_sel_q;
-
-  logic slide_np2_buf_valid_d, slide_np2_buf_valid_q;
-
-  for (genvar l = 0; l < NrLanes; l++) begin
-    spill_register #(
-      .T(elen_t)
-    ) i_sldu_spill_register (
-      .clk_i  (clk_i                      ),
-      .rst_ni (rst_ni                     ),
-      .valid_i(sldu_operand_valid_d[l]    ),
-      .ready_o(sldu_operand_ready_q[l]    ),
-      .data_i (sldu_operand_d[l]          ),
-      .valid_o(sldu_operand_valid[l]      ),
-      .ready_i(sldu_operand_ready[l]      ),
-      .data_o (sldu_operand[l]            )
-    );
-
-    assign sldu_operand_d[l] = np2_loop_mux_sel_q == NP2_EXT_SEL
-                             ? sldu_operand_i[l]
-                             : result_queue_q[NP2_BUFFER_PNT][l].wdata;
-
-    assign sldu_operand_valid_d[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU)
-                                   ? (np2_loop_mux_sel_q == NP2_EXT_SEL
-                                     ? sldu_operand_valid_i[l]
-                                     : slide_np2_buf_valid_q)
-                                   : 1'b0;
-
-    assign sldu_operand_ready_o[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU)
-                                   ? (np2_loop_mux_sel_q == NP2_EXT_SEL
-                                     ? sldu_operand_ready_q[l]
-                                     : 1'b0)
-                                   : 1'b0;
-  end
-
-  assign sldu_operand_target_fu_d = sldu_operand_target_fu_i;
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni)
-      sldu_operand_target_fu_q <= target_fu_e'(1'b0);
-    else
-      sldu_operand_target_fu_q <= sldu_operand_target_fu_d;
-  end
-
-  //////////////////////////
-  //  Cut from the masku  //
-  //////////////////////////
-
-  strb_t [NrLanes-1:0] mask_q;
-  logic  [NrLanes-1:0] mask_valid_d, mask_valid_q;
-  logic                mask_ready_d;
-  logic  [NrLanes-1:0] mask_ready_q;
-  // Insn queue related signal
-  logic vinsn_issue_valid_q;
-
-  for (genvar l = 0; l < NrLanes; l++) begin
-    stream_register #(
-      .T(strb_t)
-    ) i_mask_operand_register (
-      .clk_i     (clk_i           ),
-      .rst_ni    (rst_ni          ),
-      .clr_i     (1'b0            ),
-      .testmode_i(1'b0            ),
-      .data_o    (mask_q[l]       ),
-      .valid_o   (mask_valid_q[l] ),
-      .ready_i   (mask_ready_d    ),
-      .data_i    (mask_i[l]       ),
-      .valid_i   (mask_valid_d[l] ),
-      .ready_o   (mask_ready_q[l] )
-    );
-
-    // Sample only SLDU mask valid
-    assign mask_valid_d[l] = mask_valid_i[l] & ~vinsn_issue_q.vm & vinsn_issue_valid_q;
-  end
-
-
-  // Don't upset the masku with a spurious ready
-  assign mask_ready_o = mask_ready_q[0] & mask_valid_i[0] & ~vinsn_issue_q.vm & vinsn_issue_valid_q & !(vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu});
-
-  ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
 
@@ -181,12 +78,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     logic [idx_width(VInsnQueueDepth):0] commit_cnt;
   } vinsn_queue_d, vinsn_queue_q;
 
+  pe_req_t vinsn_issue_q;
+  logic vinsn_issue_valid_q;
   // Is the vector instruction queue full?
   logic vinsn_queue_full;
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue_q;
   `FF(vinsn_issue_q, vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt], '0)
   `FF(vinsn_issue_valid_q, vinsn_queue_d.issue_cnt != '0, 1'b0)
 
@@ -257,6 +155,108 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       result_queue_cnt_q       <= result_queue_cnt_d;
     end
   end
+
+  ////////////////////////////////
+  //  Spill-reg from the lanes  //
+  ////////////////////////////////
+
+  elen_t [NrLanes-1:0] sldu_operand;
+  logic  [NrLanes-1:0] sldu_operand_valid;
+  logic  [NrLanes-1:0] sldu_operand_ready;
+  target_fu_e [NrLanes-1:0] sldu_operand_target_fu_d, sldu_operand_target_fu_q;
+
+  // Don't handshake if the operands target the addrgen!
+  // Moreover, when computing NP2 slides, loop over the same data!
+  elen_t [NrLanes-1:0] sldu_operand_d;
+  logic [NrLanes-1:0]  sldu_operand_valid_d;
+  logic [NrLanes-1:0]  sldu_operand_ready_q;
+
+  typedef enum logic {
+    NP2_BUFFER_PNT,
+    NP2_RESULT_PNT
+  } np2_result_queue_pnt_e;
+
+  typedef enum logic {
+    NP2_EXT_SEL,
+    NP2_LOOP_SEL
+  } np2_loop_mux_e;
+  np2_loop_mux_e np2_loop_mux_sel_d, np2_loop_mux_sel_q;
+
+  logic slide_np2_buf_valid_d, slide_np2_buf_valid_q;
+
+
+  for (genvar l = 0; l < NrLanes; l++) begin
+    spill_register #(
+      .T(elen_t)
+    ) i_sldu_spill_register (
+      .clk_i  (clk_i                      ),
+      .rst_ni (rst_ni                     ),
+      .valid_i(sldu_operand_valid_d[l]    ),
+      .ready_o(sldu_operand_ready_q[l]    ),
+      .data_i (sldu_operand_d[l]          ),
+      .valid_o(sldu_operand_valid[l]      ),
+      .ready_i(sldu_operand_ready[l]      ),
+      .data_o (sldu_operand[l]            )
+    );
+
+    assign sldu_operand_d[l] = np2_loop_mux_sel_q == NP2_EXT_SEL
+                             ? sldu_operand_i[l]
+                             : result_queue_q[NP2_BUFFER_PNT][l].wdata;
+
+    assign sldu_operand_valid_d[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU)
+                                   ? (np2_loop_mux_sel_q == NP2_EXT_SEL
+                                     ? sldu_operand_valid_i[l]
+                                     : slide_np2_buf_valid_q)
+                                   : 1'b0;
+
+    assign sldu_operand_ready_o[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU)
+                                   ? (np2_loop_mux_sel_q == NP2_EXT_SEL
+                                     ? sldu_operand_ready_q[l]
+                                     : 1'b0)
+                                   : 1'b0;
+  end
+
+  assign sldu_operand_target_fu_d = sldu_operand_target_fu_i;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni)
+      sldu_operand_target_fu_q <= target_fu_e'(1'b0);
+    else
+      sldu_operand_target_fu_q <= sldu_operand_target_fu_d;
+  end
+
+  //////////////////////////
+  //  Cut from the masku  //
+  //////////////////////////
+
+  strb_t [NrLanes-1:0] mask_q;
+  logic  [NrLanes-1:0] mask_valid_d, mask_valid_q;
+  logic                mask_ready_d;
+  logic  [NrLanes-1:0] mask_ready_q;
+
+  for (genvar l = 0; l < NrLanes; l++) begin
+    stream_register #(
+      .T(strb_t)
+    ) i_mask_operand_register (
+      .clk_i     (clk_i           ),
+      .rst_ni    (rst_ni          ),
+      .clr_i     (1'b0            ),
+      .testmode_i(1'b0            ),
+      .data_o    (mask_q[l]       ),
+      .valid_o   (mask_valid_q[l] ),
+      .ready_i   (mask_ready_d    ),
+      .data_i    (mask_i[l]       ),
+      .valid_i   (mask_valid_d[l] ),
+      .ready_o   (mask_ready_q[l] )
+    );
+
+    // Sample only SLDU mask valid
+    assign mask_valid_d[l] = mask_valid_i[l] & ~vinsn_issue_q.vm & vinsn_issue_valid_q;
+  end
+
+
+  // Don't upset the masku with a spurious ready
+  assign mask_ready_o = mask_ready_q[0] & mask_valid_i[0] & ~vinsn_issue_q.vm & vinsn_issue_valid_q & !(vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu});
 
   ///////////////////
   //  NP2 Support  //

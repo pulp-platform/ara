@@ -341,6 +341,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   ///////////////////
 
   strb_t r;
+  logic valu_valid;
 
   if (FixPtSupport == FixedPointEnable) begin
     fixed_p_rounding i_fp_rounding (
@@ -363,7 +364,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   ///////////////////////
 
   elen_t  valu_result;
-  logic   valu_valid;
   vxsat_t alu_vxsat, alu_vxsat_q, alu_vxsat_d;
 
   assign alu_vxsat_d = alu_vxsat;
