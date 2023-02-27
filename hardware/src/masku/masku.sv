@@ -72,6 +72,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes-1:0] masku_operand_m_valid_i;
   logic  [NrLanes-1:0] masku_operand_m_ready_o;
 
+  // Insn-queue related signal
+  pe_req_t vinsn_issue;
+
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_unpack_masku_operands
     assign masku_operand_a_i[lane]       = masku_operand_i[lane][2 + masku_operand_fu];
     assign masku_operand_a_valid_i[lane] = masku_operand_valid_i[lane][2 + masku_operand_fu];
@@ -114,7 +117,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue;
   logic    vinsn_issue_valid;
   assign vinsn_issue       = vinsn_queue_q.vinsn[0];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
