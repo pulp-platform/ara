@@ -34,3 +34,5 @@ install
 pyenv_ara/
 docs/build/
 docs/source/_templates/
+*.jou
+fusesoc.conf
