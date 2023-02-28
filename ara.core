@@ -261,6 +261,8 @@ filesets:
             - hardware/src/lane/operand_queues_stage.sv
             - hardware/src/lane/valu.sv
             - hardware/src/lane/vmfpu.sv
+            - hardware/src/lane/fixed_p_rounding.sv
+            - hardware/src/lane/power_gating_generic.sv
             - hardware/src/vlsu/vlsu.sv
             - hardware/src/lane/vector_fus_stage.sv
             - hardware/src/lane/lane.sv
