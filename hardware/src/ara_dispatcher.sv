@@ -13,9 +13,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    parameter fpext_support_e        FPExtSupport = FPExtSupportDisable,
     // Support for fixed-point data types
-    parameter fixpt_support_e        FixPtSupport = FixedPointEnable
+    parameter fixpt_support_e        FixPtSupport = FixedPointDisable,
+    // Support for vpopc, vfirst, viota, vid, vmsbf, vmsof, vmsif
+    parameter spmask_support_e       SpMskSupport = SpecialMaskDisable
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -137,7 +139,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   typedef enum logic [1:0] {
     NORMAL_OPERATION,
     WAIT_IDLE,
-    RESHUFFLE
+    RESHUFFLE,
+    SLDU_SEQUENCER
   } state_e;
   state_e state_d, state_q;
 
@@ -217,6 +220,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   `FF(load_complete_q, load_complete_i, 1'b0)
   `FF(store_complete_q, store_complete_i, 1'b0)
 
+  // NP2 Slide support
+  logic is_stride_np2;
+  logic [idx_width(idx_width(VLENB << 3)):0] sldu_popc;
+
+  // Is the stride power of two?
+  popcount #(
+    .INPUT_WIDTH (idx_width(VLENB << 3))
+  ) i_np2_stride (
+    .data_i    (ara_req_d.stride[idx_width(VLENB << 3)-1:0]),
+    .popcount_o(sldu_popc                                  )
+  );
+
+  assign is_stride_np2 = sldu_popc > 1;
+
   ///////////////
   //  Decoder  //
   ///////////////
@@ -290,9 +307,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     is_config            = 1'b0;
     ignore_zero_vl_check = 1'b0;
-
-    // The token must change at every new instruction
-    ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
 
     // Saturation in any lane will raise vxsat flag
     vxsat_d |= |vxsat_flag_i;
@@ -731,6 +745,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 ara_req_d.vd            = insn.varith_type.rd;
                 ara_req_d.use_vd        = 1'b1;
                 ara_req_d.vm            = insn.varith_type.vm;
+                ara_req_d.is_stride_np2 = is_stride_np2;
                 ara_req_valid_d         = 1'b1;
 
                 // Decode based on the func6 field
@@ -943,6 +958,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 ara_req_d.vd            = insn.varith_type.rd;
                 ara_req_d.use_vd        = 1'b1;
                 ara_req_d.vm            = insn.varith_type.vm;
+                ara_req_d.is_stride_np2 = is_stride_np2;
                 ara_req_valid_d         = 1'b1;
 
                 // Decode based on the func6 field
@@ -1596,6 +1612,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 ara_req_d.vd            = insn.varith_type.rd;
                 ara_req_d.use_vd        = 1'b1;
                 ara_req_d.vm            = insn.varith_type.vm;
+                ara_req_d.is_stride_np2 = is_stride_np2;
                 ara_req_valid_d         = 1'b1;
 
                 // Decode based on the func6 field
@@ -2241,6 +2258,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   ara_req_d.vd            = insn.varith_type.rd;
                   ara_req_d.use_vd        = 1'b1;
                   ara_req_d.vm            = insn.varith_type.vm;
+                  ara_req_d.is_stride_np2 = is_stride_np2;
                   ara_req_d.fp_rm         = acc_req_i.frm;
                   ara_req_valid_d         = 1'b1;
 
@@ -3071,6 +3089,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       if (ara_req_valid_d && (ara_req_d.op inside {[VSADDU:VNCLIPU], VSMUL}) && (FixPtSupport == FixedPointDisable))
         illegal_insn = 1'b1;
 
+      // Check that we have special-mask support if requested
+      if (ara_req_valid_d && (ara_req_d.op inside {[VMSBF:VFIRST]}) && (SpMskSupport == SpecialMaskDisable))
+        illegal_insn = 1'b1;
+
       // Check that we have we have vfrec7, vfrsqrt7
       if (ara_req_valid_d && (ara_req_d.op inside {VFREC7, VFRSQRT7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
@@ -3082,7 +3104,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
         in_lane_op = ara_req_d.op inside {[VADD:VMERGE]} || ara_req_d.op inside {[VREDSUM:VMSBC]} ||
-                     ara_req_d.op inside {[VMANDNOT:VMXNOR]};
+                     ara_req_d.op inside {[VMANDNOT:VMXNOR]} || ara_req_d.op inside {VSLIDEUP, VSLIDEDOWN};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
@@ -3194,6 +3216,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     acc_resp_o.load_complete  = load_zero_vl  | load_complete_q;
     acc_resp_o.store_complete = store_zero_vl | store_complete_q;
+
+    // The token must change at every new instruction
+    ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
   end: p_decoder
 
 endmodule : ara_dispatcher

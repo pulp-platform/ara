@@ -5,16 +5,7 @@
 # Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 #         Basile Bougenot <bbougenot@student.ethz.ch>
 
-rv64uv_sc_tests = vaadd \
-                  vaaddu\
-                  vsadd \
-                  vsaddu \
-                  vsmul \
-                  vssra \
-                  vssrl \
-                  vnclip \
-                  vnclipu \
-                  vadd \
+rv64uv_sc_tests = vadd \
                   vsub \
                   vrsub \
                   vwaddu \
@@ -154,14 +145,7 @@ rv64uv_sc_tests = vaadd \
                   vsuxei \
                   vsetivli\
                   vsetvli\
-                  vsetvl\
-                  vmsbf \
-                  vmsof \
-                  vmsif \
-                  viota \
-                  vid \
-                  vcpop \
-                  vfirst \
+                  vsetvl \
                   vle8 \
                   vse8 \
                   vle16 \
@@ -170,11 +154,14 @@ rv64uv_sc_tests = vaadd \
                   vse32 \
                   vle64 \
                   vse64 \
-                  vle_vse_hazards \
-                  vfrec7 \
-                  vfrsqrt7
+                  vle_vse_hazards
 
-#rv64uv_sc_tests = vaadd vaaddu vadc vasub vasubu vcompress vfirst vid viota vl vlff vl_nocheck vlx vmsbf vmsif vmsof vpopc_m vrgather vsadd vsaddu vsetvl vsetivli vsetvli vsmul vssra vssrl vssub vssubu vsux vsx
+# Non mandatory support:
+# vfrec7, vfrsqrt7
+# vfirst, vcpop, vid, viota, vmsif, vmsof, vmsbf
+# vaadd, vaaddu, vsadd, vsaddu, vsmul, vssra, vssrl, vnclip, vnclipu, vasub, vasubu
+
+#rv64uv_sc_tests = vcompress vl vlff vl_nocheck vlx vrgather vsetvl vsetivli vsetvli vsux vsx
 
 rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
