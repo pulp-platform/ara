@@ -180,6 +180,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Optimize `dotproduct` kernel
  - Optimize `fft` kernel
  - Simplify the reduction engine for both `valu` and `vmfpu`, to avoid spurious valid signals to the `sldu`
+ - Fix commit for `dtc` installation (`spike` dependency)
 
 ## 2.2.0 - 2021-11-02
 
