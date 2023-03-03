@@ -123,7 +123,11 @@ def updateRf(regline, reg_width, rf):
 def addRs2(disasm, args):
   rs2 = ''
   if (disasm == 'vsetvl'):
-    print('ERROR: vlse or vsse found, implement addRs2 function!')
+    print('ERROR: vsetlvl, implement addRs2 function!')
+  # Delete return register when vsetvli has nonzero retreg
+  if (disasm == 'vsetvli' and args[0] != 'zero'):
+    del args[0]
+    return ''
   if ('vlse' in disasm or 'vsse' in disasm):
     for reg in xrf:
       if (reg == args[-1]):
