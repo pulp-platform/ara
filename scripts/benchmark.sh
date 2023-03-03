@@ -97,6 +97,7 @@ extract_performance() {
     $python ./scripts/check_cycles.py $kernel $hw_cycles $sw_cycles || exit
   fi
   echo "Extracting performance from cycle count"
+  echo "$python ./scripts/performance.py \"$metadata\" \"$args\" $hw_cycles >> $outfile"
   $python ./scripts/performance.py "$metadata" "$args" $hw_cycles >> $outfile || exit
 }
 
@@ -261,6 +262,7 @@ conv2d() {
 
       # Default System
       compile_and_run $kernel "$defines" $tempfile 0                                      || exit
+      echo "extract_performance $kernel \"$metadata 0\" \"$args\" $tempfile ${kernel}_${nr_lanes}.benchmark"
       extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
@@ -788,10 +790,7 @@ case $1 in
 
   *)
     echo "Benchmarking all the apps."
-    matmul imatmul
     matmul fmatmul
-    conv2d iconv2d
-    conv2d fconv2d
     fconv3d
     jacobi2d
     dropout
