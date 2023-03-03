@@ -165,7 +165,7 @@ real_maxPerf = {
   'dwt'        : lambda l, s : 4 * l / s,
   'exp'        : lambda l, s : 28/23 * l * 8/s,
   'softmax'    : lambda l, s : 32/25 * l * 8/s,
-  'pathfinder' : lambda l, s : 1/3 * l * 8/s,
+  'pathfinder' : lambda l, s : l * 8/s,
   'dotproduct' : lambda l, s : 4 * l/s,
   'fdotproduct': lambda l, s : 4 * l/s,
   'roi_align'  : lambda l, s : 3/5 * l * 8/s,
