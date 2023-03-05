@@ -103,7 +103,7 @@ def roi_align(args, cycles):
   n_boxes = int(args[4])
   crop_h  = int(args[5])
   crop_w  = int(args[6])
-  performance = 9 * batch * depth * n_boxes * crop_h * crop_w / cycles
+  performance = 9 * depth / cycles
   return [depth, performance]
 
 perfExtr = {
