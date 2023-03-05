@@ -507,3 +507,59 @@ void init_crops(float *vec, size_t size) {
   for (unsigned long int i = 0; i < size; ++i)
     vec[i] = 0;
 }
+
+// Roi Align vector kernel
+// Fake just for timing measurements and comparison with Ideal Dispatcher
+void roi_align_fake_kernel_asm(float* pimage, float* crops_data, int left_x_index, int right_x_index, int b, int y, size_t depth) {
+
+  volatile float x_lerp = 0.14135;
+  volatile float y_lerp = 0.4363;
+  volatile int image_channel_elements = 64;
+  volatile int channel_elements = 32;
+  volatile int crop_elements = 5;
+  volatile int crop_width = 3;
+  volatile int tyiw = 9;
+  volatile int byiw = 7;
+  volatile int x = 11;
+  volatile int k = 0;
+  volatile int z = 0;
+
+  size_t vl;
+  size_t avl = depth;
+
+  asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+
+  for (avl = depth; avl > 0; avl -= vl) {
+    asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+    asm volatile("vle32.v v0, (%0)" ::"r"(
+                     &pimage[tyiw + left_x_index])
+                 : "v0"); // top left
+    asm volatile("vle32.v v1, (%0)" ::"r"(
+                     &pimage[tyiw + right_x_index])
+                 : "v1"); // top right
+
+    asm volatile("vfsub.vv v2, v1, v0");                // top
+    asm volatile("vfmadd.vf v2, %0, v0" ::"f"(x_lerp)); // top
+
+    asm volatile("vle32.v v3, (%0)" ::"r"(
+                     &pimage[byiw + left_x_index])
+                 : "v3"); // bottom left
+    asm volatile(
+        "vle32.v v4, (%0)" ::"r"(
+            &pimage[byiw + right_x_index])
+        : "v4"); // bottom right
+
+    asm volatile("vfsub.vv v5, v4, v3");                // bottom
+    asm volatile("vfmadd.vf v5, %0, v3" ::"f"(x_lerp)); // bottom
+
+    asm volatile("vfsub.vv v6, v5, v2");                // bottom
+    asm volatile("vfmadd.vf v6, %0, v2" ::"f"(y_lerp)); // bottom
+
+    asm volatile("vse32.v v6, (%0)" ::"r"(
+        &crops_data[crop_elements * b + y * crop_width + x]));
+
+    // Bump pointers
+    k += vl * image_channel_elements;
+    z += vl * channel_elements;
+  }
+}
