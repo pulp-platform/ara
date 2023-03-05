@@ -37,8 +37,17 @@ extern double b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern double c[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 void warm_caches(uint64_t heat) {
+  volatile double *a_ = a;
+  volatile double buf;
+
   for (uint64_t k = 0; k < heat; ++k)
     fmatmul(c, a, b, M, N, P);
+    // Vector stores have invalidated the A mtx cache lines!
+    // Fetch them again
+    for (int m = 0; m < M; ++m) {
+      buf = (volatile double) *a_;
+      a_ += N;
+    }
 }
 
 int main() {
