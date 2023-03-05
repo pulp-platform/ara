@@ -20,6 +20,10 @@
 #include <stdio.h>
 #endif
 
+// Execute only the central kernel with fake data
+// Execute only on the channels
+//#define V_KERNEL_ONLY 1
+
 #define EXTRAPOLATION_VALUE 0
 
 extern uint64_t BATCH_SIZE;
@@ -77,6 +81,8 @@ int main() {
     init_crops(crops_data_vec, BATCH_SIZE * DEPTH * CROP_HEIGHT * CROP_WIDTH);
   */
 
+#ifndef V_KERNEL_ONLY
+
   // Parameters
   printf("BATCH_SIZE = %ld\nDEPTH = %ld\nIMAGE_HEIGHT = %ld\nIMAGE_WIDTH = "
          "%ld\nN_BOXES = %ld\nCROP_HEIGHT = %ld\nCROP_WIDTH = "
@@ -106,7 +112,26 @@ int main() {
   runtime_v = get_timer();
   printf("Vector benchmark complete.\n");
 
+#else
+
+  int left_x_index = 0;
+  int right_x_index = 0;
+  int b = 0;
+  int y = 0;
+
+  printf("Starting vector main kernel...\n");
+  start_timer();
+  roi_align_fake_kernel_asm(image_data, crops_data_vec, left_x_index, right_x_index, b, y, DEPTH);
+  stop_timer();
+  runtime_v = get_timer();
+  printf("Vector benchmark complete.\n");
+
+#endif
+
   printf("The execution took %d cycles.\n", runtime_v);
+
+#ifndef V_KERNEL_ONLY
+
   printf("Vector speedup is %f times over the scalar implementation.\n",
          (float)runtime_s / runtime_v);
 
@@ -122,6 +147,8 @@ int main() {
   } else {
     printf("Passed.\n");
   }
+
+#endif
 
   return 0;
 }
