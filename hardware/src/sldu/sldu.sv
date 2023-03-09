@@ -463,11 +463,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               issue_cnt_d = vinsn_issue_q.vl << int'(vinsn_issue_q.vtype.vsew);
 
               // Initialize be-enable-generation ancillary signals
-              output_limit_d = pe_req_i.use_scalar_op ? out_pnt_d + issue_cnt_d : issue_cnt_d;
+              output_limit_d = vinsn_issue_q.use_scalar_op ? out_pnt_d + issue_cnt_d : issue_cnt_d;
 
               // Trim vector elements which are not touched by the slide unit
-              if (!pe_req_i.use_scalar_op)
-                issue_cnt_d -= vinsn_issue_q.stride[$bits(issue_cnt_d)-1:0];
+              issue_cnt_d -= vinsn_issue_q.stride[$bits(issue_cnt_d)-1:0];
 
               // Start writing at the middle of the destination vector
               vrf_pnt_d = vinsn_issue_q.stride >> $clog2(8*NrLanes);
