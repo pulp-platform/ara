@@ -76,6 +76,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Solve some of the Warnings from SpyGlass run
  - Fix masku handshake. All the lanes should handshake together in input
  - Start solving `sldu` counter widths warnings
+ - Fix `vslideup` wrong counter trimming
 
 ### Added
 
