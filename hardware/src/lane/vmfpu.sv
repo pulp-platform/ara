@@ -768,7 +768,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     };
 
     // Don't compress classify result
-    localparam int unsigned TrueSIMDClass = 1;
+    localparam int unsigned TrueSIMDClass  = 1;
+    localparam int unsigned EnableSIMDMask = 1;
 
     operation_e fp_op;
     logic fp_opmod;
@@ -969,7 +970,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .Features      (FPUFeatures      ),
       .Implementation(FPUImplementation),
       .TagType       (strb_t           ),
-      .TrueSIMDClass (TrueSIMDClass    )
+      .TrueSIMDClass (TrueSIMDClass    ),
+      .EnableSIMDMask(EnableSIMDMask   )
     ) i_fpnew_bulk (
       .clk_i         (clk_i          ),
       .rst_ni        (rst_ni         ),
