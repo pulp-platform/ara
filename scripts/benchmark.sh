@@ -90,6 +90,12 @@ extract_performance() {
 
   echo "Extracting cycle count measure"
   hw_cycles=$(cat $tempfile | grep "\[hw-cycles\]" | tr -s " " | cut -d: -f 2)
+  echo "Extracting dcache stalls metric"
+  dcache_stalls=$(cat $tempfile | grep "\[cva6-d\$-stalls\]" | tr -s " " | cut -d: -f 2)
+  echo "Extracting icache stalls metric"
+  icache_stalls=$(cat $tempfile | grep "\[cva6-i\$-stalls\]" | tr -s " " | cut -d: -f 2)
+  echo "Extracting scoreboard full metric"
+  sb_full_stalls=$(cat $tempfile | grep "\[cva6-sb-full\]" | tr -s " " | cut -d: -f 2)
   # If we have a SW-cycle count, check that the HW one for improved reliability
   if [[ ! $outfile =~ "ideal" ]]; then
     sw_cycles=$(cat $tempfile | grep "\[sw-cycles\]" | tr -s " " | cut -d: -f 2)
@@ -98,7 +104,7 @@ extract_performance() {
   fi
   echo "Extracting performance from cycle count"
   echo "$python ./scripts/performance.py \"$metadata\" \"$args\" $hw_cycles >> $outfile"
-  $python ./scripts/performance.py "$metadata" "$args" $hw_cycles >> $outfile || exit
+  $python ./scripts/performance.py "$metadata" "$args" $hw_cycles $dcache_stalls $icache_stalls $sb_full_stalls >> $outfile || exit
 }
 
 extract_performance_dotp() {

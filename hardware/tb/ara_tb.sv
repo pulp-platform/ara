@@ -199,6 +199,9 @@ module ara_tb;
         // Print vector HW runtime
 `ifndef TARGET_GATESIM
         $display("[hw-cycles]: %d", int'(dut.runtime_buf_q));
+        $display("[cva6-d$-stalls]: %d", int'(dut.dcache_stall_buf_q));
+        $display("[cva6-i$-stalls]: %d", int'(dut.icache_stall_buf_q));
+        $display("[cva6-sb-full]: %d", int'(dut.sb_full_buf_q));
 `endif
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end
