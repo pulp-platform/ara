@@ -58,6 +58,9 @@ def update_db(fpath, db, template):
         'perf'       : float(elm[4]),
         'max_perf'   : float(elm[5]),
         'ideal_disp' : int(elm[6]),
+        'dstall'     : int(elm[7]),
+        'istall'     : int(elm[8]),
+        'sb_full'    : int(elm[9]),
       }
 
 def kernel_list_gen(db):
@@ -83,6 +86,9 @@ def main():
     'perf'       : 0,
     'max_perf'   : 0,
     'ideal_disp' : 0,
+    'dstall'     : 0,
+    'istall'     : 0,
+    'sb_full'    : 0,
   }
 
   # Update the database with the information from the input file
