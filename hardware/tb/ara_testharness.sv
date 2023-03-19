@@ -204,5 +204,79 @@ module ara_testharness #(
     end
   end
 
+`ifndef IDEAL_DISPATCHER
+
+  /*******************
+   *  CVA6 PERF CNT  *
+   *******************/
+
+  // Count the number of I$/D$ stalls, and if the scoreboard is
+  // full during the V runtime.
+  // i_ara_soc.i_system.i_ariane.i_perf_counters.l1_dcache_miss_i
+  // i_ara_soc.i_system.i_ariane.i_perf_counters.l1_icache_miss_i
+  // i_ara_soc.i_system.i_ariane.i_perf_counters.sb_full_i
+
+  logic [63:0] dcache_stall_cnt_d, dcache_stall_cnt_q;
+  logic [63:0] icache_stall_cnt_d, icache_stall_cnt_q;
+  logic [63:0] sb_full_cnt_d, sb_full_cnt_q;
+  logic [63:0] dcache_stall_buf_d, dcache_stall_buf_q;
+  logic [63:0] icache_stall_buf_d, icache_stall_buf_q;
+  logic [63:0] sb_full_buf_d, sb_full_buf_q;
+
+  always_comb begin
+    dcache_stall_cnt_d = dcache_stall_cnt_q;
+    icache_stall_cnt_d = icache_stall_cnt_q;
+    sb_full_cnt_d      = sb_full_cnt_q;
+    if (runtime_cnt_en_q && i_ara_soc.i_system.i_ariane.i_perf_counters.l1_dcache_miss_i)
+      dcache_stall_cnt_d += 1;
+    if (runtime_cnt_en_q && i_ara_soc.i_system.i_ariane.i_perf_counters.l1_icache_miss_i)
+      icache_stall_cnt_d += 1;
+    if (runtime_cnt_en_q && i_ara_soc.i_system.i_ariane.i_perf_counters.sb_full_i)
+      sb_full_cnt_d      += 1;
+  end
+
+  // Update logic
+  always_comb begin
+    // Update the internal runtime and reset the update flag
+    if (runtime_to_be_updated_q           &&
+        i_ara_soc.i_system.i_ara.ara_idle &&
+        !i_ara_soc.i_system.i_ara.acc_req_valid_i) begin
+      dcache_stall_buf_d = dcache_stall_cnt_q;
+      icache_stall_buf_d = icache_stall_cnt_q;
+      sb_full_buf_d      = sb_full_cnt_q;
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      dcache_stall_cnt_q <= '0;
+      icache_stall_cnt_q <= '0;
+      sb_full_cnt_q      <= '0;
+      dcache_stall_buf_q <= '0;
+      icache_stall_buf_q <= '0;
+      sb_full_buf_q      <= '0;
+    end else begin
+      dcache_stall_cnt_q <= dcache_stall_cnt_d;
+      icache_stall_cnt_q <= icache_stall_cnt_d;
+      sb_full_cnt_q      <= sb_full_cnt_d;
+      dcache_stall_buf_q <= dcache_stall_buf_d;
+      icache_stall_buf_q <= icache_stall_buf_d;
+      sb_full_buf_q      <= sb_full_buf_d;
+    end
+  end // always_ff @ (posedge clk_i or negedge rst_ni)
+
+`else
+
+  logic [63:0] dcache_stall_buf_q;
+  logic [63:0] icache_stall_buf_q;
+  logic [63:0] sb_full_buf_q;
+
+  assign dcache_stall_buf_q = '0;
+  assign icache_stall_buf_q = '0;
+  assign sb_full_buf_q      = '0;
+
+`endif
+
+
 `endif
 endmodule : ara_testharness
