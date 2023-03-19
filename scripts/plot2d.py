@@ -49,7 +49,7 @@ def update_db(fpath, db, template):
       append_entry(db, template)
       elm = line.split()
       # [token]: lanes vsize sew cycles
-      assert len(elm) == 7
+      assert len(elm) == 10
       db[-1] = {
         'kernel'     : elm[0],
         'lanes'      : int(elm[1]),
