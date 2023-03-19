@@ -10,7 +10,7 @@ import argparse
 # Instantiate the parser
 parser = argparse.ArgumentParser(description=
 '''
-Draw useful plots.
+Format the database.
 ''')
 
 # Switch
@@ -18,6 +18,12 @@ parser.add_argument('-f', '--infile', action='store',
                     help=
 '''
 Specify a file that contains all the kernel files with results.
+''')
+
+parser.add_argument('-m', '--metric', action='store',
+                    help=
+'''
+Select which metric to display [perf|dstall|istall|sbfull].
 ''')
 
 args = parser.parse_args()
@@ -49,7 +55,7 @@ def update_db(fpath, db, template):
       append_entry(db, template)
       elm = line.split()
       # [token]: lanes vsize sew cycles
-      assert len(elm) == 7
+      assert len(elm) == 10
       db[-1] = {
         'kernel'     : elm[0],
         'lanes'      : int(elm[1]),
@@ -58,6 +64,9 @@ def update_db(fpath, db, template):
         'perf'       : float(elm[4]),
         'max_perf'   : float(elm[5]),
         'ideal_disp' : int(elm[6]),
+        'dstall'     : int(elm[7]),
+        'istall'     : int(elm[8]),
+        'sb_full'    : int(elm[9]),
       }
 
 def kernel_list_gen(db):
@@ -83,6 +92,9 @@ def main():
     'perf'       : 0,
     'max_perf'   : 0,
     'ideal_disp' : 0,
+    'dstall'     : 0,
+    'istall'     : 0,
+    'sb_full'    : 0,
   }
 
   # Update the database with the information from the input file
@@ -93,7 +105,20 @@ def main():
   vsize_list  = vsize_list_gen(db, kernel_list)
 
   # Build relative performance(kernel, vsize) db
-  buf = [{vs : [(entry['perf'] / entry['max_perf']) for k in kernel_list for entry in db if (entry['kernel'], entry['vsize']) == (k, vs)]} for vs in vsize_list];
+  buf_perf = [{vs : [(entry['perf'] / entry['max_perf']) for k in kernel_list for entry in db if (entry['kernel'], entry['vsize']) == (k, vs)]} for vs in vsize_list];
+  buf_dstall = [{vs : [(entry['dstall']) for k in kernel_list for entry in db if (entry['kernel'], entry['vsize']) == (k, vs)]} for vs in vsize_list];
+  buf_istall = [{vs : [(entry['istall']) for k in kernel_list for entry in db if (entry['kernel'], entry['vsize']) == (k, vs)]} for vs in vsize_list];
+  buf_sbfull = [{vs : [(entry['sb_full']) for k in kernel_list for entry in db if (entry['kernel'], entry['vsize']) == (k, vs)]} for vs in vsize_list];
+
+  if   (args.metric == 'perf'):
+    buf = buf_perf
+  elif (args.metric == 'dstall'):
+    buf = buf_dstall
+  elif (args.metric == 'istall'):
+    buf = buf_istall
+  elif (args.metric == 'sbfull'):
+    buf = buf_sbfull
+
   pkv_db = dict()
   for d in buf:
     pkv_db.update(d)
