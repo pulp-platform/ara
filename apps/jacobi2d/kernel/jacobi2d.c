@@ -83,11 +83,13 @@ void j2d_s(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B,
         B[i * c + j] =
             (0.2) * (A[i * c + j] + A[i * c + j - 1] + A[i * c + j + 1] +
                      A[(i + 1) * c + j] + A[(i - 1) * c + j]);
+#ifdef DOUBLE_BUFFERING
     for (uint32_t i = 1; i < r - 1; i++)
       for (uint32_t j = 1; j < c - 1; j++)
         A[i * c + j] =
             (0.2) * (B[i * c + j] + B[i * c + j - 1] + B[i * c + j + 1] +
                      B[(i + 1) * c + j] + B[(i - 1) * c + j]);
+#endif
   }
 }
 
@@ -95,7 +97,9 @@ void j2d_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B,
            uint64_t tsteps) {
   for (uint32_t t = 0; t < tsteps; t++) {
     j2d_kernel_asm_v(r, c, A, B);
+#ifdef DOUBLE_BUFFERING
     j2d_kernel_asm_v(r, c, B, A);
+#endif
   }
 }
 

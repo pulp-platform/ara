@@ -62,7 +62,7 @@ def fconv3d(args, cycles):
 def jacobi2d(args, cycles):
   size        = int(args[0])
   trash_0     = args[1]
-  performance = 2 * 5 * (size-1) * (size-1) / cycles
+  performance = 5 * (size-1) * (size-1) / cycles
   return [size, performance]
 def dropout(args, cycles):
   size        = int(args[0])
