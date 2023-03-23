@@ -380,8 +380,7 @@ module ara import ara_pkg::*; #(
   logic sldu_mask_ready;
 
   sldu #(
-    .NrLanes(NrLanes),
-    .vaddr_t(vaddr_t)
+    .NrLanes(NrLanes)
   ) i_sldu (
     .clk_i                   (clk_i                            ),
     .rst_ni                  (rst_ni                           ),
@@ -416,8 +415,7 @@ module ara import ara_pkg::*; #(
   /////////////////
 
   masku #(
-    .NrLanes(NrLanes),
-    .vaddr_t(vaddr_t)
+    .NrLanes(NrLanes)
   ) i_masku (
     .clk_i                   (clk_i                           ),
     .rst_ni                  (rst_ni                          ),
