@@ -40,8 +40,17 @@ extern int64_t CH;
 extern int64_t F;
 
 void warm_caches(uint64_t heat) {
+  volatile double buf;
+
   for (uint64_t k = 0; k < heat; ++k)
     fconv3d_CHx7x7(o, i, f, M, N, CH, F);
+// The following artificial warming ensures, with a larger cache,
+// not to experience any cache misses
+#ifdef AD_HOC_WARMING
+  for (uint64_t k = 0; k < F*F*CH; ++k)
+    buf = (volatile double) *(&(f[k]));
+  fconv3d_CHx7x7_warm(o, i, f, M, N, CH, F);
+#endif
 }
 
 int main() {
