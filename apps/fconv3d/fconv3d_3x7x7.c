@@ -75,6 +75,29 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
   }
 }
 
+void fconv3d_CHx7x7_warm(double *o, double *i, double *f, int64_t M, int64_t N,
+                    int64_t C, int64_t F) {
+
+  unsigned long int block_size_n;
+
+  // Set the vector configuration
+  asm volatile("vsetvli %0, %1, e64, m2, ta, ma" : "=r"(block_size_n) : "r"(N));
+
+  // Slice the matrix into a manageable number of columns n_
+  for (unsigned long int n = 0; n < N; n += block_size_n) {
+    // Set the vector length
+    const unsigned long int n_ = MIN(N - n, block_size_n);
+
+    // Find pointers to the submatrices
+    const double *i_ = i + n;
+    double *o_ = o + n;
+
+    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_));
+
+    fconv3d_warm(o_, i_, f, M, N, n_, C, F);
+  }
+}
+
 void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
                           int64_t n_, int64_t C, int64_t F) {
 
@@ -882,6 +905,352 @@ void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
   asm volatile("vfmacc.vf v28, %0, v10" ::"f"(fl6));
   asm volatile("vse64.v  v28, (%0); add %0, %0, %1" : "+&r"(o) : "r"(ldo));
 }
+
+
+void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
+                          int64_t n_, int64_t C, int64_t F) {
+
+  // Helper variables
+  int64_t ldo = N << 3;
+  int64_t ldi_pad = (N + F - 1) << 3;
+
+  // Number of elements that separates two adjacent channels
+  int64_t ich_len = (M + F - 1) * (N + F - 1);
+  int64_t fch_len = F * F;
+
+  double *i_ = i;
+  double *i__ = i;
+
+  // Very last column of coefficients
+  double fl0, fl1, fl2, fl3, fl4, fl5, fl6;
+  // Buffers for coefficients preloading (solve 16-lane starvation problem)
+  double f0_buf, f1_buf, f2_buf, f3_buf, f4_buf, f5_buf, f6_buf;
+
+  double *i_slide_ptr_0;
+  double *i_slide_ptr_1;
+  double *i_slide_ptr_2;
+  double *i_slide_ptr_3;
+
+  ////////////////
+  // Row 0 -> 3 //
+  ////////////////
+
+  // Loop on the channels
+  for (int ch = 0; ch < C; ++ch) {
+
+    // Point to the first element of the channel ch
+    i__ = i_ + ch * ich_len;
+
+    // Point to the scalar elements to insert during a slide
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
+    i_slide_ptr_3 = i__ + n_ + 3 * (N + F - 1);
+
+    // Main kernel, unrolled by 2
+    // Unrolled because of double buffering
+    // With HW renaming, this unroll is not needed
+    for (int64_t k = 0; k < F / 2; ++k) {
+      // Two base indexes because of the unrolling
+      // Point to the first element of the current column (k) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      // Point to the first element of the current column (k+1) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+
+      if ((k | ch) == 0)
+        asm volatile("vfmul.vf v16, v0, %0" ::"f"(f[0 + base_idx_0]));
+      else
+        asm volatile("vfmacc.vf v16, %0, v0" ::"f"(f[0 + base_idx_0]));
+      if ((k | ch) == 0)
+        asm volatile("vfmul.vf v18, v4, %0" ::"f"(f[0 + base_idx_0]));
+      else
+        asm volatile("vfmacc.vf v18, %0, v4" ::"f"(f[0 + base_idx_0]));
+      asm volatile("vfslide1down.vf v2, v0, %0" ::"f"(*i_slide_ptr_0++));
+      asm volatile("vfmacc.vf v16, %0, v4" ::"f"(f[7 + base_idx_0]));
+      if ((k | ch) == 0)
+        asm volatile("vfmul.vf v22, v12, %0" ::"f"(f[0 + base_idx_0]));
+      else
+        asm volatile("vfmacc.vf v22, %0, v12" ::"f"(f[0 + base_idx_0]));
+      asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
+      asm volatile("vfslide1down.vf v10, v8, %0" ::"f"(*i_slide_ptr_2++));
+      asm volatile("vfslide1down.vf v14, v12, %0" ::"f"(*i_slide_ptr_3++));
+      asm volatile("vfslide1down.vf v0, v2, %0" ::"f"(*i_slide_ptr_0++));
+      asm volatile("vfslide1down.vf v4, v6, %0" ::"f"(*i_slide_ptr_1++));
+      asm volatile("vfslide1down.vf v8, v10, %0" ::"f"(*i_slide_ptr_2++));
+      asm volatile("vfslide1down.vf v12, v14, %0" ::"f"(*i_slide_ptr_3++));
+      asm volatile("vfmacc.vf v20, %0, v14" ::"f"(f[7 + base_idx_1]));
+    }
+
+    int64_t base_idx_0 = (F - 1) + (ch * fch_len);
+
+    // Don't slide during the last iteration
+  }
+
+  // Bump the input ptr
+  i_ += 4 * (N + F - 1);
+
+  ////////////////
+  // Row 4 -> 6 //
+  ////////////////
+
+  // Loop on the channels
+  for (int ch = 0; ch < C; ++ch) {
+
+    // Point to the first element of the channel ch
+    i__ = i_ + ch * ich_len;
+
+    // Start calculating the next pointers to the elements to be slided in
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
+
+
+    // Main kernel, unrolled by 2
+    for (int k = 0; k < F / 2; ++k) {
+      // Two base indexes because of the unrolling
+      // Point to the first element of the current column (k) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      // Point to the first element of the current column (k+1) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+
+      // Unroll 0
+      asm volatile("vfslide1down.vf v0, v2, %0" ::"f"(*i_slide_ptr_0++));
+
+      asm volatile("vfmacc.vf v18, %0, v10" ::"f"(f[35 + base_idx_0]));
+      asm volatile("vfslide1down.vf v4, v6, %0" ::"f"(*i_slide_ptr_1++));
+
+      asm volatile("vfslide1down.vf v8, v10, %0" ::"f"(*i_slide_ptr_2++));
+
+      if ((k | ch) == 0)
+        asm volatile("vfmul.vf v26, v6, %0" ::"f"(f[0 + base_idx_0]));
+      else
+        asm volatile("vfmacc.vf v26, %0, v6" ::"f"(f[0 + base_idx_0]));
+      asm volatile("vfmacc.vf v26, %0, v10" ::"f"(f[7 + base_idx_0]));
+
+      if ((k | ch) == 0)
+        asm volatile("vfmul.vf v28, v10, %0" ::"f"(f[0 + base_idx_0]));
+      else
+        asm volatile("vfmacc.vf v28, %0, v10" ::"f"(f[0 + base_idx_0]));
+
+      // Unroll 1
+      asm volatile("vfslide1down.vf v2, v0, %0" ::"f"(*i_slide_ptr_0++));
+
+      asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
+
+      asm volatile("vfslide1down.vf v10, v8, %0" ::"f"(*i_slide_ptr_2++));
+
+    }
+
+    // The very last iterations require mixing the instructions with the store
+    // and the moves
+    if (ch != C - 1) {
+      // Point to the first element of the current column (k) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_0 = (F - 1) + (ch * fch_len);
+
+      // Don't slide the elements here
+    }
+  }
+
+  // Reuse preloaded coefficients
+  // Buffer the next coefficients for faster use
+
+
+  // Bump the input ptr
+  i_ += 3 * (N + F - 1);
+
+  ////////////
+  // REGIME //
+  ////////////
+
+  // The following loop is unrolled by 2
+  // The input matrix has M + F - 1 rows
+  // We have computed F input rows already
+  // Nompute now until only F input rows are left
+  // (The last F-1 rows do not contribute to F output rows each, so keep them
+  // outside of this loop) (We keep F rows outside because of the unrolling by
+  // 2, just for easeness)
+  for (int j = 0; j < ((M + F - 1) - 2 * F) / 2; ++j) {
+
+    // Work on F output rows
+
+    // Loop on the channels
+    for (int ch = 0; ch < C; ++ch) {
+      // Point to the first element of the channel ch
+      i__ = i_ + ch * ich_len;
+
+      // Start calculating the next pointers to the elements to be slided in
+      i_slide_ptr_0 = i__ + n_;
+
+      for (int k = 0; k < F / 2; ++k) {
+        // Two base indexes because of the unrolling
+        // Look ahead to the first element of the current column (k+2) of the
+        // current channel (ch) of the filter (f)
+        int64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
+        // Point to the first element of the current column (k+1) of the current
+        // channel (ch) of the filter (f)
+        int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+
+        asm volatile("vfslide1down.vf v2, v0, %0" ::"f"(*i_slide_ptr_0++));
+        f1_buf = f[7 + base_idx_1];
+        if ((k | ch) == 0)
+          asm volatile("vfmul.vf v28, v0, %0" ::"f"(f0_buf));
+        else
+          asm volatile("vfmacc.vf v28, %0, v0" ::"f"(f0_buf));
+        f0_buf = f[0 + base_idx_1];
+
+        // Nalculate F contributions of the input rows, on F different output
+        // rows
+        asm volatile("vfmacc.vf v16, %0, v2" ::"f"(f6_buf));
+        asm volatile("vfmacc.vf v18, %0, v2" ::"f"(f5_buf));
+        f6_buf = f[42 + base_idx_0];
+        asm volatile("vfmacc.vf v20, %0, v2" ::"f"(f4_buf));
+        f5_buf = f[35 + base_idx_0];
+        asm volatile("vfslide1down.vf v0, v2, %0" ::"f"(*i_slide_ptr_0++));
+        f4_buf = f[28 + base_idx_0];
+        asm volatile("vfmacc.vf v22, %0, v2" ::"f"(f3_buf));
+        f3_buf = f[21 + base_idx_0];
+        asm volatile("vfmacc.vf v24, %0, v2" ::"f"(f2_buf));
+        f2_buf = f[14 + base_idx_0];
+        asm volatile("vfmacc.vf v26, %0, v2" ::"f"(f1_buf));
+        f1_buf = f[7 + base_idx_0];
+        asm volatile("vfmacc.vf v28, %0, v2" ::"f"(f0_buf));
+        f0_buf = f[0 + base_idx_0];
+      }
+
+      if (ch != C - 1) {
+        int64_t base_idx_0 = (ch + 1) * fch_len;
+
+      }
+    }
+   }
+
+    // Bump the input ptr
+    i_ += N + F - 1;
+
+#ifdef VCD_DUMP
+    // Stop dumping VCD
+    event_trigger = -1;
+#endif
+
+    //////////////
+    // UNROLL 1 //
+    //////////////
+
+    // Loop on the channels
+    for (int ch = 0; ch < C; ++ch) {
+
+      // Point to the first element of the channel ch
+      i__ = i_ + ch * ich_len;
+
+      // Start calculating the next pointers to the elements to be slided in
+      i_slide_ptr_1 = i__ + n_;
+
+      for (int k = 0; k < F / 2; ++k) {
+        // Two base indexes because of the unrolling
+        // Point to the first element of the current column (k) of the current
+        // channel (ch) of the filter (f)
+        int64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
+        // Point to the first element of the current column (k+1) of the current
+        // channel (ch) of the filter (f)
+        int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+    }
+
+
+    // Bump the input ptr
+    i_ += N + F - 1;
+  }
+
+  ////////////////////////
+  // Row I-F -> (I-1)-3 //
+  ////////////////////////
+
+  for (int64_t ch = 0; ch < C; ++ch) {
+
+    // Point to the first element of the channel ch
+    i__ = i_ + ch * ich_len;
+
+    // Point to the scalar elements to insert during a slide
+    // i_slide_ptr_0 has already been computed
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
+    i_slide_ptr_3 = i__ + n_ + 3 * (N + F - 1);
+
+    // Main kernel, unrolled by 2
+    // Process 4 input rows
+    for (int k = 0; k < F / 2; ++k) {
+      // Two base indexes because of the unrolling
+      // Point to the first element of the current column (k) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      // Point to the first element of the current column (k+1) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+
+      asm volatile("vfslide1down.vf v2, v0, %0" ::"f"(*i_slide_ptr_0++));
+      if ((k | ch) == 0)
+        asm volatile("vfmul.vf v28, v0, %0" ::"f"(f[0 + base_idx_0]));
+      else
+      asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
+      asm volatile("vfslide1down.vf v10, v8, %0" ::"f"(*i_slide_ptr_2++));
+      asm volatile("vfslide1down.vf v14, v12, %0" ::"f"(*i_slide_ptr_3++));
+
+      asm volatile("vfslide1down.vf v0, v2, %0" ::"f"(*i_slide_ptr_0++));
+      asm volatile("vfslide1down.vf v4, v6, %0" ::"f"(*i_slide_ptr_1++));
+      asm volatile("vfslide1down.vf v8, v10, %0" ::"f"(*i_slide_ptr_2++));
+      asm volatile("vfslide1down.vf v12, v14, %0" ::"f"(*i_slide_ptr_3++));
+    }
+
+  }
+
+
+  // Bump the input ptr
+  i_ += 4 * (N + F - 1);
+
+  //////////////////////////
+  // Row (I-1)-3 -> (I-1) //
+  //////////////////////////
+
+  for (int64_t ch = 0; ch < C; ++ch) {
+
+    // Point to the first element of the channel ch
+    i__ = i_ + ch * ich_len;
+
+    // Start calculating the next pointers to the elements to be slided in
+    i_slide_ptr_0 = i__ + n_ + 0 * (N + F - 1);
+    i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
+    i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
+
+    // Main kernel, unrolled by 2
+    for (int k = 0; k < F / 2; ++k) {
+      // Two base indexes because of the unrolling
+      // Point to the first element of the current column (k) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_0 = (2 * k) + (ch * fch_len);
+      // Point to the first element of the current column (k+1) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+
+      asm volatile("vfslide1down.vf v0, v2, %0" ::"f"(*i_slide_ptr_0++));
+      asm volatile("vfslide1down.vf v4, v6, %0" ::"f"(*i_slide_ptr_1++));
+      asm volatile("vfslide1down.vf v8, v10, %0" ::"f"(*i_slide_ptr_2++));
+
+      asm volatile("vfslide1down.vf v2, v0, %0" ::"f"(*i_slide_ptr_0++));
+      asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
+      asm volatile("vfslide1down.vf v10, v8, %0" ::"f"(*i_slide_ptr_2++));
+    }
+
+    if (ch != C - 1) {
+      int64_t base_idx_0 = (F - 1) + (ch * fch_len);
+    }
+  }
+}
+
 
 /*
   ////////////////////
