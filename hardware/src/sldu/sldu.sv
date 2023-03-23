@@ -8,8 +8,14 @@
 // instructions, which need access to the whole Vector Register File.
 
 module sldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes         = 0,
+    // Address of an element in the lane's VRF
+    localparam int  unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
+    localparam int  unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
+    localparam int  unsigned VaddrIdxWidth   = $clog2(VRFBSizePerLane),
+    localparam int  unsigned VaddrBankWidth  = $clog2(NrVRFBanksPerLane),
+    localparam int  unsigned VaddrVregWidth  = $clog2(MaxVLenBPerLane),
+    localparam type          vaddr_t         = logic [VaddrIdxWidth-1:0],
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
@@ -45,6 +51,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   `include "common_cells/registers.svh"
+
+  // Include address-handling functions
+  `include "../../include/ara_vaddr.svh"
 
   import cf_math_pkg::idx_width;
 
@@ -107,6 +116,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   /////////////////////
 
   localparam int unsigned ResultQueueDepth = 2;
+
+  vaddr_t addr_d, addr_q;
 
   // There is a result queue per lane, holding the results that were not
   // yet accepted by the corresponding lane.
@@ -395,6 +406,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     out_pnt_d     = out_pnt_q;
     vrf_pnt_d     = vrf_pnt_q;
     state_d       = state_q;
+    addr_d        = addr_q;
 
     result_queue_d           = result_queue_q;
     result_queue_valid_d     = result_queue_valid_q;
@@ -470,6 +482,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
               // Start writing at the middle of the destination vector
               vrf_pnt_d = vinsn_issue_q.stride >> $clog2(8*NrLanes);
+
+              // Fix the starting address
+              addr_d = vaddr_offset(addr_q, vrf_pnt_d, vinsn_issue_q.vd);
 
               // Go to SLIDE_RUN_VSLIDE1UP_FIRST_WORD if this is a vslide1up instruction
               if (vinsn_issue_q.use_scalar_op)
@@ -555,8 +570,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Initialize id and addr fields of the result queue requests
           for (int lane = 0; lane < NrLanes; lane++) begin
             result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
-            result_queue_d[result_queue_write_pnt_q][lane].addr =
-              vaddr(vinsn_issue_q.vd, NrLanes) + vrf_pnt_q;
+            result_queue_d[result_queue_write_pnt_q][lane].addr = addr_q;
           end
 
           // Bump pointers (reductions always finish in one shot)
@@ -624,8 +638,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             if (vinsn_issue_q.op inside {VSLIDEUP, VSLIDEDOWN})
               mask_ready_d = !vinsn_issue_q.vm;
 
-            // Increment VRF address
-            vrf_pnt_d = vrf_pnt_q + 1;
+            // Increment write-back address
+            addr_d = vaddr_offset(addr_q, 1, vinsn_issue_q.vd);
 
             // Send result to the VRF
             result_queue_cnt_d += 1;
@@ -683,6 +697,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             // Increment vector instruction queue pointers and counters
             vinsn_queue_d.issue_pnt += 1;
             vinsn_queue_d.issue_cnt -= 1;
+
+            addr_d = vaddr(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vd, NrLanes);
           end
         end
         if (state_q == SLIDE_NP2_COMMIT)
@@ -721,6 +737,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Increment vector instruction queue pointers and counters
           vinsn_queue_d.issue_pnt += 1;
           vinsn_queue_d.issue_cnt -= 1;
+
+          addr_d = vaddr(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vd, NrLanes);
         end
       end
       SLIDE_WAIT_OSUM: begin
@@ -875,6 +893,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op) begin
           commit_cnt_d -= vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride[$bits(commit_cnt_d)-1:0];
         end
+
+        // Initialize the starting address for the next instruction
+        addr_d = vaddr(pe_req_i.vd, NrLanes);
       end
 
       // Bump pointers and counters of the vector instruction queue
@@ -899,6 +920,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       red_stride_cnt_q      <= 1;
       np2_loop_mux_sel_q    <= NP2_EXT_SEL;
       slide_np2_buf_valid_q <= 1'b0;
+      addr_q             <= '0;
     end else begin
       vinsn_running_q       <= vinsn_running_d;
       issue_cnt_q           <= issue_cnt_d;
@@ -913,6 +935,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       red_stride_cnt_q      <= red_stride_cnt_d;
       np2_loop_mux_sel_q    <= np2_loop_mux_sel_d;
       slide_np2_buf_valid_q <= slide_np2_buf_valid_d;
+      addr_q             <= addr_d;
     end
   end
 

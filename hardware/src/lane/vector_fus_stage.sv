@@ -99,8 +99,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
 
   valu #(
     .NrLanes(NrLanes),
-    .FixPtSupport(FixPtSupport),
-    .vaddr_t(vaddr_t)
+    .FixPtSupport(FixPtSupport)
   ) i_valu (
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
@@ -148,8 +147,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .NrLanes   (NrLanes   ),
     .FPUSupport(FPUSupport),
     .FPExtSupport(FPExtSupport),
-    .FixPtSupport(FixPtSupport),
-    .vaddr_t   (vaddr_t   )
+    .FixPtSupport(FixPtSupport)
   ) i_vmfpu (
     .clk_i                (clk_i                           ),
     .rst_ni               (rst_ni                          ),
