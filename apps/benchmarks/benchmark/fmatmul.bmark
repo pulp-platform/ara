@@ -42,12 +42,14 @@ void warm_caches(uint64_t heat) {
 
   for (uint64_t k = 0; k < heat; ++k)
     fmatmul(c, a, b, M, N, P);
+#ifdef AD_HOC_WARMING
     // Vector stores have invalidated the A mtx cache lines!
     // Fetch them again
     for (int m = 0; m < M; ++m) {
       buf = (volatile double) *a_;
       a_ += N;
     }
+#endif
 }
 
 int main() {
