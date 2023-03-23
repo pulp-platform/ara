@@ -39,6 +39,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrVInsn-1:0] pe_vinsn_running_i,
     output logic                           pe_req_ready_o,
     output pe_resp_t                       pe_resp_o,
+    // Hazard handling to main sequencer
+    output vid_t                           commit_id_o,
+    output logic                           commit_id_valid_o,
+    input  logic                           hazard_i,
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
@@ -111,6 +115,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   logic    vinsn_commit_valid;
   assign vinsn_commit       = vinsn_queue_q.vinsn[vinsn_queue_q.commit_pnt];
   assign vinsn_commit_valid = (vinsn_queue_q.commit_cnt != '0);
+  // To the main sequencer, for hazard checking
+  assign commit_id_valid_o = vinsn_commit_valid;
+  assign commit_id_o       = vinsn_commit.id;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -371,7 +378,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////////
 
     for (int lane = 0; lane < NrLanes; lane++) begin: result_write
-      ldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
+      // Create a request only if there are no more hazards on vd (check vs1 since the info about
+      // hazard vd is also there)
+      ldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane] &&
+                                 !vinsn_commit.hazard_vs1;
       ldu_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr;
       ldu_result_id_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].id;
       ldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
@@ -431,6 +441,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[
             vinsn_queue_d.commit_pnt].vtype.vsew);
     end
+
+    // Update the Vd hazard bit for the current instruction
+    // hazard_vs1, hazard_vs2, hazard_vm all contain the info about hazard_vd, so work on one of them (vs1)
+    if (commit_id_valid_o) vinsn_queue_d.vinsn[vinsn_queue_q.commit_pnt].hazard_vs1 &= {NrVInsn{hazard_i}};
 
     //////////////////////////////
     //  Accept new instruction  //
