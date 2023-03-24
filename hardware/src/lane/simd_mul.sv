@@ -204,6 +204,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     end: gen_mul
 
     always_comb begin : p_mul
+      // Default assignment
+      result_o = '0;
+
       unique case (op)
         // Single-Width integer multiply instructions
         VMUL: for (int l = 0; l < 2; l++) result_o[32*l +: 32] = mul_res.w64[l][31:0];
@@ -241,6 +244,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     end : gen_mul
 
     always_comb begin : p_mul
+      // Default assignment
+      result_o = '0;
+
       unique case (op)
         // Single-Width integer multiply instructions
         VMUL: for (int l = 0; l < 4; l++) result_o[16*l +: 16] = mul_res.w32[l][15:0];
@@ -278,6 +284,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
     end : gen_mul
 
     always_comb begin : p_mul
+      // Default assignment
+      result_o = '0;
+
       unique case (op)
         // Single-Width integer multiply instructions
         VMUL: for (int l = 0; l < 8; l++) result_o[8*l +: 8] = mul_res.w16[l][7:0];
