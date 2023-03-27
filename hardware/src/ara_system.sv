@@ -75,6 +75,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 
   import ariane_pkg::accelerator_req_t;
   import ariane_pkg::accelerator_resp_t;
+  import ariane_pkg::exception_t;
 
   // Accelerator ports
   accelerator_req_t                     acc_req;
@@ -87,6 +88,14 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   logic              [AxiAddrWidth-1:0] inval_addr;
   logic                                 inval_valid;
   logic                                 inval_ready;
+  // ARA-MMU Interface
+  exception_t                           ara_misaligned_ex;
+  logic                                 ara_mmu_req;
+  logic [riscv::VLEN-1:0]               ara_vaddr;
+  logic                                 ara_is_store;
+  logic                                 ara_mmu_valid;
+  logic [riscv::PLEN-1:0]               ara_paddr;
+  exception_t                           ara_exception;
 
   // Support max 8 cores, for now
   logic [63:0] hart_id;
@@ -108,27 +117,34 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   ariane #(
     .ArianeCfg(ArianeCfg)
   ) i_ariane (
-    .clk_i            (clk_i                 ),
-    .rst_ni           (rst_ni                ),
-    .boot_addr_i      (boot_addr_i           ),
-    .hart_id_i        (hart_id               ),
-    .irq_i            ('0                    ),
-    .ipi_i            ('0                    ),
-    .time_irq_i       ('0                    ),
-    .debug_req_i      ('0                    ),
-    .axi_req_o        (ariane_narrow_axi_req ),
-    .axi_resp_i       (ariane_narrow_axi_resp),
+    .clk_i              (clk_i                 ),
+    .rst_ni             (rst_ni                ),
+    .boot_addr_i        (boot_addr_i           ),
+    .hart_id_i          (hart_id               ),
+    .irq_i              ('0                    ),
+    .ipi_i              ('0                    ),
+    .time_irq_i         ('0                    ),
+    .debug_req_i        ('0                    ),
+    .axi_req_o          (ariane_narrow_axi_req ),
+    .axi_resp_i         (ariane_narrow_axi_resp),
     // Accelerator ports
-    .acc_req_o        (acc_req               ),
-    .acc_req_valid_o  (acc_req_valid         ),
-    .acc_req_ready_i  (acc_req_ready         ),
-    .acc_resp_i       (acc_resp              ),
-    .acc_resp_valid_i (acc_resp_valid        ),
-    .acc_resp_ready_o (acc_resp_ready        ),
-    .acc_cons_en_o    (acc_cons_en           ),
-    .inval_addr_i     (inval_addr            ),
-    .inval_valid_i    (inval_valid           ),
-    .inval_ready_o    (inval_ready           )
+    .acc_req_o          (acc_req               ),
+    .acc_req_valid_o    (acc_req_valid         ),
+    .acc_req_ready_i    (acc_req_ready         ),
+    .acc_resp_i         (acc_resp              ),
+    .acc_resp_valid_i   (acc_resp_valid        ),
+    .acc_resp_ready_o   (acc_resp_ready        ),
+    .acc_cons_en_o      (acc_cons_en           ),
+    .inval_addr_i       (inval_addr            ),
+    .inval_valid_i      (inval_valid           ),
+    .inval_ready_o      (inval_ready           ),
+    .ara_misaligned_ex_i(ara_misaligned_ex     ),
+    .ara_mmu_req_i      (ara_mmu_req           ),
+    .ara_vaddr_i        (ara_vaddr             ),
+    .ara_is_store_i     (ara_is_store          ),
+    .ara_mmu_valid_o    (ara_mmu_valid         ),
+    .ara_paddr_o        (ara_paddr             ),
+    .ara_exception_o    (ara_exception         )
   );
 `endif
 
@@ -205,19 +221,26 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .axi_req_t   (ara_axi_req_t   ),
     .axi_resp_t  (ara_axi_resp_t  )
   ) i_ara (
-    .clk_i           (clk_i         ),
-    .rst_ni          (rst_ni        ),
-    .scan_enable_i   (scan_enable_i ),
-    .scan_data_i     (1'b0          ),
-    .scan_data_o     (/* Unused */  ),
-    .acc_req_i       (acc_req       ),
-    .acc_req_valid_i (acc_req_valid ),
-    .acc_req_ready_o (acc_req_ready ),
-    .acc_resp_o      (acc_resp      ),
-    .acc_resp_valid_o(acc_resp_valid),
-    .acc_resp_ready_i(acc_resp_ready),
-    .axi_req_o       (ara_axi_req   ),
-    .axi_resp_i      (ara_axi_resp  )
+    .clk_i              (clk_i            ),
+    .rst_ni             (rst_ni           ),
+    .scan_enable_i      (scan_enable_i    ),
+    .scan_data_i        (1'b0             ),
+    .scan_data_o        (/* Unused */     ),
+    .acc_req_i          (acc_req          ),
+    .acc_req_valid_i    (acc_req_valid    ),
+    .acc_req_ready_o    (acc_req_ready    ),
+    .acc_resp_o         (acc_resp         ),
+    .acc_resp_valid_o   (acc_resp_valid   ),
+    .acc_resp_ready_i   (acc_resp_ready   ),
+    .ara_misaligned_ex_o(ara_misaligned_ex),
+    .ara_mmu_req_o      (ara_mmu_req      ),
+    .ara_vaddr_o        (ara_vaddr        ),
+    .ara_is_store_o     (ara_is_store     ),
+    .ara_mmu_valid_i    (ara_mmu_valid    ),
+    .ara_paddr_i        (ara_paddr        ),
+    .ara_exception_i    (ara_exception    ),
+    .axi_req_o          (ara_axi_req      ),
+    .axi_resp_i         (ara_axi_resp     )
   );
 
   axi_mux #(

@@ -8,7 +8,8 @@
 // loads and vector stores. There are no guarantees regarding concurrency
 // and coherence with Ariane's own load/store unit.
 
-module vlsu import ara_pkg::*; import rvv_pkg::*; #(
+module vlsu import ara_pkg::*; import rvv_pkg::*; 
+    import ariane_pkg::exception_t;#(
     parameter  int  unsigned NrLanes = 0,
     parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
     // AXI Interface parameters
@@ -54,6 +55,14 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  target_fu_e[NrLanes-1:0] addrgen_operand_target_fu_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                    addrgen_operand_ready_o,
+    output exception_t              ara_misaligned_ex_o,
+    output logic                    ara_mmu_req_o,
+    output  logic [riscv::VLEN-1:0] ara_vaddr_o,
+    output  logic                   ara_is_store_o,
+
+    input logic                     ara_mmu_valid_i,
+    input logic [riscv::PLEN-1:0]   ara_paddr_i,
+    input exception_t               ara_exception_i,
     // Interface with the Mask unit
     input  strb_t     [NrLanes-1:0] mask_i,
     input  logic      [NrLanes-1:0] mask_valid_i,
@@ -140,6 +149,14 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
     .addrgen_operand_valid_i    (addrgen_operand_valid_i    ),
     .addrgen_operand_ready_o    (addrgen_operand_ready_o    ),
+    //Interface with MMU
+    .ara_misaligned_ex_o,
+    .ara_mmu_req_o,
+    .ara_vaddr_o,
+    .ara_is_store_o,
+    .ara_mmu_valid_i,
+    .ara_paddr_i,
+    .ara_exception_i,
     // Interface with the load/store units
     .axi_addrgen_req_o          (axi_addrgen_req            ),
     .axi_addrgen_req_valid_o    (axi_addrgen_req_valid      ),

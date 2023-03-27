@@ -6,7 +6,8 @@
 // Description:
 // Ara's top-level, interfacing with Ariane.
 
-module ara import ara_pkg::*; #(
+module ara import ara_pkg::*; 
+    import ariane_pkg::exception_t;#(
     // RVV Parameters
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     // Support for floating-point data types
@@ -31,22 +32,31 @@ module ara import ara_pkg::*; #(
     localparam int           unsigned NrPEs        = NrLanes + 4
   ) (
     // Clock and Reset
-    input  logic              clk_i,
-    input  logic              rst_ni,
+    input  logic                    clk_i,
+    input  logic                    rst_ni,
     // Scan chain
-    input  logic              scan_enable_i,
-    input  logic              scan_data_i,
-    output logic              scan_data_o,
+    input  logic                    scan_enable_i,
+    input  logic                    scan_data_i,
+    output logic                    scan_data_o,
     // Interface with Ariane
-    input  accelerator_req_t  acc_req_i,
-    input  logic              acc_req_valid_i,
-    output logic              acc_req_ready_o,
-    output accelerator_resp_t acc_resp_o,
-    output logic              acc_resp_valid_o,
-    input  logic              acc_resp_ready_i,
+    input  accelerator_req_t        acc_req_i,
+    input  logic                    acc_req_valid_i,
+    output logic                    acc_req_ready_o,
+    output accelerator_resp_t       acc_resp_o,
+    output logic                    acc_resp_valid_o,
+    input  logic                    acc_resp_ready_i,
+    // MMU interface
+    output exception_t              ara_misaligned_ex_o,
+    output logic                    ara_mmu_req_o,
+    output  logic [riscv::VLEN-1:0] ara_vaddr_o,
+    output  logic                   ara_is_store_o,
+
+    input logic                     ara_mmu_valid_i,
+    input logic [riscv::PLEN-1:0]   ara_paddr_i,
+    input exception_t               ara_exception_i,
     // AXI interface
-    output axi_req_t          axi_req_o,
-    input  axi_resp_t         axi_resp_i
+    output axi_req_t                axi_req_o,
+    input  axi_resp_t               axi_resp_i
   );
 
   import cf_math_pkg::idx_width;
@@ -362,6 +372,14 @@ module ara import ara_pkg::*; #(
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),
     .addrgen_operand_valid_i    (sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o    (addrgen_operand_ready                                 ),
+    //Interface with MMU
+    .ara_misaligned_ex_o                                                                ,
+    .ara_mmu_req_o                                                                      ,
+    .ara_vaddr_o                                                                        ,
+    .ara_is_store_o                                                                     ,
+    .ara_mmu_valid_i                                                                    ,
+    .ara_paddr_i                                                                        ,
+    .ara_exception_i                                                                    ,
     // Load unit
     .ldu_result_req_o           (ldu_result_req                                        ),
     .ldu_result_addr_o          (ldu_result_addr                                       ),
