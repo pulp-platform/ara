@@ -149,6 +149,42 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Helper to fill with neutral values the last packet
   logic incomplete_packet, last_packet;
 
+  // To convert subnormal numbers to normalized form in floating-point numbers,
+  // it is necessary to determine the number of leading zeros in the mantissa.
+  // This is typically accomplished using a lzc (leading zero count) module,
+  // which can accurately count the number of leading zeros in a given number.
+  // By knowing the number of leading zeros in the mantissa, we can properly
+  // adjust the exponent and shift the binary point to achieve a normalized
+  // representation of the number.
+
+  logic [3:0] lzc_count16[2];
+  logic [4:0] lzc_count32;
+
+  automatic fp16_t fp16;
+  automatic fp32_t fp32;
+
+  // sew: 16-bit
+  for (genvar i = 0; i < 2; i = i + 1) begin
+    lzc #(
+      .WIDTH(10),
+      .MODE (1 )
+    ) leading_zero_e16_i (
+       .in_i    ( fp16.m         ),
+       .cnt_o   ( lzc_count16[i] ),
+       .empty_o ( /*Unused*/     )
+    );
+  end
+
+  // sew: 32-bit
+  lzc #(
+     .WIDTH (23),
+     .MODE  (1 )
+   ) leading_zero_e32(
+     .in_i    ( fp32.m      ),
+     .cnt_o   ( lzc_count32 ),
+     .empty_o ( /*Unused*/  )
+   );
+
   always_comb begin: type_conversion
     // Shuffle the input operand
     automatic logic [idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
@@ -331,23 +367,44 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           unique casez ({cmd.eew, RVVH(FPUSupport), RVVF(FPUSupport), RVVD(FPUSupport)})
             {EW16, 1'b1, 1'b1, 1'b?}: begin
               for (int e = 0; e < 2; e++) begin
-                automatic fp16_t fp16 = ibuf_operand[8*select + 32*e +: 16];
-                automatic fp32_t fp32;
+                automatic fp32_t fp32_o;
+                automatic fp16_t fp16_temp;
 
-                fp32.s = fp16.s;
-                fp32.e = (fp16.e - 15) + 127;
-                fp32.m = {fp16.m, 13'b0};
+                fp16 = ibuf_operand[8*select + 32*e +: 16];
 
-                conv_operand[32*e +: 32] = fp32;
+                if(fp16.e == '0 & fp16.m != '0) fp16_temp.m = fp16.m << (5'd1 + {1'd0, lzc_count16[e]}); // Subnormal
+                else if(fp16.e == '1) fp16_temp.m = '0; // NaN
+                else fp16_temp.m = fp16.m;
+
+                if(fp16.e == '0 & fp16.m == '0) fp32_o.e = '0; // Zero
+                else if(fp16.e == '1) fp32_o.e = '1; // NaN
+                else if(fp16.e == '0 & fp16.m != '0) fp32_o.e = 8'd112 - {4'd0, lzc_count16[e]}; // Subnormal
+                else fp32_o.e = 8'd112 + {3'd0, fp16.e}; // 127 - 15 = 112
+
+                fp32_o.s = fp16.s;
+                fp32_o.m = {fp16_temp.m, 13'b0};
+
+                conv_operand[32*e +: 32] = fp32_o;
               end
             end
             {EW32, 1'b?, 1'b1, 1'b1}: begin
-              automatic fp32_t fp32 = ibuf_operand[8*select +: 32];
               automatic fp64_t fp64;
+              automatic fp32_t fp32_temp;
+
+              fp32  = ibuf_operand[8*select +: 32];
+
+              if(fp32.e == '0 & fp32.m != '0) fp32_temp.m = fp32.m << (8'd1 + {3'd0, lzc_count32}); // Subnormal
+              else if(fp32.e == '1) fp32_temp.m = '0; // NaN
+              else fp32_temp.m = fp32.m;
+
+
+              if(fp32.e == '0 & fp32.m == '0) fp64.e = '0; // Zero
+              else if(fp32.e == '1) fp64.e = '1;  // NaN
+              else if(fp32.e == '0 & fp32.m != '0) fp64.e = 11'd896 - {6'd0, lzc_count32}; // Subnormal
+              else fp64.e = 11'd896 + {3'd0, fp32.e}; // 1023 - 127 = 896
 
               fp64.s = fp32.s;
-              fp64.e = (fp32.e - 127) + 1023;
-              fp64.m = {fp32.m, 29'b0};
+              fp64.m = {fp32_temp.m, 29'b0};
 
               conv_operand = fp64;
             end
