@@ -93,7 +93,7 @@ def pathfinder(args, cycles):
   num_runs = int(args[0])
   cols     = int(args[1])
   rows     = int(args[2])
-  performance = 2 * num_runs * (cols - 1) * (rows - 1) / cycles
+  performance = 3 * num_runs * (cols - 1) * (rows - 1) / cycles
   return [cols, performance]
 def dotproduct(args, cycles):
   size        = int(args[0])
