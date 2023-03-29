@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
+ - Fix NaN/subnormal floating-point handling in opqueues
 
 ### Added
 
