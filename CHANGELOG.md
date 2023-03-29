@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix printf bug (missing characters) - UART and CTRL memory regions are now idempotent
  - Start int reductions only if ALU result queue is empty
  - Fix `acc_dispatcher` CVA6 bug for instructions with side effects
+ - Fix NaN/subnormal floating-point handling in opqueues
 
 ### Added
 
