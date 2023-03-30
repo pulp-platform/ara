@@ -373,7 +373,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
                 fp16[e] = ibuf_operand[8*select + 32*e +: 16];
 
-                fp16_temp.m = (fp16[e].e == '0 && fp16[e].m != '0) ? fp16[e].m << (5'd1 + {1'd0, lzc_count16[e]}) : fp16[e].m;
+                fp16_temp.m = ((fp16[e].e == '0) && (fp16[e].m != '0)) ? fp16[e].m << (5'd1 + {1'd0, lzc_count16[e]}) : fp16[e].m;
 
                 fp32_exp = (fp16[e].m == '0) ? '0 : 8'd112 - {4'd0, lzc_count16[e]};  //127 - 15 = 112
 
@@ -387,7 +387,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
                 // If the input is NaN, output a quiet NaN mantissa.
                 // Otherwise, append trailing zeros to the mantissa.
-                fp32_o.m = (fp16[e].e == '1 && fp16[e].e != '0 ) ? {1'b1, 22'b0} : {fp16_temp.m, 13'b0};
+                fp32_o.m = ((fp16[e].e == '1) && (fp16[e].m != '0) ) ? {1'b1, 22'b0} : {fp16_temp.m, 13'b0};
 
                 conv_operand[32*e +: 32] = fp32_o;
               end
@@ -400,7 +400,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
               fp32  = ibuf_operand[8*select +: 32];
 
-              fp32_temp.m = (fp32.e == '0 && fp32.m != '0) ? fp32.m << (8'd1 + {3'd0, lzc_count32}) : fp32.m;
+              fp32_temp.m = ((fp32.e == '0) && (fp32.m != '0)) ? fp32.m << (8'd1 + {3'd0, lzc_count32}) : fp32.m;
 
               fp64_exp = (fp32.m == '0) ? '0 : 11'd896 - {6'd0, lzc_count32}; //1023 - 127 = 896
 
@@ -414,7 +414,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
               // If the input is NaN, output a quiet NaN mantissa.
               // Otherwise, append trailing zeros to the mantissa.
-              fp64.m = (fp32.e == '1 && fp32.m != '0) ? {1'b1, 51'b0} : {fp32_temp.m, 29'b0};
+              fp64.m = ((fp32.e == '1) && (fp32.m != '0)) ? {1'b1, 51'b0} : {fp32_temp.m, 29'b0};
 
               conv_operand = fp64;
             end
