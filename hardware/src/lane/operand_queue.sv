@@ -160,8 +160,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic [3:0] lzc_count16[2];
   logic [4:0] lzc_count32;
 
-  automatic fp16_t fp16;
-  automatic fp32_t fp32;
+  fp16_t fp16[2];
+  fp32_t fp32;
 
   // sew: 16-bit
   for (genvar i = 0; i < 2; i = i + 1) begin
@@ -169,7 +169,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       .WIDTH(10),
       .MODE (1 )
     ) leading_zero_e16_i (
-       .in_i    ( fp16.m         ),
+       .in_i    ( fp16[i].m         ),
        .cnt_o   ( lzc_count16[i] ),
        .empty_o ( /*Unused*/     )
     );
@@ -369,22 +369,25 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               for (int e = 0; e < 2; e++) begin
                 automatic fp32_t fp32_o;
                 automatic fp16_t fp16_temp;
+                automatic logic [7:0] fp32_exp;
 
-                fp16 = ibuf_operand[8*select + 32*e +: 16];
+                fp16[e] = ibuf_operand[8*select + 32*e +: 16];
 
-                if(fp16.e == '0 & fp16.m != '0) fp16_temp.m = fp16.m << (5'd1 + {1'd0, lzc_count16[e]}); // Subnormal
-                else fp16_temp.m = fp16.m;
+                fp16_temp.m = (fp16[e].e == '0 && fp16[e].m != '0) ? fp16[e].m << (5'd1 + {1'd0, lzc_count16[e]}) : fp16[e].m;
 
-                if(fp16.e == '0 & fp16.m == '0) fp32_o.e = '0; // Zero
-                else if(fp16.e == '1) fp32_o.e = '1; // NaN
-                else if(fp16.e == '0 & fp16.m != '0) fp32_o.e = 8'd112 - {4'd0, lzc_count16[e]}; // Subnormal
-                else fp32_o.e = 8'd112 + {3'd0, fp16.e}; // 127 - 15 = 112
+                fp32_exp = (fp16[e].m == '0) ? '0 : 8'd112 - {4'd0, lzc_count16[e]};  //127 - 15 = 112
 
-                fp32_o.s = fp16.s;
+                unique case(fp16[e].e)
+                  '0:      fp32_o.e = fp32_exp; // Zero or Subnormal
+                  '1:      fp32_o.e = '1; // NaN
+                  default: fp32_o.e = 8'd112 + {3'd0, fp16[e].e}; // Normal ,127 - 15 = 112
+                endcase
+
+                fp32_o.s = fp16[e].s;
 
                 // If the input is NaN, output a quiet NaN mantissa.
                 // Otherwise, append trailing zeros to the mantissa.
-                fp32_o.m = (fp16.e == '1) ? {1'b1, 22'b0} : {fp16_temp.m, 13'b0};
+                fp32_o.m = (fp16[e].e == '1 && fp16[e].e != '0 ) ? {1'b1, 22'b0} : {fp16_temp.m, 13'b0};
 
                 conv_operand[32*e +: 32] = fp32_o;
               end
@@ -393,22 +396,25 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               automatic fp64_t fp64;
               automatic fp32_t fp32_temp;
 
+              automatic logic [10:0] fp64_exp;
+
               fp32  = ibuf_operand[8*select +: 32];
 
-              if(fp32.e == '0 & fp32.m != '0) fp32_temp.m = fp32.m << (8'd1 + {3'd0, lzc_count32}); // Subnormal
-              else fp32_temp.m = fp32.m;
+              fp32_temp.m = (fp32.e == '0 && fp32.m != '0) ? fp32.m << (8'd1 + {3'd0, lzc_count32}) : fp32.m;
 
+              fp64_exp = (fp32.m == '0) ? '0 : 11'd896 - {6'd0, lzc_count32}; //1023 - 127 = 896
 
-              if(fp32.e == '0 & fp32.m == '0) fp64.e = '0; // Zero
-              else if(fp32.e == '1) fp64.e = '1;  // NaN
-              else if(fp32.e == '0 & fp32.m != '0) fp64.e = 11'd896 - {6'd0, lzc_count32}; // Subnormal
-              else fp64.e = 11'd896 + {3'd0, fp32.e}; // 1023 - 127 = 896
+              unique case(fp32.e)
+                '0:      fp64.e = fp64_exp; // Zero or Subnormal
+                '1:      fp64.e = '1; // NaN
+                default: fp64.e = 11'd896 + {3'd0, fp32.e}; // Normal , 1023 - 127 = 896
+              endcase
 
               fp64.s = fp32.s;
 
               // If the input is NaN, output a quiet NaN mantissa.
               // Otherwise, append trailing zeros to the mantissa.
-              fp64.m = (fp32.e == '1) ? {1'b1, 51'b0} : {fp32_temp.m, 29'b0};
+              fp64.m = (fp32.e == '1 && fp32.m != '0) ? {1'b1, 51'b0} : {fp32_temp.m, 29'b0};
 
               conv_operand = fp64;
             end
