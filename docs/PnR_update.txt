@@ -7,3 +7,15 @@ Frequency SS: 925 MHz
 Frequency TT: 1.36 GHz
 Power with VCD back-annotation, fmatmul 128x128: 220 mW @1GHz
 Peak efficiency, fmatmul kernel, frequency TT: 35.7 DP-FLOPS/W
+
+_____________________________________________________
+
+Update as of 25/03/2023
+
+2 lanes |	4 lanes |	8 lanes |	16 lanes | 16 lanes (no FIXPT, minimum MASKU)
+SS Frequency [MHz]	950	960	940	750	860
+TT Frequency [GHz]	1.35	1.35	1.35	1.08	1.26
+Die Area (mm2)	0.588	0.953	1.876	4.47	4.47
+Cell Area (mm2)	0.345	0.581	1.112	2.54	2.16
+Macro Area (mm2)	0.111	0.153	0.235	0.4	0.4
+Peak Efficiency	34.14705882	38.67653557	35.74856046	- -
