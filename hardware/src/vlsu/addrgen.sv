@@ -481,6 +481,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*;
     axi_ar_valid_o = 1'b0;
     axi_aw_o       = '0;
     axi_aw_valid_o = 1'b0;
+    ara_mmu_req_o  = '0;
     ara_paddr_d    = ara_paddr_q;
 
     case (axi_addrgen_state_q)
@@ -544,7 +545,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*;
             aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
             aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
           end
-        end else if (state_q == ADDRGEN_IDX_OP) begin
+        end else if (state_q == ADDRGEN_IDX_OP&&idx_addr_valid_q) begin
           if(!core_st_pending_i) begin
             ara_mmu_req_o       = 1'b1;
             ara_misaligned_ex_o = '0;
@@ -793,7 +794,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*;
                 // AR Channel
                 if (axi_addrgen_q.is_load) begin
                   axi_ar_o = '{
-                    addr   : ara_paddr_q,
+                    addr   : ara_paddr,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -805,7 +806,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*;
                 // AW Channel
                 else begin
                   axi_aw_o = '{
-                    addr   : ara_paddr_q,
+                    addr   : ara_paddr,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -816,7 +817,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*;
                 end
                 // Send this request to the load/store units
                 axi_addrgen_queue = '{
-                  addr   : ara_paddr_q,
+                  addr   : ara_paddr,
                   size   : axi_addrgen_q.vew,
                   len    : 0,
                   is_load: axi_addrgen_q.is_load
@@ -885,3 +886,4 @@ module addrgen import ara_pkg::*; import rvv_pkg::*;
   end
 
 endmodule : addrgen
+
