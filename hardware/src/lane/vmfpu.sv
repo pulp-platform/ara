@@ -317,18 +317,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   assign gate_ff_clr = vmul_simd_in_ready[vinsn_processing_q.vtype.vsew] &
                       ~vmul_simd_in_valid[vinsn_issue_q.vtype.vsew];
 
-  `FFLSR(vmul_simd_op_a_q, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
-    gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_op_b_q, mfpu_operand_i[1],
-    gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_op_c_q, mfpu_operand_i[2],
-    gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_mask_q, mask_i,
-    gate_ff_en, '0, clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_op_q, vinsn_issue_q.op,
-    gate_ff_en, ara_op_e'('0), clk_i, gate_ff_clr);
-  `FFLSR(vmul_simd_in_valid_q, vmul_simd_in_valid,
-    gate_ff_en, '0, clk_i, gate_ff_clr);
+  `FFLARNC(vmul_simd_op_a_q, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
+    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+  `FFLARNC(vmul_simd_op_b_q, mfpu_operand_i[1],
+    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+  `FFLARNC(vmul_simd_op_c_q, mfpu_operand_i[2],
+    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+  `FFLARNC(vmul_simd_mask_q, mask_i,
+    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+  `FFLARNC(vmul_simd_op_q, vinsn_issue_q.op,
+    gate_ff_en, gate_ff_clr, ara_op_e'('0), clk_i, rst_ni);
+  `FFLARNC(vmul_simd_in_valid_q, vmul_simd_in_valid,
+    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
 
   for (genvar i = 0; i < 4; i++) begin
 `ifdef GF22
