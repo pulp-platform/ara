@@ -77,6 +77,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix masku handshake. All the lanes should handshake together in input
  - Start solving `sldu` counter widths warnings
  - Fix `vslideup` wrong counter trimming
+ - Reset gating registers before the integer multipliers in `vmfpu`
 
 ### Added
 
