@@ -42,6 +42,7 @@ sources:
     - hardware/src/lane/simd_mul.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/lane/power_gating_generic.sv
+    - hardware/src/lane/clk_gating_generic.sv
     - hardware/src/masku/masku.sv
     - hardware/src/sldu/p2_stride_gen.sv
     - hardware/src/sldu/sldu_op_dp.sv
