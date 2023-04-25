@@ -282,6 +282,23 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   //  Multiplier  //
   //////////////////
 
+  // Clock-gate for the multipliers
+  logic clkgate_en, clk_i_gated;
+
+`ifdef GF22
+  clk_gating_gf22
+`else
+  clk_gating_generic
+`endif
+  i_simd_mul_manual_clk_gate (
+    .CLK(clk_i      ),
+    .TE (1'b0       ),
+    .E  (clkgate_en ),
+    .Z  (clk_i_gated)
+  );
+
+  assign clkgate_en = vinsn_processing_valid & (vinsn_processing_q.op inside {[VMUL:VSMUL]});
+
   elen_t [3:0] vmul_simd_result;
   logic  [3:0] vmul_simd_in_valid;
   logic  [3:0] vmul_simd_in_ready;
@@ -318,17 +335,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                       ~vmul_simd_in_valid[vinsn_issue_q.vtype.vsew];
 
   `FFLARNC(vmul_simd_op_a_q, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
-    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
   `FFLARNC(vmul_simd_op_b_q, mfpu_operand_i[1],
-    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
   `FFLARNC(vmul_simd_op_c_q, mfpu_operand_i[2],
-    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
   `FFLARNC(vmul_simd_mask_q, mask_i,
-    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
   `FFLARNC(vmul_simd_op_q, vinsn_issue_q.op,
-    gate_ff_en, gate_ff_clr, ara_op_e'('0), clk_i, rst_ni);
+    gate_ff_en, gate_ff_clr, ara_op_e'('0), clk_i_gated, rst_ni);
   `FFLARNC(vmul_simd_in_valid_q, vmul_simd_in_valid,
-    gate_ff_en, gate_ff_clr, '0, clk_i, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
 
   for (genvar i = 0; i < 4; i++) begin
 `ifdef GF22
@@ -398,7 +415,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .NumPipeRegs (LatMultiplierEW64),
     .ElementWidth(EW64             )
   ) i_simd_mul_ew64 (
-    .clk_i      (clk_i                         ),
+    .clk_i      (clk_i_gated                   ),
     .rst_ni     (rst_ni                        ),
     .operand_a_i(vmul_simd_op_a_q_gated[EW64]  ),
     .operand_b_i(vmul_simd_op_b_q_gated[EW64]  ),
@@ -420,7 +437,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .NumPipeRegs (LatMultiplierEW32),
     .ElementWidth(EW32             )
   ) i_simd_mul_ew32 (
-    .clk_i      (clk_i                         ),
+    .clk_i      (clk_i_gated                   ),
     .rst_ni     (rst_ni                        ),
     .operand_a_i(vmul_simd_op_a_q_gated[EW32]  ),
     .operand_b_i(vmul_simd_op_b_q_gated[EW32]  ),
@@ -442,7 +459,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .NumPipeRegs (LatMultiplierEW16),
     .ElementWidth(EW16             )
   ) i_simd_mul_ew16 (
-    .clk_i      (clk_i                         ),
+    .clk_i      (clk_i_gated                   ),
     .rst_ni     (rst_ni                        ),
     .operand_a_i(vmul_simd_op_a_q_gated[EW16]  ),
     .operand_b_i(vmul_simd_op_b_q_gated[EW16]  ),
@@ -464,7 +481,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .NumPipeRegs (LatMultiplierEW8),
     .ElementWidth(EW8             )
   ) i_simd_mul_ew8 (
-    .clk_i      (clk_i                         ),
+    .clk_i      (clk_i_gated                   ),
     .rst_ni     (rst_ni                        ),
     .operand_a_i(vmul_simd_op_a_q_gated[EW8]   ),
     .operand_b_i(vmul_simd_op_b_q_gated[EW8]   ),
