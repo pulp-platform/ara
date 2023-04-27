@@ -112,10 +112,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // Do we have a vector instruction being processed?
   vfu_operation_t vinsn_processing_d, vinsn_processing_q;
-  logic           vinsn_processing_valid;
-  assign vinsn_processing_d     = vinsn_queue_d.vinsn[vinsn_queue_d.processing_pnt];
-  assign vinsn_processing_q     = vinsn_queue_q.vinsn[vinsn_queue_q.processing_pnt];
-  assign vinsn_processing_valid = (vinsn_queue_q.processing_cnt != '0);
+  logic           vinsn_processing_d_valid, vinsn_processing_q_valid;
+  assign vinsn_processing_d       = vinsn_queue_d.vinsn[vinsn_queue_d.processing_pnt];
+  assign vinsn_processing_q       = vinsn_queue_q.vinsn[vinsn_queue_q.processing_pnt];
+  assign vinsn_processing_d_valid = (vinsn_queue_d.processing_cnt != '0);
+  assign vinsn_processing_q_valid = (vinsn_queue_q.processing_cnt != '0);
 
   // Do we have a vector instruction with results being committed?
   vfu_operation_t vinsn_commit;
@@ -283,7 +284,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   //////////////////
 
   // Clock-gate for the multipliers
-  logic clkgate_en, clk_i_gated;
+  logic clkgate_en_d, clkgate_en_q, clk_i_gated;
 
 `ifdef GF22
   clk_gating_gf22
@@ -291,13 +292,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   clk_gating_generic
 `endif
   i_simd_mul_manual_clk_gate (
-    .CLK(clk_i      ),
-    .TE (1'b0       ),
-    .E  (clkgate_en ),
-    .Z  (clk_i_gated)
+    .CLK(clk_i       ),
+    .TE (1'b0        ),
+    .E  (clkgate_en_q),
+    .Z  (clk_i_gated )
   );
 
-  assign clkgate_en = vinsn_processing_valid & (vinsn_processing_q.op inside {[VMUL:VSMUL]});
+  assign clkgate_en_d = vinsn_processing_d_valid & (vinsn_processing_d.op inside {[VMUL:VSMUL]});
 
   elen_t [3:0] vmul_simd_result;
   logic  [3:0] vmul_simd_in_valid;
@@ -1315,7 +1316,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // If we are about to issue an instruction while another one is processing,
     // issue only if the new instruction is slower than the previous one
     latency_problem_d = vinsn_issue_lat_d < vinsn_processing_lat_d;
-    latency_stall     = vinsn_issue_valid & vinsn_processing_valid & latency_problem_q;
+    latency_stall     = vinsn_issue_valid & vinsn_processing_q_valid & latency_problem_q;
 
     operand_a = (vinsn_issue_q.op == VFRDIV) ? scalar_op : mfpu_operand_i[1]; // vs2
     operand_b = (vinsn_issue_q.use_scalar_op && vinsn_issue_q.op != VFRDIV)
@@ -2218,6 +2219,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       intra_op_rx_cnt_q       <= '0;
       osum_issue_cnt_q        <= '0;
       mfpu_vxsat_q            <= '0;
+      clkgate_en_q            <= 1'b0;
     end else begin
       issue_cnt_q             <= issue_cnt_d;
       to_process_cnt_q        <= to_process_cnt_d;
@@ -2241,6 +2243,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       intra_op_rx_cnt_q       <= intra_op_rx_cnt_d;
       osum_issue_cnt_q        <= osum_issue_cnt_d;
       mfpu_vxsat_q            <= mfpu_vxsat_d;
+      clkgate_en_q            <= clkgate_en_d;
     end
   end
 
