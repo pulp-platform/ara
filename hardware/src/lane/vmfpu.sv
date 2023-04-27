@@ -748,22 +748,24 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       Width        : 64,
       EnableVectors: 1'b1,
       EnableNanBox : 1'b1,
-      FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), 1'b0, 1'b0},
+      FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), 1'b0, 1'b0, 1'b0},
       IntFmtMask   : {1'b0, 1'b1, 1'b1, 1'b1}
     };
 
     // Implementation (number of registers etc)
     localparam fpu_implementation_t FPUImplementation = '{
       PipeRegs: '{
-        '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
+        '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt, LatFCompEW8Alt},
         '{default: LatFDivSqrt},
         '{default: LatFNonComp},
-        '{default: LatFConv}},
+        '{default: LatFConv},
+        '{default: LatFSdotp}},
       UnitTypes: '{
         '{default: PARALLEL}, // ADDMUL
         '{default: MERGED},   // DIVSQRT
         '{default: PARALLEL}, // NONCOMP
-        '{default: MERGED}}, // CONV
+        '{default: MERGED}, // CONV
+        '{default: DISABLED}}, // SDOTP
       PipeConfig: DISTRIBUTED
     };
 
