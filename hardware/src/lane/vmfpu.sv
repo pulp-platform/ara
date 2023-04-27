@@ -975,6 +975,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     ) i_fpnew_bulk (
       .clk_i         (clk_i          ),
       .rst_ni        (rst_ni         ),
+      .hart_id_i     ('0             ),
       .flush_i       (1'b0           ),
       .rnd_mode_i    (fp_rm          ),
       .op_i          (fp_op          ),
