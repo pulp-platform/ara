@@ -36,3 +36,5 @@ docs/build/
 docs/source/_templates/
 *.jou
 fusesoc.conf
+.Xil/
+*.str

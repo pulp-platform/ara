@@ -294,6 +294,7 @@ filesets:
     xcu280:
         files: 
             - fpga/constraints/ara.xdc: {file_type: xdc}
+            - fpga/constraints/xcu280.xdc: {file_type: xdc}
             - fpga/src/xilinx_ara_soc.sv: {file_type: systemVerilogSource}
 
     svtb:
@@ -343,6 +344,7 @@ targets:
         tools:
           vivado:
             part: xcu280-fsvh2892-2l-e
+
 parameters:
     PRELOAD:
         datatype  : file
