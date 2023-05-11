@@ -19,3 +19,21 @@ Die Area (mm2)	0.588	0.953	1.876	4.47	4.47
 Cell Area (mm2)	0.345	0.581	1.112	2.54	2.16
 Macro Area (mm2)	0.111	0.153	0.235	0.4	0.4
 Peak Efficiency	34.14705882	38.67653557	35.74856046	- -
+
+______________________________________________________
+
+Update as of 11/05/2023
+
+4-lanes design efficiency with RTL clock-gating cell insertion before SIMD multipliers
+
+  Fmt     Eff 
+  fp64    37.74    DP-FLOPS/W
+  fp32    90.04    SP-FLOPS/W
+  fp16    195.86   HP-FLOPS/W
+  int64   38.32    DP-GOPS/W
+  int32   85.26    SP-GOPS/W
+  int16   180.56   HP-GOPS/W
+  int8    376.04   BP-GOPS/W
+  
+kernel f_sim (GHz) Raw TP (OP/cycle) TP (GOPS) TT_f (GHz) Pint  Psw   Plk    Psim (mW)  P_TTf (mW)  Eff (SP-GFLOPS/W)
+fft    1           5.368             7.2468    1.35       77.3  63.2  10.1   151        199.8       36.3 
