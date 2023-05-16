@@ -132,7 +132,7 @@ $(buildpath)/$(library):
 .PHONY: compile
 compile: dpi lib $(buildpath) bender $(buildpath)/compile_$(config).tcl
 $(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
-	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test -t cv64a6v $(bender_defs) > $(buildpath)/compile_$(config).tcl
+	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 $(bender_defs) > $(buildpath)/compile_$(config).tcl
 	echo "exit" >> $(buildpath)/compile_$(config).tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile_$(config).tcl
 	# Remove the file if compilation did not succeed
@@ -164,7 +164,7 @@ verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
 $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
-	./bender script verilator -t rtl -t ara_test -t cva6_test -t cv64a6v -t verilator $(bender_defs) > $(veril_library)/bender_script_$(config)
+	./bender script verilator -t rtl -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 -t verilator $(bender_defs) > $(veril_library)/bender_script_$(config)
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
@@ -228,7 +228,7 @@ lint: spyglass/tmp/files spyglass/sdc/func.sdc spyglass/scripts/run_lint.tcl
 
 spyglass/tmp/files: $(bender)
 	mkdir -p spyglass/tmp
-	./bender script verilator -t rtl -t spyglass -t cva6_test -t cv64a6v $(bender_defs) --define SPYGLASS > spyglass/tmp/files
+	./bender script verilator -t rtl -t spyglass -t cva6_test -t cv64a6_imafdcv_sv39 $(bender_defs) --define SPYGLASS > spyglass/tmp/files
 
 # DPIs
 .PHONY: dpi
