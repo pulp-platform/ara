@@ -32,3 +32,6 @@
 	path = toolchain/riscv-llvm
 	url = https://github.com/llvm/llvm-project.git
 	ignore = dirty
+[submodule "hardware/deps/apb"]
+	path = hardware/deps/apb
+	url = https://github.com/pulp-platform/apb.git
