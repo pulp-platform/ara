@@ -7,6 +7,7 @@ packages:
     dependencies:
     - common_cells
   ariane:
+  cva6:
     revision: 3fddb6e5814604c7ec49e4320de0037292346c63
     version: null
     source:
