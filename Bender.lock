@@ -16,6 +16,13 @@ packages:
     - common_cells
     - fpnew
     - tech_cells_generic
+  apb:
+    revision: 77ddf073f194d44b9119949d2421be59789e69ae
+    version: 0.2.4
+    source:
+      Git: https://github.com/pulp-platform/apb.git
+    dependencies:
+    - common_cells
   axi:
     revision: null
     version: null
