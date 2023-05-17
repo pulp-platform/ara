@@ -969,9 +969,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       .Features      (FPUFeatures      ),
       .Implementation(FPUImplementation),
       .TagType       (strb_t           ),
-      .NumLanes      (FPULanes         ),
-      .TrueSIMDClass (TrueSIMDClass    ),
-      .MaskType      (fpu_mask_t       )
+      .TrueSIMDClass (TrueSIMDClass    )
     ) i_fpnew_bulk (
       .clk_i         (clk_i          ),
       .rst_ni        (rst_ni         ),
