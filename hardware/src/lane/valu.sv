@@ -221,7 +221,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   // it produces only EEW/2 per cycle.
   function automatic logic narrowing(ara_op_e op);
     narrowing = 1'b0;
-    if (op inside {VNSRA, VNSRL})
+    if (op inside {VNSRA, VNSRL, VNCLIP, VNCLIPU})
       narrowing = 1'b1;
   endfunction : narrowing
 
