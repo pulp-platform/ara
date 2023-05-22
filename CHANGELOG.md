@@ -78,6 +78,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Start solving `sldu` counter widths warnings
  - Fix `vslideup` wrong counter trimming
  - Reset gating registers before the integer multipliers in `vmfpu`
+ - Fix narrowing for `vnclip` and `vnclipu`
 
 ### Added
 
