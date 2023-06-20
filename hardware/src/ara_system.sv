@@ -73,13 +73,11 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   //  Ara and Ariane  //
   //////////////////////
 
-  import ariane_pkg::accelerator_req_t;
-  import ariane_pkg::accelerator_resp_t;
+  import acc_pkg::accelerator_req_t;
+  import acc_pkg::accelerator_resp_t;
 
   // Accelerator ports
   accelerator_req_t                     acc_req;
-  logic                                 acc_req_valid;
-  logic                                 acc_req_ready;
   accelerator_resp_t                    acc_resp;
   logic                                 acc_resp_valid;
   logic                                 acc_resp_ready;
@@ -98,20 +96,21 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .clk_i            (clk_i                 ),
     .rst_ni           (rst_ni                ),
     .acc_req_o        (acc_req               ),
-    .acc_req_valid_o  (acc_req_valid         ),
-    .acc_req_ready_i  (acc_req_ready         ),
     .acc_resp_i       (acc_resp              ),
     .acc_resp_valid_i (acc_resp_valid        ),
     .acc_resp_ready_o (acc_resp_ready        )
   );
 `else
-  ariane #(
+  cva6 #(
     .ArianeCfg(ArianeCfg),
+    .cvxif_req_t (acc_pkg::accelerator_req_t),
+    .cvxif_resp_t (acc_pkg::accelerator_resp_t),
     .AxiAddrWidth ( AxiAddrWidth ),
     .AxiDataWidth ( AxiNarrowDataWidth ),
     .AxiIdWidth ( AxiIdWidth ),
     .axi_ar_chan_t (ariane_axi_ar_t),
     .axi_aw_chan_t (ariane_axi_aw_t),
+    .axi_w_chan_t (ariane_axi_w_t),
     .axi_req_t (ariane_axi_req_t),
     .axi_rsp_t (ariane_axi_resp_t)
   ) i_ariane (
@@ -123,19 +122,20 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .ipi_i            ('0                    ),
     .time_irq_i       ('0                    ),
     .debug_req_i      ('0                    ),
-    .axi_req_o        (ariane_narrow_axi_req ),
-    .axi_resp_i       (ariane_narrow_axi_resp),
-    // Accelerator ports
-    .acc_req_o        (acc_req               ),
-    .acc_req_valid_o  (acc_req_valid         ),
-    .acc_req_ready_i  (acc_req_ready         ),
-    .acc_resp_i       (acc_resp              ),
-    .acc_resp_valid_i (acc_resp_valid        ),
-    .acc_resp_ready_o (acc_resp_ready        ),
+    // Invalidation requests
     .acc_cons_en_o    (acc_cons_en           ),
     .inval_addr_i     (inval_addr            ),
     .inval_valid_i    (inval_valid           ),
-    .inval_ready_o    (inval_ready           )
+    .inval_ready_o    (inval_ready           ),
+    .rvfi_o           (                      ),
+    // Accelerator ports
+    .cvxif_req_o      (acc_req               ),
+    .cvxif_resp_i     (acc_resp              ),
+    .l15_req_o        (                      ),
+    .l15_rtrn_i       ( '0                   ),
+    // Memory interface
+    .axi_req_o        (ariane_narrow_axi_req ),
+    .axi_resp_i       (ariane_narrow_axi_resp)
   );
 `endif
 
@@ -218,11 +218,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .scan_data_i     (1'b0          ),
     .scan_data_o     (/* Unused */  ),
     .acc_req_i       (acc_req       ),
-    .acc_req_valid_i (acc_req_valid ),
-    .acc_req_ready_o (acc_req_ready ),
     .acc_resp_o      (acc_resp      ),
-    .acc_resp_valid_o(acc_resp_valid),
-    .acc_resp_ready_i(acc_resp_ready),
     .axi_req_o       (ara_axi_req   ),
     .axi_resp_i      (ara_axi_resp  )
   );

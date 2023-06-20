@@ -25,11 +25,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   input logic                     rst_ni,
   // Accelerator interaface
   output accelerator_req_t  acc_req_o,
-  output logic              acc_req_valid_o,
-  input  logic              acc_req_ready_i,
-  input  accelerator_resp_t acc_resp_i,
-  input  logic              acc_resp_valid_i,
-  output logic              acc_resp_ready_o
+  input  accelerator_resp_t acc_resp_i
 );
 
   localparam string vtrace = `STRINGIFY(`VTRACE);
@@ -69,7 +65,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
     status_cnt_n   = status_cnt_q;
     fifo_data_raw  = fifo_q[read_pointer_q];
 
-    if (acc_req_ready_i && ~fifo_empty) begin
+    if (acc_resp_i.req_ready && ~fifo_empty) begin
       // read from the queue is a default assignment
       // but increment the read pointer...
       if (read_pointer_n == N_VINSN - 1)
@@ -94,16 +90,16 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
 
   assign fifo_empty = (status_cnt_q == 0);
 
-  // Always valid until empty
-  assign acc_req_valid_o = ~fifo_empty;
-  // Flush the answer
-  assign acc_resp_ready_o = 1'b1;
   // Output assignment
   assign fifo_data = fifo_payload_t'(fifo_data_raw);
   assign acc_req_o = '{
     insn    : fifo_data.insn,
     rs1     : fifo_data.rs1,
     rs2     : fifo_data.rs2,
+    // Always valid until empty
+    req_valid  : ~fifo_empty,
+    // Flush the answer
+    resp_ready : 1'b1,
     default : '0
   };
 
@@ -133,7 +129,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   // Stop the computation when the instructions are over and ara has returned idle
   // Just check that we are after reset
   always_ff @(posedge clk_i) begin
-    if (rst_ni && was_reset && !acc_req_valid_o && i_system.i_ara.ara_idle) begin
+    if (rst_ni && was_reset && !acc_req_o.req_valid && i_system.i_ara.ara_idle) begin
       $display("[hw-cycles]: %d", int'(perf_cnt_q));
       $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", 0));
       $finish(0);
@@ -160,10 +156,10 @@ endmodule
     fifo_payload_t payload;
 
     acc_req_o = '0;
-    acc_req_valid_o = 1'b0;
+    acc_req_o.req_valid = 1'b0;
 
     // Flush the answer
-	acc_resp_ready_o = 1'b1;
+	acc_req_o.resp_ready = 1'b1;
 
     acc_req_o     = '0;
     acc_req_o.frm = fpnew_pkg::RNE;
@@ -176,17 +172,17 @@ endmodule
 
     while ($fscanf(fd, "%h", payload) == 1) begin
       // Always valid
-      acc_req_valid_o = 1'b1;
+      acc_req_o.req_valid = 1'b1;
       acc_req_o.insn  = payload.insn;
       acc_req_o.rs1   = payload.rs1;
       // Wait for the handshake
-      wait(acc_req_ready_i);
+      wait(acc_resp_i.req_ready);
       @(posedge clk_i);
       @(negedge clk_i);
     end
 
     // Stop dispatching
-    acc_req_valid_o = 1'b0;
+    acc_req_o.req_valid = 1'b0;
 
     $fclose(fd);
   end
