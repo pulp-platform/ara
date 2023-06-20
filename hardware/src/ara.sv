@@ -39,11 +39,7 @@ module ara import ara_pkg::*; #(
     output logic              scan_data_o,
     // Interface with Ariane
     input  accelerator_req_t  acc_req_i,
-    input  logic              acc_req_valid_i,
-    output logic              acc_req_ready_o,
     output accelerator_resp_t acc_resp_o,
-    output logic              acc_resp_valid_o,
-    input  logic              acc_resp_ready_i,
     // AXI interface
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i
@@ -95,11 +91,7 @@ module ara import ara_pkg::*; #(
     .rst_ni            (rst_ni          ),
     // Interface with Ariane
     .acc_req_i         (acc_req_i       ),
-    .acc_req_valid_i   (acc_req_valid_i ),
-    .acc_req_ready_o   (acc_req_ready_o ),
     .acc_resp_o        (acc_resp_o      ),
-    .acc_resp_valid_o  (acc_resp_valid_o),
-    .acc_resp_ready_i  (acc_resp_ready_i),
     // Interface with the sequencer
     .ara_req_o         (ara_req         ),
     .ara_req_valid_o   (ara_req_valid   ),
