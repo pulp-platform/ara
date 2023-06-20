@@ -239,8 +239,8 @@ package ara_pkg;
   /////////////////////////////
 
   // Use Ariane's accelerator interface.
-  typedef ariane_pkg::accelerator_req_t accelerator_req_t;
-  typedef ariane_pkg::accelerator_resp_t accelerator_resp_t;
+  typedef acc_pkg::accelerator_req_t accelerator_req_t;
+  typedef acc_pkg::accelerator_resp_t accelerator_resp_t;
 
   /////////////////////////
   //  Backend interface  //
