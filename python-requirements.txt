@@ -11,3 +11,4 @@ tabulate
 yamlfmt
 numpy
 matplotlib
+sklearn
