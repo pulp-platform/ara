@@ -90,6 +90,16 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   logic [63:0] hart_id;
   assign hart_id = {'0, hart_id_i};
 
+  // Pack invalidation interface into acc interface
+  accelerator_resp_t                    acc_resp_pack;
+  always_comb begin : pack_inval
+    acc_resp_pack             = acc_resp;
+    acc_resp_pack.inval_valid = inval_valid;
+    acc_resp_pack.inval_addr  = inval_addr;
+    inval_ready               = acc_req.inval_ready;
+    acc_cons_en               = acc_req.acc_cons_en;
+  end
+
 `ifdef IDEAL_DISPATCHER
   // Perfect dispatcher to Ara
   accel_dispatcher_ideal i_accel_dispatcher_ideal (
@@ -122,15 +132,10 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .ipi_i            ('0                    ),
     .time_irq_i       ('0                    ),
     .debug_req_i      ('0                    ),
-    // Invalidation requests
-    .acc_cons_en_o    (acc_cons_en           ),
-    .inval_addr_i     (inval_addr            ),
-    .inval_valid_i    (inval_valid           ),
-    .inval_ready_o    (inval_ready           ),
     .rvfi_o           (                      ),
     // Accelerator ports
     .cvxif_req_o      (acc_req               ),
-    .cvxif_resp_i     (acc_resp              ),
+    .cvxif_resp_i     (acc_resp_pack         ),
     .l15_req_o        (                      ),
     .l15_rtrn_i       ( '0                   ),
     // Memory interface
