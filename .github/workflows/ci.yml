@@ -149,7 +149,7 @@ jobs:
     - name: Compile Verilator
       if: steps.tc-verilator-cache.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get install flex libfl-dev
+        sudo apt-get install flex libfl-dev help2man
         make verilator
     - name: Tar Verilator
       run: tar -cvf tc-verilator.tar install/verilator
