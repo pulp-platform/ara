@@ -135,6 +135,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - `core_id_i` added to the interface of the system
  - Clock-gate the system bank macros when not used (VRF, D$, I$)
  - Spill register on `sldu` input signals to better isolate the unit
+ - Clock-gate the unusued SIMD-int multipliers to save power
 
 ### Changed
 
@@ -185,6 +186,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Simplify the reduction engine for both `valu` and `vmfpu`, to avoid spurious valid signals to the `sldu`
  - Fix commit for `dtc` installation (`spike` dependency)
  - Simplify the datapath of the slide unit. The `sldu` supports only powers of two, and cannot slide and reshuffle at the same time. Non-power-of-two slides are now handled with micro operations.
+ - Bump Verilator to v5.012
 
 ## 2.2.0 - 2021-11-02
 
