@@ -40,6 +40,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     output logic                           axi_addrgen_req_valid_o,
     input  logic                           ldu_axi_addrgen_req_ready_i,
     input  logic                           stu_axi_addrgen_req_ready_i,
+    // MMU interface
+    output logic                          ara_mmu_req_o,
+    output logic [riscv::VLEN-1:0]        ara_vaddr_o,
+    output logic                          ara_is_store_o,
+
+    input logic                           ara_mmu_valid_i,
+    input logic [riscv::PLEN-1:0]         ara_paddr_i,
+    input ariane_pkg::exception_t                     ara_exception_i,
     // Interface with the lanes (for scatter/gather operations)
     input  elen_t            [NrLanes-1:0] addrgen_operand_i,
     input  target_fu_e       [NrLanes-1:0] addrgen_operand_target_fu_i,
@@ -422,13 +430,17 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   //  AXI Request Generation  //
   //////////////////////////////
 
-  enum logic [1:0] {
-    AXI_ADDRGEN_IDLE, AXI_ADDRGEN_MISALIGNED, AXI_ADDRGEN_WAITING, AXI_ADDRGEN_REQUESTING
+  enum logic [2:0] {
+    AXI_ADDRGEN_IDLE, AXI_ADDRGEN_MISALIGNED, AXI_ADDRGEN_WAITING, AXI_ADDRGEN_REQUESTING,
+    AXI_ADDRGEN_WAIT_MMU
   } axi_addrgen_state_d, axi_addrgen_state_q;
 
+  axi_addr_t ara_paddr_d, ara_paddr_q, ara_paddr;
   axi_addr_t aligned_start_addr_d, aligned_start_addr_q;
   axi_addr_t aligned_next_start_addr_d, aligned_next_start_addr_q;
   axi_addr_t aligned_end_addr_d, aligned_end_addr_q;
+
+  assign ara_paddr = {ara_paddr_i};
 
   // MSb of the next-next page (page selector for page 2 positions after the current one)
   logic [($bits(aligned_start_addr_d) - 12)-1:0] next_2page_msb_d, next_2page_msb_q;
@@ -468,16 +480,35 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     axi_ar_valid_o = 1'b0;
     axi_aw_o       = '0;
     axi_aw_valid_o = 1'b0;
+    ara_mmu_req_o  = '0;
+    ara_paddr_d    = ara_paddr_q;
 
     case (axi_addrgen_state_q)
       AXI_ADDRGEN_IDLE: begin
         if (addrgen_req_valid) begin
-          axi_addrgen_d       = addrgen_req;
+          axi_addrgen_d       = addrgen_req; 
+          axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
+          if (state_q != ADDRGEN_IDX_OP) begin
+            ara_mmu_req_o = 1'b1;
+            if(addrgen_req.is_load) begin
+              ara_is_store_o = 1'b0;
+            end
+            else begin
+              ara_is_store_o = 1'b1;
+            end
+            ara_vaddr_o = {addrgen_req.addr};
+          end
+
+        end
+      end
+      AXI_ADDRGEN_WAIT_MMU: begin
+        if(ara_mmu_valid_i) begin
           axi_addrgen_state_d = core_st_pending_i ? AXI_ADDRGEN_WAITING : AXI_ADDRGEN_REQUESTING;
+          ara_paddr_d = ara_paddr;
 
           // In case of a misaligned store, reduce the effective width of the AXI transaction,
           // since the store unit does not support misalignments between the AXI bus and the lanes
-          if ((axi_addrgen_d.addr[$clog2(AxiDataWidth/8)-1:0] != '0) && !axi_addrgen_d.is_load)
+          if ((ara_paddr[$clog2(AxiDataWidth/8)-1:0] != '0) && !axi_addrgen_q.is_load)
           begin
             // Calculate the start and the end addresses in the AXI_ADDRGEN_MISALIGNED state
             axi_addrgen_state_d = AXI_ADDRGEN_MISALIGNED;
@@ -491,18 +522,18 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
           // The start address is found by aligning the original request address by the width of
           // the memory interface.
-          aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, $clog2(AxiDataWidth/8));
+          aligned_start_addr_d = aligned_addr(ara_paddr, $clog2(AxiDataWidth/8));
           // Pre-calculate the next_2page_msb. This should not require much energy if the addr
           // has zeroes in the upper positions.
           next_2page_msb_d = aligned_start_addr_d[AxiAddrWidth-1:12] + 1;
           // The final address can be found similarly...
-          if (axi_addrgen_d.len << int'(axi_addrgen_d.vew) >= (256 << $clog2(AxiDataWidth/8))) begin
+          if (axi_addrgen_q.len << int'(axi_addrgen_q.vew) >= (256 << $clog2(AxiDataWidth/8))) begin
             aligned_next_start_addr_d =
-              aligned_addr(axi_addrgen_d.addr + (256 << $clog2(AxiDataWidth/8)), $clog2(AxiDataWidth/8));
+              aligned_addr(ara_paddr + (256 << $clog2(AxiDataWidth/8)), $clog2(AxiDataWidth/8));
             aligned_end_addr_d = aligned_next_start_addr_d - 1;
           end else begin
             aligned_next_start_addr_d =
-              aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
+              aligned_addr(ara_paddr + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
               $clog2(AxiDataWidth/8)) + AxiDataWidth/8;
             aligned_end_addr_d = aligned_next_start_addr_d - 1;
           end
@@ -512,6 +543,22 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
             aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
           end
+          end else if (state_q == ADDRGEN_IDX_OP&&idx_addr_valid_q) begin
+          if(!core_st_pending_i) begin
+            ara_mmu_req_o = 1'b1;
+            if(axi_addrgen_q.is_load) begin
+              ara_is_store_o = 1'b0;
+            end
+            else begin
+              ara_is_store_o = 1'b1;
+            end
+            ara_vaddr_o = {idx_final_addr_q};
+            idx_addr_ready_d = 1'b1;
+            axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING;
+          end
+          else begin
+            axi_addrgen_state_d = AXI_ADDRGEN_WAITING;
+        end
         end
       end
       AXI_ADDRGEN_MISALIGNED: begin
@@ -519,7 +566,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
         // The start address is found by aligning the original request address by the width of
         // the memory interface.
-        aligned_start_addr_d = aligned_addr(axi_addrgen_q.addr, eff_axi_dw_log_q);
+        aligned_start_addr_d = aligned_addr(ara_paddr_q, eff_axi_dw_log_q);
         // The final address can be found similarly...
         if (axi_addrgen_q.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q)) begin
           aligned_next_start_addr_d =
@@ -527,7 +574,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           aligned_end_addr_d = aligned_next_start_addr_d - 1;
         end else begin
           aligned_next_start_addr_d =
-            aligned_addr(axi_addrgen_q.addr + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
+            aligned_addr(ara_paddr_q + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
             eff_axi_dw_log_q) + eff_axi_dw_q;
           aligned_end_addr_d = aligned_next_start_addr_d - 1;
         end
@@ -541,6 +588,17 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       AXI_ADDRGEN_WAITING: begin
         if (!core_st_pending_i)
           axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING;
+          if (state_q == ADDRGEN_IDX_OP) begin
+            ara_mmu_req_o = 1'b1;
+            if(axi_addrgen_q.is_load) begin
+              ara_is_store_o = 1'b0;
+            end
+            else begin
+              ara_is_store_o = 1'b1;
+            end
+            ara_vaddr_o = {idx_final_addr_q};
+            idx_addr_ready_d = 1'b1;
+          end
       end
       AXI_ADDRGEN_REQUESTING : begin
         automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!
@@ -578,7 +636,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // AR Channel
               if (axi_addrgen_q.is_load) begin
                 axi_ar_o = '{
-                  addr   : axi_addrgen_q.addr,
+                  addr   : ara_paddr_q,
                   len    : burst_length - 1,
                   size   : eff_axi_dw_log_q,
                   cache  : CACHE_MODIFIABLE,
@@ -590,7 +648,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // AW Channel
               else begin
                 axi_aw_o = '{
-                  addr   : axi_addrgen_q.addr,
+                  addr   : ara_paddr_q,
                   len    : burst_length - 1,
                   // If misaligned store access, reduce the effective AXI width
                   // This hurts performance
@@ -604,7 +662,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
               // Send this request to the load/store units
               axi_addrgen_queue = '{
-                addr   : axi_addrgen_q.addr,
+                addr   : ara_paddr_q,
                 len    : burst_length - 1,
                 size   : eff_axi_dw_log_q,
                 is_load: axi_addrgen_q.is_load
@@ -613,24 +671,35 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
               // Account for the requested operands
               axi_addrgen_d.len = axi_addrgen_q.len -
-                ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1)
+                ((aligned_end_addr_q[11:0] - ara_paddr_q[11:0] + 1)
                   >> int'(axi_addrgen_q.vew));
               if (axi_addrgen_q.len <
-                ((aligned_end_addr_q[11:0] - axi_addrgen_q.addr[11:0] + 1)
+                ((aligned_end_addr_q[11:0] - ara_paddr_q[11:0] + 1)
                   >> int'(axi_addrgen_q.vew)))
                 axi_addrgen_d.len = 0;
-              axi_addrgen_d.addr = aligned_next_start_addr_q;
+              //axi_addrgen_d.addr = aligned_next_start_addr_q;
 
               // Finished generating AXI requests
               if (axi_addrgen_d.len == 0) begin
                 addrgen_req_ready   = 1'b1;
                 axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
               end
+              else begin
+                ara_mmu_req_o = 1'b1;
+                if(axi_addrgen_q.is_load) begin
+                  ara_is_store_o = 1'b0;
+                end
+                else begin
+                  ara_is_store_o = 1'b1;
+                end
+                ara_vaddr_o = {aligned_next_start_addr_q};
+                axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
+              end
 
               // Calculate the addresses for the next iteration
               // The start address is found by aligning the original request address by the width of
               // the memory interface. In our case, we have it already.
-              aligned_start_addr_d = axi_addrgen_d.addr;
+              /*aligned_start_addr_d = axi_addrgen_d.addr;
               // The final address can be found similarly.
               // How many B we requested? No more than (256 << burst_size)
               if (axi_addrgen_d.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q)) begin
@@ -648,7 +717,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12]) begin
                 aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
                 aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
-              end
+              end*/
             end else if (state_q != ADDRGEN_IDX_OP) begin
 
               /////////////////////
@@ -658,7 +727,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // AR Channel
               if (axi_addrgen_q.is_load) begin
                 axi_ar_o = '{
-                  addr   : axi_addrgen_q.addr,
+                  addr   : ara_paddr_q,
                   len    : 0,
                   size   : axi_addrgen_q.vew,
                   cache  : CACHE_MODIFIABLE,
@@ -670,7 +739,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // AW Channel
               else begin
                 axi_aw_o = '{
-                  addr   : axi_addrgen_q.addr,
+                  addr   : ara_paddr_q,
                   len    : 0,
                   size   : axi_addrgen_q.vew,
                   cache  : CACHE_MODIFIABLE,
@@ -682,7 +751,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
               // Send this request to the load/store units
               axi_addrgen_queue = '{
-                addr   : axi_addrgen_q.addr,
+                addr   : ara_paddr_q,
                 size   : axi_addrgen_q.vew,
                 len    : 0,
                 is_load: axi_addrgen_q.is_load
@@ -692,12 +761,22 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // Account for the requested operands
               axi_addrgen_d.len  = axi_addrgen_q.len - 1;
               // Calculate the addresses for the next iteration, adding the correct stride
-              axi_addrgen_d.addr = axi_addrgen_q.addr + axi_addrgen_q.stride;
+              ara_paddr_d = ara_paddr_q + axi_addrgen_q.stride;
 
               // Finished generating AXI requests
               if (axi_addrgen_d.len == 0) begin
                 addrgen_req_ready   = 1'b1;
                 axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+              end else if(ara_paddr_d >= aligned_next_start_addr_d) begin
+                ara_mmu_req_o       = 1'b1;
+                if(axi_addrgen_q.is_load) begin
+                  ara_is_store_o = 1'b0;
+                end
+                else begin
+                  ara_is_store_o = 1'b1;
+                end
+                ara_vaddr_o = {ara_paddr_d};
+                axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
               end
             end else begin
 
@@ -705,14 +784,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               //  Indexed access  //
               //////////////////////
 
-              if (idx_addr_valid_q) begin
-                // We consumed a word
-                idx_addr_ready_d = 1'b1;
+              if(ara_mmu_valid_i) begin
 
                 // AR Channel
                 if (axi_addrgen_q.is_load) begin
                   axi_ar_o = '{
-                    addr   : idx_final_addr_q,
+                    addr   : ara_paddr,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -724,7 +801,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 // AW Channel
                 else begin
                   axi_aw_o = '{
-                    addr   : idx_final_addr_q,
+                    addr   : ara_paddr,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -736,7 +813,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Send this request to the load/store units
                 axi_addrgen_queue = '{
-                  addr   : idx_final_addr_q,
+                  addr   : ara_paddr,
                   size   : axi_addrgen_q.vew,
                   len    : 0,
                   is_load: axi_addrgen_q.is_load
@@ -747,7 +824,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 axi_addrgen_d.len = axi_addrgen_q.len - 1;
 
                 // Check if the address does generate an exception
-                if (is_addr_error(idx_final_addr_q, axi_addrgen_q.vew)) begin
+                if (is_addr_error(ara_paddr, axi_addrgen_q.vew)) begin
                   // Generate an error
                   idx_op_error_d          = 1'b1;
                   // Forward next vstart info to the dispatcher
@@ -760,6 +837,19 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 if (axi_addrgen_d.len == 0) begin
                   addrgen_req_ready   = 1'b1;
                   axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+                end
+              end else begin
+                if (idx_addr_valid_q) begin
+                // We consumed a word
+                  idx_addr_ready_d = 1'b1;
+                  ara_mmu_req_o       = 1'b1;
+                  if(axi_addrgen_q.is_load) begin
+                    ara_is_store_o = 1'b0;
+                  end
+                  else begin
+                    ara_is_store_o = 1'b1;
+                  end
+                  ara_vaddr_o = {idx_final_addr_q};
                 end
               end
             end
@@ -779,6 +869,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       eff_axi_dw_q              <= '0;
       eff_axi_dw_log_q          <= '0;
       next_2page_msb_q          <= '0;
+      ara_paddr_q               <= '0;
     end else begin
       axi_addrgen_state_q       <= axi_addrgen_state_d;
       axi_addrgen_q             <= axi_addrgen_d;
@@ -788,6 +879,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       eff_axi_dw_q              <= eff_axi_dw_d;
       eff_axi_dw_log_q          <= eff_axi_dw_log_d;
       next_2page_msb_q          <= next_2page_msb_d;
+      ara_paddr_q               <= ara_paddr_d;
     end
   end
 

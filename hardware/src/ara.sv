@@ -108,7 +108,15 @@ module ara import ara_pkg::*; #(
     .core_st_pending_o (core_st_pending ),
     .load_complete_i   (load_complete   ),
     .store_complete_i  (store_complete  ),
-    .store_pending_i   (store_pending   )
+    .store_pending_i   (store_pending   ),
+    //Interface with address generator
+    .ara_mmu_req_i      (ara_mmu_req    ),
+    .ara_vaddr_i        (ara_vaddr      ),
+    .ara_is_store_i     (ara_is_store   ),
+
+    .ara_mmu_valid_o    (ara_mmu_valid  ),
+    .ara_paddr_o        (ara_paddr      ),
+    .ara_exception_o    (ara_exception  )
   );
 
   /////////////////
@@ -307,6 +315,14 @@ module ara import ara_pkg::*; #(
   logic vldu_mask_ready;
   logic vstu_mask_ready;
 
+  logic                   ara_mmu_req;
+  logic [riscv::VLEN-1:0] ara_vaddr;
+  logic                   ara_is_store;
+
+  logic                   ara_mmu_valid;
+  logic [riscv::PLEN-1:0] ara_paddr;
+  ariane_pkg::exception_t ara_exception;
+
   vlsu #(
     .NrLanes     (NrLanes     ),
     .AxiDataWidth(AxiDataWidth),
@@ -354,6 +370,14 @@ module ara import ara_pkg::*; #(
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),
     .addrgen_operand_valid_i    (sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o    (addrgen_operand_ready                                 ),
+    // MMU interface
+    .ara_mmu_req_o              (ara_mmu_req                                           ),
+    .ara_vaddr_o                (ara_vaddr                                             ),
+    .ara_is_store_o             (ara_is_store                                          ),
+
+    .ara_mmu_valid_i            (ara_mmu_valid                                         ),
+    .ara_paddr_i                (ara_paddr                                             ),
+    .ara_exception_i            (ara_exception                                         ),
     // Load unit
     .ldu_result_req_o           (ldu_result_req                                        ),
     .ldu_result_addr_o          (ldu_result_addr                                       ),

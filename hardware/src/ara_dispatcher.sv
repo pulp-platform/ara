@@ -40,7 +40,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                 core_st_pending_o,
     input  logic                                 load_complete_i,
     input  logic                                 store_complete_i,
-    input  logic                                 store_pending_i
+    input  logic                                 store_pending_i,
+
+    //Interface with address generator
+    input  logic                                  ara_mmu_req_i,
+    input  logic [riscv::VLEN-1:0]                ara_vaddr_i,
+    input  logic                                  ara_is_store_i,
+    output logic                                  ara_mmu_valid_o,
+    output logic [riscv::PLEN-1:0]                ara_paddr_o,
+    output ariane_pkg::exception_t                ara_exception_o
   );
 
   import cf_math_pkg::idx_width;
@@ -48,6 +56,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   `include "common_cells/registers.svh"
 
   assign core_st_pending_o = acc_req_i.store_pending;
+
+  //MMU Interface
+  assign ara_mmu_valid_o = acc_req_i.mmu_valid;
+  assign ara_paddr_o     = acc_req_i.paddr;
+  assign ara_exception_o = acc_req_i.exception;
 
   ////////////
   //  CSRs  //
@@ -279,6 +292,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       store_complete: store_zero_vl | store_complete_q,
       store_pending : store_pending_i,
       fflags_valid  : |fflags_ex_valid_i,
+      mmu_req       : ara_mmu_req_i,
+      vaddr         : ara_vaddr_i,
+      is_store      : ara_is_store_i,
       default       : '0
     };
 
