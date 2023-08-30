@@ -502,7 +502,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         end
       end
       AXI_ADDRGEN_WAIT_MMU: begin
+        ara_mmu_req_o = 1'b1;
         if(ara_mmu_valid_i) begin
+          ara_mmu_req_o = 1'b0;
           axi_addrgen_state_d = core_st_pending_i ? AXI_ADDRGEN_WAITING : AXI_ADDRGEN_REQUESTING;
           ara_paddr_d = ara_paddr;
 
@@ -558,6 +560,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           end
           else begin
             axi_addrgen_state_d = AXI_ADDRGEN_WAITING;
+            ara_mmu_req_o = 1'b0;
         end
         end
       end
