@@ -23,7 +23,7 @@
 	url = https://github.com/pulp-platform/common_verification.git
 [submodule "hardware/deps/cva6"]
 	path = hardware/deps/cva6
-	url = https://github.com/pulp-platform/cva6.git
+	url = https://github.com/10x-Engineers/cva6-pulp.git
 [submodule "toolchain/newlib"]
 	path = toolchain/newlib
 	url = https://sourceware.org/git/newlib-cygwin.git
