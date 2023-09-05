@@ -498,7 +498,40 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             end
             ara_vaddr_o = {addrgen_req.addr};
           end
+          if ((axi_addrgen_d.addr[$clog2(AxiDataWidth/8)-1:0] != '0) && !axi_addrgen_d.is_load)
+          begin
+            // Calculate the start and the end addresses in the AXI_ADDRGEN_MISALIGNED state
 
+            eff_axi_dw_d     = {1'b0, narrow_axi_data_bwidth};
+            eff_axi_dw_log_d = zeroes_cnt;
+          end else begin
+            eff_axi_dw_d     = AxiDataWidth/8;
+            eff_axi_dw_log_d = $clog2(AxiDataWidth/8);
+          end
+
+          // The start address is found by aligning the original request address by the width of
+          // the memory interface.
+          aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, $clog2(AxiDataWidth/8));
+          // Pre-calculate the next_2page_msb. This should not require much energy if the addr
+          // has zeroes in the upper positions.
+          next_2page_msb_d = aligned_start_addr_d[AxiAddrWidth-1:12] + 1;
+          // The final address can be found similarly...
+          if (axi_addrgen_d.len << int'(axi_addrgen_d.vew) >= (256 << $clog2(AxiDataWidth/8))) begin
+            aligned_next_start_addr_d =
+              aligned_addr(axi_addrgen_d.addr + (256 << $clog2(AxiDataWidth/8)), $clog2(AxiDataWidth/8));
+            aligned_end_addr_d = aligned_next_start_addr_d - 1;
+          end else begin
+            aligned_next_start_addr_d =
+              aligned_addr(axi_addrgen_d.addr + (axi_addrgen_d.len << int'(axi_addrgen_d.vew)) - 1,
+              $clog2(AxiDataWidth/8)) + AxiDataWidth/8;
+            aligned_end_addr_d = aligned_next_start_addr_d - 1;
+          end
+          // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
+          // same page as aligned_start_addr
+          if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12]) begin
+            aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
+            aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
+          end
         end
       end
       AXI_ADDRGEN_WAIT_MMU: begin
@@ -514,38 +547,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           begin
             // Calculate the start and the end addresses in the AXI_ADDRGEN_MISALIGNED state
             axi_addrgen_state_d = AXI_ADDRGEN_MISALIGNED;
-
-            eff_axi_dw_d     = {1'b0, narrow_axi_data_bwidth};
-            eff_axi_dw_log_d = zeroes_cnt;
-          end else begin
-            eff_axi_dw_d     = AxiDataWidth/8;
-            eff_axi_dw_log_d = $clog2(AxiDataWidth/8);
           end
-
-          // The start address is found by aligning the original request address by the width of
-          // the memory interface.
-          aligned_start_addr_d = aligned_addr(ara_paddr, $clog2(AxiDataWidth/8));
-          // Pre-calculate the next_2page_msb. This should not require much energy if the addr
-          // has zeroes in the upper positions.
-          next_2page_msb_d = aligned_start_addr_d[AxiAddrWidth-1:12] + 1;
-          // The final address can be found similarly...
-          if (axi_addrgen_q.len << int'(axi_addrgen_q.vew) >= (256 << $clog2(AxiDataWidth/8))) begin
-            aligned_next_start_addr_d =
-              aligned_addr(ara_paddr + (256 << $clog2(AxiDataWidth/8)), $clog2(AxiDataWidth/8));
-            aligned_end_addr_d = aligned_next_start_addr_d - 1;
-          end else begin
-            aligned_next_start_addr_d =
-              aligned_addr(ara_paddr + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
-              $clog2(AxiDataWidth/8)) + AxiDataWidth/8;
-            aligned_end_addr_d = aligned_next_start_addr_d - 1;
-          end
-          // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
-          // same page as aligned_start_addr
-          if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12]) begin
-            aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
-            aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
-          end
-          end else if (state_q == ADDRGEN_IDX_OP&&idx_addr_valid_q) begin
+        end else if (state_q == ADDRGEN_IDX_OP&&idx_addr_valid_q) begin
           if(!core_st_pending_i) begin
             ara_mmu_req_o = 1'b1;
             if(axi_addrgen_q.is_load) begin
@@ -569,7 +572,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
         // The start address is found by aligning the original request address by the width of
         // the memory interface.
-        aligned_start_addr_d = aligned_addr(ara_paddr_q, eff_axi_dw_log_q);
+        aligned_start_addr_d = aligned_addr(axi_addrgen_q.addr, eff_axi_dw_log_q);
         // The final address can be found similarly...
         if (axi_addrgen_q.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q)) begin
           aligned_next_start_addr_d =
@@ -577,7 +580,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           aligned_end_addr_d = aligned_next_start_addr_d - 1;
         end else begin
           aligned_next_start_addr_d =
-            aligned_addr(ara_paddr_q + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
+            aligned_addr(axi_addrgen_q.addr + (axi_addrgen_q.len << int'(axi_addrgen_q.vew)) - 1,
             eff_axi_dw_log_q) + eff_axi_dw_q;
           aligned_end_addr_d = aligned_next_start_addr_d - 1;
         end
@@ -617,6 +620,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if (axi_addrgen_queue_empty || (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
             (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load)) begin
           if (!axi_addrgen_queue_full && axi_ax_ready) begin
+            
             if (axi_addrgen_q.is_burst) begin
 
               /////////////////////////
@@ -680,7 +684,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 ((aligned_end_addr_q[11:0] - ara_paddr_q[11:0] + 1)
                   >> int'(axi_addrgen_q.vew)))
                 axi_addrgen_d.len = 0;
-              //axi_addrgen_d.addr = aligned_next_start_addr_q;
+              
 
               // Finished generating AXI requests
               if (axi_addrgen_d.len == 0) begin
@@ -698,29 +702,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 ara_vaddr_o = {aligned_next_start_addr_q};
                 axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
               end
-
-              // Calculate the addresses for the next iteration
-              // The start address is found by aligning the original request address by the width of
-              // the memory interface. In our case, we have it already.
-              /*aligned_start_addr_d = axi_addrgen_d.addr;
-              // The final address can be found similarly.
-              // How many B we requested? No more than (256 << burst_size)
-              if (axi_addrgen_d.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q)) begin
-                aligned_next_start_addr_d =
-                  aligned_addr(aligned_start_addr_d + (256 << eff_axi_dw_log_q), eff_axi_dw_log_q);
-                aligned_end_addr_d = aligned_next_start_addr_d - 1;
-              end else begin
-                aligned_next_start_addr_d =
-                  aligned_addr(aligned_start_addr_d + (axi_addrgen_d.len << int'(axi_addrgen_q.vew))
-                  - 1, eff_axi_dw_log_q) + eff_axi_dw_q;
-                aligned_end_addr_d = aligned_next_start_addr_d - 1;
-              end
-              // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
-              // same page as aligned_start_addr
-              if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12]) begin
-                aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
-                aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
-              end*/
             end else if (state_q != ADDRGEN_IDX_OP) begin
 
               /////////////////////
@@ -770,7 +751,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               if (axi_addrgen_d.len == 0) begin
                 addrgen_req_ready   = 1'b1;
                 axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
-              end else if(ara_paddr_d >= aligned_next_start_addr_d) begin
+              end else if(ara_paddr_d >= aligned_next_start_addr_q) begin
                 ara_mmu_req_o       = 1'b1;
                 if(axi_addrgen_q.is_load) begin
                   ara_is_store_o = 1'b0;
@@ -781,6 +762,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 ara_vaddr_o = {ara_paddr_d};
                 axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
               end
+              
             end else begin
 
               //////////////////////
@@ -856,6 +838,29 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 end
               end
             end
+            axi_addrgen_d.addr = aligned_next_start_addr_q;
+            // Calculate the addresses for the next iteration
+              // The start address is found by aligning the original request address by the width of
+              // the memory interface. In our case, we have it already.
+              aligned_start_addr_d = axi_addrgen_d.addr;
+              // The final address can be found similarly.
+              // How many B we requested? No more than (256 << burst_size)
+              if (axi_addrgen_d.len << int'(axi_addrgen_q.vew) >= (256 << eff_axi_dw_log_q)) begin
+                aligned_next_start_addr_d =
+                  aligned_addr(aligned_start_addr_d + (256 << eff_axi_dw_log_q), eff_axi_dw_log_q);
+                aligned_end_addr_d = aligned_next_start_addr_d - 1;
+              end else begin
+                aligned_next_start_addr_d =
+                  aligned_addr(aligned_start_addr_d + (axi_addrgen_d.len << int'(axi_addrgen_q.vew))
+                  - 1, eff_axi_dw_log_q) + eff_axi_dw_q;
+                aligned_end_addr_d = aligned_next_start_addr_d - 1;
+              end
+              // But since AXI requests are aligned in 4 KiB pages, aligned_end_addr must be in the
+              // same page as aligned_start_addr
+              if (aligned_start_addr_d[AxiAddrWidth-1:12] != aligned_end_addr_d[AxiAddrWidth-1:12]) begin
+                aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
+                aligned_next_start_addr_d = {                       next_2page_msb_d, 12'h000};
+              end
           end
         end
       end
