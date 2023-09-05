@@ -486,7 +486,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     case (axi_addrgen_state_q)
       AXI_ADDRGEN_IDLE: begin
         if (addrgen_req_valid) begin
-          axi_addrgen_d       = addrgen_req; 
+          axi_addrgen_d       = addrgen_req;
           axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
           if (state_q != ADDRGEN_IDX_OP) begin
             ara_mmu_req_o = 1'b1;
@@ -620,7 +620,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if (axi_addrgen_queue_empty || (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
             (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load)) begin
           if (!axi_addrgen_queue_full && axi_ax_ready) begin
-            
             if (axi_addrgen_q.is_burst) begin
 
               /////////////////////////
@@ -684,7 +683,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 ((aligned_end_addr_q[11:0] - ara_paddr_q[11:0] + 1)
                   >> int'(axi_addrgen_q.vew)))
                 axi_addrgen_d.len = 0;
-              
 
               // Finished generating AXI requests
               if (axi_addrgen_d.len == 0) begin
@@ -762,7 +760,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 ara_vaddr_o = {ara_paddr_d};
                 axi_addrgen_state_d = AXI_ADDRGEN_WAIT_MMU;
               end
-              
             end else begin
 
               //////////////////////
