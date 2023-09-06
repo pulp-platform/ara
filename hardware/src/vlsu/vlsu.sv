@@ -66,7 +66,15 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t     [NrLanes-1:0] ldu_result_wdata_o,
     output strb_t     [NrLanes-1:0] ldu_result_be_o,
     input  logic      [NrLanes-1:0] ldu_result_gnt_i,
-    input  logic      [NrLanes-1:0] ldu_result_final_gnt_i
+    input  logic      [NrLanes-1:0] ldu_result_final_gnt_i,
+    // MMU interface
+    output logic                          ara_mmu_req_o,
+    output logic [riscv::VLEN-1:0]        ara_vaddr_o,
+    output logic                          ara_is_store_o,
+
+    input logic                           ara_mmu_valid_i,
+    input logic [riscv::PLEN-1:0]         ara_paddr_i,
+    input ariane_pkg::exception_t         ara_exception_i
   );
 
   ///////////////////
@@ -140,6 +148,14 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
     .addrgen_operand_valid_i    (addrgen_operand_valid_i    ),
     .addrgen_operand_ready_o    (addrgen_operand_ready_o    ),
+    // MMU interface
+    .ara_mmu_req_o              (ara_mmu_req_o              ),
+    .ara_vaddr_o                (ara_vaddr_o                ),
+    .ara_is_store_o             (ara_is_store_o             ),
+
+    .ara_mmu_valid_i            (ara_mmu_valid_i            ),
+    .ara_paddr_i                (ara_paddr_i                ),
+    .ara_exception_i            (ara_exception_i            ),
     // Interface with the load/store units
     .axi_addrgen_req_o          (axi_addrgen_req            ),
     .axi_addrgen_req_valid_o    (axi_addrgen_req_valid      ),
