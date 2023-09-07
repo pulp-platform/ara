@@ -74,6 +74,7 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 // Author: Matteo Perotti, ETH Zurich, <mperotti@iis.ee.ethz.ch>
 
 #include "jacobi2d.h"
+#define DOUBLE_BUFFERING
 
 void j2d_s(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B,
            uint64_t tsteps) {
