@@ -166,6 +166,7 @@ jobs:
   compile-apps:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: tc-llvm
@@ -197,6 +198,7 @@ jobs:
   compile-riscv-tests:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-llvm", "tc-gcc", "tc-isa-sim"]
@@ -235,6 +237,7 @@ jobs:
   compile-ara:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-verilator", "tc-isa-sim"]
@@ -284,6 +287,7 @@ jobs:
   simulate:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
@@ -317,6 +321,7 @@ jobs:
   riscv-tests-simv:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-riscv-tests"]
@@ -449,6 +454,7 @@ jobs:
   benchmark:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
@@ -667,6 +673,7 @@ jobs:
   clean-up-compile-runs:
     runs-on: ubuntu-20.04
     strategy:
+      max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     if: always()
