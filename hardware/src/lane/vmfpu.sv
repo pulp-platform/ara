@@ -287,12 +287,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // Clock-gate for the multipliers
   logic clkgate_en_d, clkgate_en_q, clk_i_gated;
 
-`ifdef GF22
-  clk_gating_gf22
-`else
-  tc_clk_gating
-`endif
-  i_simd_mul_manual_clk_gate (
+  tc_clk_gating i_simd_mul_manual_clk_gate (
     .clk_i     (clk_i       ),
     .en_i      (clkgate_en_q),
     .test_en_i (1'b0        ),
