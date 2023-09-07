@@ -22,7 +22,7 @@
 
 // Execute only the central kernel with fake data
 // Execute only on the channels
-//#define V_KERNEL_ONLY 1
+#define V_KERNEL_ONLY 1
 
 #define EXTRAPOLATION_VALUE 0
 

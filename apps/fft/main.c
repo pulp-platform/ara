@@ -192,7 +192,7 @@ int main() {
   stop_timer();
   runtime = get_timer();
 
-  float perf = (float)10.0 * NFFT * (31 - __builtin_clz(NFFT)) / runtime;
+  float perf = (float)5.0 * NFFT * (31 - __builtin_clz(NFFT)) / runtime;
   float max_perf = 6.0 / 5.0 * NR_LANES * 8.0 / sizeof(float);
 
   printf("Performance: %f. Max perf: %f. Actual performance is %f%% of max.\n",
