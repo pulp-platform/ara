@@ -29,6 +29,11 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+
+#ifdef __linux__
+  #include <stdio.h>
+#else // ! __linux__
+
 #ifndef _PRINTF_H_
 #define _PRINTF_H_
 
@@ -100,4 +105,5 @@ int fctprintf(void (*out)(char character, void *arg), void *arg,
 }
 #endif
 
+#endif // __linux__
 #endif // _PRINTF_H_

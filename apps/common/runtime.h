@@ -7,13 +7,19 @@
   asm volatile(                                                                \
       "csrs mstatus, %[bits];" ::[bits] "r"(0x00000600 & (0x00000600 >> 1)))
 
-extern int64_t event_trigger;
-extern int64_t timer;
-// SoC-level CSR
-extern uint64_t hw_cnt_en_reg;
+// SoC-level CSR, put in memory for Linux build
+#ifdef __linux__
+  int64_t event_trigger;
+  int64_t timer;
+  uint64_t hw_cnt_en_reg;
+#else // ! __linux__
+  extern int64_t event_trigger;
+  extern int64_t timer;
+  extern uint64_t hw_cnt_en_reg;
+#endif // __linux__
 
 // Return the current value of the cycle counter
-inline int64_t get_cycle_count() {
+int64_t get_cycle_count() {
   int64_t cycle_count;
   // The fence is needed to be sure that Ara is idle, and it is not performing
   // the last vector stores when we read mcycle with stop_timer()
@@ -31,26 +37,26 @@ inline int64_t get_cycle_count() {
 #define HW_CNT_READY hw_cnt_en_reg = 1;
 #define HW_CNT_NOT_READY hw_cnt_en_reg = 0;
 // Start and stop the counter
-inline void start_timer() { timer = -get_cycle_count(); }
-inline void stop_timer() { timer += get_cycle_count(); }
+void start_timer() { timer = -get_cycle_count(); }
+void stop_timer() { timer += get_cycle_count(); }
 
 // Get the value of the timer
-inline int64_t get_timer() { return timer; }
+int64_t get_timer() { return timer; }
 #else
 #define HW_CNT_READY ;
 #define HW_CNT_NOT_READY ;
 // Start and stop the counter
-inline void start_timer() {
+void start_timer() {
   while (0)
     ;
 }
-inline void stop_timer() {
+void stop_timer() {
   while (0)
     ;
 }
 
 // Get the value of the timer
-inline int64_t get_timer() { return 0; }
+int64_t get_timer() { return 0; }
 #endif
 
 #endif // _RUNTIME_H_

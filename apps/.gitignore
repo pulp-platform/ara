@@ -1,2 +1,4 @@
 bin
 common/link.ld
+*.o*
+data.S*

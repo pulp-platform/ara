@@ -21,6 +21,12 @@ APPS_DIR := $(ROOT_DIR)
 COMMON_DIR := $(ROOT_DIR)/common
 TESTS_DIR := $(ROOT_DIR)/riscv-tests/isa
 
+# Build environment for Linux
+LINUX ?= 1
+ifeq ($(LINUX), 1)
+include $(COMMON_DIR)/linux.mk
+endif
+
 # This will overwrite the ROOT_DIR variable from the included makefile
 include $(COMMON_DIR)/runtime.mk
 include $(COMMON_DIR)/riscv_tests.mk
@@ -33,9 +39,9 @@ BINARIES := $(filter-out bin/benchmarks, $(addprefix bin/,$(APPS)))
 CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si
 # Atomics are messy, since there is currently no memory region capable of handling them
 # CVA6_EXTENSIONS := rv64ua
-CVA6_BINARIES := $(addprefix bin/, $(cva6_tests))
+CVA6_BINARIES := $(addsuffix $(IS_LINUX_EXTENSION), $(addprefix bin/, $(cva6_tests)))
 ARA_EXTENSIONS := rv64uv
-ARA_BINARIES := $(addprefix bin/, $(ara_tests))
+ARA_BINARIES := $(addsuffix $(IS_LINUX_EXTENSION), $(addprefix bin/, $(ara_tests)))
 
 # FFT requires special treatment because of its header files
 ifeq ($(ENV_DEFINES),)
@@ -95,13 +101,17 @@ endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template_spike,$(app))))
 
 define app_compile_template
-bin/$1: $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
+bin/$1: $1/data.S.o$$(IS_LINUX_EXTENSION) $(addsuffix .o$$(IS_LINUX_EXTENSION), $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) -T$$(CURDIR)/common/link.ld
-	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
-	$$(RISCV_STRIP) $$@ -S --strip-unneeded
+	$$(RISCV_CC) $(RISCV_CCFLAGS) -o $$@$$(IS_LINUX_EXTENSION) $$(addsuffix .o$$(IS_LINUX_EXTENSION), $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS) $$(LD_FLAGS)
+	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@$$(IS_LINUX_EXTENSION) > $$@$$(IS_LINUX_EXTENSION).dump
+	# Don't strip symbols for Linux build since need them for debug
+	if [ "$$(IS_LINUX_EXTENSION)" == "" ]; then \
+		$$(RISCV_STRIP) $$@$$(IS_LINUX_EXTENSION) -S --strip-unneeded; \
+	fi
 endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template,$(app))))
+
 
 # Make the RISC-V tests
 riscv_tests: $(CVA6_BINARIES) $(ARA_BINARIES)
@@ -111,7 +121,7 @@ TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_GCC) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC_GCC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS_GCC) $$(RISCV_LDFLAGS_GCC) -o $$@ $$< $(RUNTIME_GCC) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC_GCC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS_GCC) $$(RISCV_LDFLAGS_GCC) -o $$@ $$< $(RUNTIME_GCC) $$(LD_FLAGS)
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -121,7 +131,7 @@ TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
 bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME_LLVM) -T$$(CURDIR)/common/link.ld
+	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME_LLVM) $$(LD_FLAGS)
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
@@ -169,13 +179,14 @@ benchmarks_clean:
 
 .PHONY: clean
 clean: riscv_tests_spike_clean benchmarks_clean
+	rm -vf bin/*
 	rm -vf $(BINARIES)
 	rm -vf $(CVA6_BINARIES)
 	rm -vf $(ARA_BINARIES)
 	rm -vf $(addsuffix .dump,$(BINARIES))
 	rm -vf $(addsuffix .dump,$(CVA6_BINARIES))
 	rm -vf $(addsuffix .dump,$(ARA_BINARIES))
-	rm -vf $(addsuffix /main.c.o,$(APPS))
+	rm -vf $(addsuffix /main.c.o$(IS_LINUX_EXTENSION),$(APPS))
 	rm -vf $(RUNTIME_GCC)
 	rm -vf $(RUNTIME_LLVM)
 	rm -vf $(RUNTIME_SPIKE)

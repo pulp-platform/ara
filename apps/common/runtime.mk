@@ -33,7 +33,7 @@ endif
 # Include configuration
 include $(ARA_DIR)/config/$(config).mk
 
-INSTALL_DIR             ?= $(ARA_DIR)/install
+INSTALL_DIR             ?= /usr/scratch/fenga3/vmaisto/ara/install
 GCC_INSTALL_DIR         ?= $(INSTALL_DIR)/riscv-gcc
 LLVM_INSTALL_DIR        ?= $(INSTALL_DIR)/riscv-llvm
 ISA_SIM_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-isa-sim
@@ -42,7 +42,7 @@ ISA_SIM_MOD_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim-mod
 RISCV_XLEN    ?= 64
 RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv
 RISCV_ABI     ?= lp64d
-RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf
+RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf-
 
 # Use LLVM
 RISCV_PREFIX  ?= $(LLVM_INSTALL_DIR)/bin/
@@ -56,7 +56,9 @@ RISCV_LD      ?= $(RISCV_PREFIX)ld.lld
 RISCV_STRIP   ?= $(RISCV_PREFIX)llvm-strip
 
 # Use gcc to compile scalar riscv-tests
-RISCV_CC_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-gcc
+RISCV_CC_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)gcc
+RISCV_OBJCOPY_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)objcopy
+RISCV_OBJDUMP_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)objdump
 
 # Benchmark with spike
 spike_env_dir ?= $(ARA_DIR)/apps/riscv-tests
@@ -109,6 +111,8 @@ RUNTIME_GCC   ?= common/crt0-gcc.S.o common/printf-gcc.c.o common/string-gcc.c.o
 RUNTIME_LLVM  ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c.o common/serial-llvm.c.o common/util-llvm.c.o
 RUNTIME_SPIKE ?= $(spike_env_dir)/benchmarks/common/crt.S.o.spike $(spike_env_dir)/benchmarks/common/syscalls.c.o.spike common/util.c.o.spike
 
+LD_FLAGS ?= -T$(CURDIR)/common/link.ld
+
 .INTERMEDIATE: $(RUNTIME_GCC) $(RUNTIME_LLVM)
 
 %-gcc.S.o: %.S
@@ -123,10 +127,10 @@ RUNTIME_SPIKE ?= $(spike_env_dir)/benchmarks/common/crt.S.o.spike $(spike_env_di
 %-llvm.c.o: %.c
 	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
 
-%.S.o: %.S
+%.S.o$(IS_LINUX_EXTENSION): %.S
 	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
 
-%.c.o: %.c
+%.c.o$(IS_LINUX_EXTENSION): %.c
 	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
 
 %.S.o.spike: %.S patch-spike-crt0
