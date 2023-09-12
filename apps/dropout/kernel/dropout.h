@@ -27,8 +27,6 @@
 // Use asm, by default
 #undef INTRINSICS
 
-#include "runtime.h"
-
 #ifndef SPIKE
 #include "printf.h"
 #endif

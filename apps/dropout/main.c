@@ -23,6 +23,17 @@
 
 #include "kernel/dropout.h"
 
+#include <stdint.h>
+#include <string.h>
+
+#include "runtime.h"
+
+#ifndef SPIKE
+#include "printf.h"
+#else
+#include <stdio.h>
+#endif
+
 extern const unsigned int N;
 extern const float SCALE;
 extern const float I[] __attribute__((aligned(4 * NR_LANES)));
