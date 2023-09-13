@@ -117,7 +117,7 @@ bender:
 	wget https://github.com/pulp-platform/bender/releases/download/v0.23.1/bender-0.23.1-x86_64-linux-gnu.tar.gz
 	tar xf bender-0.23.1-x86_64-linux-gnu.tar.gz
 	rm -rf bender-0.23.1-x86_64-linux-gnu.tar.gz
-  @echo "$$(./bender --version) available."
+	@echo "$$(./bender --version) available."
 
 # Patches
 .PHONY: apply-patches
