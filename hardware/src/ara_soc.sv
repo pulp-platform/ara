@@ -138,7 +138,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     UniqueIds         : 1'b0,
     AxiAddrWidth      : AxiAddrWidth,
     AxiDataWidth      : AxiWideDataWidth,
-    NoAddrRules       : NrAXISlaves
+    NoAddrRules       : NrAXISlaves,
+    default           : '0
   };
 
   axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules;
@@ -188,8 +189,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   axi_atop_filter #(
     .AxiIdWidth     (AxiSocIdWidth  ),
     .AxiMaxWriteTxns(4              ),
-    .req_t          (soc_wide_req_t ),
-    .resp_t         (soc_wide_resp_t)
+    .axi_req_t          (soc_wide_req_t ),
+    .axi_resp_t         (soc_wide_resp_t)
   ) i_l2mem_atop_filter (
     .clk_i     (clk_i                         ),
     .rst_ni    (rst_ni                        ),

@@ -21,9 +21,6 @@
 [submodule "hardware/deps/common_verification"]
 	path = hardware/deps/common_verification
 	url = https://github.com/pulp-platform/common_verification.git
-[submodule "hardware/deps/cva6"]
-	path = hardware/deps/cva6
-	url = https://github.com/pulp-platform/cva6.git
 [submodule "toolchain/newlib"]
 	path = toolchain/newlib
 	url = https://sourceware.org/git/newlib-cygwin.git
@@ -35,3 +32,6 @@
 [submodule "hardware/deps/apb"]
 	path = hardware/deps/apb
 	url = https://github.com/pulp-platform/apb.git
+[submodule "hardware/deps/cva6"]
+	path = hardware/deps/cva6
+	url = git@github.com:MaistoV/cva6_fork.git

@@ -1,62 +1,63 @@
+---
 packages:
-  cva6:
-    revision: 3fddb6e5814604c7ec49e4320de0037292346c63
-    version: null
-    source:
-      Git: https://github.com/pulp-platform/cva6.git
-    dependencies:
-    - axi
-    - common_cells
-    - fpnew
-    - tech_cells_generic
   apb:
     revision: 77ddf073f194d44b9119949d2421be59789e69ae
     version: 0.2.4
     source:
-      Git: https://github.com/pulp-platform/apb.git
+      Git: "https://github.com/pulp-platform/apb.git"
     dependencies:
-    - common_cells
+      - common_cells
   axi:
-    revision: null
-    version: null
+    revision: 9251564ed67e3e71adf46dbeba62ef4435d2524c
+    version: 0.31.1
     source:
-      Path: hardware/deps/axi
+      Git: "https://github.com/pulp-platform/axi.git"
     dependencies:
-    - common_cells
-    - common_verification
+      - common_cells
+      - common_verification
   common_cells:
-    revision: null
-    version: null
+    revision: 53b0b58af2db5bd3c850a7038fae170ed78326bb
+    version: 1.31.1
     source:
-      Path: hardware/deps/common_cells
+      Git: "https://github.com/pulp-platform/common_cells.git"
     dependencies:
-    - common_verification
-    - tech_cells_generic
+      - common_verification
+      - tech_cells_generic
   common_verification:
-    revision: null
-    version: null
+    revision: 9c07fa860593b2caabd9b5681740c25fac04b878
+    version: 0.2.3
     source:
-      Path: hardware/deps/common_verification
+      Git: "https://github.com/pulp-platform/common_verification.git"
     dependencies: []
+  cva6:
+    revision: 5e2e520696aa63545b91fca38ce340314291be5c
+    version: ~
+    source:
+      Git: "https://github.com/MaistoV/cva6_fork.git"
+    dependencies:
+      - axi
+      - common_cells
+      - fpnew
+      - tech_cells_generic
   fpnew:
     revision: 3116391bf66660f806b45e212b9949c528b4e270
     version: 0.7.0
     source:
-      Git: https://github.com/openhwgroup/cvfpu.git
+      Git: "https://github.com/openhwgroup/cvfpu.git"
     dependencies:
-    - common_cells
-    - fpu_div_sqrt_mvp
+      - common_cells
+      - fpu_div_sqrt_mvp
   fpu_div_sqrt_mvp:
     revision: 86e1f558b3c95e91577c41b2fc452c86b04e85ac
     version: 1.0.4
     source:
-      Git: https://github.com/pulp-platform/fpu_div_sqrt_mvp.git
+      Git: "https://github.com/pulp-platform/fpu_div_sqrt_mvp.git"
     dependencies:
-    - common_cells
+      - common_cells
   tech_cells_generic:
-    revision: null
-    version: null
+    revision: 298b7297d220ba2601d0f24f684f97ff32f61123
+    version: 0.2.12
     source:
-      Path: hardware/deps/tech_cells_generic
+      Git: "https://github.com/pulp-platform/tech_cells_generic.git"
     dependencies:
-    - common_verification
+      - common_verification
