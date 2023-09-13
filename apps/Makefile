@@ -22,7 +22,7 @@ COMMON_DIR := $(ROOT_DIR)/common
 TESTS_DIR := $(ROOT_DIR)/riscv-tests/isa
 
 # Build environment for Linux
-LINUX ?= 1
+LINUX ?= 0
 ifeq ($(LINUX), 1)
 include $(COMMON_DIR)/linux.mk
 endif
