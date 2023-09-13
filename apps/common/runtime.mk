@@ -33,7 +33,7 @@ endif
 # Include configuration
 include $(ARA_DIR)/config/$(config).mk
 
-INSTALL_DIR             ?= /usr/scratch/fenga3/vmaisto/ara/install
+INSTALL_DIR             ?= $(ARA_DIR)/install
 GCC_INSTALL_DIR         ?= $(INSTALL_DIR)/riscv-gcc
 LLVM_INSTALL_DIR        ?= $(INSTALL_DIR)/riscv-llvm
 ISA_SIM_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-isa-sim
