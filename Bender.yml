@@ -28,7 +28,6 @@ sources:
 
     # Sources
     # Level 1
-    - hardware/src/axi_to_mem.sv
     - hardware/src/ctrl_registers.sv
     - hardware/src/cva6_accel_first_pass_decoder.sv
     - hardware/src/ara_dispatcher.sv
