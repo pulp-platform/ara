@@ -26,15 +26,33 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     output axi_aw_t                        axi_aw_o,
     output logic                           axi_aw_valid_o,
     input  logic                           axi_aw_ready_i,
+    // CSR input
+    input  logic                           en_ld_st_translation_i,
+    // Interface with CVA6's sv39 MMU
+    // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
+    output ariane_pkg::exception_t         mmu_misaligned_ex_o,
+    output logic                           mmu_req_o,        // request address translation
+    output logic [riscv::VLEN-1:0]         mmu_vaddr_o,      // virtual address out
+    output logic                           mmu_is_store_o,   // the translation is requested by a store
+    // if we need to walk the page table we can't grant in the same cycle
+    // Cycle 0
+    input logic                            mmu_dtlb_hit_i,   // sent in the same cycle as the request if translation hits in the DTLB
+    input logic [riscv::PPNW-1:0]          mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
+    // Cycle 1
+    input  logic                           mmu_valid_i,      // translation is valid
+    input  logic [riscv::PLEN-1:0]         mmu_paddr_i,      // translated address
+    input  ariane_pkg::exception_t         mmu_exception_i,  // address translation threw an exception
     // Interace with the dispatcher
     input  logic                           core_st_pending_i,
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
     input  logic     [NrVInsn-1:0]         pe_vinsn_running_i,
-    output logic                           addrgen_error_o,
+    output ariane_pkg::exception_t         addrgen_exception_o,
     output logic                           addrgen_ack_o,
-    output vlen_t                          addrgen_error_vl_o,
+    output vlen_t                          addrgen_exception_vl_o,
+    output logic                           addrgen_exception_load_o,
+    output logic                           addrgen_exception_store_o,
     // Interface with the load/store units
     output addrgen_axi_req_t               axi_addrgen_req_o,
     output logic                           axi_addrgen_req_valid_o,
@@ -46,6 +64,20 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                           addrgen_operand_ready_o
   );
+
+
+  ///////////////////
+  //  Assignments  //
+  ///////////////////
+
+  assign mmu_misaligned_ex_o  = '0; // Ara reports misaligned exceptions on its own
+
+  // Some mock logic to show the net routing
+  // assign mmu_req_o           = axi_ar_valid_o;
+  // assign mmu_vaddr_o         = axi_ar_o.addr;
+  // assign mmu_is_store_o      = axi_aw_valid_o;
+  // logic mock_signal_1;
+  // logic mock_signal_2;
 
   import cf_math_pkg::idx_width;
   import axi_pkg::aligned_addr;
@@ -114,10 +146,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   logic [$bits(elen_t)*NrLanes-1:0] shuffled_word;
   logic [$bits(elen_t)*NrLanes-1:0] deshuffled_word;
   elen_t                            reduced_word;
-  axi_addr_t                        idx_final_addr_d, idx_final_addr_q;
-  elen_t                            idx_addr;
+  axi_addr_t                        idx_final_vaddr_d, idx_final_vaddr_q;
+  elen_t                            idx_vaddr;
   logic                             idx_op_error_d, idx_op_error_q;
-  vlen_t                            addrgen_error_vl_d;
+  vlen_t                            addrgen_exception_vl_d;
 
   // Pointer to point to the correct
   logic [$clog2(NrLanes)-1:0] word_lane_ptr_d, word_lane_ptr_q;
@@ -126,8 +158,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t                              idx_op_cnt_d, idx_op_cnt_q;
 
   // Spill reg signals
-  logic      idx_addr_valid_d, idx_addr_valid_q;
-  logic      idx_addr_ready_d, idx_addr_ready_q;
+  logic      idx_vaddr_valid_d, idx_vaddr_valid_q;
+  logic      idx_vaddr_ready_d, idx_vaddr_ready_q;
 
   // Break the path from the VRF to the AXI request
   spill_register #(
@@ -135,17 +167,19 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   ) i_addrgen_idx_op_spill_reg (
     .clk_i  (clk_i           ),
     .rst_ni (rst_ni          ),
-    .valid_i(idx_addr_valid_d),
-    .ready_o(idx_addr_ready_q),
-    .data_i (idx_final_addr_d),
-    .valid_o(idx_addr_valid_q),
-    .ready_i(idx_addr_ready_d),
-    .data_o (idx_final_addr_q)
+    .valid_i(idx_vaddr_valid_d),
+    .ready_o(idx_vaddr_ready_q),
+    .data_i (idx_final_vaddr_d),
+    .valid_o(idx_vaddr_valid_q),
+    .ready_i(idx_vaddr_ready_d),
+    .data_o (idx_final_vaddr_q)
   );
 
   //////////////////////////
   //  Address generation  //
   //////////////////////////
+  ariane_pkg::exception_t mmu_exception_d, mmu_exception_q;
+  logic last_translation_completed;
 
   // Running vector instructions
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
@@ -156,13 +190,18 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   // ADDRGEN_IDX_OP: Generates a series of AXI requests from a
   //    vector instruction, but reading a vector of offsets from Ara's lanes.
   //    This is used for scatter and gather operations.
-  enum logic [1:0] {
+  // WAIT_LAST_TRANSLATION: Wait for the last address translation to be acknowledged
+  enum logic [2:0] {
     IDLE,
     ADDRGEN,
     ADDRGEN_IDX_OP,
-    ADDRGEN_IDX_OP_END
+    ADDRGEN_IDX_OP_END,
+    WAIT_LAST_TRANSLATION
   } state_q, state_d;
 
+  // TODO: Masked elements do not generate exceptions on:
+  //      * EEW misalignment
+  //      * page faults
   always_comb begin: addr_generation
     // Maintain state
     state_d  = state_q;
@@ -177,16 +216,20 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
     // Nothing to acknowledge
     addrgen_ack_o           = 1'b0;
-    addrgen_error_o         = 1'b0;
+    addrgen_exception_o.valid = 1'b0;
+    addrgen_exception_o.tval  = '0;
+    addrgen_exception_o.cause = '0;
+    addrgen_exception_load_o  = 1'b0;
+    addrgen_exception_store_o = 1'b0;
 
     // No valid words for the spill register
-    idx_addr_valid_d        = 1'b0;
+    idx_vaddr_valid_d       = 1'b0;
     addrgen_operand_ready_o = 1'b0;
     reduced_word            = '0;
     elm_ptr_d               = elm_ptr_q;
     idx_op_cnt_d            = idx_op_cnt_q;
     word_lane_ptr_d         = word_lane_ptr_q;
-    idx_final_addr_d        = idx_final_addr_q;
+    idx_final_vaddr_d       = idx_final_vaddr_q;
     last_elm_subw_d         = last_elm_subw_q;
 
     // Support for indexed operations
@@ -201,10 +244,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     for (int unsigned lane = 0; lane < NrLanes; lane++)
       if (lane == word_lane_ptr_q)
         reduced_word = deshuffled_word[word_lane_ptr_q*$bits(elen_t) +: $bits(elen_t)];
-    idx_addr = reduced_word;
+    idx_vaddr = reduced_word;
 
     case (state_q)
-      IDLE: begin
+      IDLE: begin : state_IDLE
         // Received a new request
         if (pe_req_valid_i &&
             (is_load(pe_req_i.op) || is_store(pe_req_i.op)) && !vinsn_running_q[pe_req_i.id]) begin
@@ -232,19 +275,35 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               idx_op_cnt_d = pe_req_i.vl;
             end
             default: state_d = ADDRGEN;
-          endcase
+          endcase // pe_req_i.op
+
+
+          // // Some mock logic to show the net routing
+          // mock_signal_1 = mmu_dtlb_hit_i & mmu_valid_i | mmu_exception_i;
+          // mock_signal_2 = mmu_dtlb_ppn_i & |mmu_paddr_i;
+
+          // if ( mock_signal_1 ) 
+          //   state_d = ADDRGEN;
+          
+          // if ( mock_signal_2 ) 
+          //   state_d = ADDRGEN_IDX_OP;
         end
-      end
-      ADDRGEN: begin
+      end : state_IDLE
+
+      ADDRGEN: begin : ADDRGEN
         // Ara does not support misaligned AXI requests
-        if (is_addr_error(pe_req_q.scalar_op, pe_req_q.vtype.vsew)) begin
+        if (is_addr_error(pe_req_q.scalar_op, pe_req_q.vtype.vsew)) begin : eew_misaligned_error
           state_d         = IDLE;
           addrgen_ack_o   = 1'b1;
-          addrgen_error_o = 1'b1;
-        end else begin
+          addrgen_exception_o.valid = 1'b1;
+          addrgen_exception_o.cause = riscv::ILLEGAL_INSTR;
+          addrgen_exception_o.tval  = '0;
+        end : eew_misaligned_error
+        else begin : address_valid
+
           addrgen_req = '{
             addr    : pe_req_q.scalar_op,
-            len     : pe_req_q.vl,
+            len     : pe_req_q.vl ,
             stride  : pe_req_q.stride,
             vew     : pe_req_q.vtype.vsew,
             is_load : is_load(pe_req_q.op),
@@ -253,19 +312,28 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           };
           addrgen_req_valid = 1'b1;
 
-          if (addrgen_req_ready) begin
+          if (addrgen_req_ready) begin : finished
             addrgen_req_valid = '0;
             addrgen_ack_o     = 1'b1;
             state_d           = IDLE;
-          end
-        end
-      end
-      ADDRGEN_IDX_OP: begin
+          end : finished
+          
+          // If load/store translation is enabled
+          if ( en_ld_st_translation_i ) begin : translation_enabled
+            // We need to wait for the last translation to be over before acking back
+            // addrgen_req_valid = '0; TODO: figure out if set/reset here
+            addrgen_ack_o     = 1'b0;
+            state_d           = WAIT_LAST_TRANSLATION;
+          end : translation_enabled
+        end : address_valid
+      end : ADDRGEN
+
+      ADDRGEN_IDX_OP: begin : ADDRGEN_IDX_OP
         // Stall the interface until the operation is over to catch possible exceptions
 
         // Every address can generate an exception
         addrgen_req = '{
-          addr    : pe_req_q.scalar_op,
+          addr    : pe_req_q.scalar_op, 
           len     : pe_req_q.vl,
           stride  : pe_req_q.stride,
           vew     : pe_req_q.vtype.vsew,
@@ -281,42 +349,42 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if (&addrgen_operand_valid_i & addrgen_operand_target_fu_i[0] == MFPU_ADDRGEN) begin
 
           // Valid data for the spill register
-          idx_addr_valid_d = 1'b1;
+          idx_vaddr_valid_d = 1'b1;
 
           // Select the correct element, and zero extend it depending on vsew
           case (pe_req_q.eew_vs2)
             EW8: begin
               for (int unsigned b = 0; b < 8; b++)
                 if (b == elm_ptr_q)
-                  idx_addr = reduced_word[b*8 +: 8];
+                  idx_vaddr = reduced_word[b*8 +: 8];
             end
             EW16: begin
               for (int unsigned h = 0; h < 4; h++)
                 if (h == elm_ptr_q)
-                  idx_addr = reduced_word[h*16 +: 16];
+                  idx_vaddr = reduced_word[h*16 +: 16];
             end
             EW32: begin
               for (int unsigned w = 0; w < 2; w++)
                 if (w == elm_ptr_q)
-                  idx_addr = reduced_word[w*32 +: 32];
+                  idx_vaddr = reduced_word[w*32 +: 32];
             end
             EW64: begin
               for (int unsigned d = 0; d < 1; d++)
                 if (d == elm_ptr_q)
-                  idx_addr = reduced_word[d*64 +: 64];
+                  idx_vaddr = reduced_word[d*64 +: 64];
             end
             default: begin
               for (int unsigned b = 0; b < 8; b++)
                 if (b == elm_ptr_q)
-                  idx_addr = reduced_word[b*8 +: 8];
+                  idx_vaddr = reduced_word[b*8 +: 8];
             end
           endcase
 
           // Compose the address
-          idx_final_addr_d = pe_req_q.scalar_op + idx_addr;
+          idx_final_vaddr_d = pe_req_q.scalar_op + idx_vaddr;
 
           // When the data is accepted
-          if (idx_addr_ready_q) begin
+          if (idx_vaddr_ready_q) begin
             // Consumed one element
             idx_op_cnt_d = idx_op_cnt_q - 1;
             // Have we finished a full NrLanes*64b word?
@@ -339,13 +407,13 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           end
         end
 
-        if (idx_op_error_d || addrgen_req_ready) begin
+        if (idx_op_error_d || addrgen_req_ready || mmu_exception_d.valid ) begin
           state_d = ADDRGEN_IDX_OP_END;
         end
-      end
+      end : ADDRGEN_IDX_OP
 
       // This state exists not to create combinatorial paths on the interface
-      ADDRGEN_IDX_OP_END : begin
+      ADDRGEN_IDX_OP_END : begin : ADDRGEN_IDX_OP_END
         // Acknowledge the indexed memory operation
         addrgen_ack_o     = 1'b1;
         addrgen_req_valid = '0;
@@ -355,11 +423,40 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         word_lane_ptr_d = '0;
         // Raise an error if necessary
         if (idx_op_error_q) begin
-          addrgen_error_o = 1'b1;
+          // In this case, we always get EEW-misaligned exceptions
+          addrgen_exception_o.valid = 1'b1;
+          addrgen_exception_o.cause = riscv::ILLEGAL_INSTR;
+          addrgen_exception_o.tval  = '0;
         end
-      end
-    endcase
-  end
+        // Propagate the exception from the MMU (if any)
+        // NOTE: this would override 
+        if ( mmu_exception_q.valid ) begin
+          addrgen_exception_o = mmu_exception_q;
+        end
+      end : ADDRGEN_IDX_OP_END
+
+      WAIT_LAST_TRANSLATION : begin : WAIT_LAST_TRANSLATION
+        if ( last_translation_completed | mmu_exception_q.valid ) begin
+          // Acknowledge the indexed memory operation
+          addrgen_ack_o     = 1'b1;
+          addrgen_req_valid = '0;
+          state_d           = IDLE;
+          // Reset pointers
+          elm_ptr_d       = '0;
+          word_lane_ptr_d = '0;
+          // Propagate the exception from the MMU (if any)
+          addrgen_exception_o = mmu_exception_q;
+        end
+      end : WAIT_LAST_TRANSLATION
+
+    endcase // state_q
+
+    if ( addrgen_exception_o.valid & addrgen_ack_o ) begin
+      addrgen_exception_load_o  = is_load(pe_req_q.op);
+      addrgen_exception_store_o = !is_load(pe_req_q.op);
+    end
+
+  end : addr_generation
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -371,7 +468,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       idx_op_cnt_q       <= '0;
       last_elm_subw_q    <= '0;
       idx_op_error_q     <= '0;
-      addrgen_error_vl_o <= '0;
+      addrgen_exception_vl_o <= '0;
+      mmu_exception_q    <= '0;
     end else begin
       state_q            <= state_d;
       pe_req_q           <= pe_req_d;
@@ -381,7 +479,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       idx_op_cnt_q       <= idx_op_cnt_d;
       last_elm_subw_q    <= last_elm_subw_d;
       idx_op_error_q     <= idx_op_error_d;
-      addrgen_error_vl_o <= addrgen_error_vl_d;
+      addrgen_exception_vl_o <= addrgen_exception_vl_d;
+      mmu_exception_q    <= mmu_exception_d;
     end
   end
 
@@ -424,11 +523,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   //  AXI Request Generation  //
   //////////////////////////////
 
-  enum logic [1:0] {
+  enum logic [2:0] {
     AXI_ADDRGEN_IDLE, 
     AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED,    // Misaligned vector store to AxiDataWidth/8, needs special treatement
     AXI_ADDRGEN_WAITING_CORE_STORE_PENDING, // Wait until (core_st_pending_i == 0)
-    AXI_ADDRGEN_REQUESTING                  // Perform AW/AR transactions and push addrgen_req to VSTU/VLDU
+    AXI_ADDRGEN_REQUESTING,                 // Perform AW/AR transactions and push addrgen_req to VSTU/VLDU
+    AXI_ADDRGEN_WAIT_TRANSLATION            // Wait for MMU to ack back
   } axi_addrgen_state_d, axi_addrgen_state_q;
 
   axi_addr_t aligned_start_addr_d, aligned_start_addr_q;
@@ -441,7 +541,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   logic [clog2_AxiStrobeWidth:0]            eff_axi_dw_d, eff_axi_dw_q;
   logic [idx_width(clog2_AxiStrobeWidth):0] eff_axi_dw_log_d, eff_axi_dw_log_q;
 
-  function automatic set_end_addr (
+  function automatic void set_end_addr (
       input  logic [($bits(axi_addr_t) - 12)-1:0]       next_2page_msb,
       input  int unsigned                               num_bytes,
       input  axi_addr_t                                 addr,
@@ -470,7 +570,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         aligned_end_addr_d        = {aligned_start_addr_d[AxiAddrWidth-1:12], 12'hFFF};
         aligned_next_start_addr_d = {                       next_2page_msb  , 12'h000};
     end
-  endfunction
+  endfunction // set_end_addr
 
   always_comb begin: axi_addrgen
     // Maintain state
@@ -486,8 +586,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     eff_axi_dw_d     = eff_axi_dw_q;
     eff_axi_dw_log_d = eff_axi_dw_log_q;
 
-    idx_addr_ready_d    = 1'b0;
-    addrgen_error_vl_d  = '0;
+    idx_vaddr_ready_d    = 1'b0;
+    addrgen_exception_vl_d  = '0;
 
     // No error by default
     idx_op_error_d = 1'b0;
@@ -505,14 +605,24 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     axi_aw_o       = '0;
     axi_aw_valid_o = 1'b0;
 
-    case (axi_addrgen_state_q)
-      AXI_ADDRGEN_IDLE: begin
+    // MMU
+    mmu_exception_d = mmu_exception_q;
+    mmu_req_o       = 1'b0;
+    mmu_vaddr_o     = '0;
+    mmu_is_store_o  = 1'b0;
+
+    // For addrgen FSM
+    last_translation_completed = 1'b0;
+
+    case (axi_addrgen_state_q) 
+      AXI_ADDRGEN_IDLE: begin : axi_addrgen_state_AXI_ADDRGEN_IDLE
         if (addrgen_req_valid) begin
           axi_addrgen_d       = addrgen_req;
           axi_addrgen_state_d = core_st_pending_i ? AXI_ADDRGEN_WAITING_CORE_STORE_PENDING : AXI_ADDRGEN_REQUESTING;
 
           // In case of a misaligned store, reduce the effective width of the AXI transaction,
           // since the store unit does not support misalignments between the AXI bus and the lanes
+          // BUG: this address check is not valid for indexed operations
           if ((axi_addrgen_d.addr[clog2_AxiStrobeWidth-1:0] != '0) && !axi_addrgen_d.is_load)
           begin
             // Calculate the start and the end addresses in the AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED state
@@ -542,10 +652,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                           aligned_end_addr_d,
                           aligned_next_start_addr_d
           );
-
         end
-      end
-      AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED: begin
+      end : axi_addrgen_state_AXI_ADDRGEN_IDLE
+
+      AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED: begin : axi_addrgen_state_AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED
         axi_addrgen_state_d = core_st_pending_i ? AXI_ADDRGEN_WAITING_CORE_STORE_PENDING : AXI_ADDRGEN_REQUESTING;
 
         // The start address is found by aligning the original request address by the width of
@@ -561,15 +671,16 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                         aligned_start_addr_d,
                         aligned_end_addr_d,
                         aligned_next_start_addr_d
-        );
-              
-      end
-      AXI_ADDRGEN_WAITING_CORE_STORE_PENDING: begin
+        );            
+      end : axi_addrgen_state_AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED
+
+      AXI_ADDRGEN_WAITING_CORE_STORE_PENDING: begin : axi_addrgen_state_AXI_ADDRGEN_WAITING_CORE_STORE_PENDING
         if (!core_st_pending_i) begin
           axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING;
         end
-      end
-      AXI_ADDRGEN_REQUESTING : begin
+      end : axi_addrgen_state_AXI_ADDRGEN_WAITING_CORE_STORE_PENDING
+
+      AXI_ADDRGEN_REQUESTING : begin : axi_addrgen_state_AXI_ADDRGEN_REQUESTING
         automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!axi_addrgen_q.is_load && axi_aw_ready_i);
 
         // Pre-calculate the next_2page_msb. This should not require much energy if the addr
@@ -584,9 +695,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
             (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load
             )
-          ) begin
-          if (!axi_addrgen_queue_full && axi_ax_ready) begin
-            if (axi_addrgen_q.is_burst) begin
+          ) begin : axi_ax_idle
+          if (!axi_addrgen_queue_full && axi_ax_ready) begin : start_req
+            automatic logic [riscv::PLEN-1:0] paddr;
+
+            if (axi_addrgen_q.is_burst) begin : unit_stride
 
               /////////////////////////
               //  Unit-Stride access //
@@ -656,12 +769,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               end
               axi_addrgen_d.addr = aligned_next_start_addr_q;
 
-              // Finished generating AXI requests
-              if (axi_addrgen_d.len == 0) begin
-                addrgen_req_ready   = 1'b1;
-                axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
-              end
-
               // Calculate the addresses for the next iteration
               // The start address is found by aligning the original request address by the width of
               // the memory interface. In our case, we have it already.
@@ -680,72 +787,30 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                               aligned_end_addr_d,
                               aligned_next_start_addr_d
               );
-
-            end else if (state_q != ADDRGEN_IDX_OP) begin
+            end : unit_stride
+            else if (state_q != ADDRGEN_IDX_OP) begin : strided
 
               /////////////////////
               //  Strided access //
               /////////////////////
 
-              // AR Channel
-              if (axi_addrgen_q.is_load) begin
-                axi_ar_o = '{
-                  addr   : axi_addrgen_q.addr,
-                  len    : 0,
-                  size   : axi_addrgen_q.vew,
-                  cache  : CACHE_MODIFIABLE,
-                  burst  : BURST_INCR,
-                  default: '0
-                };
-                axi_ar_valid_o = 1'b1;
-              end
-              // AW Channel
-              else begin
-                axi_aw_o = '{
-                  addr   : axi_addrgen_q.addr,
-                  len    : 0,
-                  size   : axi_addrgen_q.vew,
-                  cache  : CACHE_MODIFIABLE,
-                  burst  : BURST_INCR,
-                  default: '0
-                };
-                axi_aw_valid_o = 1'b1;
-              end
+              if ( en_ld_st_translation_i ) begin : en_ld_st_translation
+                // Request an address translation
+                mmu_req_o   = 1'b1;
+                mmu_vaddr_o = axi_addrgen_q.addr;
+                axi_addrgen_state_d = AXI_ADDRGEN_WAIT_TRANSLATION;
+              end : en_ld_st_translation
 
-              // Send this request to the load/store units
-              axi_addrgen_queue = '{
-                addr   : axi_addrgen_q.addr,
-                size   : axi_addrgen_q.vew,
-                len    : 0,
-                is_load: axi_addrgen_q.is_load
-              };
-              axi_addrgen_queue_push = 1'b1;
+              // Mux target address
+              paddr = ( en_ld_st_translation_i ) ? mmu_paddr_i : axi_addrgen_q.addr;
 
-              // Account for the requested operands
-              axi_addrgen_d.len  = axi_addrgen_q.len - 1;
-              // Calculate the addresses for the next iteration, adding the correct stride
-              // NOTE: there is no need to check for misaligned erros, since the stride is alsways EEW aligned to the first address
-              axi_addrgen_d.addr = axi_addrgen_q.addr + axi_addrgen_q.stride;
-
-              // Finished generating AXI requests
-              if (axi_addrgen_d.len == 0) begin
-                addrgen_req_ready   = 1'b1;
-                axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
-              end
-            end else begin
-
-              //////////////////////
-              //  Indexed access  //
-              //////////////////////
-
-              if (idx_addr_valid_q) begin
-                // We consumed a word
-                idx_addr_ready_d = 1'b1;
-
+              // Either we got a valid address translation from the MMU
+              // or virtual memory is disabled
+              if ( mmu_valid_i | !en_ld_st_translation_i ) begin : addr_valid
                 // AR Channel
                 if (axi_addrgen_q.is_load) begin
                   axi_ar_o = '{
-                    addr   : idx_final_addr_q,
+                    addr   : paddr,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -757,7 +822,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 // AW Channel
                 else begin
                   axi_aw_o = '{
-                    addr   : idx_final_addr_q,
+                    addr   : paddr,
                     len    : 0,
                     size   : axi_addrgen_q.vew,
                     cache  : CACHE_MODIFIABLE,
@@ -769,7 +834,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Send this request to the load/store units
                 axi_addrgen_queue = '{
-                  addr   : idx_final_addr_q,
+                  addr   : paddr,
                   size   : axi_addrgen_q.vew,
                   len    : 0,
                   is_load: axi_addrgen_q.is_load
@@ -777,29 +842,124 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 axi_addrgen_queue_push = 1'b1;
 
                 // Account for the requested operands
-                axi_addrgen_d.len = axi_addrgen_q.len - 1;
+                axi_addrgen_d.len  = axi_addrgen_q.len - 1;
+                // Calculate the addresses for the next iteration, adding the correct stride
+                // NOTE: there is no need to check for misaligned erros, since the stride always produces EEW-aligned to the first address
+                axi_addrgen_d.addr = axi_addrgen_q.addr + axi_addrgen_q.stride;
+              end : addr_valid
+            end : strided
+            else begin : indexed
+              automatic logic [riscv::PLEN-1:0] idx_final_paddr;
+              //////////////////////
+              //  Indexed access  //
+              //////////////////////
+              // TODO: check if idx_vaddr_valid_q is stable 
+              if (idx_vaddr_valid_q) begin : idx_vaddr_valid_q
 
-                // Check if the address does generate an exception
-                if (is_addr_error(idx_final_addr_q, axi_addrgen_q.vew)) begin
+                // Check if the virtual address generates an exception
+                // NOTE: we can do this even before address translation, since the
+                //       page offset (2^12) is the same for both physical and virtual addresses
+                if (is_addr_error(idx_final_vaddr_q, axi_addrgen_q.vew)) begin : eew_misaligned_error
                   // Generate an error
                   idx_op_error_d          = 1'b1;
                   // Forward next vstart info to the dispatcher
-                  addrgen_error_vl_d      = addrgen_req.len - axi_addrgen_q.len - 1;
+                  addrgen_exception_vl_d  = addrgen_req.len - axi_addrgen_q.len - 1;
                   addrgen_req_ready       = 1'b1;
                   axi_addrgen_state_d     = AXI_ADDRGEN_IDLE;
-                end
+                end : eew_misaligned_error
+                else begin : aligned_vaddress
+                  if ( en_ld_st_translation_i ) begin : en_ld_st_translation
+                    // Request an address translation
+                    mmu_req_o   = 1'b1;
+                    mmu_vaddr_o = idx_final_vaddr_q;
+                    axi_addrgen_state_d = AXI_ADDRGEN_WAIT_TRANSLATION;
+                  end : en_ld_st_translation
 
-                // Finished generating AXI requests
-                if (axi_addrgen_d.len == 0) begin
-                  addrgen_req_ready   = 1'b1;
-                  axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
-                end
+                  // Mux target address
+                  idx_final_paddr = ( en_ld_st_translation_i ) ? mmu_paddr_i : idx_final_vaddr_q;
+                  
+                  // Either we got a valid address translation from the MMU
+                  // or virtual memory is disabled
+                  if ( mmu_valid_i | !en_ld_st_translation_i ) begin : addr_valid
+                    // We consumed a word
+                    idx_vaddr_ready_d = 1'b1;
+
+                    // AR Channel
+                    if (axi_addrgen_q.is_load) begin
+                      axi_ar_o = '{
+                        addr   : idx_final_paddr,
+                        len    : 0,
+                        size   : axi_addrgen_q.vew,
+                        cache  : CACHE_MODIFIABLE,
+                        burst  : BURST_INCR,
+                        default: '0
+                      };
+                      axi_ar_valid_o = 1'b1;
+                    end
+                    // AW Channel
+                    else begin
+                      axi_aw_o = '{
+                        addr   : idx_final_paddr,
+                        len    : 0,
+                        size   : axi_addrgen_q.vew,
+                        cache  : CACHE_MODIFIABLE,
+                        burst  : BURST_INCR,
+                        default: '0
+                      };
+                      axi_aw_valid_o = 1'b1;
+                    end
+
+                    // Send this request to the load/store units
+                    axi_addrgen_queue = '{
+                      addr   : idx_final_paddr,
+                      size   : axi_addrgen_q.vew,
+                      len    : 0,
+                      is_load: axi_addrgen_q.is_load
+                    };
+                    axi_addrgen_queue_push = 1'b1;
+
+                    // Account for the requested operands
+                    axi_addrgen_d.len = axi_addrgen_q.len - 1;
+                  end : addr_valid
+                end : aligned_vaddress
+              end : idx_vaddr_valid_q
+            end : indexed
+
+            // Finished generating AXI requests
+            if (axi_addrgen_d.len == 0) begin
+              addrgen_req_ready   = 1'b1;
+              axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+              if ( en_ld_st_translation_i ) begin
+                last_translation_completed = 1'b1;
               end
             end
-          end
-        end
-      end
-    endcase
+          end : start_req
+        end : axi_ax_idle
+      end : axi_addrgen_state_AXI_ADDRGEN_REQUESTING
+      AXI_ADDRGEN_WAIT_TRANSLATION : begin : axi_addrgen_state_AXI_ADDRGEN_WAIT_TRANSLATION
+        // keep request high
+        mmu_req_o      = 1'b1;       
+        mmu_vaddr_o    = axi_addrgen_q.addr;
+        mmu_is_store_o = !axi_addrgen_q.is_load;
+
+        if ( mmu_valid_i ) begin : mmu_valid
+          // Perform request
+          axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING;
+
+          // Replace virtual address with translated address
+          axi_addrgen_d.addr = mmu_paddr_i;
+
+          // Sample MMU exception
+          if ( mmu_exception_i.valid ) begin : mmu_exception_valid
+            // the other FSM will pick up the _q on the next cycle
+            mmu_exception_d     = mmu_exception_i;
+            addrgen_req_ready   = 1'b1;
+            axi_addrgen_state_d = AXI_ADDRGEN_IDLE;
+          end : mmu_exception_valid
+        end : mmu_valid
+
+      end : axi_addrgen_state_AXI_ADDRGEN_WAIT_TRANSLATION
+    endcase // axi_addrgen_state_q
   end: axi_addrgen
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
