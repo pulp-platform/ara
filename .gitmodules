@@ -35,3 +35,9 @@
 [submodule "hardware/deps/apb"]
 	path = hardware/deps/apb
 	url = https://github.com/pulp-platform/apb.git
+[submodule "hardware/deps/axi_llc"]
+	path = hardware/deps/axi_llc
+	url = git@github.com:pulp-platform/axi_llc.git
+[submodule "hardware/deps/register_interface"]
+	path = hardware/deps/register_interface
+	url = https://github.com/pulp-platform/register_interface.git
