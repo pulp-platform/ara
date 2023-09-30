@@ -7,6 +7,25 @@ packages:
       Git: https://github.com/pulp-platform/apb.git
     dependencies:
     - common_cells
+  axi_llc:
+    revision: 559bcbd09a5a884dbe31e2d72fd95d024e357f39
+    version: 0.2.1
+    source:
+      Git: https://github.com/pulp-platform/axi_llc.git
+    dependencies:
+    - axi
+    - common_cells
+    - common_verification
+    - register_interface
+    - tech_cells_generic
+  register_interface:
+    revision: 9fc63015615acb11111e4bc3e858381e3e72405d
+    version: 0.3.6
+    source:
+      Git: https://github.com/pulp-platform/register_interface.git
+    dependencies:
+    - axi
+    - common_cells
   axi:
     revision: af8b0ce2653997301b1b792c4c6d207b95f63a56
     version: 0.39.0-beta.2

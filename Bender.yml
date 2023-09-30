@@ -13,6 +13,8 @@ dependencies:
   cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: acc_port   }
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.1  }
   apb:                { git: "https://github.com/pulp-platform/apb.git",                version: 0.2.4  }
+  register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: 0.3.6 }
+  axi_llc:            { git: "https://github.com/pulp-platform/axi_llc.git"           , version: 0.2.1 }
 
 workspace:
   checkout_dir: "hardware/deps"
