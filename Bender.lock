@@ -8,8 +8,8 @@ packages:
     dependencies:
     - common_cells
   axi:
-    revision: 442ff3375710513623f95944d66cc2bd09b2f155
-    version: 0.29.1
+    revision: af8b0ce2653997301b1b792c4c6d207b95f63a56
+    version: 0.39.0-beta.2
     source:
       Git: "https://github.com/pulp-platform/axi.git"
     dependencies:
