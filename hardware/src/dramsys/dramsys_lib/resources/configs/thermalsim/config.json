@@ -1,0 +1,15 @@
+{
+	"thermalsimconfig": {
+		"TemperatureScale": "Celsius",
+		"StaticTemperatureDefaultValue": 89,
+		"ThermalSimPeriod":100,
+		"ThermalSimUnit":"us",
+		"PowerInfoFile": "powerInfo.json",
+		"IceServerIp": "127.0.0.1",
+		"IceServerPort": 11880,
+		"SimPeriodAdjustFactor" : 10,
+		"NPowStableCyclesToIncreasePeriod": 5,
+		"GenerateTemperatureMap": true,
+		"GeneratePowerMap": true
+	}
+}

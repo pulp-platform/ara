@@ -1,0 +1,48 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 4,
+            "dataRate": 2,
+            "nbrOfBankGroups": 4,
+            "nbrOfBanks": 16,
+            "nbrOfColumns": 128,
+            "nbrOfPseudoChannels": 2,
+            "nbrOfRows": 32768,
+            "width": 64,
+            "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "https://www.computerbase.de/2019-05/amd-memory-tweak-vram-oc/#bilder",
+        "memoryType": "HBM2",
+        "memtimingspec": {
+            "CCDL": 3,
+            "CCDS": 2,
+            "CKE": 8,
+            "DQSCK": 1,
+            "FAW": 16,
+            "PL": 0,
+            "RAS": 28,
+            "RC": 42,
+            "RCDRD": 12,
+            "RCDWR": 6,
+            "REFI": 3900,
+            "REFISB": 244,
+            "RFC": 220,
+            "RFCSB": 96,
+            "RL": 17,
+            "RP": 14,
+            "RRDL": 6,
+            "RRDS": 4,
+            "RREFD": 8,
+            "RTP": 5,
+            "RTW": 18,
+            "WL": 7,
+            "WR": 14,
+            "WTRL": 9,
+            "WTRS": 4,
+            "XP": 8,
+            "XS": 216,
+            "clkMhz": 1000
+        }
+    }
+}

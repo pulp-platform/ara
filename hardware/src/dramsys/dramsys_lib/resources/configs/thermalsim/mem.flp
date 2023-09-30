@@ -1,0 +1,16 @@
+channel0 :
+    position   150,  100 ;
+    dimension  2600, 5200 ;
+
+channel1 :
+    position   3350,  100 ;
+    dimension  2600, 5200 ;
+
+channel2 :
+    position   150, 5300 ;
+    dimension  2600, 5200 ;
+
+channel3 :
+    position   3350, 5300 ;
+    dimension  2600, 5200 ;
+

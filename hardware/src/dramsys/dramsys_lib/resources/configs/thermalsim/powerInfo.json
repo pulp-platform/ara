@@ -1,0 +1,20 @@
+{
+	"powerInfo": {
+		"dram_die_channel0": {
+			"init_pow": 0,
+			"threshold": 1.0
+		},
+		"dram_die_channel1": {
+			"init_pow": 0,
+			"threshold": 1.0
+		},
+		"dram_die_channel2": {
+			"init_pow": 0,
+			"threshold": 1.0
+		},
+		"dram_die_channel3": {
+			"init_pow": 0,
+			"threshold": 1.0
+		}
+	}
+}

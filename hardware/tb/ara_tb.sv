@@ -118,18 +118,9 @@ module ara_tb;
         $display("Loading section %x of length %x", address, length);
         buffer = new[nwords * AxiWideBeWidth];
         void'(read_section(address, buffer));
-        // Initializing memories
-        for (int w = 0; w < nwords; w++) begin
-          mem_row = '0;
-          for (int b = 0; b < AxiWideBeWidth; b++) begin
-            mem_row[8 * b +: 8] = buffer[w * AxiWideBeWidth + b];
-          end
-          if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength)
-            // This requires the sections to be aligned to AxiWideByteOffset,
-            // otherwise, they can be over-written.
-            dut.i_ara_soc.i_dram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
-          else
-            $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
+        // Initializing DRAM
+        for (int i = 0; i < nwords * AxiWideBeWidth; i++) begin
+          dut.i_ara_soc.i_axi_dram_sim.i_sim_dram.load_a_byte_to_dram(address - DRAMAddrBase + i, buffer[i]);
         end
       end
     end else begin

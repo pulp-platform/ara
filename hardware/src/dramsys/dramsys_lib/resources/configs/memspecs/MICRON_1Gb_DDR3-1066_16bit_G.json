@@ -1,0 +1,61 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 8192,
+            "width": 16,
+       	    "nbrOfDevices": 4,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_1Gb_DDR3-1066_16bit_G",
+        "memoryType": "DDR3",
+        "mempowerspec": {
+            "idd0": 75.0,
+            "idd2n": 35.0,
+            "idd2p0": 12.0,
+            "idd2p1": 25.0,
+            "idd3n": 45.0,
+            "idd3p0": 30.0,
+            "idd3p1": 30.0,
+            "idd4r": 140.0,
+            "idd4w": 155.0,
+            "idd5": 160.0,
+            "idd6": 8.0,
+            "vdd": 1.5
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 3,
+            "CKESR": 4,
+            "CL": 7,
+            "DQSCK": 0,
+            "FAW": 27,
+            "RAS": 20,
+            "RC": 27,
+            "RCD": 7,
+            "REFI": 4160,
+            "RFC": 59,
+            "RL": 7,
+            "RP": 7,
+            "RRD": 6,
+            "RTP": 4,
+            "WL": 6,
+            "WR": 8,
+            "WTR": 4,
+            "XP": 4,
+            "XPDLL": 13,
+            "XS": 64,
+            "XSDLL": 512,
+            "ACTPDEN": 1,
+            "PRPDEN": 1,
+            "REFPDEN": 1,
+            "RTRS": 1,
+            "clkMhz": 533
+        }
+    }
+}

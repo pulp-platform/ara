@@ -1,0 +1,44 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 4,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 512,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 8192,
+            "width": 64,
+            "nbrOfDevices": 1,
+            "nbrOfChannels": 4
+        },
+        "memoryId": "JEDEC_4x64_2Gb_WIDEIO2-400_64bit",
+        "memoryType": "WIDEIO2",
+        "memtimingspec": {
+            "CCD": 2,
+            "CKE": 3,
+            "CKESR": 6,
+            "FAW": 24,
+            "RAS": 17,
+            "RCAB": 26,
+            "RCD": 8,
+            "RCPB": 24,
+            "REFI": 1560,
+            "REFIPB": 195,
+            "REFM": 1,
+            "RFCAB": 72,
+            "RFCPB": 36,
+            "RL": 7,
+            "RPAB": 9,
+            "RPPB": 8,
+            "RRD": 4,
+            "RTP": 3,
+            "WL": 5,
+            "WR": 8,
+            "WTR": 4,
+            "XP": 3,
+            "XSR": 76,
+            "RTRS": 1,
+            "clkMhz": 400
+        }
+    }
+}

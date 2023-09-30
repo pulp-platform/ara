@@ -92,7 +92,7 @@ package ara_pkg;
   localparam int unsigned MfpuInsnQueueDepth = 4;
   localparam int unsigned ValuInsnQueueDepth = 4;
   localparam int unsigned VlduInsnQueueDepth = 4;
-  localparam int unsigned VstuInsnQueueDepth = 4;
+  localparam int unsigned VstuInsnQueueDepth = 128;
   localparam int unsigned VaddrgenInsnQueueDepth = 4;
   localparam int unsigned SlduInsnQueueDepth = 2;
   localparam int unsigned NoneInsnQueueDepth = 1;

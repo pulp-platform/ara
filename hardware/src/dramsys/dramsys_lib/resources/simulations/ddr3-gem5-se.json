@@ -1,0 +1,10 @@
+{
+    "simulation": {
+        "addressmapping": "am_ddr3_8x1Gbx8_dimm_p1KB_brc.json",
+        "mcconfig": "fifoStrict.json",
+        "memspec": "MICRON_1Gb_DDR3-1600_8bit_G.json",
+        "simconfig": "ddr3_gem5_se.json",
+        "simulationid": "ddr3-gem5-se",
+        "thermalconfig": "config.json"
+    }
+}

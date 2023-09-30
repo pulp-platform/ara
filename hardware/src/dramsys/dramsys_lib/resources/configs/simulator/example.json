@@ -1,0 +1,19 @@
+{
+    "simconfig": {
+        "AddressOffset": 0,
+        "CheckTLM2Protocol": false,
+        "DatabaseRecording": true,
+        "Debug": false,
+        "ECCControllerMode": "Disabled",
+        "EnableWindowing": false,
+        "ErrorCSVFile": "",
+        "ErrorChipSeed": 42,
+        "PowerAnalysis": false,
+        "SimulationName": "example",
+        "SimulationProgressBar": true,
+        "StoreMode": "NoStorage",
+        "ThermalSimulation": false,
+        "UseMalloc": false,
+        "WindowSize": 1000
+    }
+}

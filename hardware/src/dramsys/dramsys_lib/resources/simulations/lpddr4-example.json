@@ -1,0 +1,16 @@
+{
+    "simulation": {
+        "addressmapping": "Chi_am_lpddr4_8Gbx16_brc.json",
+        "mcconfig": "fifo.json",
+        "memspec": "JEDEC_8Gb_LPDDR4-3200_16bit.json",
+        "simconfig": "lpddr4.json",
+        "simulationid": "lpddr4-example",
+        "thermalconfig": "config.json",
+        "tracesetup": [
+            {
+                "clkMhz": 200,
+                "name": "ddr3_example.stl"
+            }
+        ]
+    }
+}

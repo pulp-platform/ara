@@ -1,0 +1,57 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 8192,
+            "width": 16,
+       	    "nbrOfDevices": 4,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_1Gb_DDR2-800_16bit_H",
+        "memoryType": "DDR2",
+        "mempowerspec": {
+            "idd0": 80.0,
+            "idd2n": 30.0,
+            "idd2p0": 7.0,
+            "idd2p1": 7.0,
+            "idd3n": 35.0,
+            "idd3p0": 10.0,
+            "idd3p1": 20.0,
+            "idd4r": 150.0,
+            "idd4w": 160.0,
+            "idd5": 150.0,
+            "idd6": 7.0,
+            "vdd": 1.8
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 2,
+            "CKE": 3,
+            "CKESR": 4,
+            "CL": 5,
+            "DQSCK": 0,
+            "FAW": 18,
+            "RAS": 16,
+            "RC": 23,
+            "RCD": 5,
+            "REFI": 3120,
+            "RFC": 51,
+            "RL": 5,
+            "RP": 5,
+            "RRD": 4,
+            "RTP": 3,
+            "WL": 4,
+            "WR": 6,
+            "WTR": 3,
+            "XP": 2,
+            "XPDLL": 8,
+            "XS": 55,
+            "XSDLL": 200,
+            "clkMhz": 400
+        }
+    }
+}

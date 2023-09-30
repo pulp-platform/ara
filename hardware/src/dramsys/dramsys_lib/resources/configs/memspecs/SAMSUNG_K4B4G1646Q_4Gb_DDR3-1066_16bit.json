@@ -1,0 +1,61 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 32768,
+            "width": 16,
+       	    "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "SAMSUNG_K4B4G1646Q_4Gb_DDR3-1066_16bit",
+        "memoryType": "DDR3",
+        "mempowerspec": {
+            "idd0": 125.0,
+            "idd2n": 34.0,
+            "idd2p0": 16.0,
+            "idd2p1": 55.0,
+            "idd3n": 60.0,
+            "idd3p0": 70.0,
+            "idd3p1": 70.0,
+            "idd4r": 412.0,
+            "idd4w": 402.0,
+            "idd5": 395.0,
+            "idd6": 22.0,
+            "vdd": 1.5
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 6,
+            "CKESR": 5,
+            "CL": 6,
+            "DQSCK": 0,
+            "FAW": 27,
+            "RAS": 20,
+            "RC": 27,
+            "RCD": 8,
+            "REFI": 4160,
+            "RFC": 160,
+            "RL": 6,
+            "RP": 8,
+            "RRD": 6,
+            "RTP": 6,
+            "WL": 5,
+            "WR": 8,
+            "WTR": 6,
+            "XP": 4,
+            "XPDLL": 13,
+            "XS": 64,
+            "XSDLL": 512,
+            "ACTPDEN": 1,
+            "PRPDEN": 1,
+            "REFPDEN": 1,
+            "RTRS": 1,
+            "clkMhz": 533
+        }
+    }
+}

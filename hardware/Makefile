@@ -51,7 +51,7 @@ top_level      ?= ara_tb
 ifeq ($(vcd_dump), 1)
   questa_version ?= 2019.3
 else
-  questa_version ?= 2021.2
+  questa_version ?= 2022.3
 endif
 # QuestaSim command
 questa_cmd     ?= questa-$(questa_version)
@@ -61,6 +61,14 @@ questa_args    ?=
 app_path       ?= $(abspath $(ROOT_DIR)/../apps/bin)
 # Path to ideal dispatcher vtraces
 vtrace_path    ?= $(abspath $(ROOT_DIR)/../apps/ideal_dispatcher/vtrace)
+
+# Path to DRAMsyslib
+dramsys_resouces_path ?= $(ROOT_DIR)/src/dramsys/dramsys_lib/resources
+dramsys_lib_path ?= $(ROOT_DIR)/src/dramsys/dramsys_lib
+# dramsys_mem_file ?= $(ROOT_DIR)/mem_file/tmp.mem
+# questa_args += +MEM=$(dramsys_mem_file)
+questa_args += +DRAMSYS_RES=$(dramsys_resouces_path)
+questa_args += -sv_lib $(dramsys_lib_path)/libDRAMSysLibrary
 
 ideal          ?=
 ifeq ($(ideal_dispatcher), 1)
@@ -93,7 +101,7 @@ ifdef preload
 	questa_args += +PRELOAD=$(preload)
 endif
 questa_args += -sv_lib $(dpi_library)/ara_dpi -work $(library) -voptargs=+acc
-questa_args += -suppress vsim-3009 -suppress vopt-7033
+questa_args += -suppress vsim-3009 -suppress vopt-7033 -suppress vopt-8386
 
 # DPI source files
 dpi   := $(patsubst tb/dpi/%.cc,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/dpi/*.cc))

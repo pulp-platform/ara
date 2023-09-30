@@ -1,0 +1,45 @@
+CPUs :
+
+  position        0,    0 ;
+  dimension    2750, 4300 ;
+
+GPU :
+
+  position     3350,    0 ;
+  dimension    2750, 4000 ;
+
+BASEBAND1 :
+
+  position     4250, 4000 ;
+  dimension    1850, 3300 ;
+
+BASEBAND2 :
+
+  position     3350, 7300 ;
+  dimension    2750, 3300 ;
+
+LLCACHE :
+
+  position        0, 4300 ;
+  dimension    1900, 3000 ;
+
+DRAMCTRL1 :
+
+  position     1900, 4300 ;
+  dimension     850, 3000 ;
+
+DRAMCTRL2 :
+
+  position     3350, 4000 ;
+  dimension     900, 3300 ;
+
+TSVS :
+
+  position     2750, 2300 ;
+  dimension     600, 6000 ;
+
+ACELLERATORS :
+
+  position        0, 7300 ;
+  dimension    2750, 3300 ;
+

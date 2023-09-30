@@ -89,8 +89,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .aw_chan_t(axi_aw_t  ),
     .w_chan_t (axi_w_t   ),
     .b_chan_t (axi_b_t   ),
-    .req_t    (axi_req_t ),
-    .resp_t   (axi_resp_t)
+    .axi_req_t    (axi_req_t ),
+    .axi_resp_t   (axi_resp_t)
   ) i_axi_cut (
     .clk_i     (clk_i     ),
     .rst_ni    (rst_ni    ),

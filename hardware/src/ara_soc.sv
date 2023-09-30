@@ -62,7 +62,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   localparam NrAXIMasters = 1; // Actually masters, but slaves on the crossbar
 
   typedef enum int unsigned {
-    L2MEM = 0,
+    DRAM  = 0,
     UART  = 1,
     CTRL  = 2
   } axi_slaves_e;
@@ -99,6 +99,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   typedef logic [AxiNarrowStrbWidth-1:0] axi_narrow_strb_t;
   typedef logic [AxiSocIdWidth-1:0] axi_soc_id_t;
   typedef logic [AxiCoreIdWidth-1:0] axi_core_id_t;
+  typedef logic [AxiSocIdWidth:0] axi_llc_id_t;
 
   // AXI Typedefs
   `AXI_TYPEDEF_ALL(system, axi_addr_t, axi_id_t, axi_data_t, axi_strb_t, axi_user_t)
@@ -108,6 +109,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   `AXI_TYPEDEF_ALL(soc_narrow, axi_addr_t, axi_soc_id_t, axi_narrow_data_t, axi_narrow_strb_t,
     axi_user_t)
   `AXI_TYPEDEF_ALL(soc_wide, axi_addr_t, axi_soc_id_t, axi_data_t, axi_strb_t, axi_user_t)
+  `AXI_TYPEDEF_ALL(axi_llc, axi_addr_t, axi_llc_id_t, axi_data_t, axi_strb_t, axi_user_t)
   `AXI_LITE_TYPEDEF_ALL(soc_narrow_lite, axi_addr_t, axi_narrow_data_t, axi_narrow_strb_t)
 
   // Buses
@@ -129,6 +131,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   localparam axi_pkg::xbar_cfg_t XBarCfg = '{
     NoSlvPorts        : NrAXIMasters,
     NoMstPorts        : NrAXISlaves,
+    PipelineStages    : 1,
     MaxMstTrans       : 4,
     MaxSlvTrans       : 4,
     FallThrough       : 1'b0,
@@ -145,7 +148,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   assign routing_rules = '{
     '{idx: CTRL, start_addr: CTRLBase, end_addr: CTRLBase + CTRLLength},
     '{idx: UART, start_addr: UARTBase, end_addr: UARTBase + UARTLength},
-    '{idx: L2MEM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}
+    '{idx: DRAM, start_addr: DRAMBase, end_addr: DRAMBase + DRAMLength}
   };
 
   axi_xbar #(
@@ -177,82 +180,102 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .default_mst_port_i   ('0                  )
   );
 
-  //////////
-  //  L2  //
-  //////////
+  ///////////
+  //  LLC  //
+  ///////////
 
-  // The L2 memory does not support atomics
+  // The LLC memory does not support atomics
 
-  soc_wide_req_t  l2mem_wide_axi_req_wo_atomics;
-  soc_wide_resp_t l2mem_wide_axi_resp_wo_atomics;
+  soc_wide_req_t  mem_wide_axi_req_wo_atomics;
+  soc_wide_resp_t mem_wide_axi_resp_wo_atomics;
   axi_atop_filter #(
     .AxiIdWidth     (AxiSocIdWidth  ),
     .AxiMaxWriteTxns(4              ),
-    .req_t          (soc_wide_req_t ),
-    .resp_t         (soc_wide_resp_t)
-  ) i_l2mem_atop_filter (
+    .axi_req_t          (soc_wide_req_t ),
+    .axi_resp_t         (soc_wide_resp_t)
+  ) i_mem_atop_filter (
     .clk_i     (clk_i                         ),
     .rst_ni    (rst_ni                        ),
-    .slv_req_i (periph_wide_axi_req[L2MEM]    ),
-    .slv_resp_o(periph_wide_axi_resp[L2MEM]   ),
-    .mst_req_o (l2mem_wide_axi_req_wo_atomics ),
-    .mst_resp_i(l2mem_wide_axi_resp_wo_atomics)
+    .slv_req_i (periph_wide_axi_req[DRAM]    ),
+    .slv_resp_o(periph_wide_axi_resp[DRAM]   ),
+    .mst_req_o (mem_wide_axi_req_wo_atomics ),
+    .mst_resp_i(mem_wide_axi_resp_wo_atomics)
   );
 
-  logic                      l2_req;
-  logic                      l2_we;
-  logic [AxiAddrWidth-1:0]   l2_addr;
-  logic [AxiDataWidth/8-1:0] l2_be;
-  logic [AxiDataWidth-1:0]   l2_wdata;
-  logic [AxiDataWidth-1:0]   l2_rdata;
-  logic                      l2_rvalid;
 
-  axi_to_mem #(
-    .AddrWidth (AxiAddrWidth   ),
-    .DataWidth (AxiDataWidth   ),
-    .IdWidth   (AxiSocIdWidth  ),
-    .NumBanks  (1              ),
-    .axi_req_t (soc_wide_req_t ),
-    .axi_resp_t(soc_wide_resp_t)
-  ) i_axi_to_mem (
-    .clk_i       (clk_i                         ),
-    .rst_ni      (rst_ni                        ),
-    .axi_req_i   (l2mem_wide_axi_req_wo_atomics ),
-    .axi_resp_o  (l2mem_wide_axi_resp_wo_atomics),
-    .mem_req_o   (l2_req                        ),
-    .mem_gnt_i   (l2_req                        ), // Always available
-    .mem_we_o    (l2_we                         ),
-    .mem_addr_o  (l2_addr                       ),
-    .mem_strb_o  (l2_be                         ),
-    .mem_wdata_o (l2_wdata                      ),
-    .mem_rdata_i (l2_rdata                      ),
-    .mem_rvalid_i(l2_rvalid                     ),
-    .mem_atop_o  (/* Unused */                  ),
-    .busy_o      (/* Unused */                  )
+  //1MB LLC
+  `include "register_interface/typedef.svh"
+  `include "register_interface/assign.svh"
+  `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
+
+  // rule definitions
+  typedef struct packed {
+    int unsigned idx;
+    axi_addr_t   start_addr;
+    axi_addr_t   end_addr;
+  } rule_full_t;
+
+  axi_llc_req_t  axi_req_llc;
+  axi_llc_resp_t axi_resp_llc;
+
+
+  axi_llc_reg_wrap #(
+    .SetAssociativity ( 8 ),
+    .NumLines         ( 256         ),
+    .NumBlocks        ( 8        ),
+    .AxiIdWidth       ( AxiSocIdWidth   ),
+    .AxiAddrWidth     ( AxiAddrWidth ),
+    .AxiDataWidth     ( AxiDataWidth ),
+    .AxiUserWidth     ( AxiUserWidth ),
+    .slv_req_t        ( soc_wide_req_t      ),
+    .slv_resp_t       ( soc_wide_resp_t     ),
+    .mst_req_t        ( axi_llc_req_t      ),
+    .mst_resp_t       ( axi_llc_resp_t     ),
+    .reg_req_t        ( conf_req_t         ),
+    .reg_resp_t       ( conf_rsp_t         ),
+    .rule_full_t      ( rule_full_t        )
+  ) i_axi_llc_dut (
+    .clk_i,
+    .rst_ni,
+    .test_i              ( '0                                   ),
+    .slv_req_i           ( mem_wide_axi_req_wo_atomics                            ),
+    .slv_resp_o          ( mem_wide_axi_resp_wo_atomics                           ),
+    .mst_req_o           ( axi_req_llc                            ),
+    .mst_resp_i          ( axi_resp_llc                            ),
+    .conf_req_i          ( '0                            ),
+    .conf_resp_o         ( /*open*/                            ),
+    .cached_start_addr_i ( DRAMBase                      ),
+    .cached_end_addr_i   ( DRAMBase + DRAMLength ),
+    .spm_start_addr_i    ( '0                         ),
+    .axi_llc_events_o    ( /*open*/                             )
   );
 
-`ifndef SPYGLASS
-  tc_sram #(
-    .NumWords (L2NumWords  ),
-    .NumPorts (1           ),
-    .DataWidth(AxiDataWidth),
-    .SimInit("random")
-  ) i_dram (
-    .clk_i  (clk_i                                                                      ),
-    .rst_ni (rst_ni                                                                     ),
-    .req_i  (l2_req                                                                     ),
-    .we_i   (l2_we                                                                      ),
-    .addr_i (l2_addr[$clog2(L2NumWords)-1+$clog2(AxiDataWidth/8):$clog2(AxiDataWidth/8)]),
-    .wdata_i(l2_wdata                                                                   ),
-    .be_i   (l2_be                                                                      ),
-    .rdata_o(l2_rdata                                                                   )
-  );
-`else
-  assign l2_rdata = '0;
-`endif
 
-  // One-cycle latency
-  `FF(l2_rvalid, l2_req, 1'b0);
+  ///////////////////
+  //  Main Memory  //
+  ///////////////////
+
+  dram_sim_engine #(.ClkPeriodNs(1)) i_dram_sim_engine (.clk_i(clk_i), .rst_ni(rst_ni));
+
+  axi_dram_sim #(
+      .AxiAddrWidth(AxiAddrWidth),
+      .AxiDataWidth(AxiDataWidth),
+      .AxiIdWidth  (AxiSocIdWidth + 1),
+      .AxiUserWidth(AxiUserWidth),
+      .BASE        (DRAMBase),
+      .axi_req_t   (axi_llc_req_t),
+      .axi_resp_t  (axi_llc_resp_t),
+      .axi_ar_t    (axi_llc_ar_chan_t),
+      .axi_r_t     (axi_llc_r_chan_t),
+      .axi_aw_t    (axi_llc_aw_chan_t),
+      .axi_w_t     (axi_llc_w_chan_t),
+      .axi_b_t     (axi_llc_b_chan_t)
+  ) i_axi_dram_sim (
+      .clk_i,
+      .rst_ni,
+      .axi_req_i (axi_req_llc),
+      .axi_resp_o(axi_resp_llc)
+  );
 
   ////////////
   //  UART  //

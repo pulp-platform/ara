@@ -1,0 +1,61 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 2,
+            "nbrOfRows": 16384,
+            "width": 64,
+       	    "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_2GB_DDR3-1066_64bit_G_UDIMM",
+        "memoryType": "DDR3",
+        "mempowerspec": {
+            "idd0": 432.0,
+            "idd2n": 315.0,
+            "idd2p0": 108.0,
+            "idd2p1": 225.0,
+            "idd3n": 360.0,
+            "idd3p0": 270.0,
+            "idd3p1": 270.0,
+            "idd4r": 882.0,
+            "idd4w": 837.0,
+            "idd5": 1332.0,
+            "idd6": 90.0,
+            "vdd": 1.5
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 3,
+            "CKESR": 4,
+            "CL": 7,
+            "DQSCK": 0,
+            "FAW": 20,
+            "RAS": 20,
+            "RC": 27,
+            "RCD": 7,
+            "REFI": 4160,
+            "RFC": 59,
+            "RL": 7,
+            "RP": 7,
+            "RRD": 4,
+            "RTP": 4,
+            "WL": 6,
+            "WR": 8,
+            "WTR": 4,
+            "XP": 4,
+            "XPDLL": 13,
+            "XS": 64,
+            "XSDLL": 512,
+            "ACTPDEN": 1,
+            "PRPDEN": 1,
+            "REFPDEN": 1,
+            "RTRS": 1,
+            "clkMhz": 533
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "simulation": {
+        "addressmapping": "am_ranktest.json",
+        "mcconfig": "fr_fcfs.json",
+        "memspec": "memspec_ranktest.json",
+        "simconfig": "ddr3.json",
+        "simulationid": "ranktest",
+        "thermalconfig": "config.json",
+        "tracesetup": [
+            {
+                "clkMhz": 200,
+                "name": "ranktest.stl"
+            }
+        ]
+    }
+}

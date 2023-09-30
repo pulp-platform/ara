@@ -1,0 +1,61 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 32768,
+            "width": 8,
+       	    "nbrOfDevices": 8,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_2Gb_DDR3-1066_8bit_D_2s",
+        "memoryType": "DDR3",
+        "mempowerspec": {
+            "idd0": 70.08,
+            "idd2n": 27.52,
+            "idd2p0": 8.78,
+            "idd2p1": 18.29,
+            "idd3n": 30.6,
+            "idd3p0": 26.23,
+            "idd3p1": 26.23,
+            "idd4r": 128.07,
+            "idd4w": 131.42,
+            "idd5": 178.56,
+            "idd6": 8.41,
+            "vdd": 1.5
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 3,
+            "CKESR": 4,
+            "CL": 7,
+            "DQSCK": 0,
+            "FAW": 20,
+            "RAS": 20,
+            "RC": 27,
+            "RCD": 7,
+            "REFI": 4160,
+            "RFC": 86,
+            "RL": 7,
+            "RP": 7,
+            "RRD": 4,
+            "RTP": 4,
+            "WL": 6,
+            "WR": 8,
+            "WTR": 4,
+            "XP": 4,
+            "XPDLL": 13,
+            "XS": 92,
+            "XSDLL": 512,
+            "ACTPDEN": 1,
+            "PRPDEN": 1,
+            "REFPDEN": 1,
+            "RTRS": 1,
+            "clkMhz": 533
+        }
+    }
+}

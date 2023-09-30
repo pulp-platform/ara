@@ -1,0 +1,16 @@
+{
+    "simulation": {
+        "addressmapping": "am_stt-mram_8x2Gbx8_dimm_p1KB_rbc.json",
+        "mcconfig": "fr_fcfs_noref.json",
+        "memspec": "STT-MRAM-1.2x.json",
+        "simconfig": "stt-mram.json",
+        "simulationid": "stt-mram-example",
+        "thermalconfig": "config.json",
+        "tracesetup": [
+            {
+                "clkMhz": 800,
+                "name": "ddr3_example.stl"
+            }
+        ]
+    }
+}

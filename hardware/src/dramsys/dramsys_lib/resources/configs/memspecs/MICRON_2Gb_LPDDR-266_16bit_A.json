@@ -1,0 +1,56 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 4,
+            "nbrOfColumns": 2048,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 16384,
+            "width": 16,
+            "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_2Gb_LPDDR-266_16bit_A",
+        "memoryType": "LPDDR",
+        "mempowerspec": {
+            "idd0": 70.0,
+            "idd2n": 12.0,
+            "idd2p0": 0.6,
+            "idd2p1": 0.6,
+            "idd3n": 16.0,
+            "idd3p0": 3.6,
+            "idd3p1": 3.6,
+            "idd4r": 105.0,
+            "idd4w": 105.0,
+            "idd5": 170.0,
+            "idd6": 1.7,
+            "vdd": 1.8
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 2,
+            "CKE": 1,
+            "CKESR": 2,
+            "CL": 3,
+            "DQSCK": 1,
+            "RAS": 6,
+            "RC": 9,
+            "RCD": 3,
+            "REFI": 2080,
+            "RFC": 10,
+            "RL": 3,
+            "RP": 3,
+            "RRD": 2,
+            "RTP": 3,
+            "WL": 3,
+            "WR": 2,
+            "WTR": 1,
+            "XP": 1,
+            "XPDLL": 1,
+            "XS": 15,
+            "XSDLL": 15,
+            "clkMhz": 133
+        }
+    }
+}

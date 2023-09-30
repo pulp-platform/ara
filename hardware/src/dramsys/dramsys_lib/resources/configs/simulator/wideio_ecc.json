@@ -1,0 +1,18 @@
+{
+    "simconfig": {
+        "CheckTLM2Protocol": false,
+        "DatabaseRecording": true,
+        "Debug": false,
+        "ECCControllerMode": "Hamming",
+        "EnableWindowing": true,
+        "ErrorCSVFile": "../../DRAMSys/library/resources/error/wideio.csv",
+        "ErrorChipSeed": 42,
+        "PowerAnalysis": true,
+        "SimulationName": "wideio_ecc",
+        "SimulationProgressBar": true,
+        "StoreMode": "ErrorModel",
+        "ThermalSimulation": false,
+        "UseMalloc": false,
+        "WindowSize": 1000
+    }
+}

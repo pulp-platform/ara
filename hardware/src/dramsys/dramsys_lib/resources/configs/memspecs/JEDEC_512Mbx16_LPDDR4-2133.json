@@ -1,0 +1,51 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 16,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 65536,
+            "width": 16,
+            "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "JEDEC_512Mbx16_LPDDR4-2133",
+        "memoryType": "LPDDR4",
+        "memtimingspec": {
+            "CCD": 8,
+            "CKE": 9,
+            "CMDCKE": 3,
+            "DQS2DQ": 0,
+            "DQSCK": 2,
+            "DQSS": 0,
+            "ESCKE": 3,
+            "FAW": 43,
+            "PPD": 4,
+            "RCD": 20,
+            "REFI": 4166,
+            "REFIPB": 520,
+            "RFCAB": 299,
+            "RFCPB": 150,
+            "RL": 20,
+            "RAS": 45,
+            "RPAB": 23,
+            "RPPB": 20,
+            "RCAB": 68,
+            "RCPB": 65,
+            "RPST": 0,
+            "RRD": 11,
+            "RTP": 9,
+            "SR": 17,
+            "WL": 10,
+            "WPRE": 2,
+            "WR": 20,
+            "WTR": 11,
+            "XP": 9,
+            "XSR": 307,
+            "RTRS": 1,
+            "clkMhz": 1066
+        }
+    }
+}

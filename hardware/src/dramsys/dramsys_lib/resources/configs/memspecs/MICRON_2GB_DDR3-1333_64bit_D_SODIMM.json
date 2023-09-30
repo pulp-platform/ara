@@ -1,0 +1,61 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 2,
+            "nbrOfRows": 16384,
+            "width": 64,
+       	    "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_2GB_DDR3-1333_64bit_D_SODIMM",
+        "memoryType": "DDR3",
+        "mempowerspec": {
+            "idd0": 800.0,
+            "idd2n": 440.0,
+            "idd2p0": 80.0,
+            "idd2p1": 200.0,
+            "idd3n": 480.0,
+            "idd3p0": 280.0,
+            "idd3p1": 280.0,
+            "idd4r": 1440.0,
+            "idd4w": 1520.0,
+            "idd5": 1920.0,
+            "idd6": 48.0,
+            "vdd": 1.5
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 4,
+            "CKESR": 5,
+            "CL": 9,
+            "DQSCK": 0,
+            "FAW": 20,
+            "RAS": 24,
+            "RC": 33,
+            "RCD": 9,
+            "REFI": 5200,
+            "RFC": 74,
+            "RL": 9,
+            "RP": 9,
+            "RRD": 4,
+            "RTP": 5,
+            "WL": 7,
+            "WR": 10,
+            "WTR": 5,
+            "XP": 4,
+            "XPDLL": 16,
+            "XS": 80,
+            "XSDLL": 512,
+            "ACTPDEN": 1,
+            "PRPDEN": 1,
+            "REFPDEN": 1,
+            "RTRS": 1,
+            "clkMhz": 666
+        }
+    }
+}

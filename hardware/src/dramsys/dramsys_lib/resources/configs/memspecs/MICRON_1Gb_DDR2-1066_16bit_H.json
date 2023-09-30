@@ -1,0 +1,57 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 8192,
+            "width": 16,
+       	    "nbrOfDevices": 4,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_1Gb_DDR2-1066_16bit_H",
+        "memoryType": "DDR2",
+        "mempowerspec": {
+            "idd0": 90.0,
+            "idd2n": 36.0,
+            "idd2p0": 7.0,
+            "idd2p1": 7.0,
+            "idd3n": 42.0,
+            "idd3p0": 10.0,
+            "idd3p1": 23.0,
+            "idd4r": 180.0,
+            "idd4w": 185.0,
+            "idd5": 160.0,
+            "idd6": 7.0,
+            "vdd": 1.8
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 2,
+            "CKE": 3,
+            "CKESR": 4,
+            "CL": 7,
+            "DQSCK": 0,
+            "FAW": 24,
+            "RAS": 24,
+            "RC": 31,
+            "RCD": 7,
+            "REFI": 3120,
+            "RFC": 68,
+            "RL": 7,
+            "RP": 7,
+            "RRD": 6,
+            "RTP": 4,
+            "WL": 6,
+            "WR": 8,
+            "WTR": 4,
+            "XP": 3,
+            "XPDLL": 10,
+            "XS": 74,
+            "XSDLL": 200,
+            "clkMhz": 533
+        }
+    }
+}

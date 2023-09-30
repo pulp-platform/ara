@@ -1,0 +1,16 @@
+{
+    "simulation": {
+        "addressmapping": "Chi_am_hbm2_8Gb_pc_brc.json",
+        "mcconfig": "fr_fcfs.json",
+        "memspec": "HBM2.json",
+        "simconfig": "hbm2.json",
+        "simulationid": "hbm2-example",
+        "thermalconfig": "config.json",
+        "tracesetup": [
+            {
+                "clkMhz": 1000,
+                "name": "ddr3_example.stl"
+            }
+        ]
+    }
+}

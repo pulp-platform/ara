@@ -1,0 +1,51 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 16,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 131072,
+            "width": 16,
+            "nbrOfDevices": 1,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "JEDEC_1Gbx16_LPDDR4-3200",
+        "memoryType": "LPDDR4",
+        "memtimingspec": {
+            "CCD": 8,
+            "CKE": 12,
+            "CMDCKE": 3,
+            "DQS2DQ": 0,
+            "DQSCK": 3,
+            "DQSS": 0,
+            "ESCKE": 3,
+            "FAW": 64,
+            "PPD": 4,
+            "RCD": 29,
+            "REFI": 6246,
+            "REFIPB": 780,
+            "RFCAB": 608,
+            "RFCPB": 304,
+            "RL": 28,
+            "RAS": 68,
+            "RPAB": 34,
+            "RPPB": 29,
+            "RCAB": 102,
+            "RCPB": 97,
+            "RPST": 0,
+            "RRD": 16,
+            "RTP": 12,
+            "SR": 24,
+            "WL": 14,
+            "WPRE": 2,
+            "WR": 29,
+            "WTR": 16,
+            "XP": 12,
+            "XSR": 460,
+            "RTRS": 1,
+            "clkMhz": 1600
+        }
+    }
+}

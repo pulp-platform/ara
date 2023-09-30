@@ -1,0 +1,44 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 32768,
+            "width": 8,
+            "nbrOfDevices": 8,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "STT-MRAM-2.0x",
+        "memoryType": "STT-MRAM",
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 4,
+            "CKESR": 7, 
+            "CL": 11,
+            "DQSCK": 0, 
+            "FAW": 36,
+            "RAS": 28,
+            "RC": 50,
+            "RCD": 14, 
+            "RL": 11,
+            "RP": 22, 
+            "RRD": 10,
+            "RTP": 6, 
+            "WL": 11, 
+            "WR": 48, 
+            "WTR": 6,
+            "XP": 5,
+            "XPDLL": 325, 
+            "XS": 324, 
+            "XSDLL": 512, 
+            "ACTPDEN": 2, 
+            "PRPDEN": 2,
+            "RTRS": 1,
+            "clkMhz": 800
+        }
+    }
+}

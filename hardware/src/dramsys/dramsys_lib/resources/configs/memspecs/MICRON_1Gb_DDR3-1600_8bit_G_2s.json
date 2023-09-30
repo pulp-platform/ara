@@ -1,0 +1,61 @@
+{
+    "memspec": {
+        "memarchitecturespec": {
+            "burstLength": 8,
+            "dataRate": 2,
+            "nbrOfBanks": 8,
+            "nbrOfColumns": 1024,
+            "nbrOfRanks": 1,
+            "nbrOfRows": 16384,
+            "width": 8,
+       	    "nbrOfDevices": 8,
+            "nbrOfChannels": 1
+        },
+        "memoryId": "MICRON_1Gb_DDR3-1600_8bit_G_2s",
+        "memoryType": "DDR3",
+        "mempowerspec": {
+            "idd0": 65.19,
+            "idd2n": 40.0,
+            "idd2p0": 9.07,
+            "idd2p1": 22.68,
+            "idd3n": 40.07,
+            "idd3p0": 31.16,
+            "idd3p1": 31.16,
+            "idd4r": 127.49,
+            "idd4w": 130.17,
+            "idd5": 159.28,
+            "idd6": 6.02,
+            "vdd": 1.5
+        },
+        "memtimingspec": {
+            "AL": 0,
+            "CCD": 4,
+            "CKE": 3,
+            "CKESR": 4,
+            "CL": 10,
+            "DQSCK": 0,
+            "FAW": 24,
+            "RAS": 28,
+            "RC": 38,
+            "RCD": 10,
+            "REFI": 6240,
+            "RFC": 88,
+            "RL": 10,
+            "RP": 10,
+            "RRD": 5,
+            "RTP": 6,
+            "WL": 8,
+            "WR": 12,
+            "WTR": 6,
+            "XP": 6,
+            "XPDLL": 20,
+            "XS": 96,
+            "XSDLL": 512,
+            "ACTPDEN": 1,
+            "PRPDEN": 1,
+            "REFPDEN": 1,
+            "RTRS": 1,
+            "clkMhz": 800
+        }
+    }
+}

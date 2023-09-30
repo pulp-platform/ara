@@ -1,0 +1,22 @@
+{
+    "mcconfig": {
+        "PagePolicy": "Open", 
+        "Scheduler": "FrFcfsGrp", 
+        "SchedulerBuffer": "Bankwise",
+        "RequestBufferSize": 8, 
+        "CmdMux": "Oldest", 
+        "RespQueue": "Fifo", 
+        "RefreshPolicy": "AllBank", 
+        "RefreshMaxPostponed": 8, 
+        "RefreshMaxPulledin": 8, 
+        "PowerDownPolicy": "NoPowerDown",
+        "Arbiter": "Simple",
+        "ArbitrationDelayFw": 0,
+        "ArbitrationDelayBw": 0,
+        "ThinkDelayFw": 2,
+        "ThinkDelayBw": 2,
+        "PhyDelayFw": 10,
+        "PhyDelayBw": 10,
+        "MaxActiveTransactions": 128
+    }
+}

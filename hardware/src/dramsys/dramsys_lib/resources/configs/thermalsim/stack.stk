@@ -1,0 +1,49 @@
+material SILICON :
+    thermal conductivity 1.30e-4 ;
+    volumetric heat capacity 1.628e-12 ;
+
+material BEOL :
+    thermal conductivity 2.25e-6 ;
+    volumetric heat capacity 2.175e-12 ;
+
+material COPPER :
+    thermal conductivity 4.01e-04 ;
+    volumetric heat capacity 3.37e-12 ;
+
+top heat sink :
+    //sink height 1e03, area 100e06, material COPPER ;
+    //spreader height 0.5e03, area 70e06, material SILICON ;
+    heat transfer coefficient 1.3e-09 ;
+    temperature 318.15 ;
+dimensions :
+   chip length 6100, width 10600 ;
+   cell length  100, width   100 ;
+
+
+layer PCB :
+    height 10 ;
+    material BEOL ;
+
+die DRAM :
+    layer 58.5 SILICON ;
+    source 2 SILICON ;
+    layer 1.5 BEOL ;
+    layer 58.5 SILICON ;
+
+
+stack:
+    die DRAM_DIE DRAM floorplan "./mem.flp" ;
+    layer CONN_TO_PCB PCB ;
+
+solver:
+   transient step 0.01, slot 0.05 ;
+   initial temperature 300.0 ;
+
+output:
+   Tflpel(DRAM_DIE.channel0 , "temp_flp_element_ch0.txt" , average  , slot );
+   Tflpel(DRAM_DIE.channel1 , "temp_flp_element_ch1.txt" , average  , slot );
+   Tflpel(DRAM_DIE.channel2 , "temp_flp_element_ch2.txt" , average  , slot );
+   Tflpel(DRAM_DIE.channel3 , "temp_flp_element_ch3.txt" , average  , slot );
+   Tmap  (DRAM_DIE, "output1.txt", slot) ;
+   Pmap  (DRAM_DIE, "output2.txt", slot) ;
+

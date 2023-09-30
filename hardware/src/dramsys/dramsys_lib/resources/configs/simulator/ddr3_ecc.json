@@ -1,0 +1,19 @@
+{
+    "simconfig": {
+        "AddressOffset": 0,
+        "CheckTLM2Protocol": false,
+        "DatabaseRecording": true,
+        "Debug": false,
+        "ECCControllerMode": "Hamming",
+        "EnableWindowing": true,
+        "ErrorCSVFile": "",
+        "ErrorChipSeed": 42,
+        "PowerAnalysis": true,
+        "SimulationName": "ddr3",
+        "SimulationProgressBar": true,
+        "StoreMode": "ErrorModel",
+        "ThermalSimulation": false,
+        "UseMalloc": false,
+        "WindowSize": 1000
+    }
+}
