@@ -5,7 +5,7 @@ OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
 MEMORY {
-  L2 : ORIGIN = 0x80000000, LENGTH = 0x02000000
+  L2 : ORIGIN = 0x80000000, LENGTH = 0x100000000
 }
 
 /*
@@ -51,11 +51,11 @@ SECTIONS {
 
   .comment : ALIGN(ALIGNMENT) { *(.comment) } > L2
 
-  eoc_address_reg        = 0xD0000000;
-  dram_start_address_reg = 0xD0000008;
-  dram_end_address_reg   = 0xD0000010;
-  event_trigger          = 0xD0000018;
-  hw_cnt_en_reg          = 0xD0000020;
+  eoc_address_reg        = 0x50000000;
+  dram_start_address_reg = 0x50000008;
+  dram_end_address_reg   = 0x50000010;
+  event_trigger          = 0x50000018;
+  hw_cnt_en_reg          = 0x50000020;
 
-  fake_uart              = 0xC0000000;
+  fake_uart              = 0x40000000;
 }

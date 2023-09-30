@@ -22,8 +22,6 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  int           unsigned AxiIdWidth   = 5,
     // AXI Resp Delay [ps] for gate-level simulation
     parameter  int           unsigned AxiRespDelay = 200,
-    // Main memory
-    parameter  int           unsigned L2NumWords   = 2**20,
     // Dependant parameters. DO NOT CHANGE!
     localparam type                   axi_data_t   = logic [AxiDataWidth-1:0],
     localparam type                   axi_strb_t   = logic [AxiDataWidth/8-1:0],
@@ -69,15 +67,15 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   localparam NrAXISlaves = CTRL + 1;
 
   // Memory Map
-  // 1GByte of DDR (split between two chips on Genesys2)
-  localparam logic [63:0] DRAMLength = 64'h40000000;
-  localparam logic [63:0] UARTLength = 64'h1000;
-  localparam logic [63:0] CTRLLength = 64'h1000;
+  // 4GByte of DDR
+  localparam logic [63:0] DRAMLength = 64'h1_0000_0000;
+  localparam logic [63:0] UARTLength = 64'h1_000;
+  localparam logic [63:0] CTRLLength = 64'h1_000;
 
   typedef enum logic [63:0] {
     DRAMBase = 64'h8000_0000,
-    UARTBase = 64'hC000_0000,
-    CTRLBase = 64'hD000_0000
+    UARTBase = 64'h4000_0000,
+    CTRLBase = 64'h5000_0000
   } soc_bus_start_e;
 
   ///////////
