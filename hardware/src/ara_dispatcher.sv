@@ -2662,15 +2662,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin
+            if ( ara_resp_valid_i ) begin : ara_resp_valid
               acc_resp_o.req_ready  = 1'b1;
               acc_resp_o.exception = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
               // In case of error, modify vstart
-              if (ara_resp_i.exception.valid)
+              if ( ara_resp_i.exception.valid ) begin : exception
                 csr_vstart_d = ara_resp_i.exception_vl;
-            end
+              end : exception
+            end : ara_resp_valid
           end : OpcodeLoadFp
 
           /////////////////////
@@ -2859,15 +2860,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin
+            if (ara_resp_valid_i) begin : ara_resp_valid
               acc_resp_o.req_ready  = 1'b1;
               acc_resp_o.exception = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
               // If there is an error, change vstart
-              if (ara_resp_i.exception.valid)
+              if ( ara_resp_i.exception.valid ) begin : exception
                 csr_vstart_d = ara_resp_i.exception_vl;
-            end
+              end : exception
+            end : ara_resp_valid
           end : OpcodeStoreFp
 
           ////////////////////////////
@@ -2879,6 +2881,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Therefore, Ara must be idle before performing any CSR operation.
 
             // Stall if there is any pending vector instruction
+            // NOTE: This is overconstraining. Not all CSR ops actually need to stall if a vector instruction is pending.
+            //       E.g., CSR vl is never updated by instructions past ara_dispatcher, except for "unit-stride fault-only-first loads". Reading vl would be safe otherwise.
+            //       E.g., CSR vlenb is a design-constant parameter, reading is always safe.
+            //       E.g., CSRs vxrm and vxsat have no influence on-non fixed-point instructions, it could be read and written safely when no fixed-point operation is running.
+            //       By better analyzing the spec, more of optimizations of such can be made. For the sake of simplicity, the current implementation treats CSR ops as one block.
             if ( ara_idle_i ) begin : ara_idle
               // These always respond at the same cycle
               acc_resp_o.resp_valid = 1'b1;

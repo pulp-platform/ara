@@ -127,7 +127,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   ///////////////////////
 
   // Count how many operands were already produced
-  vlen_t vl_d, vl_q;
+  vlen_t elem_count_d, elem_count_q;
 
   elen_t                            conv_operand;
   // Decide whether we are taking the operands from the lower or from the upper half of the input
@@ -226,23 +226,23 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       end
 
       // Assert the signal if the last 64-bit packet will contain also
-      // elements with idx >= vl (they should not contribute to the result!).
+      // elements with idx >= elem_count (they should not contribute to the result!).
       // Gate for power saving
       // Power optimization:
       // The optimal solution would be to act on the mask bits in the two
       // processing units (valu and vmfpu), masking the unused elements.
       unique case (cmd.eew)
         EW8 : begin
-          incomplete_packet = |cmd.vl[2:0];
-          last_packet       = ((cmd.vl - vl_q) <= 8) ? 1'b1 : 1'b0;
+          incomplete_packet = |cmd.elem_count[2:0];
+          last_packet       = ((cmd.elem_count - elem_count_q) <= 8) ? 1'b1 : 1'b0;
         end
         EW16: begin
-          incomplete_packet = |cmd.vl[1:0];
-          last_packet       = ((cmd.vl - vl_q) <= 4) ? 1'b1 : 1'b0;
+          incomplete_packet = |cmd.elem_count[1:0];
+          last_packet       = ((cmd.elem_count - elem_count_q) <= 4) ? 1'b1 : 1'b0;
         end
         EW32: begin
-          incomplete_packet = |cmd.vl[0:0];
-          last_packet       = ((cmd.vl - vl_q) <= 2) ? 1'b1 : 1'b0;
+          incomplete_packet = |cmd.elem_count[0:0];
+          last_packet       = ((cmd.elem_count - elem_count_q) <= 2) ? 1'b1 : 1'b0;
         end
         default: begin
           incomplete_packet = 1'b0;
@@ -373,15 +373,15 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           if (SupportNtrVal) unique case (cmd.eew)
             EW8 : for (int unsigned b = 0; b < 8; b++) begin
                     automatic int unsigned bs = shuffle_index(b, 1, EW8);
-                    if ((b >> 0) >= cmd.vl[2:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
+                    if ((b >> 0) >= cmd.elem_count[2:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
                   end
             EW16: for (int unsigned b = 0; b < 8; b++) begin
                     automatic int unsigned bs = shuffle_index(b, 1, EW16);
-                    if ((b >> 1) >= cmd.vl[1:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
+                    if ((b >> 1) >= cmd.elem_count[1:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
                   end
             EW32: for (int unsigned b = 0; b < 8; b++) begin
                     automatic int unsigned bs = shuffle_index(b, 1, EW32);
-                    if ((b >> 2) >= cmd.vl[0:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
+                    if ((b >> 2) >= cmd.elem_count[0:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
                   end
             default:;
           endcase
@@ -401,7 +401,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
     // Maintain state
     select_d = select_q;
-    vl_d     = vl_q;
+    elem_count_d     = elem_count_q;
 
     // Send the operand
     operand_o       = conv_operand;
@@ -418,16 +418,16 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         OpQueueConversionZExt2,
         OpQueueConversionWideFP2,
         OpQueueAdjustFPCvt:
-          if (SupportIntExt2) vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 2;
+          if (SupportIntExt2) elem_count_d = elem_count_q + (1 << (unsigned'(EW64) - unsigned'(cmd.eew))) / 2;
         OpQueueConversionSExt4,
         OpQueueConversionZExt4:
-          if (SupportIntExt4) vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 4;
+          if (SupportIntExt4) elem_count_d = elem_count_q + (1 << (unsigned'(EW64) - unsigned'(cmd.eew))) / 4;
         OpQueueConversionSExt8,
         OpQueueConversionZExt8:
-          if (SupportIntExt8) vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew))) / 8;
+          if (SupportIntExt8) elem_count_d = elem_count_q + (1 << (unsigned'(EW64) - unsigned'(cmd.eew))) / 8;
         OpQueueReductionZExt:
-          vl_d = vl_q + 1;
-        default: vl_d = vl_q + (1 << (int'(EW64) - int'(cmd.eew)));
+          elem_count_d = elem_count_q + 1;
+        default: elem_count_d = elem_count_q + (1 << (unsigned'(EW64) - unsigned'(cmd.eew)));
       endcase
 
       // Update the pointer to the input operand
@@ -443,22 +443,22 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       if ((select_q != '0 && select_d == '0) || cmd.conv == OpQueueConversionNone) ibuf_pop = 1'b1;
 
       // Finished execution
-      if (vl_d >= cmd.vl) begin
+      if (elem_count_d >= cmd.elem_count) begin : finished_elems
         ibuf_pop = 1'b1;
         cmd_pop  = 1'b1;
         select_d = '0;
-        vl_d     = '0;
-      end
+        elem_count_d     = '0;
+      end : finished_elems
     end
   end : obuf_control
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_type_conversion_ff
     if (!rst_ni) begin
       select_q <= '0;
-      vl_q     <= '0;
+      elem_count_q     <= '0;
     end else begin
       select_q <= select_d;
-      vl_q     <= vl_d;
+      elem_count_q     <= elem_count_d;
     end
   end : p_type_conversion_ff
 

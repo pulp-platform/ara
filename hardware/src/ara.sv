@@ -43,7 +43,7 @@ module ara import ara_pkg::*; #(
     
     // Interface with CVA6's sv39 MMU
     // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
-    output  exception_t                    mmu_misaligned_ex_o,
+    output  ariane_pkg::exception_t        mmu_misaligned_ex_o,
     output  logic                          mmu_req_o,        // request address translation
     output  logic [riscv::VLEN-1:0]        mmu_vaddr_o,      // virtual address out
     output  logic                          mmu_is_store_o,   // the translation is requested by a store
@@ -54,7 +54,7 @@ module ara import ara_pkg::*; #(
     // Cycle 1
     input logic                            mmu_valid_i,      // translation is valid
     input logic [riscv::PLEN-1:0]          mmu_paddr_i,      // translated address
-    input exception_t                      mmu_exception_i,  // address translation threw an exception
+    input ariane_pkg::exception_t          mmu_exception_i,  // address translation threw an exception
 
     // Interface with Ariane
     input  accelerator_req_t  acc_req_i,
