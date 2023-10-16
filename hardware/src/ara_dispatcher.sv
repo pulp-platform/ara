@@ -274,8 +274,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     is_decoding = 1'b0;
     in_lane_op  = 1'b0;
 
-    acc_resp_o.req_ready  = 1'b0;
-    acc_resp_o.resp_valid = 1'b0;
     acc_resp_o       = '{
       trans_id      : acc_req_i.trans_id,
       load_complete : load_zero_vl | load_complete_q,
@@ -284,6 +282,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       fflags_valid  : |fflags_ex_valid_i,
       default       : '0
     };
+    acc_resp_o.req_ready  = 1'b0;
+    acc_resp_o.resp_valid = 1'b0;
 
     // fflags
     for (int lane = 0; lane < NrLanes; lane++) acc_resp_o.fflags |= fflags_ex_i[lane];
@@ -430,7 +430,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Decoding
         is_decoding = 1'b1;
         // Acknowledge the request
-        acc_resp_o.req_ready = ara_req_ready_i;
+        acc_resp_o.req_ready = 1'b1;
 
         // Decode the instructions based on their opcode
         unique case (acc_req_i.insn.itype.opcode)
@@ -438,11 +438,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           //  Vector Arithmetic instructions  //
           //////////////////////////////////////
 
-          riscv::OpcodeVec: begin
+          riscv::OpcodeVec: begin : OpcodeVec
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
-            // These always respond at the same cycle
+            // These (mostly) always respond at the same cycle
             acc_resp_o.resp_valid = 1'b1;
 
             // Decode based on their func3 field
@@ -450,7 +450,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Configuration instructions
               OPCFG: begin: opcfg
                 // These can be acknowledged regardless of the state of Ara
-                acc_resp_o.req_ready = 1'b1;
+                // NOTE: unless there is a pending fault-only first vector load
+                // acc_resp_o.req_ready = 1'b1;
                 is_config       = 1'b1;
 
                 // Update vtype
@@ -1253,13 +1254,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
 
                     // Wait until the back-end answers to acknowledge those instructions
-                    if (ara_resp_valid_i) begin
-                      acc_resp_o.req_ready   = 1'b1;
-                      acc_resp_o.result = ara_resp_i.resp;
-                      acc_resp_o.exception = ara_resp_i.exception;
-                      acc_resp_o.resp_valid  = 1'b1;
-                      ara_req_valid_d   = 1'b0;
-                    end
+                    if ( ara_resp_valid_i ) begin : ara_resp_valid
+                      acc_resp_o.req_ready  = 1'b1;
+                      acc_resp_o.resp_valid = 1'b1;
+                      acc_resp_o.result     = ara_resp_i.resp;
+                      acc_resp_o.exception  = ara_resp_i.exception;
+                      // Clear request to backend
+                      ara_req_valid_d       = 1'b0;
+                    end : ara_resp_valid
                   end
                   6'b010100: begin
                     ara_req_d.use_vd_op = 1'b1;
@@ -1914,13 +1916,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       endcase
 
                       // Wait until the back-end answers to acknowledge those instructions
-                      if (ara_resp_valid_i) begin
-                        acc_resp_o.req_ready   = 1'b1;
-                        acc_resp_o.result = ara_resp_i.resp;
-                        acc_resp_o.exception = ara_resp_i.exception;
-                        acc_resp_o.resp_valid  = 1'b1;
-                        ara_req_valid_d   = 1'b0;
-                      end
+                      if ( ara_resp_valid_i ) begin : ara_resp_valid
+                        acc_resp_o.req_ready  = 1'b1;
+                        acc_resp_o.resp_valid = 1'b1;
+                        acc_resp_o.result     = ara_resp_i.resp;
+                        acc_resp_o.exception  = ara_resp_i.exception;
+                        // Clear request to backend
+                        ara_req_valid_d       = 1'b0;
+                      end : ara_resp_valid
                     end
                     6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
                     6'b011001: ara_req_d.op = ara_pkg::VMFLE;
@@ -2483,7 +2486,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end else illegal_insn = 1'b1; // Vector FP instructions are disabled
               end
             endcase
-          end
+          end : OpcodeVec
 
           ////////////////////
           //  Vector Loads  //
@@ -2543,9 +2546,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
                 acc_resp_o.req_ready  = 1'b1;
-                illegal_insn = 1'b1;
                 acc_resp_o.resp_valid = 1'b1;
-                ara_req_valid_d  = 1'b0;
+                illegal_insn          = 1'b1;
+                ara_req_valid_d       = 1'b0;
               end
             endcase
 
@@ -2664,10 +2667,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Wait until the back-end answers to acknowledge those instructions
             if ( ara_resp_valid_i ) begin : ara_resp_valid
               acc_resp_o.req_ready  = 1'b1;
-              acc_resp_o.exception = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
-              ara_req_valid_d  = 1'b0;
-              // In case of error, modify vstart
+              acc_resp_o.exception  = ara_resp_i.exception;
+              ara_req_valid_d       = 1'b0; // Clear request to backend
+              // In case of exception, modify vstart
               if ( ara_resp_i.exception.valid ) begin : exception
                 csr_vstart_d = ara_resp_i.exception_vl;
               end : exception
@@ -2853,19 +2856,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
               endcase
 
-              // illegal_insn_store    = 1'b0; // IS THIS A BUG?
+              // illegal_insn_store    = 1'b0; // TODO: IS THIS A BUG?
               acc_resp_o.req_ready  = 1'b0;
               acc_resp_o.resp_valid = 1'b0;
               ara_req_valid_d  = 1'b1;
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin : ara_resp_valid
+            if ( ara_resp_valid_i ) begin : ara_resp_valid
               acc_resp_o.req_ready  = 1'b1;
-              acc_resp_o.exception = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
-              ara_req_valid_d  = 1'b0;
-              // If there is an error, change vstart
+              acc_resp_o.exception  = ara_resp_i.exception;
+              ara_req_valid_d       = 1'b0; // Clear request to backend
+              // In case of exception, modify vstart
               if ( ara_resp_i.exception.valid ) begin : exception
                 csr_vstart_d = ara_resp_i.exception_vl;
               end : exception

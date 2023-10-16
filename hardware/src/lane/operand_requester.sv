@@ -311,7 +311,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                       >> (unsigned'(EW64) - unsigned'(operand_request_i[requester_index].eew))
                     );
       // Init helper variables
-      requester_metadata_tmp = {
+      requester_metadata_tmp = '{
         id          : operand_request_i[requester_index].id,
         addr        : vrf_addr,
         len         : effective_vector_body_length,

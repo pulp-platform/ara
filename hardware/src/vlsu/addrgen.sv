@@ -72,19 +72,21 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   //  Assignments  //
   ///////////////////
 
-  assign mmu_misaligned_ex_o  = '0; // Ara reports misaligned exceptions on its own
+  // Ara reports misaligned exceptions on its own
+  assign mmu_misaligned_ex_o  = '0;
+  assign mmu_is_store_o       = !axi_addrgen_q.is_load;
 
-  // Some mock logic to show the net routing
-  // assign mmu_req_o           = axi_ar_valid_o;
-  // assign mmu_vaddr_o         = axi_ar_o.addr;
-  // assign mmu_is_store_o      = axi_aw_valid_o;
-  // logic mock_signal_1;
-  // logic mock_signal_2;
-
+  ///////////////
+  //  Imports  //
+  ///////////////
   import cf_math_pkg::idx_width;
   import axi_pkg::aligned_addr;
   import axi_pkg::BURST_INCR;
   import axi_pkg::CACHE_MODIFIABLE;
+
+  ///////////////////
+  //  Definitions  //
+  ///////////////////
 
   // Check if the address is aligned to a particular width
   function automatic logic is_addr_error(axi_addr_t addr, vew_e vew);
@@ -279,16 +281,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             default: state_d = ADDRGEN;
           endcase // pe_req_i.op
 
-
-          // // Some mock logic to show the net routing
-          // mock_signal_1 = mmu_dtlb_hit_i & mmu_valid_i | mmu_exception_i;
-          // mock_signal_2 = mmu_dtlb_ppn_i & |mmu_paddr_i;
-
-          // if ( mock_signal_1 ) 
-          //   state_d = ADDRGEN;
-          
-          // if ( mock_signal_2 ) 
-          //   state_d = ADDRGEN_IDX_OP;
         end
       end : state_IDLE
 
@@ -643,7 +635,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     mmu_exception_d = mmu_exception_q;
     mmu_req_o       = 1'b0;
     mmu_vaddr_o     = '0;
-    mmu_is_store_o  = 1'b0;
 
     // For addrgen FSM
     last_translation_completed = 1'b0;
@@ -974,9 +965,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       AXI_ADDRGEN_WAIT_TRANSLATION : begin : axi_addrgen_state_AXI_ADDRGEN_WAIT_TRANSLATION
         // keep request high
         mmu_req_o      = 1'b1;       
-        mmu_vaddr_o    = axi_addrgen_q.addr;
-        mmu_is_store_o = !axi_addrgen_q.is_load;
 
+        // Wait for MMU to respond
         if ( mmu_valid_i ) begin : mmu_valid
           // Perform request
           axi_addrgen_state_d = AXI_ADDRGEN_REQUESTING;
