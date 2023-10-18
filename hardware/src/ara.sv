@@ -357,7 +357,7 @@ module ara import ara_pkg::*; #(
     .pe_resp_o                  (pe_resp[NrLanes+OffsetStore : NrLanes+OffsetLoad]     ),
     .addrgen_ack_o              (addrgen_ack                                           ),
     .addrgen_exception_o        (addrgen_exception                                     ),
-    .addrgen_exception_vstart_o     (addrgen_exception_vstart                                  ),
+    .addrgen_exception_vstart_o (addrgen_exception_vstart                              ),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),

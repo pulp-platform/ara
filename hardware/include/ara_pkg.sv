@@ -976,11 +976,20 @@ package ara_pkg;
   } opqueue_e;
 
   // Each lane has eight VRF banks
+  // NOTE: values != 8 are not supported
   localparam int unsigned NrVRFBanksPerLane = 8;
 
-  // Find the starting address of a vector register vid
+  // Find the starting address (in bytes) of a vector register chunk of vid
   function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB / NrLanes / 8);
+    // Each vector register spans multiple words in each bank in each lane
+    // The start address is the same in every lane
+    // Therefore, within each lane, each vector register chunk starts on a given offset
+    vaddr = vid * (VLENB / NrLanes / NrVRFBanksPerLane); 
+    // NOTE: the only extensively tested configuration of Ara keeps:
+    //        - (VLEN / NrLanes) constant to 1024;
+    //        - NrVRFBanksPerLane always equal to 8.
+    //        Given so, each vector register will span 2 words across all the banks and lanes, 
+    //        therefore, vaddr = vid * 16
   endfunction: vaddr
 
   // Differenciate between SLDU and ADDRGEN operands from opqueue
@@ -1018,7 +1027,7 @@ package ara_pkg;
 
   typedef struct packed {
     rvv_pkg::vew_e eew;        // Effective element width
-    vlen_t vl;                 // Vector length
+    vlen_t elem_count;         // Vector body length
     opqueue_conversion_e conv; // Type conversion
     logic [1:0] ntr_red;       // Neutral type for reductions
     logic is_reduct;           // Is this a reduction?

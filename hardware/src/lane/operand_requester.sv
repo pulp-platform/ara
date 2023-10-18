@@ -199,7 +199,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   //  Operand request  //
   ///////////////////////
 
-  // There is an operand requester for each operand queue. Each one
+  // There is an operand requester_index for each operand queue. Each one
   // can be in one of the following two states.
   typedef enum logic {
     IDLE,
@@ -223,216 +223,230 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   logic     [NrBanks-1:0][NrMasters-1:0] operand_gnt;
   payload_t [NrMasters-1:0]              operand_payload;
 
-  for (genvar requester = 0; requester < NrOperandQueues; requester++) begin: gen_operand_requester
-    // State of this operand requester
+  // Metadata required to request all elements of this vector operand
+  typedef struct packed {
+    // ID of the instruction for this requester_index
+    vid_t id;
+    // Address of the next element to be read
+    vaddr_t addr;
+    // How many elements remain to be read
+    vlen_t len;
+    // Element width
+    vew_e vew;
+
+    // Hazards between vector instructions
+    logic [NrVInsn-1:0] hazard;
+
+    // Widening instructions produces two writes of every read
+    // In case of a WAW with a previous instruction,
+    // read once every two writes of the previous instruction
+    logic is_widening;
+    // One-bit counters
+    logic [NrVInsn-1:0] waw_hazard_counter;
+  } requester_metadata_t;
+
+  for (genvar requester_index = 0; requester_index < NrOperandQueues; requester_index++) begin : gen_operand_requester
+    // State of this operand requester_index
     state_t state_d, state_q;
 
-    // Metadata required to request all elements of this vector operand
-    struct packed {
-      // ID of the instruction for this requester
-      vid_t id;
-      // Address of the next element to be read
-      vaddr_t addr;
-      // How many elements remain to be read
-      vlen_t len;
-      // Element width
-      vew_e vew;
-
-      // Hazards between vector instructions
-      logic [NrVInsn-1:0] hazard;
-
-      // Widening instructions produces two writes of every read
-      // In case of a WAW with a previous instruction,
-      // read once every two writes of the previous instruction
-      logic is_widening;
-      // One-bit counters
-      logic [NrVInsn-1:0] waw_hazard_counter;
-    } requester_d, requester_q;
-
+    requester_metadata_t requester_metadata_d, requester_metadata_q;
 
     // Is there a hazard during this cycle?
     logic stall;
-    assign stall = |(requester_q.hazard & ~(vinsn_result_written_q &
-                   (~{NrVInsn{requester_q.is_widening}} | requester_q.waw_hazard_counter)));
+    assign stall = |(requester_metadata_q.hazard & ~(vinsn_result_written_q &
+                   (~{NrVInsn{requester_metadata_q.is_widening}} | requester_metadata_q.waw_hazard_counter)));
 
     // Did we get a grant?
     logic [NrBanks-1:0] operand_requester_gnt;
     for (genvar bank = 0; bank < NrBanks; bank++) begin: gen_operand_requester_gnt
-      assign operand_requester_gnt[bank] = operand_gnt[bank][requester];
+      assign operand_requester_gnt[bank] = operand_gnt[bank][requester_index];
     end
 
     // Did we issue a word to this operand queue?
-    assign operand_issued_o[requester] = |(operand_requester_gnt);
+    assign operand_issued_o[requester_index] = |(operand_requester_gnt);
 
     always_comb begin: operand_requester
+      // Helper local variables
+      automatic operand_queue_cmd_t  operand_queue_cmd_tmp;
+      automatic requester_metadata_t requester_metadata_tmp;
+      automatic vlen_t               vector_body_length;
+      automatic vlen_t               scaled_vector_body_length;
+      automatic vlen_t               effective_vector_body_length;
+      automatic vaddr_t              vrf_addr;
+
       // Maintain state
       state_d     = state_q;
-      requester_d = requester_q;
+      requester_metadata_d = requester_metadata_q;
 
       // Make no requests to the VRF
-      operand_payload[requester] = '0;
-      for (int bank = 0; bank < NrBanks; bank++) operand_req[bank][requester] = 1'b0;
+      operand_payload[requester_index] = '0;
+      for (int bank = 0; bank < NrBanks; bank++) operand_req[bank][requester_index] = 1'b0;
 
-      // Do not acknowledge any operand requester commands
-      operand_request_ready_o[requester] = 1'b0;
+      // Do not acknowledge any operand requester_index commands
+      operand_request_ready_o[requester_index] = 1'b0;
 
       // Do not send any operand conversion commands
-      operand_queue_cmd_o[requester]       = '0;
-      operand_queue_cmd_valid_o[requester] = 1'b0;
+      operand_queue_cmd_o[requester_index]       = '0;
+      operand_queue_cmd_valid_o[requester_index] = 1'b0;
+
+      // Prepare metadata upfront
+      // Length of vector body in elements, i.e., vl - vstart
+      vector_body_length = operand_request_i[requester_index].vl - operand_request_i[requester_index].vstart;
+      // For memory operations, the number of elements initially refers to the new EEW (vsew here),
+      // but the requester_index must refer to the old EEW (eew here)
+      // This reasoning cannot be applied also to widening instructions, which modify vsew
+      // treating it as the EEW of vd
+      scaled_vector_body_length = (
+                                   vector_body_length
+                                    << operand_request_i[requester_index].vtype.vsew
+                                  ) >> operand_request_i[requester_index].eew;
+      // Final computed length
+      effective_vector_body_length = ( operand_request_i[requester_index].scale_vl )
+                                      ? scaled_vector_body_length
+                                      : vector_body_length;
+      // Address of the vstart element of the vector in the VRF
+      vrf_addr = vaddr(operand_request_i[requester_index].vs, NrLanes)
+                  + (
+                      operand_request_i[requester_index].vstart
+                      >> (unsigned'(EW64) - unsigned'(operand_request_i[requester_index].eew))
+                    );
+      // Init helper variables
+      requester_metadata_tmp = '{
+        id          : operand_request_i[requester_index].id,
+        addr        : vrf_addr,
+        len         : effective_vector_body_length,
+        vew         : operand_request_i[requester_index].eew,
+        hazard      : operand_request_i[requester_index].hazard,
+        is_widening : operand_request_i[requester_index].cvt_resize == CVT_WIDE,
+        default: '0
+      };
+      operand_queue_cmd_tmp = '{
+        eew       : operand_request_i[requester_index].eew,
+        elem_count: effective_vector_body_length,
+        conv      : operand_request_i[requester_index].conv,
+        ntr_red   : operand_request_i[requester_index].cvt_resize,
+        target_fu : operand_request_i[requester_index].target_fu,
+        is_reduct : operand_request_i[requester_index].is_reduct
+      };
 
       case (state_q)
-        IDLE: begin
+        IDLE: begin : state_q_IDLE
           // Accept a new instruction
-          if (operand_request_valid_i[requester]) begin
+          if (operand_request_valid_i[requester_index]) begin : op_req_valid
             state_d                            = REQUESTING;
             // Acknowledge the request
-            operand_request_ready_o[requester] = 1'b1;
+            operand_request_ready_o[requester_index] = 1'b1;
 
             // Send a command to the operand queue
-            operand_queue_cmd_o[requester] = '{
-              eew : operand_request_i[requester].eew,
-              // For memory operations, the number of elements initially refers to the new EEW (vsew here),
-              // but the requester must refer to the old EEW (eew here)
-              // This reasoning cannot be applied also to widening instructions, which modify vsew
-              // treating it as the EEW of vd
-              vl       : (operand_request_i[requester].scale_vl) ?
-                           ((operand_request_i[requester].vl <<
-                           operand_request_i[requester].vtype.vsew) >>
-                           operand_request_i[requester].eew) :
-                           operand_request_i[requester].vl,
-              conv     : operand_request_i[requester].conv,
-              ntr_red  : operand_request_i[requester].cvt_resize,
-              target_fu: operand_request_i[requester].target_fu,
-              is_reduct: operand_request_i[requester].is_reduct
-            };
+            operand_queue_cmd_o[requester_index] = operand_queue_cmd_tmp;
+            operand_queue_cmd_valid_o[requester_index] = 1'b1;
+
             // The length should be at least one after the rescaling
-            if (operand_queue_cmd_o[requester].vl == '0)
-              operand_queue_cmd_o[requester].vl = 1;
-            operand_queue_cmd_valid_o[requester] = 1'b1;
+            if (operand_queue_cmd_o[requester_index].elem_count == '0) begin : cmd_zero_rescaled_vl
+              operand_queue_cmd_o[requester_index].elem_count = 1;
+            end : cmd_zero_rescaled_vl
 
             // Store the request
-            requester_d = '{
-              id     : operand_request_i[requester].id,
-              addr   : vaddr(operand_request_i[requester].vs, NrLanes) +
-              (operand_request_i[requester].vstart >>
-                (int'(EW64) - int'(operand_request_i[requester].eew))),
-              // For memory operations, the number of elements initially refers to the new EEW (vsew here),
-              // but the requester must refer to the old EEW (eew here)
-              // This reasoning cannot be applied also to widening instructions, which modify vsew
-              // treating it as the EEW of vd
-              len         : (operand_request_i[requester].scale_vl) ?
-                              ((operand_request_i[requester].vl <<
-                              operand_request_i[requester].vtype.vsew) >>
-                              operand_request_i[requester].eew) :
-                              operand_request_i[requester].vl,
-              vew         : operand_request_i[requester].eew,
-              hazard      : operand_request_i[requester].hazard,
-              is_widening : operand_request_i[requester].cvt_resize == CVT_WIDE,
-              default: '0
-            };
+            requester_metadata_d = requester_metadata_tmp;
+
             // The length should be at least one after the rescaling
-            if (requester_d.len == '0)
-              requester_d.len = 1;
+            if (requester_metadata_d.len == '0) begin : req_zero_rescaled_vl
+              requester_metadata_d.len = 1;
+            end : req_zero_rescaled_vl
+
 
             // Mute the requisition if the vl is zero
-            if (operand_request_i[requester].vl == '0) begin
+            if (operand_request_i[requester_index].vl == '0) begin : zero_vl
               state_d                              = IDLE;
-              operand_queue_cmd_valid_o[requester] = 1'b0;
-            end
-          end
-        end
+              operand_queue_cmd_valid_o[requester_index] = 1'b0;
+            end : zero_vl
+          end : op_req_valid
+        end : state_q_IDLE
 
-        REQUESTING: begin
+        REQUESTING: begin : state_q_REQUESTING
           // Update waw counters
-          for (int b = 0; b < NrVInsn; b++)
-            if (vinsn_result_written_d[b])
-              requester_d.waw_hazard_counter[b] = ~requester_q.waw_hazard_counter[b];
+          for (int b = 0; b < NrVInsn; b++) begin : waw_counters_update
+            if ( vinsn_result_written_d[b] ) begin : result_valid
+              requester_metadata_d.waw_hazard_counter[b] = ~requester_metadata_q.waw_hazard_counter[b];
+            end : result_valid
+          end : waw_counters_update
 
-          if (operand_queue_ready_i[requester]) begin
+          if (operand_queue_ready_i[requester_index]) begin : op_queue_ready
             // Bank we are currently requesting
-            automatic int bank = requester_q.addr[idx_width(NrBanks)-1:0];
+            automatic int bank = requester_metadata_q.addr[idx_width(NrBanks)-1:0];
+            automatic vlen_t num_bytes;
 
             // Operand request
-            operand_req[bank][requester] = !stall;
-            operand_payload[requester]   = '{
-              addr   : requester_q.addr >> $clog2(NrBanks),
-              opqueue: opqueue_e'(requester),
-              default: '0
+            operand_req[bank][requester_index] = !stall;
+            operand_payload[requester_index]   = '{
+              addr   : requester_metadata_q.addr >> $clog2(NrBanks),
+              opqueue: opqueue_e'(requester_index),
+              default: '0 // this is a read operation
             };
 
             // Received a grant.
-            if (|operand_requester_gnt) begin
+            if (|operand_requester_gnt) begin : op_req_grant
               // Bump the address pointer
-              requester_d.addr = requester_q.addr + 1'b1;
+              requester_metadata_d.addr = requester_metadata_q.addr + 1'b1;
 
               // We read less than 64 bits worth of elements
-              if (requester_q.len < (1 << (int'(EW64) - int'(requester_q.vew))))
-                requester_d.len    = 0;
-              else requester_d.len = requester_q.len - (1 << (int'(EW64) - int'(requester_q.vew)));
-            end
+              num_bytes = ( 1 << ( unsigned'(EW64) - unsigned'(requester_metadata_q.vew) ) );
+              if (requester_metadata_q.len < num_bytes) begin
+                requester_metadata_d.len    = 0;
+              end
+              else begin
+                requester_metadata_d.len = requester_metadata_q.len - num_bytes;
+              end
+            end : op_req_grant
 
             // Finished requesting all the elements
-            if (requester_d.len == '0) begin
+            if (requester_metadata_d.len == '0) begin : req_finished
               state_d = IDLE;
 
               // Accept a new instruction
-              if (operand_request_valid_i[requester]) begin
+              if (operand_request_valid_i[requester_index]) begin : op_req_valid
                 state_d                            = REQUESTING;
                 // Acknowledge the request
-                operand_request_ready_o[requester] = 1'b1;
+                operand_request_ready_o[requester_index] = 1'b1;
 
                 // Send a command to the operand queue
-                operand_queue_cmd_o[requester] = '{
-                  eew      : operand_request_i[requester].eew,
-                  vl       : (operand_request_i[requester].scale_vl) ?
-                               ((operand_request_i[requester].vl <<
-                               operand_request_i[requester].vtype.vsew) >>
-                               operand_request_i[requester].eew) :
-                               operand_request_i[requester].vl,
-                  conv     : operand_request_i[requester].conv,
-                  ntr_red  : operand_request_i[requester].cvt_resize,
-                  target_fu: operand_request_i[requester].target_fu,
-                  is_reduct: operand_request_i[requester].is_reduct
-                };
-                operand_queue_cmd_valid_o[requester] = 1'b1;
+                operand_queue_cmd_o[requester_index] = operand_queue_cmd_tmp;
+                operand_queue_cmd_valid_o[requester_index] = 1'b1;
+
                 // The length should be at least one after the rescaling
-                if (operand_queue_cmd_o[requester].vl == '0)
-                  operand_queue_cmd_o[requester].vl = 1;
+                if (operand_queue_cmd_o[requester_index].elem_count == '0) begin : cmd_zero_rescaled_vl
+                  operand_queue_cmd_o[requester_index].elem_count = 1;
+                end : cmd_zero_rescaled_vl
 
                 // Store the request
-                requester_d = '{
-                  id   : operand_request_i[requester].id,
-                  addr : vaddr(operand_request_i[requester].vs, NrLanes) +
-                  (operand_request_i[requester].vstart >>
-                    (int'(EW64) - int'(operand_request_i[requester].eew))),
-                  len    : (operand_request_i[requester].scale_vl) ?
-                             ((operand_request_i[requester].vl <<
-                             operand_request_i[requester].vtype.vsew) >>
-                             operand_request_i[requester].eew) :
-                             operand_request_i[requester].vl,
-                  vew    : operand_request_i[requester].eew,
-                  hazard : operand_request_i[requester].hazard,
-                  default: '0
-                };
+                requester_metadata_d = requester_metadata_tmp;
+
                 // The length should be at least one after the rescaling
-                if (requester_d.len == '0)
-                  requester_d.len = 1;
-              end
-            end
-          end
-        end
-      endcase
+                if (requester_metadata_d.len == '0) begin : req_zero_rescaled_vl
+                  requester_metadata_d.len = 1;
+                end : req_zero_rescaled_vl
+                
+                // Mute the requisition if the vl is zero
+                if (operand_request_i[requester_index].vl == '0) begin : zero_vl
+                  state_d                              = IDLE;
+                  operand_queue_cmd_valid_o[requester_index] = 1'b0;
+                end : zero_vl
+              end : op_req_valid
+            end : req_finished
+          end : op_queue_ready
+        end : state_q_REQUESTING
+      endcase // state_q
       // Always keep the hazard bits up to date with the global hazard table
-      requester_d.hazard &= global_hazard_table_i[requester_d.id];
+      requester_metadata_d.hazard &= global_hazard_table_i[requester_metadata_d.id];
     end : operand_requester
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
         state_q     <= IDLE;
-        requester_q <= '0;
+        requester_metadata_q <= '0;
       end else begin
         state_q     <= state_d;
-        requester_q <= requester_d;
+        requester_metadata_q <= requester_metadata_d;
       end
     end
   end : gen_operand_requester
@@ -452,7 +466,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       operand_req[bank][NrOperandQueues + VFU_LoadUnit]  = 1'b0;
     end
 
-    // Generate the payload
+    // Generate the payloads for write back operations
     operand_payload[NrOperandQueues + VFU_Alu] = '{
       addr   : alu_result_addr_i >> $clog2(NrBanks),
       wen    : 1'b1,
@@ -523,7 +537,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     logic payload_hp_req;
     logic payload_hp_gnt;
     rr_arb_tree #(
-      .NumIn    (int'(MulFPUC) - int'(AluA) + 1 + int'(VFU_MFpu) - int'(VFU_Alu) + 1),
+      .NumIn    (unsigned'(MulFPUC) - unsigned'(AluA) + 1 + unsigned'(VFU_MFpu) - unsigned'(VFU_Alu) + 1),
       .DataWidth($bits(payload_t)                                                   ),
       .AxiVldRdy(1'b0                                                               )
     ) i_hp_vrf_arbiter (
@@ -548,7 +562,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     logic payload_lp_req;
     logic payload_lp_gnt;
     rr_arb_tree #(
-      .NumIn(int'(SlideAddrGenA)- int'(MaskB) + 1 + int'(VFU_LoadUnit) - int'(VFU_SlideUnit) + 1),
+      .NumIn(unsigned'(SlideAddrGenA)- unsigned'(MaskB) + 1 + unsigned'(VFU_LoadUnit) - unsigned'(VFU_SlideUnit) + 1),
       .DataWidth($bits(payload_t)                                                               ),
       .AxiVldRdy(1'b0                                                                           )
     ) i_lp_vrf_arbiter (
