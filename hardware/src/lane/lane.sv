@@ -134,7 +134,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   typedef struct packed {
     rvv_pkg::vew_e eew;        // Effective element width
-    vlen_t vl;                 // Vector length
+    vlen_t elem_count;         // Vector body length
     opqueue_conversion_e conv; // Type conversion
     logic [1:0] ntr_red;       // Neutral type for reductions
     logic is_reduct;           // Is this a reduction?
