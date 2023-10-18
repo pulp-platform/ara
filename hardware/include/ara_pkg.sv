@@ -810,12 +810,21 @@ package ara_pkg;
   } opqueue_e;
 
   // Each lane has eight VRF banks
+  // NOTE: values != 8 are not supported
   localparam int unsigned NrVRFBanksPerLane = 8;
 
-  // Find the starting address of a vector register vid
+  // Find the starting address (in bytes) of a vector register chunk of vid
   function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes, int vlen);
     int vlenb = vlen / 8;
-    vaddr = vid * (vlenb / NrLanes / 8);
+    // Each vector register spans multiple words in each bank in each lane
+    // The start address is the same in every lane
+    // Therefore, within each lane, each vector register chunk starts on a given offset
+    vaddr = vid * (vlenb / NrLanes / NrVRFBanksPerLane);
+    // NOTE: the only extensively tested configuration of Ara keeps:
+    //        - (VLEN / NrLanes) constant to 1024;
+    //        - NrVRFBanksPerLane always equal to 8.
+    //        Given so, each vector register will span 2 words across all the banks and lanes,
+    //        therefore, vaddr = vid * 16
   endfunction: vaddr
 
   // Differenciate between SLDU and ADDRGEN operands from opqueue
