@@ -290,6 +290,29 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   //  Mask ALU  //
   ////////////////
 
+  // Local Parameter W_CPOP and W_VFIRST
+  //
+  // Description: Parameters W_CPOP and W_VFIRST enable time multiplexing of vcpop.m and vfirst.m instruction.
+  //
+  // Legal range W_CPOP:   {64, 128, ... , DataWidth*NrLanes} // DataWidth = 64
+  // Legal range W_VFIRST: {64, 128, ... , DataWidth*NrLanes} // DataWidth = 64
+  //
+  // Execution time example for vcpop.m (similar for vfirst.m):
+  // W_CPOP = 64; VLEN = 1024; vl = 1024
+  // t_vcpop.m = VLEN/W_CPOP = 8 [Cycles]
+  localparam int W_CPOP   = 64;
+  localparam int W_VFIRST = 64;
+  // derived parameters
+  localparam int MAX_W_CPOP_VFIRST = (W_CPOP > W_VFIRST) ? W_CPOP : W_VFIRST;
+  localparam int N_SLICES_CPOP   = NrLanes * DataWidth / W_CPOP;
+  localparam int N_SLICES_VFIRST = NrLanes * DataWidth / W_VFIRST;
+  // Check if parameters are within range
+  if (((W_CPOP & (W_CPOP - 1)) != 0) || (W_CPOP < 64)) begin
+    $fatal(1, "Parameter W_CPOP must be power of 2.");
+  end else if (((W_VFIRST & (W_VFIRST - 1)) != 0) || (W_VFIRST < 64)) begin
+    $fatal(1, "Parameter W_VFIRST must be power of 2.");
+  end
+
   elen_t [NrLanes-1:0]                   alu_result;
   logic  [NrLanes*ELEN-1:0]              bit_enable;
   logic  [NrLanes*ELEN-1:0]              bit_enable_shuffle;
@@ -297,9 +320,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   rvv_pkg::vew_e                         bit_enable_shuffle_eew;
   logic  [NrLanes*ELEN-1:0]              mask;
   logic  [NrLanes*ELEN-1:0]              vcpop_operand;
-  logic  [$clog2(DataWidth*NrLanes):0]   popcount;
+  logic  [$clog2(W_VFIRST):0]            popcount;
   logic  [$clog2(VLEN):0]                popcount_d, popcount_q;
-  logic  [$clog2(DataWidth*NrLanes)-1:0] vfirst_count;
+  logic  [$clog2(W_VFIRST)-1:0]          vfirst_count;
   logic  [$clog2(VLEN)-1:0]              vfirst_count_d, vfirst_count_q;
   logic                                  vfirst_empty;
 
@@ -317,20 +340,32 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
+  // counter to keep track of how many slices of the vcpop_operand have been processed
+  logic [$clog2(MAX_W_CPOP_VFIRST):0] vcpop_slice_cnt_d, vcpop_slice_cnt_q;
+  logic [W_CPOP-1:0]                  vcpop_slice;
+  logic [W_VFIRST-1:0]                vfirst_slice;
+
+  // keep track if first 1 mask element was found
+  logic vfirst_found;
+
+  // assign operand slices to be processed by popcount and lzc
+  assign vcpop_slice  = vcpop_operand[(vcpop_slice_cnt_q * W_CPOP) +: W_CPOP];
+  assign vfirst_slice = vcpop_operand[(vcpop_slice_cnt_q * W_VFIRST) +: W_VFIRST];
+
   // Population count for vcpop.m instruction
   popcount #(
-    .INPUT_WIDTH (DataWidth*NrLanes)
+    .INPUT_WIDTH (W_CPOP)
   ) i_popcount (
-    .data_i    (vcpop_operand),
+    .data_i    (vcpop_slice),
     .popcount_o(popcount     )
   );
 
   // Trailing zero counter
   lzc #(
-    .WIDTH(DataWidth*NrLanes),
+    .WIDTH(W_VFIRST),
     .MODE (0)
   ) i_clz (
-    .in_i    (vcpop_operand),
+    .in_i    (vfirst_slice ),
     .cnt_o   (vfirst_count ),
     .empty_o (vfirst_empty )
   );
@@ -652,8 +687,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     mask_pnt_d     = mask_pnt_q;
     vrf_pnt_d      = vrf_pnt_q;
 
-    popcount_d     = popcount_q;
-    vfirst_count_d = vfirst_count_q;
+    vcpop_slice_cnt_d = vcpop_slice_cnt_q;
+    popcount_d        = popcount_q;
+    vfirst_count_d    = vfirst_count_q;
 
     mask_queue_d           = mask_queue_q;
     mask_queue_valid_d     = mask_queue_valid_q;
@@ -781,27 +817,54 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_issue_valid && vd_scalar(vinsn_issue.op)) begin
       if (&(masku_operand_a_valid_i | fake_a_valid) && (&masku_operand_m_valid_i || vinsn_issue.vm)) begin
 
-        masku_operand_a_ready_o = masku_operand_a_valid_i;
+        // increment slice counter
+        vcpop_slice_cnt_d = vcpop_slice_cnt_q + 1'b1;
+
+        // request new operand (by completing ready-valid handshake) once all slices have been processed
+        masku_operand_a_ready_o = 1'b0;
+        if (((vcpop_slice_cnt_q == N_SLICES_CPOP - 1) && vinsn_issue.op == VCPOP) ||
+            ((vcpop_slice_cnt_q == N_SLICES_VFIRST-1) && vinsn_issue.op == VFIRST)) begin
+          vcpop_slice_cnt_d       = '0;
+          masku_operand_a_ready_o = masku_operand_a_valid_i;
+          if (!vinsn_issue.vm) begin 
+            masku_operand_m_ready_o = '1;
+          end
+        end
 
         // Account for the elements that were processed
-        issue_cnt_d = issue_cnt_q - ((NrLanes*DataWidth)/(8 << vinsn_issue.vtype.vsew));
-        if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes)))
-          issue_cnt_d = '0;
+        issue_cnt_d = issue_cnt_q - (W_CPOP/(8 << vinsn_issue.vtype.vsew));
 
-        // Acknowledge the operands, also triggers another beat if necessary
-        if (!vinsn_issue.vm) masku_operand_m_ready_o = '1;
+        // abruptly stop processing elements if vl is reached
+        if (iteration_count_d >= (vinsn_issue.vl/W_CPOP) || (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
+          issue_cnt_d = '0;
+          masku_operand_a_ready_o = masku_operand_a_valid_i;
+          if (!vinsn_issue.vm) begin 
+            masku_operand_m_ready_o = '1;
+          end
+        end
 
         popcount_d     = popcount_q + popcount;
         vfirst_count_d = vfirst_count_q + vfirst_count;
 
         // if this is the last beat, commit the result to the scalar_result queue
-        if (iteration_count_d >= (((8 << vinsn_issue.vtype.vsew)*vinsn_issue.vl)/(DataWidth*NrLanes))) begin
+        if ((iteration_count_d >= (vinsn_issue.vl/W_CPOP) && vinsn_issue.op == VCPOP) ||
+            (iteration_count_d >= (vinsn_issue.vl/W_VFIRST) && vinsn_issue.op == VFIRST) ||
+            (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
           result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : (vfirst_empty) ? -1 : vfirst_count_d;
           result_scalar_valid_d = '1;
 
           // Decrement the commit counter by the entire number of elements,
           // since we only commit one result for everything
           commit_cnt_d = '0;
+
+          // reset vcpop slice counter, since instruction is finished
+          vcpop_slice_cnt_d = '0;
+
+          // acknowledge operand a
+          masku_operand_a_ready_o = masku_operand_a_valid_i;
+          if (!vinsn_issue.vm) begin 
+            masku_operand_m_ready_o = '1;
+          end
         end
       end
     end
@@ -1135,6 +1198,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= '0;
       pe_resp_o          <= '0;
       result_final_gnt_q <= '0;
+      vcpop_slice_cnt_q  <= '0;
       popcount_q         <= '0;
       vfirst_count_q     <= '0;
     end else begin
@@ -1146,6 +1210,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       mask_pnt_q         <= mask_pnt_d;
       pe_resp_o          <= pe_resp;
       result_final_gnt_q <= result_final_gnt_d;
+      vcpop_slice_cnt_q  <= vcpop_slice_cnt_d;
       popcount_q         <= popcount_d;
       vfirst_count_q     <= vfirst_count_d;
     end
