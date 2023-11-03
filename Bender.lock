@@ -7,8 +7,7 @@ packages:
     dependencies:
     - common_cells
   ariane:
-  cva6:
-    revision: 3fddb6e5814604c7ec49e4320de0037292346c63
+    revision: b0d6f496910b3b8a0387134d5b91f7c8194bdf37
     version: null
     source:
       Git: https://github.com/pulp-platform/cva6.git
@@ -17,34 +16,27 @@ packages:
     - common_cells
     - fpnew
     - tech_cells_generic
-  apb:
-    revision: 77ddf073f194d44b9119949d2421be59789e69ae
-    version: 0.2.4
-    source:
-      Git: https://github.com/pulp-platform/apb.git
-    dependencies:
-    - common_cells
   axi:
-    revision: null
-    version: null
+    revision: 9251564ed67e3e71adf46dbeba62ef4435d2524c
+    version: 0.31.1
     source:
-      Path: hardware/deps/axi
+      Git: https://github.com/pulp-platform/axi.git
     dependencies:
     - common_cells
     - common_verification
   common_cells:
-    revision: null
-    version: null
+    revision: 2bd027cb87eaa9bf7d17196ec5f69864b35b630f
+    version: 1.32.0
     source:
-      Path: hardware/deps/common_cells
+      Git: https://github.com/pulp-platform/common_cells.git
     dependencies:
     - common_verification
     - tech_cells_generic
   common_verification:
-    revision: null
-    version: null
+    revision: 9c07fa860593b2caabd9b5681740c25fac04b878
+    version: 0.2.3
     source:
-      Path: hardware/deps/common_verification
+      Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   fpnew:
     revision: 3116391bf66660f806b45e212b9949c528b4e270
@@ -62,9 +54,9 @@ packages:
     dependencies:
     - common_cells
   tech_cells_generic:
-    revision: null
-    version: null
+    revision: 7968dd6e6180df2c644636bc6d2908a49f2190cf
+    version: 0.2.13
     source:
-      Path: hardware/deps/tech_cells_generic
+      Git: https://github.com/pulp-platform/tech_cells_generic.git
     dependencies:
     - common_verification

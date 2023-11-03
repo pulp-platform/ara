@@ -144,11 +144,11 @@ $(buildpath)/$(library):
 .PHONY: compile
 compile: dpi lib $(buildpath) bender $(buildpath)/compile_$(config).tcl
 $(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
-	./bender script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 $(bender_defs) > $(buildpath)/compile_$(config).tcl
+	$(BENDER) script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 -t tech_cells_generic_include_tc_sram -t tech_cells_generic_include_tc_clk $(bender_defs) > $(buildpath)/compile_$(config).tcl
 	echo "exit" >> $(buildpath)/compile_$(config).tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile_$(config).tcl
-	# Remove the file if compilation did not succeed
-	if [ `cat $(buildpath)/transcript | grep "\*\* Error" | wc -l` -ne 0 ]; then rm $(buildpath)/compile_$(config).tcl; fi
+	# Rename the file if compilation did not succeed
+	if [ `cat $(buildpath)/transcript | grep "\*\* Error" | wc -l` -ne 0 ]; then mv $(buildpath)/compile_$(config).tcl $(buildpath)/compile_$(config).tcl.ERROR; fi
 
 # Simulation
 .PHONY: sim
@@ -176,7 +176,7 @@ verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
 $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
-	./bender script verilator -t rtl -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 -t verilator $(bender_defs) > $(veril_library)/bender_script_$(config)
+	$(BENDER) script verilator -t rtl -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 -t verilator $(bender_defs) > $(veril_library)/bender_script_$(config)
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
@@ -194,8 +194,7 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -Wno-WIDTH                                                                    \
   -Wno-WIDTHCONCAT                                                              \
   -Wno-ENUMVALUE                                                                \
-  -Wno-COMBDLY
-     \
+  -Wno-COMBDLY                                                                  \
   -Wall                                                                         \
   --hierarchical                                                                \
   tb/verilator/waiver.vlt                                                       \
