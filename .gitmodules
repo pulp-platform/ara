@@ -9,21 +9,6 @@
 [submodule "toolchain/verilator"]
 	path = toolchain/verilator
 	url = https://github.com/verilator/verilator
-[submodule "hardware/deps/axi"]
-	path = hardware/deps/axi
-	url = https://github.com/pulp-platform/axi.git
-[submodule "hardware/deps/common_cells"]
-	path = hardware/deps/common_cells
-	url = https://github.com/pulp-platform/common_cells.git
-[submodule "hardware/deps/tech_cells_generic"]
-	path = hardware/deps/tech_cells_generic
-	url = https://github.com/pulp-platform/tech_cells_generic.git
-[submodule "hardware/deps/common_verification"]
-	path = hardware/deps/common_verification
-	url = https://github.com/pulp-platform/common_verification.git
-[submodule "hardware/deps/cva6"]
-	path = hardware/deps/cva6
-	url = https://github.com/pulp-platform/cva6.git
 [submodule "toolchain/newlib"]
 	path = toolchain/newlib
 	url = https://sourceware.org/git/newlib-cygwin.git
@@ -32,6 +17,3 @@
 	path = toolchain/riscv-llvm
 	url = https://github.com/llvm/llvm-project.git
 	ignore = dirty
-[submodule "hardware/deps/apb"]
-	path = hardware/deps/apb
-	url = https://github.com/pulp-platform/apb.git

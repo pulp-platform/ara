@@ -10,6 +10,9 @@ ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$ARA_DIR)
 INSTALL_DIR := $(abspath $(ROOT_DIR)/../install)
 VERILATOR_INCLUDE := $(INSTALL_DIR)/verilator/share/verilator/include/vltstd
 
+BENDER         := $(ROOT_DIR)/../hardware/bender
+BENDER_VERSION := 0.27.3
+
 # Choose Ara's configuration
 ifndef config
 	ifdef ARA_CONFIGURATION
@@ -111,11 +114,20 @@ all: compile
 $(buildpath):
 	mkdir -p $(buildpath)
 
+.PHONY: $(BENDER) update
 # Bender
-bender:
-	@[ -x ./bender ] && echo "Bender already exists." || \
-	curl --proto '=https' --tlsv1.2 https://fabianschuiki.github.io/bender/init -sSf | sh	-s -- 0.23.1
+$(BENDER):
+	@[ -x $(BENDER) ] && echo "Bender already exists." || \
+	curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh	-s -- $(BENDER_VERSION)
 	@echo "$$(./bender --version) available."
+
+update: $(BENDER) $(ROOT_DIR)/../Bender.yml
+	rm -rf $(ROOT_DIR)/../hardware/deps/*
+	$(BENDER) update -f
+	$(BENDER) checkout
+
+checkout: $(BENDER)
+	$(BENDER) checkout
 
 # Patches
 .PHONY: apply-patches
@@ -228,7 +240,7 @@ lint: spyglass/tmp/files spyglass/sdc/func.sdc spyglass/scripts/run_lint.tcl
 
 spyglass/tmp/files: $(bender)
 	mkdir -p spyglass/tmp
-	./bender script verilator -t rtl -t spyglass -t cva6_test -t cv64a6_imafdcv_sv39 $(bender_defs) --define SPYGLASS > spyglass/tmp/files
+	$(BENDER) script verilator -t rtl -t spyglass -t cva6_test -t cv64a6_imafdcv_sv39 $(bender_defs) --define SPYGLASS > spyglass/tmp/files
 
 # DPIs
 .PHONY: dpi
@@ -246,4 +258,4 @@ $(buildpath)/$(dpi_library)/ara_dpi.so: $(dpi)
 .PHONY: clean
 clean:
 	rm -rf $(buildpath)
-	rm -f bender
+	rm -f  $(BENDER)
