@@ -1,56 +1,56 @@
 packages:
   apb:
-    revision: 77ddf073f194d44b9119949d2421be59789e69ae
-    version: 0.2.4
+    revision: null
+    version: null
     source:
-      Git: https://github.com/pulp-platform/apb.git
+      Path: hardware/deps/apb
     dependencies:
     - common_cells
   ariane:
-    revision: b0d6f496910b3b8a0387134d5b91f7c8194bdf37
+    revision: null
     version: null
     source:
-      Git: https://github.com/pulp-platform/cva6.git
+      Path: hardware/deps/ariane
     dependencies:
     - axi
     - common_cells
     - fpnew
     - tech_cells_generic
   axi:
-    revision: 9251564ed67e3e71adf46dbeba62ef4435d2524c
-    version: 0.31.1
+    revision: null
+    version: null
     source:
-      Git: https://github.com/pulp-platform/axi.git
+      Path: hardware/deps/axi
     dependencies:
     - common_cells
     - common_verification
   common_cells:
-    revision: 2bd027cb87eaa9bf7d17196ec5f69864b35b630f
-    version: 1.32.0
+    revision: null
+    version: null
     source:
-      Git: https://github.com/pulp-platform/common_cells.git
+      Path: hardware/deps/common_cells
     dependencies:
     - common_verification
     - tech_cells_generic
   common_verification:
-    revision: 9c07fa860593b2caabd9b5681740c25fac04b878
-    version: 0.2.3
+    revision: null
+    version: null
     source:
-      Git: https://github.com/pulp-platform/common_verification.git
+      Path: hardware/deps/common_verification
     dependencies: []
   fpnew:
-    revision: 3116391bf66660f806b45e212b9949c528b4e270
-    version: 0.7.0
+    revision: null
+    version: null
     source:
-      Git: https://github.com/openhwgroup/cvfpu.git
+      Path: hardware/deps/fpnew
     dependencies:
     - common_cells
     - fpu_div_sqrt_mvp
   fpu_div_sqrt_mvp:
-    revision: 86e1f558b3c95e91577c41b2fc452c86b04e85ac
-    version: 1.0.4
+    revision: null
+    version: null
     source:
-      Git: https://github.com/pulp-platform/fpu_div_sqrt_mvp.git
+      Path: hardware/deps/fpu_div_sqrt_mvp
     dependencies:
     - common_cells
   tech_cells_generic:
