@@ -104,8 +104,14 @@ dpi   := $(patsubst tb/dpi/%.cc,$(buildpath)/$(dpi_library)/%.o,$(wildcard tb/dp
 vlog_args += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233
 vlog_args += -work $(library)
 
+# Bender
 # Defines
 bender_defs += --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen) --define ARIANE_ACCELERATOR_PORT=1
+# Targets
+bender_common_targs := -t rtl -t cv64a6_imafdcv_sv39 -t tech_cells_generic_include_tc_sram -t tech_cells_generic_include_tc_clk
+bender_targs_simc     := $(bender_common_targs) -t ara_test -t cva6_test
+bender_targs_veril    := $(bender_common_targs) -t ara_test -t cva6_test -t verilator
+bender_targs_spyglass := $(bender_common_targs) -t spyglass
 
 # Default target
 all: compile
@@ -144,7 +150,7 @@ $(buildpath)/$(library):
 .PHONY: compile
 compile: dpi lib $(buildpath) bender $(buildpath)/compile_$(config).tcl
 $(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
-	$(BENDER) script vsim --vlog-arg="$(vlog_args)" -t rtl -t asic -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 -t tech_cells_generic_include_tc_sram -t tech_cells_generic_include_tc_clk $(bender_defs) > $(buildpath)/compile_$(config).tcl
+	$(BENDER) script vsim --vlog-arg="$(vlog_args)" $(bender_targs_simc) $(bender_defs) > $(buildpath)/compile_$(config).tcl
 	echo "exit" >> $(buildpath)/compile_$(config).tcl
 	cd $(buildpath) && $(questa_cmd) vsim -work $(library) -c -do compile_$(config).tcl
 	# Rename the file if compilation did not succeed
@@ -176,7 +182,7 @@ verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
 $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
-	$(BENDER) script verilator -t rtl -t ara_test -t cva6_test -t cv64a6_imafdcv_sv39 -t verilator $(bender_defs) > $(veril_library)/bender_script_$(config)
+	$(BENDER) script verilator $(bender_targs_veril) $(bender_defs) > $(veril_library)/bender_script_$(config)
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
@@ -239,7 +245,7 @@ lint: spyglass/tmp/files spyglass/sdc/func.sdc spyglass/scripts/run_lint.tcl
 
 spyglass/tmp/files: $(bender)
 	mkdir -p spyglass/tmp
-	$(BENDER) script verilator -t rtl -t spyglass -t cva6_test -t cv64a6_imafdcv_sv39 $(bender_defs) --define SPYGLASS > spyglass/tmp/files
+	$(BENDER) script verilator $(bender_targs_spyglass) $(bender_defs) --define SPYGLASS > spyglass/tmp/files
 
 # DPIs
 .PHONY: dpi
