@@ -237,6 +237,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   ///////////////
 
   logic illegal_insn;
+  elen_t vfmvfs_result;
 
   always_comb begin: p_decoder
     // Default values
@@ -1914,10 +1915,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         default:;
                       endcase
 
+                      // NaN-box the result if needed
+                      unique case (vtype_q.vsew)
+                        EW16: begin
+                          vfmvfs_result[63:16] = '1;
+                          vfmvfs_result[15:0]  = ara_resp_i.resp[15:0];
+                        end
+                        EW32: begin
+                          vfmvfs_result[63:32] = '1;
+                          vfmvfs_result[31:0]  = ara_resp_i.resp[31:0];
+                        end
+                        default: vfmvfs_result = ara_resp_i.resp;
+                      endcase
+
                       // Wait until the back-end answers to acknowledge those instructions
                       if (ara_resp_valid_i) begin
                         acc_req_ready_o   = 1'b1;
-                        acc_resp_o.result = ara_resp_i.resp;
+                        acc_resp_o.result = vfmvfs_result;
                         acc_resp_o.error  = ara_resp_i.error;
                         acc_resp_valid_o  = 1'b1;
                         ara_req_valid_d   = 1'b0;
