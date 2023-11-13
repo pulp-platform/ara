@@ -454,9 +454,10 @@ jobs:
     # are mandatory there if they exist.
     - name: Check for trailing whitespaces and tabs
       run: |
-        git diff --check $base HEAD -- \
-        apps config hardware .github   \
-        *.md Bender.* Makefile
+        bash -O extglob -c                \
+        "git diff --check $base HEAD --   \
+        apps config .github *.md Bender.* \
+        Makefile hardware/!(patches)"
 
 #####################
 #  Benchmark stage  #
