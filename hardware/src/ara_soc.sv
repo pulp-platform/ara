@@ -133,6 +133,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     MaxSlvTrans       : 4,
     FallThrough       : 1'b0,
     LatencyMode       : axi_pkg::CUT_MST_PORTS,
+    PipelineStages    : 0,
     AxiIdWidthSlvPorts: AxiSocIdWidth,
     AxiIdUsedSlvPorts : AxiSocIdWidth,
     UniqueIds         : 1'b0,
@@ -188,8 +189,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   axi_atop_filter #(
     .AxiIdWidth     (AxiSocIdWidth  ),
     .AxiMaxWriteTxns(4              ),
-    .req_t          (soc_wide_req_t ),
-    .resp_t         (soc_wide_resp_t)
+    .axi_req_t      (soc_wide_req_t ),
+    .axi_resp_t     (soc_wide_resp_t)
   ) i_l2mem_atop_filter (
     .clk_i     (clk_i                         ),
     .rst_ni    (rst_ni                        ),
