@@ -1,38 +1,51 @@
 diff --git a/src/rtl/tc_sram.sv b/src/rtl/tc_sram.sv
-index 53530e0..075dcea 100644
+index b702a11..eeef776 100644
 --- a/src/rtl/tc_sram.sv
 +++ b/src/rtl/tc_sram.sv
-@@ -124,9 +124,11 @@ module tc_sram #(
-   // write memory array
-   always_ff @(posedge clk_i or negedge rst_ni) begin
-     if (!rst_ni) begin
-+      `ifndef VERILATOR
-       for (int unsigned i = 0; i < NumWords; i++) begin
-         sram[i] <= init_val[i];
-       end
-+      `endif
-       for (int i = 0; i < NumPorts; i++) begin
-         r_addr_q[i] <= {AddrWidth{1'b0}};
-         // initialize the read output register for each port
-@@ -149,12 +151,14 @@ module tc_sram #(
-       for (int unsigned i = 0; i < NumPorts; i++) begin
-         if (req_i[i]) begin
-           if (we_i[i]) begin
+@@ -145,12 +145,14 @@ module tc_sram #(
+         for (int unsigned i = 0; i < NumPorts; i++) begin
+           if (req_i[i]) begin
+             if (we_i[i]) begin
 +            `ifndef VERILATOR
-             // update value when write is set at clock
-             for (int unsigned j = 0; j < DataWidth; j++) begin
-               if (be_i[i][j/ByteWidth]) begin
-                 sram[addr_i[i]][j] <= wdata_i[i][j];
+               // update value when write is set at clock
+               for (int unsigned j = 0; j < BeWidth; j++) begin
+                 if (be_i[i][j]) begin
+                   sram[addr_i[i]][j*ByteWidth+:ByteWidth] <= wdata_i[i][j*ByteWidth+:ByteWidth];
+                 end
                end
-             end
 +            `endif
-           end else begin
-             // otherwise update read address for subsequent non request cycles
-             r_addr_q[i] <= addr_i[i];
-@@ -164,6 +168,23 @@ module tc_sram #(
-     end // if !rst_ni
+             end else begin
+               // otherwise update read address for subsequent non request cycles
+               r_addr_q[i] <= addr_i[i];
+@@ -163,7 +165,9 @@ module tc_sram #(
+     // write memory array
+     always_ff @(posedge clk_i or negedge rst_ni) begin
+       if (!rst_ni) begin
++        `ifndef VERILATOR
+         sram <= init_val;
++        `endif
+         for (int i = 0; i < NumPorts; i++) begin
+           r_addr_q[i] <= {AddrWidth{1'b0}};
+           // initialize the read output register for each port
+@@ -186,12 +190,14 @@ module tc_sram #(
+         for (int unsigned i = 0; i < NumPorts; i++) begin
+           if (req_i[i]) begin
+             if (we_i[i]) begin
++            `ifndef VERILATOR
+               // update value when write is set at clock
+               for (int unsigned j = 0; j < BeWidth; j++) begin
+                 if (be_i[i][j]) begin
+                   sram[addr_i[i]][j*ByteWidth+:ByteWidth] <= wdata_i[i][j*ByteWidth+:ByteWidth];
+                 end
+               end
++            `endif
+             end else begin
+               // otherwise update read address for subsequent non request cycles
+               r_addr_q[i] <= addr_i[i];
+@@ -202,6 +208,23 @@ module tc_sram #(
+     end
    end
-
+ 
 +  `ifdef VERILATOR
 +  for (genvar i = 0; i < NumPorts; i++) begin
 +    // update value when write is set at clock
@@ -53,7 +66,7 @@ index 53530e0..075dcea 100644
  // Validate parameters.
  // pragma translate_off
  `ifndef VERILATOR
-@@ -204,4 +225,59 @@ module tc_sram #(
+@@ -242,4 +265,59 @@ module tc_sram #(
  `endif
  `endif
  // pragma translate_on
