@@ -208,25 +208,41 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
    *  Slide Unit  *
    ****************/
 
+  // This operand queue is common to slide unit and addrgen.
+  // Since it's shared, we should be sure not to sample a
+  // spurious ready from the wrong unit, i.e., when we are
+  // feeding the addrgen, we don't want spurious readies from
+  // the slide unit. The units should be responsible for avoiding
+  // sampling wrong data, but spurious ready signals can happen in
+  // specific corner cases. Fixing this without impacting timing is
+  // hard, so we just mask the ready signals here as well to avoid
+  // bugs.
+  logic sldu_operand_ready_filtered;
+  logic addrgen_operand_ready_filtered;
+  assign sldu_operand_ready_filtered = sldu_operand_ready_i &
+    (sldu_addrgen_operand_target_fu_o == ALU_SLDU);
+  assign addrgen_operand_ready_filtered = addrgen_operand_ready_i &
+    (sldu_addrgen_operand_target_fu_o == MFPU_ADDRGEN);
+
   operand_queue #(
     .CmdBufDepth   (VlduInsnQueueDepth),
     .DataBufDepth  (2                 ),
     .FPUSupport    (FPUSupport        ),
     .NrLanes       (NrLanes           )
   ) i_operand_queue_slide_addrgen_a (
-    .clk_i                    (clk_i                                         ),
-    .rst_ni                   (rst_ni                                        ),
-    .lane_id_i                (lane_id_i                                     ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]            ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]      ),
-    .operand_i                (operand_i[SlideAddrGenA]                      ),
-    .operand_valid_i          (operand_valid_i[SlideAddrGenA]                ),
-    .operand_issued_i         (operand_issued_i[SlideAddrGenA]               ),
-    .operand_queue_ready_o    (operand_queue_ready_o[SlideAddrGenA]          ),
-    .operand_o                (sldu_addrgen_operand_o                        ),
-    .operand_target_fu_o      (sldu_addrgen_operand_target_fu_o              ),
-    .operand_valid_o          (sldu_addrgen_operand_valid_o                  ),
-    .operand_ready_i          (addrgen_operand_ready_i | sldu_operand_ready_i)
+    .clk_i                    (clk_i                                                       ),
+    .rst_ni                   (rst_ni                                                      ),
+    .lane_id_i                (lane_id_i                                                   ),
+    .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]                          ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]                    ),
+    .operand_i                (operand_i[SlideAddrGenA]                                    ),
+    .operand_valid_i          (operand_valid_i[SlideAddrGenA]                              ),
+    .operand_issued_i         (operand_issued_i[SlideAddrGenA]                             ),
+    .operand_queue_ready_o    (operand_queue_ready_o[SlideAddrGenA]                        ),
+    .operand_o                (sldu_addrgen_operand_o                                      ),
+    .operand_target_fu_o      (sldu_addrgen_operand_target_fu_o                            ),
+    .operand_valid_o          (sldu_addrgen_operand_valid_o                                ),
+    .operand_ready_i          (addrgen_operand_ready_filtered | sldu_operand_ready_filtered)
   );
 
   /////////////////

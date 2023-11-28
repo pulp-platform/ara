@@ -324,9 +324,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
               // Bump lane pointer
               elm_ptr_d       = '0;
               word_lane_ptr_d += 1;
-              if (word_lane_ptr_q == NrLanes - 1)
-              // Ready for the next full word
-              addrgen_operand_ready_o = 1'b1;
+              if (word_lane_ptr_q == NrLanes - 1) begin
+                // Ready for the next full word
+                addrgen_operand_ready_o = 1'b1;
+              end
             end else begin
               // Bump element pointer
               elm_ptr_d += 1;
