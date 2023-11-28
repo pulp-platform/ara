@@ -4,7 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+
 ## [Unreleased]
+
+### Fixed
+
+ - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
+ - Fix Pathfinder and FFT performance
+
+### Added
+
+ - Plot kernels-Vl performance plot
+ - Print I$/D$ stall metrics
+
+### Changed
+
+ - Optimize Jacobi2d
+ - Benchmark only the vector kernel in roi_align
+ - Improve cache warming functions
+ - [f]dotproduct works on the vector length in elements
+ - Optimize DWT
+ - Fix pathfinder performance
+
+## 3.0.0 - 2023-09-08
 
 ### Fixed
 
