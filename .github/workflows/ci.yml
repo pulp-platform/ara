@@ -8,6 +8,17 @@
 name: ci
 on: [push, pull_request]
 
+# Only allow one workflow per PR/Branch (the last one)
+# https://docs.github.com/en/actions/learn-github-actions/expressions
+# https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+# https://docs.github.com/en/actions/using-jobs/using-concurrency
+concurrency:
+  # github.workflow: name of the workflow
+  # github.event.pull_request.number || github.ref: pull request number or branch name if not a pull request
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Cancel in-progress runs when a new workflow with the same group name is triggered
+  cancel-in-progress: true
+
 jobs:
 
 #####################
