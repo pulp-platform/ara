@@ -187,6 +187,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix commit for `dtc` installation (`spike` dependency)
  - Simplify the datapath of the slide unit. The `sldu` supports only powers of two, and cannot slide and reshuffle at the same time. Non-power-of-two slides are now handled with micro operations.
  - Bump Verilator to v5.012
+ - Only allow one workflow at a time per branch/PR
 
 ## 2.2.0 - 2021-11-02
 
