@@ -7,7 +7,7 @@ packages:
     dependencies:
     - common_cells
   ariane:
-    revision: 44f387fb71464336cab47597c433411345ae4a6e
+    revision: 2ebe023f7289300348c68e99267afcc03256f3ed
     version: null
     source:
       Git: https://github.com/pulp-platform/cva6.git
