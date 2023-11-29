@@ -579,7 +579,7 @@ jobs:
         for kernel in fdotproduct dotproduct; do
           > ${kernel}.benchmark
           for nr_lanes in 2 4 8 16; do
-            cat ${kernel}_${nr_lanes}.benchmark >> ${kernel}.benchmark
+            cat ${kernel}_${nr_lanes}_bar_plots.benchmark >> ${kernel}.benchmark
           done
           python scripts/process_dotp.py ${kernel} ${kernel}.benchmark ${kernel}
           tar -cvf ${kernel}.tar $(find . -name "${kernel}_*.png")
