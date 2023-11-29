@@ -103,8 +103,13 @@ extract_performance() {
     $python ./scripts/check_cycles.py $kernel $hw_cycles $sw_cycles || exit
   fi
   echo "Extracting performance from cycle count"
-  echo "$python ./scripts/performance.py \"$metadata\" \"$args\" $hw_cycles >> $outfile"
-  $python ./scripts/performance.py "$metadata" "$args" $hw_cycles $dcache_stalls $icache_stalls $sb_full_stalls >> $outfile || exit
+  if [[ "$ci" == 0 ]]; then
+    echo "$python ./scripts/performance.py \"$metadata\" \"$args\" $hw_cycles $dcache_stalls $icache_stalls $sb_full_stalls >> $outfile"
+    $python ./scripts/performance.py "$metadata" "$args" $hw_cycles $dcache_stalls $icache_stalls $sb_full_stalls >> $outfile || exit
+  else
+    echo "$python ./scripts/performance.py \"$metadata\" \"$args\" $hw_cycles >> $outfile"
+    $python ./scripts/performance.py "$metadata" "$args" $hw_cycles >> $outfile || exit
+  fi
 }
 
 extract_performance_dotp() {
