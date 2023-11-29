@@ -603,11 +603,13 @@ fdotproduct() {
       # Default System
       compile_and_run $kernel "$defines" $tempfile 0                                 || exit
       extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark  || exit
+      extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_bar_plots.benchmark || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                      || exit
         extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_ideal_bar_plots.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
@@ -645,11 +647,13 @@ dotproduct() {
       # Default System
       compile_and_run $kernel "$defines" $tempfile 0                                 || exit
       extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark  || exit
+      extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_bar_plots.benchmark  || exit
 
       # Ideal Dispatcher System, if QuestaSim is available
       if [ "$ci" == 0 ]; then
         compile_and_run $kernel "$defines" $tempfile 1                                      || exit
         extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+        extract_performance_dotp $kernel "$args" $sew $tempfile ${kernel}_${nr_lanes}_ideal_bar_plots.benchmark || exit
         # Verify ID results is non-blocking! Check the report afterwards
         verify_id_results 0 | tee -a ${error_rpt}
       fi
