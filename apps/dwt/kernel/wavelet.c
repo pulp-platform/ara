@@ -21,8 +21,8 @@
 #include <stdio.h>
 
 // Reduce scalar code overhead for problems that can fit with LMUL == 4.
-// The worst case if with 2 lanes, in which the problem size should be lower than
-// 2k float numbers.
+// The worst case if with 2 lanes, in which the problem size should be lower
+// than 2k float numbers.
 #define SMALL_PROBLEM
 
 extern int64_t event_trigger;
@@ -110,10 +110,9 @@ static inline void dwt_step_vector(const gsl_wavelet *w, float *samples,
     // Segment load the vectors. ToDo: check if vl/2 is correct
     vlseg2e32_v_f32m4(sample_vec_0, sample_vec_1, samples_r, vl / 2);
 #else
-    // Strided load (inefficient!)
-    sample_vec_0 = vlse32_v_f32m4(samples_r, 2 * sizeof(*samples_r), vl / 2);
-    sample_vec_1 =
-        vlse32_v_f32m4(samples_r + 1, 2 * sizeof(*samples_r), vl / 2);
+  // Strided load (inefficient!)
+  sample_vec_0 = vlse32_v_f32m4(samples_r, 2 * sizeof(*samples_r), vl / 2);
+  sample_vec_1 = vlse32_v_f32m4(samples_r + 1, 2 * sizeof(*samples_r), vl / 2);
 #endif
 
     // First implementation

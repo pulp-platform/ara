@@ -165,11 +165,11 @@ void j2d_kernel_adhoc_warm(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
     asm volatile("vsetvli %0, %1, e64, m4, ta, ma"
                  : "=r"(gvl)
                  : "r"(size_x - j + 1));
-    mtx_ptr_0 = j; // 0 * c + j
+    mtx_ptr_0 = j;                                         // 0 * c + j
     asm volatile("vle64.v v0, (%0)" ::"r"(&A[mtx_ptr_0])); // v0 top
-    mtx_ptr_1 = j + c; // 1 * c + j
+    mtx_ptr_1 = j + c;                                     // 1 * c + j
     asm volatile("vle64.v v4, (%0)" ::"r"(&A[mtx_ptr_1])); // v4 middle
-    mtx_ptr_0 = mtx_ptr_1 + c; // 2 * c + j
+    mtx_ptr_0 = mtx_ptr_1 + c;                             // 2 * c + j
     asm volatile("vle64.v v8, (%0)" ::"r"(&A[mtx_ptr_0])); // v8 bottom
 
     // Look ahead and load the next coefficients
@@ -201,16 +201,15 @@ void j2d_kernel_adhoc_warm(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
       asm volatile("vfslide1up.vf v24, v4, %0" ::"f"(izq_0));
       asm volatile("vfslide1down.vf v28, v4, %0" ::"f"(der_0));
       asm volatile("vfadd.vv v12, v4, v0");   // middle - top
-      mtx_ptr_0 += c; // (i + 2) * c + j
+      mtx_ptr_0 += c;                         // (i + 2) * c + j
       asm volatile("vfadd.vv v12, v12, v8");  // bottom
-      sc_ptr_0 += c; // (i + 1) * c + j - 1
+      sc_ptr_0 += c;                          // (i + 1) * c + j - 1
       asm volatile("vfadd.vv v12, v12, v24"); // left
       if ((i + 1) <= size_y) {
-        asm volatile(
-            "vle64.v v0, (%0)" ::"r"(&A[mtx_ptr_0])); // v0 top
+        asm volatile("vle64.v v0, (%0)" ::"r"(&A[mtx_ptr_0])); // v0 top
       }
       asm volatile("vfadd.vv v12, v12, v28"); // right
-      sc_ptr_1 += c; // (i + 1) * c + j + gvl
+      sc_ptr_1 += c;                          // (i + 1) * c + j + gvl
       asm volatile("vfmul.vf v12, v12, %0" ::"f"(five_));
       if ((i + 1) <= size_y) {
         izq_1 = A[sc_ptr_0];
@@ -228,16 +227,15 @@ void j2d_kernel_adhoc_warm(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
         asm volatile("vfslide1up.vf v24, v8, %0" ::"f"(izq_1));
         asm volatile("vfslide1down.vf v28, v8, %0" ::"f"(der_1));
         asm volatile("vfadd.vv v16, v4, v8");   // middle - top
-        mtx_ptr_0 += c; // (i + 3) * c + j
+        mtx_ptr_0 += c;                         // (i + 3) * c + j
         asm volatile("vfadd.vv v16, v16, v0");  // bottom
-        sc_ptr_0 += c; // (i + 2) * c + j - 1
+        sc_ptr_0 += c;                          // (i + 2) * c + j - 1
         asm volatile("vfadd.vv v16, v16, v24"); // left
         if ((i + 2) <= size_y) {
-          asm volatile(
-              "vle64.v v4, (%0)" ::"r"(&A[mtx_ptr_0])); // v4 middle
+          asm volatile("vle64.v v4, (%0)" ::"r"(&A[mtx_ptr_0])); // v4 middle
         }
         asm volatile("vfadd.vv v16, v16, v28"); // right
-        sc_ptr_1 += c; // (i + 2) * c + j + gvl
+        sc_ptr_1 += c;                          // (i + 2) * c + j + gvl
         asm volatile("vfmul.vf v16, v16, %0" ::"f"(five_));
         if ((i + 2) <= size_y) {
           izq_2 = A[sc_ptr_0];
@@ -255,16 +253,15 @@ void j2d_kernel_adhoc_warm(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
           asm volatile("vfslide1up.vf v24, v0, %0" ::"f"(izq_2));
           asm volatile("vfslide1down.vf v28, v0, %0" ::"f"(der_2));
           asm volatile("vfadd.vv v20, v0, v8");   // middle - top
-          mtx_ptr_0 += c; // (i + 4) * c + j
+          mtx_ptr_0 += c;                         // (i + 4) * c + j
           asm volatile("vfadd.vv v20, v20, v4");  // bottom
-          sc_ptr_0 += c; // (i + 3) * c + j - 1
+          sc_ptr_0 += c;                          // (i + 3) * c + j - 1
           asm volatile("vfadd.vv v20, v20, v24"); // left
           if ((i + 3) <= size_y) {
-            asm volatile("vle64.v v8, (%0)" ::"r"(
-                &A[mtx_ptr_0])); // v8 bottom
+            asm volatile("vle64.v v8, (%0)" ::"r"(&A[mtx_ptr_0])); // v8 bottom
           }
           asm volatile("vfadd.vv v20, v20, v28"); // right
-          sc_ptr_1 += c; // (i + 3) * c + j + gvl
+          sc_ptr_1 += c;                          // (i + 3) * c + j + gvl
           asm volatile("vfmul.vf v20, v20, %0" ::"f"(five_));
           if ((i + 3) <= size_y) {
             izq_0 = A[sc_ptr_0];
@@ -308,11 +305,11 @@ void j2d_kernel_asm_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
     asm volatile("vsetvli %0, %1, e64, m4, ta, ma"
                  : "=r"(gvl)
                  : "r"(size_x - j + 1));
-    mtx_ptr_0 = j; // 0 * c + j
+    mtx_ptr_0 = j;                                         // 0 * c + j
     asm volatile("vle64.v v0, (%0)" ::"r"(&A[mtx_ptr_0])); // v0 top
-    mtx_ptr_1 = j + c; // 1 * c + j
+    mtx_ptr_1 = j + c;                                     // 1 * c + j
     asm volatile("vle64.v v4, (%0)" ::"r"(&A[mtx_ptr_1])); // v4 middle
-    mtx_ptr_0 = mtx_ptr_1 + c; // 2 * c + j
+    mtx_ptr_0 = mtx_ptr_1 + c;                             // 2 * c + j
     asm volatile("vle64.v v8, (%0)" ::"r"(&A[mtx_ptr_0])); // v8 bottom
 
     // Look ahead and load the next coefficients
@@ -344,16 +341,15 @@ void j2d_kernel_asm_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
       asm volatile("vfslide1up.vf v24, v4, %0" ::"f"(izq_0));
       asm volatile("vfslide1down.vf v28, v4, %0" ::"f"(der_0));
       asm volatile("vfadd.vv v12, v4, v0");   // middle - top
-      mtx_ptr_0 += c; // (i + 2) * c + j
+      mtx_ptr_0 += c;                         // (i + 2) * c + j
       asm volatile("vfadd.vv v12, v12, v8");  // bottom
-      sc_ptr_0 += c; // (i + 1) * c + j - 1
+      sc_ptr_0 += c;                          // (i + 1) * c + j - 1
       asm volatile("vfadd.vv v12, v12, v24"); // left
       if ((i + 1) <= size_y) {
-        asm volatile(
-            "vle64.v v0, (%0)" ::"r"(&A[mtx_ptr_0])); // v0 top
+        asm volatile("vle64.v v0, (%0)" ::"r"(&A[mtx_ptr_0])); // v0 top
       }
       asm volatile("vfadd.vv v12, v12, v28"); // right
-      sc_ptr_1 += c; // (i + 1) * c + j + gvl
+      sc_ptr_1 += c;                          // (i + 1) * c + j + gvl
       asm volatile("vfmul.vf v12, v12, %0" ::"f"(five_));
       if ((i + 1) <= size_y) {
         izq_1 = A[sc_ptr_0];
@@ -371,16 +367,15 @@ void j2d_kernel_asm_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
         asm volatile("vfslide1up.vf v24, v8, %0" ::"f"(izq_1));
         asm volatile("vfslide1down.vf v28, v8, %0" ::"f"(der_1));
         asm volatile("vfadd.vv v16, v4, v8");   // middle - top
-        mtx_ptr_0 += c; // (i + 3) * c + j
+        mtx_ptr_0 += c;                         // (i + 3) * c + j
         asm volatile("vfadd.vv v16, v16, v0");  // bottom
-        sc_ptr_0 += c; // (i + 2) * c + j - 1
+        sc_ptr_0 += c;                          // (i + 2) * c + j - 1
         asm volatile("vfadd.vv v16, v16, v24"); // left
         if ((i + 2) <= size_y) {
-          asm volatile(
-              "vle64.v v4, (%0)" ::"r"(&A[mtx_ptr_0])); // v4 middle
+          asm volatile("vle64.v v4, (%0)" ::"r"(&A[mtx_ptr_0])); // v4 middle
         }
         asm volatile("vfadd.vv v16, v16, v28"); // right
-        sc_ptr_1 += c; // (i + 2) * c + j + gvl
+        sc_ptr_1 += c;                          // (i + 2) * c + j + gvl
         asm volatile("vfmul.vf v16, v16, %0" ::"f"(five_));
         if ((i + 2) <= size_y) {
           izq_2 = A[sc_ptr_0];
@@ -398,16 +393,15 @@ void j2d_kernel_asm_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
           asm volatile("vfslide1up.vf v24, v0, %0" ::"f"(izq_2));
           asm volatile("vfslide1down.vf v28, v0, %0" ::"f"(der_2));
           asm volatile("vfadd.vv v20, v0, v8");   // middle - top
-          mtx_ptr_0 += c; // (i + 4) * c + j
+          mtx_ptr_0 += c;                         // (i + 4) * c + j
           asm volatile("vfadd.vv v20, v20, v4");  // bottom
-          sc_ptr_0 += c; // (i + 3) * c + j - 1
+          sc_ptr_0 += c;                          // (i + 3) * c + j - 1
           asm volatile("vfadd.vv v20, v20, v24"); // left
           if ((i + 3) <= size_y) {
-            asm volatile("vle64.v v8, (%0)" ::"r"(
-                &A[mtx_ptr_0])); // v8 bottom
+            asm volatile("vle64.v v8, (%0)" ::"r"(&A[mtx_ptr_0])); // v8 bottom
           }
           asm volatile("vfadd.vv v20, v20, v28"); // right
-          sc_ptr_1 += c; // (i + 3) * c + j + gvl
+          sc_ptr_1 += c;                          // (i + 3) * c + j + gvl
           asm volatile("vfmul.vf v20, v20, %0" ::"f"(five_));
           if ((i + 3) <= size_y) {
             izq_0 = A[sc_ptr_0];

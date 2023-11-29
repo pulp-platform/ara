@@ -76,7 +76,7 @@ void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,
 }
 
 void fconv3d_CHx7x7_warm(double *o, double *i, double *f, int64_t M, int64_t N,
-                    int64_t C, int64_t F) {
+                         int64_t C, int64_t F) {
 
   unsigned long int block_size_n;
 
@@ -906,9 +906,8 @@ void fconv3d_CHx7x7_block(double *o, double *i, double *f, int64_t M, int64_t N,
   asm volatile("vse64.v  v28, (%0); add %0, %0, %1" : "+&r"(o) : "r"(ldo));
 }
 
-
 void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
-                          int64_t n_, int64_t C, int64_t F) {
+                  int64_t n_, int64_t C, int64_t F) {
 
   // Helper variables
   int64_t ldo = N << 3;
@@ -1006,7 +1005,6 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
     i_slide_ptr_1 = i__ + n_ + 1 * (N + F - 1);
     i_slide_ptr_2 = i__ + n_ + 2 * (N + F - 1);
 
-
     // Main kernel, unrolled by 2
     for (int k = 0; k < F / 2; ++k) {
       // Two base indexes because of the unrolling
@@ -1042,7 +1040,6 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
       asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
 
       asm volatile("vfslide1down.vf v10, v8, %0" ::"f"(*i_slide_ptr_2++));
-
     }
 
     // The very last iterations require mixing the instructions with the store
@@ -1058,7 +1055,6 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
 
   // Reuse preloaded coefficients
   // Buffer the next coefficients for faster use
-
 
   // Bump the input ptr
   i_ += 3 * (N + F - 1);
@@ -1124,42 +1120,40 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
 
       if (ch != C - 1) {
         int64_t base_idx_0 = (ch + 1) * fch_len;
-
       }
     }
-   }
+  }
 
-    // Bump the input ptr
-    i_ += N + F - 1;
+  // Bump the input ptr
+  i_ += N + F - 1;
 
 #ifdef VCD_DUMP
-    // Stop dumping VCD
-    event_trigger = -1;
+  // Stop dumping VCD
+  event_trigger = -1;
 #endif
 
-    //////////////
-    // UNROLL 1 //
-    //////////////
+  //////////////
+  // UNROLL 1 //
+  //////////////
 
-    // Loop on the channels
-    for (int ch = 0; ch < C; ++ch) {
+  // Loop on the channels
+  for (int ch = 0; ch < C; ++ch) {
 
-      // Point to the first element of the channel ch
-      i__ = i_ + ch * ich_len;
+    // Point to the first element of the channel ch
+    i__ = i_ + ch * ich_len;
 
-      // Start calculating the next pointers to the elements to be slided in
-      i_slide_ptr_1 = i__ + n_;
+    // Start calculating the next pointers to the elements to be slided in
+    i_slide_ptr_1 = i__ + n_;
 
-      for (int k = 0; k < F / 2; ++k) {
-        // Two base indexes because of the unrolling
-        // Point to the first element of the current column (k) of the current
-        // channel (ch) of the filter (f)
-        int64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
-        // Point to the first element of the current column (k+1) of the current
-        // channel (ch) of the filter (f)
-        int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
+    for (int k = 0; k < F / 2; ++k) {
+      // Two base indexes because of the unrolling
+      // Point to the first element of the current column (k) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_0 = (2 * k + 2) + (ch * fch_len);
+      // Point to the first element of the current column (k+1) of the current
+      // channel (ch) of the filter (f)
+      int64_t base_idx_1 = (2 * k + 1) + (ch * fch_len);
     }
-
 
     // Bump the input ptr
     i_ += N + F - 1;
@@ -1196,7 +1190,7 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
       if ((k | ch) == 0)
         asm volatile("vfmul.vf v28, v0, %0" ::"f"(f[0 + base_idx_0]));
       else
-      asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
+        asm volatile("vfslide1down.vf v6, v4, %0" ::"f"(*i_slide_ptr_1++));
       asm volatile("vfslide1down.vf v10, v8, %0" ::"f"(*i_slide_ptr_2++));
       asm volatile("vfslide1down.vf v14, v12, %0" ::"f"(*i_slide_ptr_3++));
 
@@ -1205,9 +1199,7 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
       asm volatile("vfslide1down.vf v8, v10, %0" ::"f"(*i_slide_ptr_2++));
       asm volatile("vfslide1down.vf v12, v14, %0" ::"f"(*i_slide_ptr_3++));
     }
-
   }
-
 
   // Bump the input ptr
   i_ += 4 * (N + F - 1);
@@ -1250,7 +1242,6 @@ void fconv3d_warm(double *o, double *i, double *f, int64_t M, int64_t N,
     }
   }
 }
-
 
 /*
   ////////////////////

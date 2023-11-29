@@ -56,7 +56,9 @@ int64_t CropAndResizePerBox_BHWC_vec(
     float *crops_data, const int crop_height, const int crop_width,
     const float extrapolation_value);
 
-void roi_align_fake_kernel_asm(float* pimage, float* crops_data, int left_x_index, int right_x_index, int b, int y, size_t depth);
+void roi_align_fake_kernel_asm(float *pimage, float *crops_data,
+                               int left_x_index, int right_x_index, int b,
+                               int y, size_t depth);
 
 // Normalized image
 void init_image(float *vec, size_t size);

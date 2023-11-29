@@ -121,7 +121,8 @@ int main() {
 
   printf("Starting vector main kernel...\n");
   start_timer();
-  roi_align_fake_kernel_asm(image_data, crops_data_vec, left_x_index, right_x_index, b, y, DEPTH);
+  roi_align_fake_kernel_asm(image_data, crops_data_vec, left_x_index,
+                            right_x_index, b, y, DEPTH);
   stop_timer();
   runtime_v = get_timer();
   printf("Vector benchmark complete.\n");
