@@ -193,7 +193,8 @@ def main():
   if len(sys.argv) > 4:
     print(metadata[0], metadata[1], result[0], metadata[3], result[1], real_max_perf, metadata[4], dcache_stall, icache_stall, sb_full)
   else:
-    print(metadata[0], metadata[1], result[0], metadata[3], result[1], real_max_perf, metadata[4])
+    # CI run. Print only basic information for the roofline plots
+    print(result[0], result[1])
 
 if __name__ == '__main__':
   main()
