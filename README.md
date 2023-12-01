@@ -97,13 +97,38 @@ make riscv_tests
 
 ## RTL Simulation
 
-To simulate the Ara system with ModelSim, go to the `hardware` folder, which contains all the SystemVerilog files. Use the following command to run your simulation:
+### Hardware dependencies
+
+The Ara repository depends on external IPs and uses Bender to handle the IP dependencies.
+To install Bender and initialize all the hardware IPs, run the following commands:
+
+```bash
+# Go to the hardware folder
+cd hardware
+# Install Bender and checkout all the IPs
+make update
+```
+
+### Patches (only once!)
+
+Note: this step is required only once, and needs to be repeated ONLY if the IP hardware dependencies are deleted and checked out again.
+
+Some of the IPs need to be patched to work with Verilator.
 
 ```bash
 # Go to the hardware folder
 cd hardware
 # Apply the patches (only need to run this once)
 make apply-patches
+```
+
+### Simulation
+
+To simulate the Ara system with ModelSim, go to the `hardware` folder, which contains all the SystemVerilog files. Use the following command to run your simulation:
+
+```bash
+# Go to the hardware folder
+cd hardware
 # Only compile the hardware without running the simulation.
 make compile
 # Run the simulation with the *hello_world* binary loaded
