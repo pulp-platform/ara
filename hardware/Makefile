@@ -120,8 +120,9 @@ all: compile
 $(buildpath):
 	mkdir -p $(buildpath)
 
-.PHONY: $(BENDER) update
+.PHONY: bender update
 # Bender
+bender: $(BENDER)
 $(BENDER):
 	@[ -x $(BENDER) ] && echo "Bender already exists." || \
 	curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh	-s -- $(BENDER_VERSION)
