@@ -80,6 +80,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Reset gating registers before the integer multipliers in `vmfpu`
  - Fix narrowing for `vnclip` and `vnclipu`
  - NaN-box the scalar value before forwarding back to CVA6
+ - Filter operand queue ready_i from addrgen and sldu selectively when they should not handshake
+ - CI: don't check the patch directory for whitespace changes
 
 ### Added
 
@@ -189,6 +191,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Simplify the datapath of the slide unit. The `sldu` supports only powers of two, and cannot slide and reshuffle at the same time. Non-power-of-two slides are now handled with micro operations.
  - Bump Verilator to v5.012
  - Only allow one workflow at a time per branch/PR
+ - Bump CVA6 version following OpenHW Group's modification
+ - Bump fpnew to CVFPU
+ - Switch from git submodules to Bender to handle hardware dependencies
+ - Bump AXI, tech_cells_generic, and common_cells dependencies
 
 ## 2.2.0 - 2021-11-02
 
