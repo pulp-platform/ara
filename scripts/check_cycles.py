@@ -36,6 +36,8 @@ threshold = {
   'exp'        : 500,
   'softmax'    : 500,
   'pathfinder' : 500,
+  'dotproduct' : 500,
+  'fdotproduct': 500,
   'roi_align'  : 500,
 }
 
