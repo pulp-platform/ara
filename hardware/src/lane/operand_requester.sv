@@ -77,7 +77,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                      ldu_result_wdata_i,
     input  strb_t                                      ldu_result_be_i,
     output logic                                       ldu_result_gnt_o,
-    output logic                                       ldu_result_final_gnt_o
+    output logic                                       ldu_result_final_gnt_o,
+    // Store Unit
+    input  logic                                       stu_exception_i
   );
 
   import cf_math_pkg::idx_width;
@@ -278,6 +280,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       automatic vlen_t               effective_vector_body_length;
       automatic vaddr_t              vrf_addr;
 
+      // Bank we are currently requesting
+      automatic int bank = requester_metadata_q.addr[idx_width(NrBanks)-1:0];
+
       // Maintain state
       state_d     = state_q;
       requester_metadata_d = requester_metadata_q;
@@ -378,8 +383,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
           end : waw_counters_update
 
           if (operand_queue_ready_i[requester_index]) begin : op_queue_ready
-            // Bank we are currently requesting
-            automatic int bank = requester_metadata_q.addr[idx_width(NrBanks)-1:0];
             automatic vlen_t num_bytes;
 
             // Operand request
@@ -440,6 +443,18 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               end : op_req_valid
             end : req_finished
           end : op_queue_ready
+
+          // Kill all requests in case of exceptions
+          // NOTE: only the VSTU can generate exceptions mid-way through a VRF read
+          if ( ( requester_index == StA ) 
+                & stu_exception_i 
+              ) begin : vstu_exception
+            // TODO: this goes to the rr_arb_trees below, needs to be flushed from there
+            // Flush this request
+            operand_req[bank][requester_index] = '0;
+            // Clear metadata
+            requester_metadata_d = '0;
+          end : vstu_exception
         end : state_q_REQUESTING
       endcase // state_q
       // Always keep the hazard bits up to date with the global hazard table
