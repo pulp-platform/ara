@@ -195,8 +195,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
   localparam unsigned DataWidthB = DataWidth / 8;
   
-  vlen_t vstart_lane;
-
   always_comb begin: p_vldu
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;
@@ -374,7 +372,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       end : axi_finish
 
       // Finished issuing results
-      if (vinsn_issue_valid && (issue_cnt_bytes_d == '0)) begin : vrf_results_finish
+      if (vinsn_issue_valid && issue_cnt_bytes_d == '0 ) begin : vrf_results_finish
         // Increment vector instruction queue pointers and counters
         vinsn_queue_d.issue_cnt -= 1;
         if (vinsn_queue_q.issue_pnt == (VInsnQueueDepth-1)) begin : issue_pnt_overflow
@@ -466,11 +464,33 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
                               ) << unsigned'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
     end : vinsn_done
 
+    /////////////////////////
+    //  Handle exceptions  //
+    /////////////////////////
+    
     // Clear instruction queue in case of exceptions from addrgen
-    if ( addrgen_exception_valid_i ) begin : exception
+    if ( vinsn_issue_valid & addrgen_exception_valid_i ) begin : exception
       // Signal done to sequencer
       pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
-      // Clear counters and flags
+
+      // Signal complete load
+      load_complete_o = 1'b1;
+
+      // Update the commit counters and pointers
+      vinsn_queue_d.commit_cnt -= 1;
+      if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1)
+        vinsn_queue_d.commit_pnt = '0;
+      else
+        vinsn_queue_d.commit_pnt += 1;
+
+      // Increment vector instruction queue pointers and counters
+      vinsn_queue_d.issue_cnt -= 1;
+      if (vinsn_queue_q.issue_pnt == (VInsnQueueDepth-1)) begin : issue_pnt_overflow
+        vinsn_queue_d.issue_pnt = '0;
+      end : issue_pnt_overflow
+      else begin : issue_pnt_increment
+        vinsn_queue_d.issue_pnt += 1;
+      end : issue_pnt_increment
     end : exception
 
     //////////////////////////////

@@ -35,6 +35,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                    load_complete_o,
     output logic                    store_complete_o,
     output logic                    store_pending_o,
+    output logic                    stu_exception_o,
     // Interface with the sequencer
     input  pe_req_t                 pe_req_i,
     input  logic                    pe_req_valid_i,
@@ -92,6 +93,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   logic addrgen_exception_load, addrgen_exception_store;
   assign load_complete_o  = load_complete  | addrgen_exception_load;
   assign store_complete_o = store_complete | addrgen_exception_store;
+  assign stu_exception_o  = addrgen_exception_store;
 
   ///////////////////
   //  Definitions  //
@@ -158,7 +160,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i         (pe_vinsn_running_i         ),
     .addrgen_ack_o              (addrgen_ack_o              ),
     .addrgen_exception_o        ( addrgen_exception_o       ),
-    .addrgen_exception_vstart_o     ( addrgen_exception_vstart_o    ),
+    .addrgen_exception_vstart_o ( addrgen_exception_vstart_o ),
     .addrgen_exception_load_o   ( addrgen_exception_load    ),
     .addrgen_exception_store_o  ( addrgen_exception_store   ),
     // Interface with the lanes

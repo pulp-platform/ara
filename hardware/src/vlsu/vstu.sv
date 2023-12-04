@@ -342,6 +342,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.issue_pnt += 1;
       end : issue_pnt_increment
 
+      // Load issue_cnt_bytes_d for next instruction (if any)
       if (vinsn_queue_d.issue_cnt != 0) begin : issue_cnt_bytes_update
         issue_cnt_bytes_d = ( vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl - 
                         vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vstart
@@ -377,12 +378,46 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       end : instr_done
     end : axi_b_valid
 
+    ////////////////////////
+    //  Handle exceptions //
+    ////////////////////////
+
+    // Clear instruction from queue in case of exceptions from addrgen
+    if ( vinsn_issue_valid & addrgen_exception_valid_i ) begin : exception
+      // Bump issue counters and pointers of the vector instruction queue
+      vinsn_queue_d.issue_cnt -= 1;
+      issue_cnt_bytes_d = '0;
+      if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1) begin : issue_pnt_overflow
+        vinsn_queue_d.issue_pnt = 0;
+      end : issue_pnt_overflow
+      else begin : issue_pnt_increment
+        vinsn_queue_d.issue_pnt += 1;
+      end : issue_pnt_increment
+      
+      // Mark the vector instruction as being done
+      // if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done
+        // Signal done to sequencer
+        store_complete_o = 1'b1;
+
+        pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
+
+        // Update the commit counters and pointers
+        vinsn_queue_d.commit_cnt -= 1;
+        if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1) begin : commit_pnt_overflow
+          vinsn_queue_d.commit_pnt = '0;
+        end : commit_pnt_overflow
+        else begin : commit_pnt_increment
+          vinsn_queue_d.commit_pnt += 1;
+        end : commit_pnt_increment
+      // end : instr_done
+    end : exception
+
     //////////////////////////////
     //  Accept new instruction  //
     //////////////////////////////
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
-      pe_req_i.vfu == VFU_StoreUnit) begin : issue_cnt_bytes_init
+      pe_req_i.vfu == VFU_StoreUnit) begin : pe_req_valid
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -395,7 +430,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.accept_pnt += 1;
       vinsn_queue_d.issue_cnt += 1;
       vinsn_queue_d.commit_cnt += 1;
-    end : issue_cnt_bytes_init
+    end : pe_req_valid
   end: p_vstu
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
