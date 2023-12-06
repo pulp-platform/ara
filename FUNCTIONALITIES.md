@@ -47,7 +47,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector floating-point square-root instruction: `vfsqrt`
 - Vector floating-point min/max instructions: `vfmin`, `vfmax`
 - Vector floating-point sign-injection instructions: `vfsgnj`, `vfsgnjn`, `vfsgnjx`
-- Vecotr floating-point classify instruction: `vfclass`
+- Vector floating-point classify instruction: `vfclass`
 - Vector floating-point merge instruction: `vfmerge`
 - Vector floating-point move instruction: `vfmv`
 - Vector floating-point compare instructions: `vmfeq`, `vmfne`, `vmflt`, `vmfle`, `vmfgt`, `vmfge`
