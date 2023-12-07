@@ -428,7 +428,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 if (requester_metadata_d.len == '0) begin : req_zero_rescaled_vl
                   requester_metadata_d.len = 1;
                 end : req_zero_rescaled_vl
-                
+
                 // Mute the requisition if the vl is zero
                 if (operand_request_i[requester_index].vl == '0) begin : zero_vl
                   state_d                              = IDLE;
@@ -437,22 +437,22 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               end : op_req_valid
             end : req_finished
           end : op_queue_ready
-
-          // Kill all requests in case of exceptions
-          // NOTE: only the VSTU can generate exceptions mid-way through a VRF read
-          if ( ( requester_index == StA ) 
-                & stu_exception_i 
-              ) begin : vstu_exception
-            // TODO: this goes to the rr_arb_trees below, needs to be flushed from there
-            // Flush this request
-            operand_req[bank][requester_index] = '0;
-            // Clear metadata
-            requester_metadata_d = '0;
-          end : vstu_exception
         end : state_q_REQUESTING
       endcase // state_q
       // Always keep the hazard bits up to date with the global hazard table
       requester_metadata_d.hazard &= global_hazard_table_i[requester_metadata_d.id];
+
+      // Kill all store-unit requests in case of exceptions
+      if (stu_exception_i && (requester_index == StA)) begin : vstu_exception_idle
+        // Reset state
+        state_d = IDLE;
+        // Don't wake up the store queue (redundant, as it will be flushed anyway)
+        operand_queue_cmd_valid_o[StA] = 1'b0;
+        // Clear metadata
+        requester_metadata_d = '0;
+        // Flush this request
+        operand_req[bank][StA] = '0;
+      end : vstu_exception_idle
     end : operand_requester
 
     always_ff @(posedge clk_i or negedge rst_ni) begin

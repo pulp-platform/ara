@@ -73,6 +73,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [NrLanes-1:0] stu_operand;
   logic  [NrLanes-1:0] stu_operand_valid;
   logic  [NrLanes-1:0] stu_operand_ready;
+  logic stu_operand_flush;
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_regs
     fall_through_register #(
@@ -80,7 +81,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ) i_register (
       .clk_i     (clk_i                    ),
       .rst_ni    (rst_ni                   ),
-      .clr_i     (1'b0                     ),
+      .clr_i     (stu_operand_flush        ),
       .testmode_i(1'b0                     ),
       .data_i    (stu_operand_i[lane]      ),
       .valid_i   (stu_operand_valid_i[lane]),
@@ -197,6 +198,14 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   logic [$clog2(8*NrLanes)-1:0] vrf_word_start_byte;
   // First payload from the lanes? If yes, it can be offset by vstart.
   logic first_lane_payload_d, first_lane_payload_q;
+  // When an exception occurs, the operand queues will be flushed after StuExLat cycles.
+  // Therefore, the input register of the store unit needs to be flushed at the same time
+  // not to sample non-flushed data.
+  // We implement this mechanism with a simple counter.
+  logic stu_op_flush_cnt_en;
+  logic [idx_width(StuExLat):0] stu_op_flush_cnt_d, stu_op_flush_cnt_q;
+  // Flush when we have reached the threshold
+  assign stu_operand_flush = StuExLat == 0 ? stu_op_flush_cnt_en : stu_op_flush_cnt_q == StuExLat;
 
   always_comb begin: p_vstu
     // NOTE: these are out here only for debug visibility, they could go in p_vldu as automatic variables
@@ -230,6 +239,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     vrf_word_start_byte     = '0;
 
     first_payload_byte_d = first_payload_byte_q;
+    stu_op_flush_cnt_d   = stu_op_flush_cnt_q;
+
+    stu_op_flush_cnt_en = 1'b0;
 
     vrf_cnt_d = vrf_cnt_q;
     first_lane_payload_d = first_lane_payload_q;
@@ -404,7 +416,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     //  Handle exceptions //
     ////////////////////////
 
-    // Clear instruction from queue in case of exceptions from addrgen
+    // Clear instruction from queue and data in case of exceptions from addrgen
     if ( vinsn_issue_valid & addrgen_exception_valid_i ) begin : exception
       // Bump issue counters and pointers of the vector instruction queue
       vinsn_queue_d.issue_cnt -= 1;
@@ -415,6 +427,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       else begin : issue_pnt_increment
         vinsn_queue_d.issue_pnt += 1;
       end : issue_pnt_increment
+
+      // Clean the input data after StuExLat cycles
+      stu_op_flush_cnt_en = 1'b1;
 
       // Mark the vector instruction as being done
       // if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done
@@ -433,6 +448,15 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         end : commit_pnt_increment
       // end : instr_done
     end : exception
+
+    // Increase the flush counter until the threshold if we enabled it.
+    if (stu_op_flush_cnt_en || stu_op_flush_cnt_q != '0) begin
+      stu_op_flush_cnt_d = stu_op_flush_cnt_q + 1;
+    end
+    // Reset the counter if we are flushing the input operands.
+    if (stu_operand_flush) begin
+      stu_op_flush_cnt_d = '0;
+    end
 
     //////////////////////////////
     //  Accept new instruction  //
@@ -478,6 +502,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       first_payload_byte_q <= '0;
       first_lane_payload_q <= '0;
+      stu_op_flush_cnt_q   <= '0;
 
       vrf_cnt_q <= '0;
     end else begin
@@ -491,6 +516,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       first_payload_byte_q <= first_payload_byte_d;
       first_lane_payload_q <= first_lane_payload_d;
+      stu_op_flush_cnt_q   <= stu_op_flush_cnt_d;
 
       vrf_cnt_q <= vrf_cnt_d;
     end

@@ -2055,4 +2055,14 @@ package ara_pkg;
     return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp64
 
+  ////////////////
+  // Exceptions //
+  ////////////////
+
+  // End-to-end store exception latency, i.e.,
+  // the latency from the addrgen store exception to the opqueues.
+  // We keep it as a define to implement conditional declaration.
+  `define StuExLat 1
+  localparam int unsigned StuExLat = `StuExLat;
+
 endpackage : ara_pkg
