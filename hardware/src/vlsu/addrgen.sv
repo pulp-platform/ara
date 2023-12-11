@@ -105,6 +105,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     vew_e vew;
     logic is_load;
     logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
+    vlen_t vstart;
   } addrgen_req_t;
   addrgen_req_t addrgen_req;
   logic         addrgen_req_valid;
@@ -316,7 +317,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             vew     : pe_req_q.vtype.vsew,
             is_load : is_load(pe_req_q.op),
             // Unit-strided loads/stores trigger incremental AXI bursts.
-            is_burst: (pe_req_q.op inside {VLE, VSE})
+            is_burst: (pe_req_q.op inside {VLE, VSE}),
+            vstart  : pe_req_q.vstart
           };
           addrgen_req_valid = 1'b1;
 
@@ -353,7 +355,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           vew     : pe_req_q.vtype.vsew,
           is_load : is_load(pe_req_q.op),
           // Unit-strided loads/stores trigger incremental AXI bursts.
-          is_burst: 1'b0
+          is_burst: 1'b0,
+          vstart  : pe_req_q.vstart
         };
         addrgen_req_valid = 1'b1;
 
@@ -668,8 +671,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // In case of a misaligned store, reduce the effective width of the AXI transaction,
           // since the store unit does not support misalignments between the AXI bus and the lanes
           // BUG: this address check is not valid for indexed operations
-          if ((axi_addrgen_d.addr[clog2_AxiStrobeWidth-1:0] != '0) && !axi_addrgen_d.is_load)
-          begin
+          if (axi_addrgen_d.vstart != 0 && !axi_addrgen_d.is_load) begin
+            // vstart > 0 can create problems similar to the ones a misalignment would create.
+            // Limit the effective AXI bus width to the element width to avoid problems.
+            axi_addrgen_state_d = AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED;
+
+            eff_axi_dw_d     = 1 << axi_addrgen_d.vew;
+            eff_axi_dw_log_d = axi_addrgen_d.vew;
+          end else if ((axi_addrgen_d.addr[clog2_AxiStrobeWidth-1:0] != '0) && !axi_addrgen_d.is_load) begin
             // Calculate the start and the end addresses in the AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED state
             axi_addrgen_state_d = AXI_ADDRGEN_AXI_DW_STORE_MISALIGNED;
 

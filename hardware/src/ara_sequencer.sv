@@ -130,6 +130,84 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
   logic [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table_d;
 
+  ////////////////////////
+  // Start and End lane //
+  ////////////////////////
+
+  pe_req_t pe_req_d;
+  logic    pe_req_valid_d;
+
+  // Some units outside the lanes, e.g., the store unit, always need
+  // to receive operands from all the lanes. For this reason,
+  // we need to know if each lane will need to fetch one operand
+  // more (mock operand) to balance the other lane true operands.
+  // With vstart != 0 and EW != 64bit, this operation is a harder to be done
+  // within the lanes without further help.
+  // Therefore, we calculate here the start and end lanes, i.e., the lanes
+  // that respectively will provide the first and last true element of
+  // the computation.
+  logic [$clog2(NrLanes)-1:0] start_lane, end_lane;
+  // Buffers to simplify the code reading
+  logic [$clog2(8*NrLanes)-1:0] buf8;
+  logic [$clog2(4*NrLanes)-1:0] buf16;
+  logic [$clog2(2*NrLanes)-1:0] buf32;
+
+  always_comb begin
+    // start_lane and end_lane has default values in the unique case statement already
+    buf8       = '0;
+    buf16      = '0;
+    buf32      = '0;
+
+    // Start lane
+    // Number of elements in a single L*64-bit fetch: (NrLanes << (64 - pe_req_d.vtype.vsew)).
+    // vstart / (NrLanes << (64 - pe_req_d.vtype.vsew)) -> don't care.
+    // vstart % NrLanes -> our starting lane if:
+    // (vstart % (NrLanes << (64 - pe_req_d.vtype.vsew))) / NrLanes.
+    // Otherwise, the starting lane continues to be the 0th.
+
+    // End lane
+    // Number of elements in a single L*64-bit fetch: (NrLanes << (64 - pe_req_d.vtype.vsew)).
+    // vl / (NrLanes << (64 - pe_req_d.vtype.vsew)) -> don't care.
+    // (vl % NrLanes) - 1 -> our end lane if:
+    // (vl % (NrLanes << (64 - pe_req_d.vtype.vsew)) - 1) / NrLanes.
+    // With the end lane we should subtract 1 since vl represents a number of
+    // elements and NOT an index.
+    unique case (pe_req_d.vtype.vsew)
+      EW8: begin
+        start_lane = &pe_req_d.vstart[$clog2(8*NrLanes)-1:$clog2(NrLanes)]
+                   ? pe_req_d.vstart[$clog2(NrLanes)-1:0]
+                   : '0;
+        buf8       = pe_req_d.vl[$clog2(8*NrLanes)-1:0] - 1;
+        end_lane   = !(|buf8[$clog2(8*NrLanes)-1:$clog2(NrLanes)])
+                   ? pe_req_d.vl[$clog2(NrLanes)-1:0] - 1
+                   : '1;
+      end
+      EW16: begin
+        start_lane = &pe_req_d.vstart[$clog2(4*NrLanes)-1:$clog2(NrLanes)]
+                   ? pe_req_d.vstart[$clog2(NrLanes)-1:0]
+                   : '0;
+        buf16      = pe_req_d.vl[$clog2(4*NrLanes)-1:0] - 1;
+        end_lane   = !(|buf16[$clog2(4*NrLanes)-1:$clog2(NrLanes)])
+                   ? pe_req_d.vl[$clog2(NrLanes)-1:0] - 1
+                   : '1;
+      end
+      EW32: begin
+        start_lane = &pe_req_d.vstart[$clog2(2*NrLanes)-1:$clog2(NrLanes)]
+                   ? pe_req_d.vstart[$clog2(NrLanes)-1:0]
+                   : '0;
+        buf32      = pe_req_d.vl[$clog2(2*NrLanes)-1:0] - 1;
+        end_lane   = !(|buf32[$clog2(2*NrLanes)-1:$clog2(NrLanes)])
+                   ? pe_req_d.vl[$clog2(NrLanes)-1:0] - 1
+                   : '1;
+      end
+      // EW64, default
+      default: begin
+        start_lane = pe_req_d.vstart[$clog2(NrLanes)-1:0];
+        end_lane   = pe_req_d.vl[$clog2(NrLanes)-1:0] - 1;
+      end
+    endcase
+  end
+
   /////////////////
   //  Sequencer  //
   /////////////////
@@ -145,9 +223,6 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   } vreg_access_t;
   vreg_access_t [31:0] read_list_d, read_list_q;
   vreg_access_t [31:0] write_list_d, write_list_q;
-
-  pe_req_t pe_req_d;
-  logic    pe_req_valid_d;
 
   // This function determines the VFU responsible for handling this operation.
   function automatic vfu_e vfu(ara_op_e op);
@@ -356,6 +431,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               wide_fp_imm   : ara_req_i.wide_fp_imm,
               cvt_resize    : ara_req_i.cvt_resize,
               scale_vl      : ara_req_i.scale_vl,
+              start_lane    : start_lane,
+              end_lane      : end_lane,
               vl            : ara_req_i.vl,
               vstart        : ara_req_i.vstart,
               vtype         : ara_req_i.vtype,

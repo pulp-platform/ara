@@ -257,19 +257,17 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       };
       vfu_operation_valid_d = (vfu_operation_d.vfu != VFU_None) ? 1'b1 : 1'b0;
 
-      // Vector length calculation
+      // Vector length calculation for the
       vfu_operation_d.vl = pe_req.vl / NrLanes;
       // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
       if (lane_id_i < pe_req.vl[idx_width(NrLanes)-1:0]) vfu_operation_d.vl += 1;
 
-      // Vector start calculation
-      // TODO: check for LMUL = 4, 8
-      // TODO: check for SEW != 64
-      vfu_operation_d.vstart = pe_req.vstart / NrLanes; // High bits
-      // If lane_id_i < (vstart % NrLanes), this lane needs to execute one micro-operation less.
-      if (lane_id_i < pe_req.vstart[idx_width(NrLanes)-1:0]) begin : adjust_vstart_lane
-        vfu_operation_d.vstart += 1;
-      end : adjust_vstart_lane
+      // Calculate the start element for Lane[i]. This will be forwarded to both opqueues
+      // and operand requesters, with some light modification in the case of a vslide.
+      // Regardless of the EW, the start element of Lane[i] is "vstart / NrLanes".
+      // If vstart deos not divide NrLanes perfectly, some low-index lanes will send
+      // mock data to balance the payload.
+      vfu_operation_d.vstart = pe_req.vstart / NrLanes;
 
       // Mark the vector instruction as running
       vinsn_running_d[pe_req.id] = (vfu_operation_d.vfu != VFU_None) ? 1'b1 : 1'b0;
@@ -479,16 +477,16 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv    : pe_req.conversion_vs1,
             scale_vl: pe_req.scale_vl,
             vtype   : pe_req.vtype,
-            // Since this request goes outside of the lane, we might need to request an
-            // extra operand regardless of whether it is valid in this lane or not.
-            vl      : pe_req.vl / NrLanes,
+            vl      : vfu_operation_d.vl,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
             default : '0
           };
-          // vl is not an integer multiple of NrLanes
-          // I.e., ( ( pe_req.vl / NrLanes * NrLanes ) == vl ) <=> ( ( vl % NrLanes ) != 0 )
-          if ( ( operand_request[StA].vl * NrLanes ) != pe_req.vl ) begin : tweak_vl_StA
+          // Since this request goes outside of the lane, we might need to request an
+          // extra operand regardless of whether it is valid in this lane or not.
+          // This is done to balance the data received by the store unit, which expects
+          // L*64-bits packets only.
+          if (lane_id_i > pe_req.end_lane) begin : tweak_vl_StA
             operand_request[StA].vl += 1;
           end : tweak_vl_StA
           operand_request_push[StA] = pe_req.use_vs1;
