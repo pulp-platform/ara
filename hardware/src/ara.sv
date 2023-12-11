@@ -40,10 +40,10 @@ module ara import ara_pkg::*; #(
     input  logic              scan_enable_i,
     input  logic              scan_data_i,
     output logic              scan_data_o,
-    
+
     // CSR input
     input  logic              en_ld_st_translation_i,
-    
+
     // Interface with CVA6's sv39 MMU
     // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
     output  ariane_pkg::exception_t        mmu_misaligned_ex_o,
@@ -179,6 +179,11 @@ module ara import ara_pkg::*; #(
 
     // Rescale vl taking into account the new and old EEW
     logic scale_vl;
+
+    // The lane that provides the first element of the computation
+    logic [$clog2(MaxNrLanes)-1:0] start_lane;
+    // The lane that provides the last element of the computation
+    logic [$clog2(MaxNrLanes)-1:0] end_lane;
 
     // 1st vector register operand
     logic [4:0] vs1;
@@ -549,7 +554,7 @@ module ara import ara_pkg::*; #(
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),
     .addrgen_operand_valid_i    (sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o    (addrgen_operand_ready                                 ),
-    // CSR input    
+    // CSR input
     .en_ld_st_translation_i,
     // Interface with CVA6's sv39 MMU
     .mmu_misaligned_ex_o   ,
