@@ -34,7 +34,7 @@ please find some of the most important points below.
     * :sparkles: `:sparkles:` When introducing a new feature
     * :art: `:art:` Improving the format/structure of the code
     * :zap: `:zap:` When improving performance
-    * :fire: `:fire` Removing code or files.
+    * :fire: `:fire` (When) removing code or files.
     * :memo: `:memo:` When writing docs
     * :bug: `:bug:` When fixing a bug
     * :wastebasket: `:wastebasket:` When removing code or files
