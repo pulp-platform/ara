@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Plot kernels-Vl performance plot
  - Print I$/D$ stall metrics
  - Add `spmv`, `conjugate_gradient`, and `gemv` kernels.
-
+ - Add `apb` to Hardware Dependencies
+   
 ### Changed
 
  - Optimize Jacobi2d

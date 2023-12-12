@@ -7,6 +7,7 @@ Ara has strong and weak dependencies on several packages. Such dependencies and 
 Ara needs the following hardware packages to work.
 
 - [axi](https://github.com/pulp-platform/axi)
+- [apb](https://github.com/pulp-platform/apb)
 - [common\_cells](https://github.com/pulp-platform/common_cells)
 - [common\_verification](https://github.com/pulp-platform/common_verification)
 - [cva6](https://github.com/openhwgroup/cva6)
