@@ -37,7 +37,6 @@ please find some of the most important points below.
     * :fire: `:fire` Removing code or files.
     * :memo: `:memo:` When writing docs
     * :bug: `:bug:` When fixing a bug
-    * :fire: `:fire:` When removing code or files
     * :wastebasket: `:wastebasket:` When removing code or files
     * :green_heart: `:green_heart:` When fixing the CI build
     * :construction_worker: `:construction_worker:` Adding CI build system
