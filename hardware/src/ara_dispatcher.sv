@@ -141,6 +141,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // We need to memorize the element width used to store each vector on the lanes, so that we are
   // able to deshuffle it when needed.
   rvv_pkg::vew_e [31:0] eew_d, eew_q;
+  // eew buffers for reshuffling
+  rvv_pkg::vew_e reshuffle_eew_vs1_d, reshuffle_eew_vs1_q;
+  rvv_pkg::vew_e reshuffle_eew_vs2_d, reshuffle_eew_vs2_q;
   // If the reg was not written, the content is unknown. No need to reshuffle
   // when writing with != EEW
   logic [31:0] eew_valid_d, eew_valid_q;
@@ -168,6 +171,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       rs_lmul_cnt_q       <= '0;
       rs_lmul_cnt_limit_q <= '0;
       rs_mask_request_q   <= 1'b0;
+      reshuffle_eew_vs1_q <= rvv_pkg::EW8;
+      reshuffle_eew_vs2_q <= rvv_pkg::EW8;
     end else begin
       state_q             <= state_d;
       state_qq            <= state_q;
@@ -180,6 +185,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       rs_lmul_cnt_q       <= rs_lmul_cnt_d;
       rs_lmul_cnt_limit_q <= rs_lmul_cnt_limit_d;
       rs_mask_request_q   <= rs_mask_request_d;
+      reshuffle_eew_vs1_q <= reshuffle_eew_vs1_d;
+      reshuffle_eew_vs2_q <= reshuffle_eew_vs2_d;
     end
   end
 
@@ -249,10 +256,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     lmul_vs2     = csr_vtype_q.vlmul;
     lmul_vs1     = csr_vtype_q.vlmul;
 
-    reshuffle_req_d  = reshuffle_req_q;
-    eew_old_buffer_d = eew_old_buffer_q;
-    eew_new_buffer_d = eew_new_buffer_q;
-    vs_buffer_d      = vs_buffer_q;
+    reshuffle_req_d     = reshuffle_req_q;
+    eew_old_buffer_d    = eew_old_buffer_q;
+    eew_new_buffer_d    = eew_new_buffer_q;
+    vs_buffer_d         = vs_buffer_q;
+    reshuffle_eew_vs1_d = reshuffle_eew_vs1_q;
+    reshuffle_eew_vs2_d = reshuffle_eew_vs2_q;
 
     rs_lmul_cnt_d       = '0;
     rs_lmul_cnt_limit_d = '0;
@@ -378,19 +387,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Prepare the information to reshuffle the vector registers during the next cycles
             // Reshuffle in the following order: vd, v2, v1. The order is arbitrary.
             unique casez (reshuffle_req_d)
-              3'b??1: begin
-                eew_old_buffer_d = eew_q[insn.vmem_type.rd];
-                eew_new_buffer_d = ara_req_d.vtype.vsew;
-                vs_buffer_d      = insn.varith_type.rd;
-              end
               3'b?10: begin
                 eew_old_buffer_d = eew_q[insn.vmem_type.rs2];
-                eew_new_buffer_d = ara_req_d.eew_vs2;
+                eew_new_buffer_d = reshuffle_eew_vs2_q;
                 vs_buffer_d      = insn.varith_type.rs2;
               end
               3'b100: begin
                 eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
-                eew_new_buffer_d = ara_req_d.eew_vs1;
+                eew_new_buffer_d = reshuffle_eew_vs1_q;
                 vs_buffer_d      = insn.varith_type.rs1;
               end
               default:;
@@ -3167,6 +3171,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         reshuffle_req_d = {ara_req_d.use_vs1 && (ara_req_d.eew_vs1    != eew_q[ara_req_d.vs1]) && eew_valid_q[ara_req_d.vs1] && in_lane_op,
                            ara_req_d.use_vs2 && (ara_req_d.eew_vs2    != eew_q[ara_req_d.vs2]) && eew_valid_q[ara_req_d.vs2] && in_lane_op,
                            ara_req_d.use_vd  && (ara_req_d.vtype.vsew != eew_q[ara_req_d.vd ]) && eew_valid_q[ara_req_d.vd ] && csr_vl_q != (VLENB >> ara_req_d.vtype.vsew)};
+        // Mask out requests if they refer to the same register!
+        reshuffle_req_d &= {
+          (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
+          (insn.varith_type.rs2 != insn.varith_type.rd),
+          1'b1};
 
         // Prepare the information to reshuffle the vector registers during the next cycles
         // Reshuffle in the following order: vd, v2, v1. The order is arbitrary.
@@ -3207,6 +3216,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           LMUL_8:  rs_lmul_cnt_limit_d = 7;
           default: rs_lmul_cnt_limit_d = 0;
         endcase
+
+        // Save info for next reshuffles
+        reshuffle_eew_vs1_d = ara_req_d.eew_vs1;
+        reshuffle_eew_vs2_d = ara_req_d.eew_vs2;
 
         // Reshuffle
         state_d = RESHUFFLE;
