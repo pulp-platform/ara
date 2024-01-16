@@ -25,6 +25,10 @@
 void fmatmul(double *c, const double *a, const double *b, unsigned long int m,
              unsigned long int n, unsigned long int p);
 
+void fmatmul_scalar(double *c, const double *a, const double *b,
+             const unsigned long int M, const unsigned long int N,
+             const unsigned long int P);
+
 void fmatmul_4x4(double *c, const double *a, const double *b,
                  unsigned long int m, unsigned long int n, unsigned long int p);
 void fmatmul_vec_4x4_slice_init();
