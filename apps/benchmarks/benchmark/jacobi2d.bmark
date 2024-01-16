@@ -106,10 +106,15 @@ void warm_caches(uint64_t heat, DATA_TYPE* A_fixed_v, DATA_TYPE* B_fixed_v) {
   volatile double buf;
 
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     j2d_v(R, C, A_fixed_v, B_fixed_v, TSTEPS);
 #ifdef AD_HOC_WARMING
   for (uint64_t k = 0; k < R*C; ++k)
     buf = (volatile double)* &(A_fixed_v[k]);
+#endif
+#else
+// scalar warming
+    j2d_s(R, C, A_fixed_v, B_fixed_v, TSTEPS);
 #endif
 }
 
@@ -130,7 +135,11 @@ int main() {
   // Measure vector kernel execution
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   j2d_v(R, C, A_fixed_v, B_fixed_v, TSTEPS);
+#else
+  j2d_s(R, C, A_fixed_v, B_fixed_v, TSTEPS);
+#endif
   stop_timer();
   int64_t runtime = get_timer();
   // Print unpadded size
