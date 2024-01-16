@@ -32,7 +32,11 @@ extern int result_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     run_vector(wall, result_v, cols, rows, num_runs);
+#else
+    run(wall, result_v, cols, rows, num_runs);
+#endif
 }
 
 int main() {
@@ -58,11 +62,19 @@ int main() {
   HW_CNT_READY;
   if (cols > NR_LANES * 128) {
     start_timer();
+#ifndef SCALAR
     run_vector(wall, result_v, cols, rows, num_runs);
+#else
+    run(wall, result_v, cols, rows, num_runs);
+#endif
     stop_timer();
   } else {
     start_timer();
+#ifndef SCALAR
     run_vector_short_m4(wall, result_v, cols, rows, num_runs, neutral_value);
+#else
+    run(wall, result_v, cols, rows, num_runs, neutral_value);
+#endif
     stop_timer();
   }
 
