@@ -43,7 +43,11 @@ void warm_caches(uint64_t heat) {
   volatile double buf;
 
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     fconv3d_CHx7x7(o, i, f, M, N, CH, F);
+#else
+    fconv3d_CVxFxF(o, i, f, M, N, CH, F);
+#endif
 // The following artificial warming ensures, with a larger cache,
 // not to experience any cache misses
 #ifdef AD_HOC_WARMING
@@ -64,7 +68,11 @@ int main() {
   HW_CNT_READY;
   start_timer();
   if (F == 7)
+#ifndef SCALAR
     fconv3d_CHx7x7(o, i, f, M, N, CH, F);
+#else
+    fconv3d_CVxFxF(o, i, f, M, N, CH, F);
+#endif
   else {
     printf("Error: the filter size is different from 7.\n");
     return -1;

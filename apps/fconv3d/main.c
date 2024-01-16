@@ -85,7 +85,11 @@ int main() {
   // Call the main kernel, and measure cycles
   start_timer();
   if (F == 7)
+#ifndef SCALAR
     fconv3d_CHx7x7(o, i, f, M, N, CH, F);
+#else
+    fconv3d_CHxFxF_scalar(golden_o, i, f, M, N, CH, F);
+#endif
   else
     printf("Error: the filter size is different from 7.\n");
   stop_timer();
