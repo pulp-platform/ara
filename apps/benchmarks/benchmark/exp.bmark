@@ -43,7 +43,11 @@ extern float gold_results_f32[] __attribute__((aligned(4 * NR_LANES)));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     exp_1xf64_asm_bmark(exponents_f64, results_f64, N_f64);
+#else
+    exp_1xf64_scalar_bmark(exponents_f64, results_f64, N_f64);
+#endif
 }
 
 int main() {
@@ -57,7 +61,11 @@ int main() {
 
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   exp_1xf64_asm_bmark(exponents_f64, results_f64, N_f64);
+#else
+  exp_1xf64_scalar_bmark(exponents_f64, results_f64, N_f64);
+#endif
   stop_timer();
 
   runtime = get_timer();

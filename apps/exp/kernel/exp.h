@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
 #include "riscv_vector.h"
 
@@ -160,3 +161,6 @@ inline vfloat32m1_t __exp_2xf32(vfloat32m1_t x, size_t gvl) {
   y = vfmul_vv_f32m1(y, tmp4, gvl);
   return y;
 }
+
+void exp_1xf64_scalar_bmark(double *exponents, double *results, size_t len);
+void exp_1xf32_scalar_bmark(float *exponents, float *results, size_t len);

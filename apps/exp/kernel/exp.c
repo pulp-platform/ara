@@ -245,3 +245,15 @@ void exp_1xf64_asm_bmark(double *exponents, double *results, size_t len) {
     asm("vsll.vv v18, v18, v19" ::: "v18");
     asm("vfmul.vv v5, v5, v18"  ::: "v5");
 */
+
+void exp_1xf64_scalar_bmark(double *exponents, double *results, size_t len) {
+  for (unsigned int idx = 0; idx < len; ++idx) {
+    results[idx] = exp(exponents[idx]);
+  }
+}
+
+void exp_1xf32_scalar_bmark(float *exponents, float *results, size_t len) {
+  for (unsigned int idx = 0; idx < len; ++idx) {
+    results[idx] = exp(exponents[idx]);
+  }
+}

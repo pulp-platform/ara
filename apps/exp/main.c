@@ -56,6 +56,7 @@ int main() {
 
   printf("Executing exponential on %d 64-bit data...\n", N_f64);
 
+#ifndef SCALAR
   start_timer();
   exp_1xf64_bmark(exponents_f64, results_f64, N_f64);
   stop_timer();
@@ -70,6 +71,19 @@ int main() {
 
   runtime = get_timer();
   printf("The execution took %d cycles.\n", runtime);
+#else
+  start_timer();
+  exp_1xf64_scalar_bmark(exponents_f64, results_f64, N_f64);
+  stop_timer();
+  runtime = get_timer();
+  printf("The execution took %d cycles.\n", runtime);
+
+  start_timer();
+  exp_1xf32_scalar_bmark(exponents_f32, results_f32, N_f32);
+  stop_timer();
+  runtime = get_timer();
+  printf("The execution took %d cycles.\n", runtime);
+#endif
 
 #ifdef CHECK
   printf("Checking results:\n");
