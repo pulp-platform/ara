@@ -37,6 +37,7 @@
 
 extern unsigned long int NFFT;
 
+extern float          twiddle[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern float twiddle_vec_reim[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern v2f            samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern v2f          samples_s[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
@@ -45,9 +46,13 @@ extern float     samples_reim[] __attribute__((aligned(32 * NR_LANES), section("
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     fft_r2dif_vec(samples_reim_s, samples_reim_s + NFFT,
                 twiddle_vec_reim, twiddle_vec_reim + ((NFFT >> 1) * (31 - __builtin_clz(NFFT))),
                 mask_addr_vec, index_ptr, NFFT);
+#else
+  Radix2FFT_DIF_float((float *)samples_s, twiddle, NFFT, 1000);
+#endif
 }
 
 int main() {
@@ -59,9 +64,13 @@ int main() {
 
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   fft_r2dif_vec(samples_reim, samples_reim + NFFT,
                 twiddle_vec_reim, twiddle_vec_reim + ((NFFT >> 1) * (31 - __builtin_clz(NFFT))),
                 mask_addr_vec, index_ptr, NFFT);
+#else
+  Radix2FFT_DIF_float((float *)samples, twiddle, NFFT, 1000);
+#endif
   stop_timer();
 
   int64_t runtime = get_timer();
