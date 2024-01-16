@@ -42,7 +42,11 @@ extern float crops_data_vec[];
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     roi_align_fake_kernel_asm(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
+#else
+    roi_align_fake_kernel_scalar(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
+#endif
 }
 
 int main() {
@@ -57,7 +61,11 @@ int main() {
   // Vector benchmark
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   roi_align_fake_kernel_asm(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
+#else
+#endif
+  roi_align_fake_kernel_scalar(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
   stop_timer();
 
   runtime = get_timer();

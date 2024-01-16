@@ -560,3 +560,37 @@ void roi_align_fake_kernel_asm(float *pimage, float *crops_data,
     z += vl * channel_elements;
   }
 }
+
+// Scalar version of the central kernel
+void roi_align_fake_kernel_scalar(float *pimage, float *crops_data,
+                               int left_x_index, int right_x_index, int b,
+                               int y, size_t depth) {
+  volatile float x_lerp = 0.14135;
+  volatile float y_lerp = 0.4363;
+  volatile int image_channel_elements = 64;
+  volatile int channel_elements = 32;
+  volatile int crop_elements = 5;
+  volatile int crop_width = 3;
+  volatile int tyiw = 9;
+  volatile int byiw = 7;
+  volatile int x = 11;
+  volatile int k = 0;
+  volatile int z = 0;
+
+        for (int d = 0; d < depth; ++d) {
+          const float top_left =
+              pimage[tyiw + left_x_index];
+          const float top_right =
+              pimage[tyiw + right_x_index];
+          const float bottom_left =
+              pimage[byiw + left_x_index];
+          const float bottom_right =
+              pimage[byiw + right_x_index];
+
+          const float top = top_left + (top_right - top_left) * x_lerp;
+          const float bottom =
+              bottom_left + (bottom_right - bottom_left) * x_lerp;
+
+          crops_data[crop_elements * b + y * crop_width + x] = top + (bottom - top) * y_lerp;
+        }
+}
