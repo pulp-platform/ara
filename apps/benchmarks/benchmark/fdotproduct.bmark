@@ -57,7 +57,11 @@ dtype r;
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     fdotp_v64b(v64a, v64b, 128);
+#else
+    fdotp_s64b(v64a, v64b, 128);
+#endif
 }
 
 int main() {
@@ -76,17 +80,29 @@ int main() {
   // lead to artificial slow-down
   if (sizeof(r) == 8) {
     start_timer();
+#ifndef SCALAR
     res64_v = fdotp_v64b(v64a, v64b, avl);
+#else
+    res64_v = fdotp_s64b(v64a, v64b, avl);
+#endif
     stop_timer();
   } else
   if (sizeof(r) == 4) {
     start_timer();
+#ifndef SCALAR
     res32_v = fdotp_v32b(v32a, v32b, avl);
+#else
+    res32_v = fdotp_s32b(v32a, v32b, avl);
+#endif
     stop_timer();
   } else
   if (sizeof(r) == 2) {
     start_timer();
+#ifndef SCALAR
     res16_v = fdotp_v16b(v16a, v16b, avl);
+#else
+    res16_v = fdotp_s16b(v16a, v16b, avl);
+#endif
     stop_timer();
   }
 
