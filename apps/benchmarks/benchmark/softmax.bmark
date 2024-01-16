@@ -42,7 +42,11 @@ extern float o_v[] __attribute__((aligned(4 * NR_LANES)));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     softmax_vec(i, o_v, channels, innerSize);
+#else
+    softmax(i, o_v, channels, innerSize);
+#endif
 }
 
 int main() {
@@ -55,7 +59,11 @@ int main() {
 
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   softmax_vec(i, o_v, channels, innerSize);
+#else
+  softmax(i, o_v, channels, innerSize);
+#endif
   stop_timer();
 
   runtime = get_timer();
