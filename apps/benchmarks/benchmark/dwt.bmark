@@ -42,7 +42,11 @@ extern float    buf[] __attribute__((aligned(4 * NR_LANES)));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     gsl_wavelet_transform_vector(data_s, DWT_LEN, buf, 0);
+#else
+    gsl_wavelet_transform(data_s, DWT_LEN, buf, 0);
+#endif
 }
 
 int main() {
@@ -63,7 +67,11 @@ int main() {
 
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   gsl_wavelet_transform_vector(data_v, DWT_LEN, buf, first_iter_only);
+#else
+  gsl_wavelet_transform(data_v, DWT_LEN, buf, first_iter_only);
+#endif
   stop_timer();
 
   // Number of cycles
