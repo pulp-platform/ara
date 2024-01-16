@@ -43,7 +43,11 @@ extern       float   o_gold[] __attribute__((aligned(4 * NR_LANES)));;
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
+#ifndef SCALAR
     dropout_vec(N, I, SCALE, SEL, o);
+#else
+    dropout_gold(N, I, SCALE, SEL, o);
+#endif
 }
 
 int main() {
@@ -56,7 +60,11 @@ int main() {
   // Call the main kernel, and measure cycles
   HW_CNT_READY;
   start_timer();
+#ifndef SCALAR
   dropout_vec(N, I, SCALE, SEL, o);
+#else
+  dropout_gold(N, I, SCALE, SEL, o);
+#endif
   stop_timer();
 
   // Performance metrics
