@@ -126,6 +126,23 @@ int main() {
   stop_timer();
   runtime_v = get_timer();
   printf("Vector benchmark complete.\n");
+  printf("Scalar benchmark running...\n");
+  roi_align_fake_kernel_scalar(image_data, crops_data, left_x_index,
+                            right_x_index, b, y, DEPTH);
+  printf("Scalar benchmark complete...\n");
+
+  // Check for errors
+  err = verify_result(crops_data, crops_data_vec, result_size, DELTA);
+
+  if (err != 0) {
+    // Fix return code to match the index of the faulty element
+    err = (err == -1) ? 0 : err;
+    printf("Failed. Index %d: %x != %x\n", err, *((uint32_t *)&crops_data[err]),
+           *((uint32_t *)&crops_data_vec[err]));
+    return err + 1;
+  } else {
+    printf("Passed.\n");
+  }
 
 #endif
 

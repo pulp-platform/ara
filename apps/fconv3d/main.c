@@ -88,7 +88,7 @@ int main() {
 #ifndef SCALAR
     fconv3d_CHx7x7(o, i, f, M, N, CH, F);
 #else
-    fconv3d_CHxFxF_scalar(golden_o, i, f, M, N, CH, F);
+    fconv3d_CHx7x7(o, i, f, M, N, CH, F);
 #endif
   else
     printf("Error: the filter size is different from 7.\n");

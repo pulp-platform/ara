@@ -27,6 +27,7 @@
 extern int32_t num_runs;
 extern int32_t rows;
 extern int32_t cols;
+extern int      src[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern int     wall[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 extern int result_v[] __attribute__((aligned(4 * NR_LANES), section(".l2")));
 
@@ -35,7 +36,7 @@ void warm_caches(uint64_t heat) {
 #ifndef SCALAR
     run_vector(wall, result_v, cols, rows, num_runs);
 #else
-    run(wall, result_v, cols, rows, num_runs);
+    run(wall, result_v, src, cols, rows, num_runs);
 #endif
 }
 
@@ -65,7 +66,7 @@ int main() {
 #ifndef SCALAR
     run_vector(wall, result_v, cols, rows, num_runs);
 #else
-    run(wall, result_v, cols, rows, num_runs);
+    run(wall, result_v, src, cols, rows, num_runs);
 #endif
     stop_timer();
   } else {
@@ -73,7 +74,7 @@ int main() {
 #ifndef SCALAR
     run_vector_short_m4(wall, result_v, cols, rows, num_runs, neutral_value);
 #else
-    run(wall, result_v, cols, rows, num_runs, neutral_value);
+    run(wall, result_v, src, cols, rows, num_runs);
 #endif
     stop_timer();
   }

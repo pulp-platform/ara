@@ -26,9 +26,9 @@ void fmatmul_scalar(double *c, const double *a, const double *b,
              const unsigned long int P) {
     for (unsigned int i = 0; i < M; i++) {
         for (unsigned int j = 0; j < P; j++) {
-            c[i][j] = 0;
+            c[i * P + j] = 0;
             for (unsigned int k = 0; k < N; k++) {
-                c[i][j] += a[i][k] * b[k][j];
+                c[i * P + j] += a[i * N + k] * b[k * P + j];
             }
         }
     }

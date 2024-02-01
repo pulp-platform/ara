@@ -53,19 +53,19 @@
 extern int64_t event_trigger;
 
 // a - 2D matrix (as a 1D array), w - kernel
-double* conv3d_CHxFxF_scalar(double *o, double *i, double *f, int64_t M, int64_t N,
+double* fconv3d_CHxFxF_scalar(double *o, double *i, double *f, int64_t M, int64_t N,
                     int64_t C, int64_t F) {
     double acc;
-    int i;
+    int r;
     int j;
     int k1, k2;
     int l1, l2;
     int t1, t2;
     int ch;
 
-    for(i = 0; i < (M + 2*F - 1); i++)
+    for(r = 0; r < (M + 2*F - 1); r++)
     {
-        t1 = i * N; // loop invariants
+        t1 = r * N; // loop invariants
         for(j = 0; j < (N + 2*F - 1); j++)
         {
             acc = 0.0;
@@ -76,15 +76,13 @@ double* conv3d_CHxFxF_scalar(double *o, double *i, double *f, int64_t M, int64_t
                   t2 = k1 * F;  // loop invariants
                   for(l1 = F - 1, l2 = 0; l1 >= 0; l1--, l2++)
                   {
-                      acc += w[t2 + l1 + F * F * ch] * a[(i + k2) * N + (j + l2) + (M + 2*F - 1) * (N + 2*F - 1) * ch];
+                      acc += f[t2 + l1 + F * F * ch] * i[(r + k2) * (N + 2*F - 1) + (j + l2) + (M + 2*F - 1) * (N + 2*F - 1) * ch];
                   }
               }
             }
-            result[t1 + j] = acc;
+            o[t1 + j] = acc;
         }
     }
-
-    return result;
 }
 
 void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,

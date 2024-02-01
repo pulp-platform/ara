@@ -64,8 +64,8 @@ int main() {
 #ifndef SCALAR
   roi_align_fake_kernel_asm(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
 #else
+  roi_align_fake_kernel_asm(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
 #endif
-  roi_align_fake_kernel_scalar(image_data, crops_data_vec, 0, 0, 0, 0, DEPTH);
   stop_timer();
 
   runtime = get_timer();

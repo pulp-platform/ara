@@ -72,6 +72,7 @@ int main() {
   runtime = get_timer();
   printf("The execution took %d cycles.\n", runtime);
 #else
+  printf("SCALAR CODE! \n");
   start_timer();
   exp_1xf64_scalar_bmark(exponents_f64, results_f64, N_f64);
   stop_timer();

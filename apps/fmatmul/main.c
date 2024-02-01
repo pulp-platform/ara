@@ -93,6 +93,19 @@ int main() {
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
 
+#ifdef SCALAR
+    printf("Scalar code!\n");
+    // Verify scalar code
+    // Clear golden matrix
+    for (int r = 0; r < s; ++r) {
+      for (int c = 0; c < s; ++c) {
+        g[r * s + c] = 0;
+      }
+    }
+    // Run scalar on the ex-golden matrix
+    fmatmul_scalar(g, a, b, s, s, s);
+#endif
+
     // Verify the result only for s == M (to keep it simple)
     if (s == M) {
       printf("Verifying result...\n");

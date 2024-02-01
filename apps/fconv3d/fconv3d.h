@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-double* conv3d_CHxFxF_scalar(double *o, double *i, double *f, int64_t M, int64_t N,
+double* fconv3d_CHxFxF_scalar(double *o, double *i, double *f, int64_t M, int64_t N,
                     int64_t C, int64_t F);
 
 void fconv3d_CHx7x7(double *o, double *i, double *f, int64_t M, int64_t N,

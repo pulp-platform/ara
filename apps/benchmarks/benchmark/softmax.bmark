@@ -45,7 +45,7 @@ void warm_caches(uint64_t heat) {
 #ifndef SCALAR
     softmax_vec(i, o_v, channels, innerSize);
 #else
-    softmax(i, o_v, channels, innerSize);
+    softmax(i, o_v, buf, channels, innerSize);
 #endif
 }
 
@@ -62,7 +62,7 @@ int main() {
 #ifndef SCALAR
   softmax_vec(i, o_v, channels, innerSize);
 #else
-  softmax(i, o_v, channels, innerSize);
+  softmax(i, o_v, buf, channels, innerSize);
 #endif
   stop_timer();
 
