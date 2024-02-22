@@ -87,7 +87,7 @@ def exp(args, cycles):
 def softmax(args, cycles):
   channels    = int(args[0])
   insize      = int(args[1])
-  performance = 25 * channels * insize / cycles
+  performance = 34 * channels * insize / cycles
   return [insize, performance]
 def pathfinder(args, cycles):
   num_runs = int(args[0])
@@ -141,10 +141,10 @@ ideal_maxPerf = {
   'fconv3d'    : lambda l, s : 2 * l * 8/s,
   'jacobi2d'   : lambda l, s : l * 8/s,
   'dropout'    : lambda l, s : 4 * l / (2*s + 1/8),
-  'fft'        : lambda l, s : 6/5 * l * 8/s,
+  'fft'        : lambda l, s : 5/4 * l * 8/s,
   'dwt'        : lambda l, s : 4 * l / s,
-  'exp'        : lambda l, s : 28/23 * l * 8/s,
-  'softmax'    : lambda l, s : 32/25 * l * 8/s,
+  'exp'        : lambda l, s : 30/23 * l * 8/s,
+  'softmax'    : lambda l, s : 34/27 * l * 8/s,
   'pathfinder' : lambda l, s : l * 8/s,
   'dotproduct' : lambda l, s : l * 8/s,
   'fdotproduct': lambda l, s : l * 8/s,
@@ -161,14 +161,14 @@ real_maxPerf = {
   'fconv3d'    : lambda l, s : 2 * l * 8/s,
   'jacobi2d'   : lambda l, s : l * 8/s,
   'dropout'    : lambda l, s : 4 * l / (2*s + 1/8),
-  'fft'        : lambda l, s : 6/5 * l * 8/s,
+  'fft'        : lambda l, s : 5/4 * l * 8/s,
   'dwt'        : lambda l, s : 4 * l / s,
-  'exp'        : lambda l, s : 28/23 * l * 8/s,
-  'softmax'    : lambda l, s : 32/25 * l * 8/s,
+  'exp'        : lambda l, s : 30/23 * l * 8/s,
+  'softmax'    : lambda l, s : 34/27 * l * 8/s,
   'pathfinder' : lambda l, s : l * 8/s,
   'dotproduct' : lambda l, s : 4 * l/s,
   'fdotproduct': lambda l, s : 4 * l/s,
-  'roi_align'  : lambda l, s : 3/5 * l * 8/s,
+  'roi_align'  : lambda l, s : 9/5 * l * 4/s,
 }
 
 def main():
