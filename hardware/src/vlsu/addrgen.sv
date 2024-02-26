@@ -556,6 +556,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // implementation we can incur in deadlocks
         if (axi_addrgen_queue_empty || (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
             (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load)) begin
+          // Immediately assert valid_o
+          if (axi_addrgen_q.is_load) begin
+            axi_ar_valid_o = 1'b1;
+          end else begin
+            axi_aw_valid_o = 1'b1;
+          end
           if (!axi_addrgen_queue_full && axi_ax_ready) begin
             if (axi_addrgen_q.is_burst) begin
 
@@ -586,7 +592,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   burst  : BURST_INCR,
                   default: '0
                 };
-                axi_ar_valid_o = 1'b1;
               end
               // AW Channel
               else begin
@@ -600,7 +605,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   burst  : BURST_INCR,
                   default: '0
                 };
-                axi_aw_valid_o = 1'b1;
               end
 
               // Send this request to the load/store units
@@ -666,7 +670,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   burst  : BURST_INCR,
                   default: '0
                 };
-                axi_ar_valid_o = 1'b1;
               end
               // AW Channel
               else begin
@@ -678,7 +681,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   burst  : BURST_INCR,
                   default: '0
                 };
-                axi_aw_valid_o = 1'b1;
               end
 
               // Send this request to the load/store units
@@ -720,7 +722,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                     burst  : BURST_INCR,
                     default: '0
                   };
-                  axi_ar_valid_o = 1'b1;
                 end
                 // AW Channel
                 else begin
@@ -732,7 +733,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                     burst  : BURST_INCR,
                     default: '0
                   };
-                  axi_aw_valid_o = 1'b1;
                 end
 
                 // Send this request to the load/store units
