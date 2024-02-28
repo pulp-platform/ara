@@ -6,16 +6,6 @@ packages:
       Git: https://github.com/pulp-platform/apb.git
     dependencies:
     - common_cells
-  ariane:
-    revision: 2ebe023f7289300348c68e99267afcc03256f3ed
-    version: null
-    source:
-      Git: https://github.com/pulp-platform/cva6.git
-    dependencies:
-    - axi
-    - common_cells
-    - fpnew
-    - tech_cells_generic
   axi:
     revision: fccffb5953ec8564218ba05e20adbedec845e014
     version: 0.39.1
@@ -39,11 +29,21 @@ packages:
     source:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
-  fpnew:
-    revision: 3116391bf66660f806b45e212b9949c528b4e270
-    version: 0.7.0
+  cva6:
+    revision: 9338c2ca7cf1a47aef54322f89ce867825c3c8d5
+    version: null
     source:
-      Git: https://github.com/openhwgroup/cvfpu.git
+      Git: https://github.com/pulp-platform/cva6.git
+    dependencies:
+    - axi
+    - common_cells
+    - fpnew
+    - tech_cells_generic
+  fpnew:
+    revision: f231041c610f270ffc03cbdac38739ddb6426572
+    version: null
+    source:
+      Git: https://github.com/pulp-platform/cvfpu.git
     dependencies:
     - common_cells
     - fpu_div_sqrt_mvp
