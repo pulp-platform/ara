@@ -4,7 +4,7 @@
 //
 // Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
 // Description:
-// Ara's SoC, containing Ariane, Ara, and a L2 cache.
+// Ara's SoC, containing CVA6, Ara, and a L2 cache.
 
 module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // RVV Parameters
@@ -441,10 +441,55 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   assign hart_id = '0;
 
-  localparam ariane_pkg::ariane_cfg_t ArianeAraConfig = '{
-    RASDepth             : 2,
-    BTBEntries           : 32,
-    BHTEntries           : 128,
+  localparam config_pkg::cva6_cfg_t CVA6AraConfig = '{
+    NrCommitPorts         : 2,
+    AxiAddrWidth          : AxiAddrWidth,
+    AxiDataWidth          : AxiNarrowDataWidth,
+    AxiIdWidth            : AxiIdWidth,
+    AxiUserWidth          : 1,
+    NrLoadBufEntries      : 2,
+    FpuEn                 : 1,
+    XF16                  : FPUSupport[0],
+    XF16ALT               : 0,
+    XF8                   : 0,
+    XF8ALT                : 1,
+    RVA                   : 1,
+    RVB                   : 0,
+    RVV                   : 1,
+    RVC                   : 1,
+    RVH                   : 0,
+    RVZCB                 : 0,
+    XFVec                 : 0,
+    CvxifEn               : 0,
+    ZiCondExtEn           : 0,
+    RVSCLIC               : 0,
+    RVF                   : FPUSupport[1],
+    RVD                   : FPUSupport[2],
+    FpPresent             : 1,
+    NSX                   : 0,
+    FLen                  : 64,
+    RVFVec                : 0,
+    XF16Vec               : 0,
+    XF16ALTVec            : 0,
+    XF8Vec                : 0,
+    NrRgprPorts           : 0,
+    NrWbPorts             : 0,
+    EnableAccelerator     : 1,
+    RVS                   : 1,
+    RVU                   : 1,
+    HaltAddress           : 64'h800,
+    ExceptionAddress      : 64'h808,
+    RASDepth              : 2,
+    BTBEntries            : 32,
+    BHTEntries            : 128,
+    DmBaseAddress         : 64'h0,
+    TvalEn                : 1,
+    NrPMPEntries          : 0,
+    PMPCfgRstVal          : {16{64'h0}},
+    PMPAddrRstVal         : {16{64'h0}},
+    PMPEntryReadOnly      : 16'd0,
+    NOCType               : config_pkg::NOC_TYPE_AXI4_ATOP,
+    CLICNumInterruptSrc   : 0,
     // idempotent region
     NrNonIdempotentRules : 2,
     NonIdempotentAddrBase: {64'b0, 64'b0},
@@ -457,12 +502,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     NrCachedRegionRules  : 1,
     CachedRegionAddrBase : {DRAMBase},
     CachedRegionLength   : {DRAMLength},
-    //  cache config
-    AxiCompliant         : 1'b1,
-    SwapEndianess        : 1'b0,
-    // debug
-    DmBaseAddress        : 64'h0,
-    NrPMPEntries         : 0
+    MaxOutstandingStores  : 7,
+    DebugEn               : 1,
+    NonIdemPotenceEn      : 1,
+    AxiBurstWriteEn       : 0
   };
 
 `ifndef TARGET_GATESIM
@@ -471,7 +514,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
-    .ArianeCfg         (ArianeAraConfig      ),
+    .CVA6Cfg           (CVA6AraConfig        ),
     .AxiAddrWidth      (AxiAddrWidth         ),
     .AxiIdWidth        (AxiCoreIdWidth       ),
     .AxiNarrowDataWidth(AxiNarrowDataWidth   ),
@@ -558,5 +601,17 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   if (AxiIdWidth == 0)
     $error("[ara_soc] The AXI ID width must be greater than zero.");
+
+  if (RVVD(FPUSupport) && !CVA6AraConfig.RVD)
+    $error(
+      "[ara] Cannot support double-precision floating-point on Ara if CVA6 does not support it.");
+
+  if (RVVF(FPUSupport) && !CVA6AraConfig.RVF)
+    $error(
+      "[ara] Cannot support single-precision floating-point on Ara if CVA6 does not support it.");
+
+  if (RVVH(FPUSupport) && !CVA6AraConfig.XF16)
+    $error(
+      "[ara] Cannot support half-precision floating-point on Ara if CVA6 does not support it.");
 
 endmodule : ara_soc

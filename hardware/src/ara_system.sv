@@ -16,7 +16,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     // Support for fixed-point data types
     parameter fixpt_support_e                   FixPtSupport       = FixedPointEnable,
     // Ariane configuration
-    parameter ariane_pkg::ariane_cfg_t          ArianeCfg          = ariane_pkg::ArianeDefaultConfig,
+    parameter config_pkg::cva6_cfg_t            CVA6Cfg            = cva6_config_pkg::cva6_cfg,
     // AXI Interface
     parameter int                      unsigned AxiAddrWidth       = 64,
     parameter int                      unsigned AxiIdWidth         = 6,
@@ -112,35 +112,39 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   );
 `else
   cva6 #(
-    .ArianeCfg(ArianeCfg),
-    .cvxif_req_t (acc_pkg::accelerator_req_t),
-    .cvxif_resp_t (acc_pkg::accelerator_resp_t),
-    .AxiAddrWidth ( AxiAddrWidth ),
-    .AxiDataWidth ( AxiNarrowDataWidth ),
-    .AxiIdWidth ( AxiIdWidth ),
-    .axi_ar_chan_t (ariane_axi_ar_t),
-    .axi_aw_chan_t (ariane_axi_aw_t),
-    .axi_w_chan_t (ariane_axi_w_t),
-    .axi_req_t (ariane_axi_req_t),
-    .axi_rsp_t (ariane_axi_resp_t)
+    .CVA6Cfg          (CVA6Cfg                    ),
+    .cvxif_req_t      (acc_pkg::accelerator_req_t ),
+    .cvxif_resp_t     (acc_pkg::accelerator_resp_t),
+    .axi_ar_chan_t    (ariane_axi_ar_t            ),
+    .axi_aw_chan_t    (ariane_axi_aw_t            ),
+    .axi_w_chan_t     (ariane_axi_w_t             ),
+    .b_chan_t         (ariane_axi_b_t             ),
+    .r_chan_t         (ariane_axi_r_t             ),
+    .noc_req_t        (ariane_axi_req_t           ),
+    .noc_resp_t       (ariane_axi_resp_t          )
   ) i_ariane (
-    .clk_i            (clk_i                 ),
-    .rst_ni           (rst_ni                ),
-    .boot_addr_i      (boot_addr_i           ),
-    .hart_id_i        (hart_id               ),
-    .irq_i            ('0                    ),
-    .ipi_i            ('0                    ),
-    .time_irq_i       ('0                    ),
-    .debug_req_i      ('0                    ),
-    .rvfi_o           (                      ),
+    .clk_i            (clk_i                   ),
+    .rst_ni           (rst_ni                  ),
+    .boot_addr_i      (boot_addr_i             ),
+    .hart_id_i        (hart_id                 ),
+    .irq_i            ('0                      ),
+    .ipi_i            ('0                      ),
+    .time_irq_i       ('0                      ),
+    .debug_req_i      ('0                      ),
+    .clic_irq_valid_i ('0                      ),
+    .clic_irq_id_i    ('0                      ),
+    .clic_irq_level_i ('0                      ),
+    .clic_irq_priv_i  (riscv::priv_lvl_t'(2'b0)),
+    .clic_irq_shv_i   ('0                      ),
+    .clic_irq_ready_o (/* empty */             ),
+    .clic_kill_req_i  ('0                      ),
+    .clic_kill_ack_o  (/* empty */             ),
+    .rvfi_probes_o    (/* empty */             ),
     // Accelerator ports
-    .cvxif_req_o      (acc_req               ),
-    .cvxif_resp_i     (acc_resp_pack         ),
-    .l15_req_o        (                      ),
-    .l15_rtrn_i       ( '0                   ),
-    // Memory interface
-    .axi_req_o        (ariane_narrow_axi_req ),
-    .axi_resp_i       (ariane_narrow_axi_resp)
+    .cvxif_req_o      (acc_req                 ),
+    .cvxif_resp_i     (acc_resp_pack           ),
+    .noc_req_o        (ariane_narrow_axi_req   ),
+    .noc_resp_i       (ariane_narrow_axi_resp  )
   );
 `endif
 
