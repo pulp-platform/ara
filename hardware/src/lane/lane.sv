@@ -120,6 +120,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     resize_e cvt_resize;    // Resizing of FP conversions
 
     logic is_reduct; // Is this a reduction?
+    logic is_slide; // Is this a slide?
 
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion
