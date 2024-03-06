@@ -584,9 +584,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       output axi_addr_t                                 aligned_next_start_addr
   );
 
-    // POSSIBLE BUG: given this is really the maximum number of bytes per burst,
-    //                this assumes the burst length is always the maximum possible, i.e., 256.
-    automatic int unsigned max_burst_bytes = addr + (256 << eff_axi_dw_log);
+    automatic int unsigned max_burst_bytes = 256 << eff_axi_dw_log;
 
     // The final address can be found similarly...
     if (num_bytes >= max_burst_bytes) begin
