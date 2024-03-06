@@ -2906,9 +2906,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               acc_resp_o.resp_valid = 1'b1;
               acc_resp_o.exception  = ara_resp_i.exception;
               ara_req_valid_d       = 1'b0;
-              // In case of exception, modify vstart
+              // In case of exception, modify vstart and wait until the previous
+              // operations are over
               if ( ara_resp_i.exception.valid ) begin
                 csr_vstart_d = ara_resp_i.exception_vstart;
+                state_d = WAIT_IDLE;
               end
             end
             ara_req_d.eew_vs1 = ara_req_d.vtype.vsew; // This is the new vs1 EEW
