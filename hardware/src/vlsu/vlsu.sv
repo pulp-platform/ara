@@ -39,7 +39,6 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                    load_complete_o,
     output logic                    store_complete_o,
     output logic                    store_pending_o,
-    output logic                    stu_exception_o,
     // Interface with the sequencer
     input  pe_req_t                 pe_req_i,
     input  logic                    pe_req_valid_i,
@@ -54,6 +53,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t     [NrLanes-1:0] stu_operand_i,
     input  logic      [NrLanes-1:0] stu_operand_valid_i,
     output logic      [NrLanes-1:0] stu_operand_ready_o,
+    output logic                    stu_exception_flush_o,
     // Address generation operands
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  target_fu_e[NrLanes-1:0] addrgen_operand_target_fu_i,
@@ -64,7 +64,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      [NrLanes-1:0] mask_valid_i,
     output logic                    vldu_mask_ready_o,
     output logic                    vstu_mask_ready_o,
-    
+
     // CSR input
     input  logic                    en_ld_st_translation_i,
 
@@ -166,8 +166,6 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .addrgen_ack_o              (addrgen_ack_o              ),
     .addrgen_exception_o        ( addrgen_exception_o       ),
     .addrgen_exception_vstart_o ( addrgen_exception_vstart_o ),
-    .addrgen_exception_load_o   ( addrgen_exception_load    ),
-    .addrgen_exception_store_o  ( addrgen_exception_store   ),
     // Interface with the lanes
     .addrgen_operand_i          (addrgen_operand_i          ),
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
@@ -179,16 +177,16 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready  ),
     .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready  ),
 
-    // CSR input    
+    // CSR input
     .en_ld_st_translation_i,
     .mmu_misaligned_ex_o,
-    .mmu_req_o,        
-    .mmu_vaddr_o,      
-    .mmu_is_store_o,   
-    .mmu_dtlb_hit_i,   
-    .mmu_dtlb_ppn_i,   
+    .mmu_req_o,
+    .mmu_vaddr_o,
+    .mmu_is_store_o,
+    .mmu_dtlb_hit_i,
+    .mmu_dtlb_ppn_i,
     .mmu_valid_i,
-    .mmu_paddr_i,   
+    .mmu_paddr_i,
     .mmu_exception_i
   );
 
@@ -221,7 +219,6 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_ready_o         (pe_req_ready_o[OffsetLoad]),
     .pe_resp_o              (pe_resp_o[OffsetLoad]     ),
     // Interface with the address generator
-    .addrgen_exception_valid_i ( addrgen_ack_o & addrgen_exception_o.valid ),
     .axi_addrgen_req_i      (axi_addrgen_req           ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid     ),
     .axi_addrgen_req_ready_o(ldu_axi_addrgen_req_ready ),
@@ -273,7 +270,6 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_ready_o         (pe_req_ready_o[OffsetStore]),
     .pe_resp_o              (pe_resp_o[OffsetStore]     ),
     // Interface with the address generator
-    .addrgen_exception_valid_i ( addrgen_ack_o & addrgen_exception_o.valid ),
     .axi_addrgen_req_i      (axi_addrgen_req            ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid      ),
     .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready  ),
@@ -284,7 +280,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes
     .stu_operand_i          (stu_operand_i              ),
     .stu_operand_valid_i    (stu_operand_valid_i        ),
-    .stu_operand_ready_o    (stu_operand_ready_o        )
+    .stu_operand_ready_o    (stu_operand_ready_o        ),
+    .stu_exception_flush_o  (stu_exception_flush_o      )
   );
 
   //////////////////
