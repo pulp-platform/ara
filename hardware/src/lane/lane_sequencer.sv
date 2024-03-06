@@ -539,6 +539,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew      : pe_req.eew_vs2,
             conv     : pe_req.conversion_vs2,
             target_fu: ALU_SLDU,
+            is_slide : 1'b1,
             scale_vl : pe_req.scale_vl,
             vtype    : pe_req.vtype,
             vstart   : vfu_operation_d.vstart,
@@ -595,13 +596,14 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // This vector instruction uses masks
           operand_request[MaskM] = '{
-            id     : pe_req.id,
-            vs     : VMASK,
-            eew    : pe_req.vtype.vsew,
-            vtype  : pe_req.vtype,
-            vstart : vfu_operation_d.vstart,
-            hazard : pe_req.hazard_vm | pe_req.hazard_vd,
-            default: '0
+            id      : pe_req.id,
+            vs      : VMASK,
+            eew     : pe_req.vtype.vsew,
+            is_slide: 1'b1,
+            vtype   : pe_req.vtype,
+            vstart  : vfu_operation_d.vstart,
+            hazard  : pe_req.hazard_vm | pe_req.hazard_vd,
+            default : '0
           };
           operand_request_push[MaskM] = !pe_req.vm;
 

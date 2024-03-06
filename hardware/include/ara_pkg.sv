@@ -1019,6 +1019,7 @@ package ara_pkg;
     resize_e cvt_resize;    // Resizing of FP conversions
 
     logic is_reduct; // Is this a reduction?
+    logic is_slide; // Is this a slide?
 
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion
@@ -1028,7 +1029,7 @@ package ara_pkg;
     // Vector machine metadata
     rvv_pkg::vtype_t vtype;
     vlen_t vl;
-    vlen_t vstart;
+    vlen_t vstart; // In the lanes, this is NOT the architectural vstart
 
     // Hazards
     logic [NrVInsn-1:0] hazard;

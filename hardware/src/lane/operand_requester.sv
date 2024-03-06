@@ -303,9 +303,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Length of vector body in elements, i.e., vl - vstart
       vector_body_length = operand_request_i[requester_index].vl - operand_request_i[requester_index].vstart;
 
-      // Correct way on how to count packets
+      // Count the number of packets to fetch if we need to deshuffle.
+      // Slide operations use the vstart signal, which does NOT correspond to the architectural
+      // vstart, only when computing the fetch address. Ara supports architectural vstart > 0
+      // only for memory operations.
       vl_byte     = operand_request_i[requester_index].vl     << operand_request_i[requester_index].vtype.vsew;
-      vstart_byte = operand_request_i[requester_index].vstart << operand_request_i[requester_index].vtype.vsew;
+      vstart_byte = operand_request_i[requester_index].is_slide
+                  ? 0
+                  : operand_request_i[requester_index].vstart << operand_request_i[requester_index].vtype.vsew;
       vector_body_len_byte = vl_byte - vstart_byte + (vstart_byte % 8);
       vector_body_len_packets = vector_body_len_byte >> operand_request_i[requester_index].eew;
       if (vector_body_len_packets << operand_request_i[requester_index].eew < vector_body_len_byte)
@@ -327,6 +332,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                                       : vector_body_length;
 
       // Address of the vstart element of the vector in the VRF
+      // This vstart is NOT the architectural one and was modified in the lane
+      // sequencer to provide the correct start address
       vrf_addr = vaddr(operand_request_i[requester_index].vs, NrLanes)
                   + (
                       operand_request_i[requester_index].vstart
