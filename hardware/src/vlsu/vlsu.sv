@@ -90,10 +90,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   logic load_complete, store_complete;
-  logic addrgen_exception_load, addrgen_exception_store;
-  assign load_complete_o  = load_complete  | addrgen_exception_load;
-  assign store_complete_o = store_complete | addrgen_exception_store;
-  assign stu_exception_o  = addrgen_exception_store;
+  assign load_complete_o  = load_complete;
+  assign store_complete_o = store_complete;
 
   ///////////////////
   //  Definitions  //

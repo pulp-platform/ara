@@ -1123,6 +1123,7 @@ package ara_pkg;
     axi_pkg::size_t size;
     axi_pkg::len_t len;
     logic is_load;
+    logic is_exception;
   } addrgen_axi_req_t;
 
 

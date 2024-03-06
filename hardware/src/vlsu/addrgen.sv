@@ -823,10 +823,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Send this request to the load/store units
                 axi_addrgen_queue = '{
-                  addr   : paddr,
-                  len    : burst_length - 1,
-                  size   : eff_axi_dw_log_q,
-                  is_load: axi_addrgen_q.is_load
+                  addr         : paddr,
+                  len          : burst_length - 1,
+                  size         : eff_axi_dw_log_q,
+                  is_load      : axi_addrgen_q.is_load,
+                  is_exception : 1'b0
                 };
                 axi_addrgen_queue_push = 1'b1;
 
@@ -891,10 +892,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Send this request to the load/store units
                 axi_addrgen_queue = '{
-                  addr   : paddr,
-                  size   : axi_addrgen_q.vew,
-                  len    : 0,
-                  is_load: axi_addrgen_q.is_load
+                  addr         : paddr,
+                  size         : axi_addrgen_q.vew,
+                  len          : 0,
+                  is_load      : axi_addrgen_q.is_load,
+                  is_exception : 1'b0
                 };
                 axi_addrgen_queue_push = 1'b1;
 
@@ -959,10 +961,11 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
                     // Send this request to the load/store units
                     axi_addrgen_queue = '{
-                      addr   : idx_final_paddr,
-                      size   : axi_addrgen_q.vew,
-                      len    : 0,
-                      is_load: axi_addrgen_q.is_load
+                      addr         : idx_final_paddr,
+                      size         : axi_addrgen_q.vew,
+                      len          : 0,
+                      is_load      : axi_addrgen_q.is_load,
+                      is_exception : 1'b0
                     };
                     axi_addrgen_queue_push = 1'b1;
 
@@ -987,6 +990,16 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             if ( mmu_exception_i.valid ) begin : mmu_exception_valid
               // Sample the exception
               mmu_exception_d = mmu_exception_i;
+
+              // Send the exception to the load or store unit
+              axi_addrgen_queue = '{
+                addr         : paddr,
+                size         : axi_addrgen_q.vew,
+                len          : 0,
+                is_load      : axi_addrgen_q.is_load,
+                is_exception : 1'b1
+              };
+              axi_addrgen_queue_push = 1'b1;
 
               // Set vstart: vl minus how many elements we have left
               // NOTE: this added complexity only comes from the fact that the beat counting

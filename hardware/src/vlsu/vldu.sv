@@ -35,7 +35,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     output pe_resp_t                       pe_resp_o,
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
-    input  logic                           addrgen_exception_valid_i,
     input  logic                           axi_addrgen_req_valid_i,
     output logic                           axi_addrgen_req_ready_o,
     // Interface with the lanes
@@ -253,8 +252,10 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // - There is an R beat available.
     // - The Address Generator sent us the data about the corresponding AR beat
     // - There is place in the result queue to write the data read from the R channel
+    // - This request did not generate an exception
     if (axi_r_valid_i && axi_addrgen_req_valid_i
-        && axi_addrgen_req_i.is_load && !result_queue_full) begin : axi_r_beat_read
+        && axi_addrgen_req_i.is_load && !axi_addrgen_req_i.is_exception
+        && !result_queue_full) begin : axi_r_beat_read
       // Bytes valid in the current R beat
       // If non-unit strided load, we do not progress within the beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
@@ -487,12 +488,18 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     /////////////////////////
 
     // Clear instruction queue in case of exceptions from addrgen
-    if ( vinsn_issue_valid & addrgen_exception_valid_i ) begin : exception
+    if ( vinsn_issue_valid && axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception ) begin : exception
       // Signal done to sequencer
       pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
 
       // Signal complete load
       load_complete_o = 1'b1;
+
+      // Ack the addrgen for this last faulty request
+      axi_addrgen_req_ready_o = 1'b1;
+      // Reset axi state
+      axi_len_d               = '0;
+      axi_r_byte_pnt_d        = '0;
 
       // Update the commit counters and pointers
       vinsn_queue_d.commit_cnt -= 1;
