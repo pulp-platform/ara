@@ -47,12 +47,12 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
-    input  logic                           addrgen_exception_valid_i,
     output logic                           axi_addrgen_req_ready_o,
     // Interface with the lanes
     input  elen_t            [NrLanes-1:0] stu_operand_i,
     input  logic             [NrLanes-1:0] stu_operand_valid_i,
     output logic             [NrLanes-1:0] stu_operand_ready_o,
+    output logic                           stu_exception_flush_o,
     // Interface with the Mask unit
     input  strb_t            [NrLanes-1:0] mask_i,
     input  logic             [NrLanes-1:0] mask_valid_i,
@@ -246,6 +246,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     vrf_cnt_d = vrf_cnt_q;
     first_lane_payload_d = first_lane_payload_q;
 
+    stu_exception_flush_o = 1'b0;
+
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
 
@@ -258,8 +260,10 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // - We received all the operands from the lanes
     // - The address generator generated an AXI AW request for this write beat
     // - The AXI subsystem is ready to accept this W beat
+    // - The current addrgen request has not generated an exception
     if (vinsn_issue_valid &&
-        axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load && axi_w_ready_i) begin : issue_valid
+        axi_addrgen_req_valid_i && !axi_addrgen_req_i.is_load
+     && !axi_addrgen_req_i.is_exception && axi_w_ready_i) begin : issue_valid
       // Bytes valid in the current W beat
       automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
         axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, axi_len_q);
@@ -417,7 +421,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ////////////////////////
 
     // Clear instruction from queue and data in case of exceptions from addrgen
-    if ( vinsn_issue_valid & addrgen_exception_valid_i ) begin : exception
+    if ( vinsn_issue_valid && axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception ) begin : exception
       // Bump issue counters and pointers of the vector instruction queue
       vinsn_queue_d.issue_cnt -= 1;
       issue_cnt_bytes_d = '0;
@@ -428,8 +432,14 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.issue_pnt += 1;
       end : issue_pnt_increment
 
-      // Clean the input data after StuExLat cycles
-      stu_op_flush_cnt_en = 1'b1;
+      // Clean the input data, the opreq, and the opqueues after StuExLat cycles
+      stu_exception_flush_o = 1'b1;
+      stu_op_flush_cnt_en   = 1'b1;
+
+      // Ack the addrgen for this last faulty request
+      axi_addrgen_req_ready_o = 1'b1;
+      // Reset AXI pointers
+      axi_len_d = '0;
 
       // Mark the vector instruction as being done
       // if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done

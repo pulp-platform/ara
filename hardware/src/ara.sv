@@ -210,7 +210,7 @@ module ara import ara_pkg::*; #(
   elen_t     [NrLanes-1:0]                     stu_operand;
   logic      [NrLanes-1:0]                     stu_operand_valid;
   logic      [NrLanes-1:0]                     stu_operand_ready;
-  logic                                        stu_exception;
+  logic                                        stu_exception_flush;
   // Slide unit/address generation operands
   elen_t     [NrLanes-1:0]                     sldu_addrgen_operand;
   target_fu_e[NrLanes-1:0]                     sldu_addrgen_operand_target_fu;
@@ -293,7 +293,7 @@ module ara import ara_pkg::*; #(
       .stu_operand_o                   (stu_operand[lane]                   ),
       .stu_operand_valid_o             (stu_operand_valid[lane]             ),
       .stu_operand_ready_i             (stu_operand_ready[lane]             ),
-      .stu_exception_i                 ( stu_exception                      ), // Broadcast to all lanes
+      .stu_exception_flush_i           (stu_exception_flush                 ),
       // Interface with the slide/address generation unit
       .sldu_addrgen_operand_o          (sldu_addrgen_operand[lane]          ),
       .sldu_addrgen_operand_target_fu_o(sldu_addrgen_operand_target_fu[lane]),
@@ -370,7 +370,7 @@ module ara import ara_pkg::*; #(
     .stu_operand_i              (stu_operand                                           ),
     .stu_operand_valid_i        (stu_operand_valid                                     ),
     .stu_operand_ready_o        (stu_operand_ready                                     ),
-    .stu_exception_o            ( stu_exception                                        ),
+    .stu_exception_flush_o      (stu_exception_flush                                   ),
     // Address Generation
     .addrgen_operand_i          (sldu_addrgen_operand                                  ),
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),

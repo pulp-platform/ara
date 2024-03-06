@@ -54,7 +54,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                                          stu_operand_o,
     output logic                                           stu_operand_valid_o,
     input  logic                                           stu_operand_ready_i,
-    input  logic                                           stu_exception_i ,
+    input  logic                                           stu_exception_flush_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
     output target_fu_e                                     sldu_addrgen_operand_target_fu_o,
@@ -259,7 +259,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_gnt_o         (ldu_result_gnt_o        ),
     .ldu_result_final_gnt_o   (ldu_result_final_gnt_o  ),
     // Store Unit
-    .stu_exception_i          ( stu_exception_i        )
+    .stu_exception_i          ( stu_exception_flush_i  )
   );
 
   ////////////////////////////
@@ -309,13 +309,13 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic sldu_addrgen_operand_opqueues_valid;
 
   // Cut stu_exception path
-  logic stu_exception;
-  logic [StuExLat:0] stu_exception_d, stu_exception_q;
-  assign stu_exception_d[0] = stu_exception_i;
-  assign stu_exception      = StuExLat == 0 ? stu_exception_i : stu_exception_q[StuExLat-1];
+  logic stu_exception_flush;
+  logic [StuExLat:0] stu_exception_flush_d, stu_exception_flush_q;
+  assign stu_exception_flush_d[0] = stu_exception_flush_i;
+  assign stu_exception_flush      = StuExLat == 0 ? stu_exception_flush_i : stu_exception_flush_q[StuExLat-1];
   for (genvar i = 0; i < StuExLat; i++) begin
-    assign stu_exception_d[i+1] = stu_exception_q[i];
-    `FF(stu_exception_q[i], stu_exception_d[i], 1'b0, clk_i, rst_ni);
+    assign stu_exception_flush_d[i+1] = stu_exception_flush_q[i];
+    `FF(stu_exception_flush_q[i], stu_exception_flush_d[i], 1'b0, clk_i, rst_ni);
   end
 
   operand_queues_stage #(
@@ -346,7 +346,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_o                    (stu_operand_o                      ),
     .stu_operand_valid_o              (stu_operand_valid_o                ),
     .stu_operand_ready_i              (stu_operand_ready_i                ),
-    .stu_exception_i                  (stu_exception                      ),
+    .stu_exception_flush_i            (stu_exception_flush                ),
     // Address Generation Unit
     .sldu_addrgen_operand_o           (sldu_addrgen_operand_opqueues      ),
     .sldu_addrgen_operand_target_fu_o (sldu_addrgen_operand_target_fu_o   ),

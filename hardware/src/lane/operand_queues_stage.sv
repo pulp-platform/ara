@@ -35,7 +35,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output elen_t                                    stu_operand_o,
     output logic                                     stu_operand_valid_o,
     input  logic                                     stu_operand_ready_i,
-    input  logic                                     stu_exception_i,
+    input  logic                                     stu_exception_flush_i,
     // Slide Unit/Address Generation unit
     output elen_t                                    sldu_addrgen_operand_o,
     output target_fu_e                               sldu_addrgen_operand_target_fu_o,
@@ -197,7 +197,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   ) i_operand_queue_st_mask_a (
     .clk_i                    (clk_i                         ),
     .rst_ni                   (rst_ni                        ),
-    .flush_i                  (stu_exception_i               ),
+    .flush_i                  (stu_exception_flush_i         ),
     .lane_id_i                (lane_id_i                     ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[StA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StA]),
