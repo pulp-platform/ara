@@ -48,6 +48,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
     output logic                           axi_addrgen_req_ready_o,
+    input  logic                           addrgen_illegal_store_i,
     // Interface with the lanes
     input  elen_t            [NrLanes-1:0] stu_operand_i,
     input  logic             [NrLanes-1:0] stu_operand_valid_i,
@@ -421,7 +422,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ////////////////////////
 
     // Clear instruction from queue and data in case of exceptions from addrgen
-    if ( vinsn_issue_valid && axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception ) begin : exception
+    if ( vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_store_i) ) begin : exception
       // Bump issue counters and pointers of the vector instruction queue
       vinsn_queue_d.issue_cnt -= 1;
       issue_cnt_bytes_d = '0;
@@ -437,7 +438,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       stu_op_flush_cnt_en   = 1'b1;
 
       // Ack the addrgen for this last faulty request
-      axi_addrgen_req_ready_o = 1'b1;
+      axi_addrgen_req_ready_o = axi_addrgen_req_valid_i;
       // Reset AXI pointers
       axi_len_d = '0;
 

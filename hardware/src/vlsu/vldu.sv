@@ -37,6 +37,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
     output logic                           axi_addrgen_req_ready_o,
+    input  logic                           addrgen_illegal_load_i,
     // Interface with the lanes
     output logic             [NrLanes-1:0] ldu_result_req_o,
     output vid_t             [NrLanes-1:0] ldu_result_id_o,
@@ -488,7 +489,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     /////////////////////////
 
     // Clear instruction queue in case of exceptions from addrgen
-    if ( vinsn_issue_valid && axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception ) begin : exception
+    if ( vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_load_i) ) begin : exception
       // Signal done to sequencer
       pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
 
@@ -496,7 +497,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       load_complete_o = 1'b1;
 
       // Ack the addrgen for this last faulty request
-      axi_addrgen_req_ready_o = 1'b1;
+      axi_addrgen_req_ready_o = axi_addrgen_req_valid_i;
       // Reset axi state
       axi_len_d               = '0;
       axi_r_byte_pnt_d        = '0;

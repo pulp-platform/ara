@@ -51,8 +51,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     output ariane_pkg::exception_t         addrgen_exception_o,
     output logic                           addrgen_ack_o,
     output vlen_t                          addrgen_exception_vstart_o,
-    output logic                           addrgen_exception_load_o,
-    output logic                           addrgen_exception_store_o,
+    output logic                           addrgen_illegal_load_o,
+    output logic                           addrgen_illegal_store_o,
     // Interface with the load/store units
     output addrgen_axi_req_t               axi_addrgen_req_o,
     output logic                           axi_addrgen_req_valid_o,
@@ -226,8 +226,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     addrgen_exception_o.valid = 1'b0;
     addrgen_exception_o.tval  = '0;
     addrgen_exception_o.cause = '0;
-    addrgen_exception_load_o  = 1'b0;
-    addrgen_exception_store_o = 1'b0;
+    addrgen_illegal_load_o  = 1'b0;
+    addrgen_illegal_store_o = 1'b0;
 
     // No valid words for the spill register
     idx_vaddr_valid_d       = 1'b0;
@@ -483,9 +483,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       end : WAIT_LAST_TRANSLATION
     endcase // state_q
 
-    if ( addrgen_exception_o.valid & addrgen_ack_o ) begin
-      addrgen_exception_load_o  = is_load(pe_req_q.op);
-      addrgen_exception_store_o = !is_load(pe_req_q.op);
+    // Immediately kill the load/store if the instruction was illegal
+    if ( addrgen_exception_o.valid && addrgen_ack_o ) begin
+      addrgen_illegal_load_o  =  is_load(pe_req_q.op) && (addrgen_exception_o.cause == riscv::ILLEGAL_INSTR);
+      addrgen_illegal_store_o = !is_load(pe_req_q.op) && (addrgen_exception_o.cause == riscv::ILLEGAL_INSTR);
     end
   end : addr_generation
 
