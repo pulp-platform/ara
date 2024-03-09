@@ -94,6 +94,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   logic load_complete, store_complete;
+  logic addrgen_illegal_load, addrgen_illegal_store;
   assign load_complete_o  = load_complete;
   assign store_complete_o = store_complete;
 
@@ -166,6 +167,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .addrgen_ack_o              (addrgen_ack_o              ),
     .addrgen_exception_o        ( addrgen_exception_o       ),
     .addrgen_exception_vstart_o ( addrgen_exception_vstart_o ),
+    .addrgen_illegal_load_o     (addrgen_illegal_load      ),
+    .addrgen_illegal_store_o    (addrgen_illegal_store     ),
     // Interface with the lanes
     .addrgen_operand_i          (addrgen_operand_i          ),
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
@@ -222,6 +225,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_addrgen_req_i      (axi_addrgen_req           ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid     ),
     .axi_addrgen_req_ready_o(ldu_axi_addrgen_req_ready ),
+    .addrgen_illegal_load_i (addrgen_illegal_load      ),
     // Interface with the Mask unit
     .mask_i                 (mask_i                    ),
     .mask_valid_i           (mask_valid_i              ),
@@ -273,6 +277,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_addrgen_req_i      (axi_addrgen_req            ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid      ),
     .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready  ),
+    .addrgen_illegal_store_i(addrgen_illegal_store      ),
     // Interface with the Mask unit
     .mask_i                 (mask_i                     ),
     .mask_valid_i           (mask_valid_i               ),
