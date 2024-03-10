@@ -400,7 +400,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               default:;
             endcase
 
-            if (reshuffle_req_d == 3'b0) state_d = NORMAL_OPERATION;
+            if (reshuffle_req_d == 3'b0) begin
+              // If LMUL_X has X > 1, Ara can inject different reshuffle ops during RESHUFFLE,
+              // one per LMUL_1-register that needs to be reshuffled. In mixed cases, we have
+              // multiple instructions that reshuffle parts of the original LMUL_X-register
+              // (e.g., LMUL_8, vd = v0, eew = 64, and only v1 and v5 have eew = 64). In this
+              // case, the dependency of the next LMUL_8 instruction on v0 should be on all
+              // the reshuffle micro operations. This is not possible with the current architecture.
+              // Therefore, we either set the dependency on the very last instruction only, or
+              // we just wait until the reshuffle is over.
+              // The best optimization would be injecting contiguous reshuffles with X > 1 and
+              // an extended vl. If we injected only one reshuffle, we can skip the wait idle.
+              if (csr_vtype_q.vlmul != LMUL_1) state_d = WAIT_IDLE;
+              else state_d = NORMAL_OPERATION;
+            end
           // The register is not completely reshuffled (LMUL > 1)
           end else begin
             // Count up
