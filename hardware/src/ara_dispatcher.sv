@@ -341,6 +341,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         rs_lmul_cnt_limit_d = rs_lmul_cnt_limit_q;
         rs_mask_request_d   = 1'b0;
 
+        // Every single reshuffle request refers to LMUL == 1
+        ara_req_d.emul = LMUL_1;
+
         // vstart is always 0 for a reshuffle
         ara_req_d.vstart = '0;
 
