@@ -10,6 +10,7 @@
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   import cf_math_pkg::idx_width; #(
     parameter  int           unsigned NrLanes      = 0,
+    parameter  int           unsigned VLEN         = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7, rounding-toward-odd
@@ -21,7 +22,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth    = $bits(elen_t),
     localparam int           unsigned StrbWidth    = DataWidth/8,
-    localparam type                   strb_t       = logic [DataWidth/8-1:0]
+    localparam type                   strb_t       = logic [DataWidth/8-1:0],
+    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -1519,7 +1521,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
           // Store the result in the result queue
           result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
-          result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes) +
+          result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes, VLEN) +
             ((vinsn_processing_q.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing_q.vtype.vsew));
           // FP narrowing instructions pack the result in two different cycles, and only some 16-bit slices are active
           if (narrowing(vinsn_processing_q.cvt_resize)) begin
@@ -1619,7 +1621,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
               to_process_cnt_d = to_process_cnt_q - processed_element_cnt;
 
             result_queue_d[result_queue_write_pnt_q].wdata = vfpu_processed_result;
-            result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes);
+            result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes, VLEN);
             result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
             result_queue_d[result_queue_write_pnt_q].be    = be(1, vinsn_processing_q.vtype.vsew);
             result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
@@ -1974,7 +1976,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           mfpu_state_d = MFPU_WAIT;
         end else if ((lane_id_i == '0) && sldu_mfpu_valid_q && to_process_cnt_d == '0) begin
           // Lane 0 should wait for the final result
-          result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes);
+          result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes, VLEN);
           result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
           result_queue_d[result_queue_write_pnt_q].be    = be(1, vinsn_processing_q.vtype.vsew);
           result_queue_d[result_queue_write_pnt_q].mask  = vinsn_processing_q.vfu == VFU_MaskUnit;
