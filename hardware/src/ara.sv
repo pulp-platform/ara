@@ -30,7 +30,7 @@ module ara import ara_pkg::*; #(
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
     localparam int           unsigned NrPEs        = NrLanes + 4,
-    localparam type                  vlen_t        = logic[$clog2(VLEN+1)-1:0]
+    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -64,6 +64,160 @@ module ara import ara_pkg::*; #(
   localparam int unsigned StrbWidth = DataWidth / 8;
   typedef logic [StrbWidth-1:0] strb_t;
 
+  // Interfaces between Ara's dispatcher and Ara's backend
+  typedef struct packed {
+    ara_op_e op; // Operation
+
+    // Stores and slides do not re-shuffle the
+    // source registers. In these two cases, vl refers
+    // to the target EEW and vtype.vsew, respectively.
+    // Since operand requesters work with the old
+    // eew of the source registers, we should rescale
+    // vl to the old eew to fetch the correct number of Bytes.
+    //
+    // Another solution would be to pass directly the target
+    // eew (vstores) or the vtype.vsew (vslides), but this would
+    // create confusion with the current naming convention
+    logic scale_vl;
+
+    // Mask vector register operand
+    logic vm;
+    rvv_pkg::vew_e eew_vmask;
+
+    // 1st vector register operand
+    logic [4:0] vs1;
+    logic use_vs1;
+    opqueue_conversion_e conversion_vs1;
+    rvv_pkg::vew_e eew_vs1;
+
+    // 2nd vector register operand
+    logic [4:0] vs2;
+    logic use_vs2;
+    opqueue_conversion_e conversion_vs2;
+    rvv_pkg::vew_e eew_vs2;
+
+    // Use vd as an operand as well (e.g., vmacc)
+    logic use_vd_op;
+    rvv_pkg::vew_e eew_vd_op;
+
+    // Scalar operand
+    elen_t scalar_op;
+    logic use_scalar_op;
+
+    // 2nd scalar operand: stride for constant-strided vector load/stores, slide offset for vector
+    // slides
+    elen_t stride;
+    logic is_stride_np2;
+
+    // Destination vector register
+    logic [4:0] vd;
+    logic use_vd;
+
+    // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
+    logic swap_vs2_vd_op;
+
+    // Effective length multiplier
+    rvv_pkg::vlmul_e emul;
+
+    // Rounding-Mode for FP operations
+    fpnew_pkg::roundmode_e fp_rm;
+    // Widen FP immediate (re-encoding)
+    logic wide_fp_imm;
+    // Resizing of FP conversions
+    resize_e cvt_resize;
+
+    // Vector machine metadata
+    vlen_t vl;
+    vlen_t vstart;
+    rvv_pkg::vtype_t vtype;
+
+    // Request token, for registration in the sequencer
+    logic token;
+  } ara_req_t;
+
+  typedef struct packed {
+    // Scalar response
+    elen_t resp;
+
+    // Instruction triggered an error
+    logic error;
+
+    // New value for vstart
+    vlen_t error_vl;
+  } ara_resp_t;
+
+  typedef struct packed {
+    vid_t id; // ID of the vector instruction
+
+    ara_op_e op; // Operation
+
+    // Mask vector register operand
+    logic vm;
+    rvv_pkg::vew_e eew_vmask;
+
+    vfu_e vfu; // VFU responsible for handling this instruction
+
+    // Rescale vl taking into account the new and old EEW
+    logic scale_vl;
+
+    // 1st vector register operand
+    logic [4:0] vs1;
+    logic use_vs1;
+    opqueue_conversion_e conversion_vs1;
+    rvv_pkg::vew_e eew_vs1;
+
+    // 2nd vector register operand
+    logic [4:0] vs2;
+    logic use_vs2;
+    opqueue_conversion_e conversion_vs2;
+    rvv_pkg::vew_e eew_vs2;
+
+    // Use vd as an operand as well (e.g., vmacc)
+    logic use_vd_op;
+    rvv_pkg::vew_e eew_vd_op;
+
+    // Scalar operand
+    elen_t scalar_op;
+    logic use_scalar_op;
+
+    // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
+    logic swap_vs2_vd_op;
+
+    // 2nd scalar operand: stride for constant-strided vector load/stores
+    elen_t stride;
+    logic is_stride_np2;
+
+    // Destination vector register
+    logic [4:0] vd;
+    logic use_vd;
+
+    // Effective length multiplier
+    rvv_pkg::vlmul_e emul;
+
+    // Rounding-Mode for FP operations
+    fpnew_pkg::roundmode_e fp_rm;
+    // Widen FP immediate (re-encoding)
+    logic wide_fp_imm;
+    // Resizing of FP conversions
+    resize_e cvt_resize;
+
+    // Vector machine metadata
+    vlen_t vl;
+    vlen_t vstart;
+    rvv_pkg::vtype_t vtype;
+
+    // Hazards
+    logic [NrVInsn-1:0] hazard_vs1;
+    logic [NrVInsn-1:0] hazard_vs2;
+    logic [NrVInsn-1:0] hazard_vm;
+    logic [NrVInsn-1:0] hazard_vd;
+  } pe_req_t;
+
+  typedef struct packed {
+    // Each set bit indicates that the corresponding vector loop has finished execution
+    logic [NrVInsn-1:0] vinsn_done;
+  } pe_resp_t;
+
   //////////////////
   //  Dispatcher  //
   //////////////////
@@ -87,8 +241,10 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
 
   ara_dispatcher #(
-    .NrLanes(NrLanes),
-    .VLEN   (VLEN   )
+    .NrLanes   (NrLanes   ),
+    .VLEN      (VLEN      ),
+    .ara_req_t (ara_req_t ),
+    .ara_resp_t(ara_resp_t)
   ) i_dispatcher (
     .clk_i             (clk_i           ),
     .rst_ni            (rst_ni          ),
@@ -149,8 +305,12 @@ module ara import ara_pkg::*; #(
   logic      result_scalar_valid;
 
   ara_sequencer #(
-    .NrLanes(NrLanes),
-    .VLEN   (VLEN   )
+    .NrLanes   (NrLanes   ),
+    .VLEN      (VLEN      ),
+    .ara_req_t (ara_req_t ),
+    .ara_resp_t(ara_resp_t),
+    .pe_req_t  (pe_req_t  ),
+    .pe_resp_t (pe_resp_t )
   ) i_sequencer (
     .clk_i                 (clk_i                    ),
     .rst_ni                (rst_ni                   ),
@@ -234,11 +394,13 @@ module ara import ara_pkg::*; #(
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
-      .NrLanes     (NrLanes     ),
-      .VLEN        (VLEN        ),
-      .FPUSupport  (FPUSupport  ),
-      .FPExtSupport(FPExtSupport),
-      .FixPtSupport(FixPtSupport)
+      .NrLanes              (NrLanes              ),
+      .VLEN                 (VLEN                 ),
+      .FPUSupport           (FPUSupport           ),
+      .FPExtSupport         (FPExtSupport         ),
+      .FixPtSupport         (FixPtSupport         ),
+      .pe_req_t             (pe_req_t             ),
+      .pe_resp_t            (pe_resp_t            )
     ) i_lane (
       .clk_i                           (clk_i                               ),
       .rst_ni                          (rst_ni                              ),
@@ -326,7 +488,9 @@ module ara import ara_pkg::*; #(
     .axi_b_t     (axi_b_t     ),
     .axi_req_t   (axi_req_t   ),
     .axi_resp_t  (axi_resp_t  ),
-    .vaddr_t     (vaddr_t     )
+    .vaddr_t     (vaddr_t     ),
+    .pe_req_t    (pe_req_t    ),
+    .pe_resp_t   (pe_resp_t   )
   ) i_vlsu (
     .clk_i                      (clk_i                                                 ),
     .rst_ni                     (rst_ni                                                ),
@@ -380,9 +544,11 @@ module ara import ara_pkg::*; #(
   logic sldu_mask_ready;
 
   sldu #(
-    .NrLanes(NrLanes),
-    .VLEN   (VLEN   ),
-    .vaddr_t(vaddr_t)
+    .NrLanes  (NrLanes  ),
+    .VLEN     (VLEN     ),
+    .vaddr_t  (vaddr_t  ),
+    .pe_req_t (pe_req_t ),
+    .pe_resp_t(pe_resp_t)
   ) i_sldu (
     .clk_i                   (clk_i                            ),
     .rst_ni                  (rst_ni                           ),
@@ -417,9 +583,11 @@ module ara import ara_pkg::*; #(
   /////////////////
 
   masku #(
-    .NrLanes(NrLanes),
-    .VLEN   (VLEN   ),
-    .vaddr_t(vaddr_t)
+    .NrLanes  (NrLanes  ),
+    .VLEN     (VLEN     ),
+    .vaddr_t  (vaddr_t  ),
+    .pe_req_t (pe_req_t ),
+    .pe_resp_t(pe_resp_t)
   ) i_masku (
     .clk_i                   (clk_i                           ),
     .rst_ni                  (rst_ni                          ),

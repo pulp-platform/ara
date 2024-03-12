@@ -9,16 +9,17 @@
 
 module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned NrLanes      = 0,
-    parameter  int           unsigned VLEN         = 0,
+    parameter  int           unsigned NrLanes         = 0,
+    parameter  int           unsigned VLEN            = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7, rounding-toward-odd
-    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    parameter  fpext_support_e        FPExtSupport    = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport    = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type                   vaddr_t      = logic,
+    parameter  type                   vaddr_t         = logic,
+    parameter  type                   vfu_operation_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth    = $bits(elen_t),
     localparam int           unsigned StrbWidth    = DataWidth/8,

@@ -9,8 +9,12 @@
 
 module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     // RVV Parameters
-    parameter  int unsigned NrLanes = 1,          // Number of parallel vector lanes
-    parameter  int unsigned VLEN    = 0,
+    parameter  int unsigned NrLanes    = 1,          // Number of parallel vector lanes
+    parameter  int unsigned VLEN       = 0,
+    parameter  type         ara_req_t  = logic,
+    parameter  type         ara_resp_t = logic,
+    parameter  type         pe_req_t   = logic,
+    parameter  type         pe_resp_t  = logic,
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
