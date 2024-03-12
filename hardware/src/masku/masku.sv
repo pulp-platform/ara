@@ -10,9 +10,11 @@
 // predicated instructions.
 
 module masku import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned VLEN    = 0,
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes   = 0,
+    parameter  int  unsigned VLEN      = 0,
+    parameter  type          vaddr_t   = logic, // Type used to address vector register file elements
+    parameter  type          pe_req_t  = logic,
+    parameter  type          pe_resp_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
@@ -372,12 +374,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Shuffle the bit enable signal
       for (int b = 0; b < NrLanes*StrbWidth; b++) begin
-        automatic int vrf_byte              = shuffle_index(b, NrLanes, bit_enable_shuffle_eew);
+        automatic int vrf_byte              = shuffle_index(b, NrLanes, bit_enable_shuffle_eew, VLEN);
         bit_enable_shuffle[8*vrf_byte +: 8] = bit_enable[8*b +: 8];
 
         // Take the mask into account
         if (!vinsn_issue.vm) begin
-          automatic int mask_byte          = shuffle_index(b, NrLanes, vinsn_issue.eew_vmask);
+          automatic int mask_byte          = shuffle_index(b, NrLanes, vinsn_issue.eew_vmask, VLEN);
           automatic int mask_byte_lane     = mask_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
           automatic int mask_byte_offset   = mask_byte[idx_width(StrbWidth)-1:0];
           bit_enable_mask[8*vrf_byte +: 8] = bit_enable_shuffle[8*vrf_byte +: 8] &
@@ -392,7 +394,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Deshuffle the operands for the mask instructions
       for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
-        automatic int deshuffle_byte             = deshuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
+        automatic int deshuffle_byte             = deshuffle_index(b, NrLanes, vinsn_issue.vtype.vsew, VLEN);
         alu_operand_b_seq[8*deshuffle_byte +: 8] = alu_operand_a[8*b +: 8];
         masku_operand_vd [8*deshuffle_byte +: 8] = alu_operand_b[8*b +: 8];
       end
@@ -428,14 +430,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             EW8: for (int b = 0; b < 8*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the
                 // full operand word.
-                automatic int src_byte        = shuffle_index(1*b, NrLanes, EW8);
+                automatic int src_byte        = shuffle_index(1*b, NrLanes, EW8, VLEN);
                 automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
                 automatic int dest_bit_seq  = b + vrf_pnt_q;
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
-                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW8);
+                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW8, VLEN);
 
                 alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
                 (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
@@ -445,14 +447,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             EW16: for (int b = 0; b < 4*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the
                 // full operand word.
-                automatic int src_byte        = shuffle_index(2*b, NrLanes, EW16);
+                automatic int src_byte        = shuffle_index(2*b, NrLanes, EW16, VLEN);
                 automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
                 automatic int dest_bit_seq  = b + vrf_pnt_q;
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
-                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW16);
+                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW16, VLEN);
 
                 alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
                 (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
@@ -462,14 +464,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             EW32: for (int b = 0; b < 2*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the
                 // full operand word.
-                automatic int src_byte        = shuffle_index(4*b, NrLanes, EW32);
+                automatic int src_byte        = shuffle_index(4*b, NrLanes, EW32, VLEN);
                 automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
                 automatic int dest_bit_seq  = b + vrf_pnt_q;
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
-                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW32);
+                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW32, VLEN);
 
                 alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
                 (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
@@ -479,14 +481,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             EW64: for (int b = 0; b < 1*NrLanes; b++) begin
                 // Shuffle the source byte, then find the lane and the offset of this byte in the
                 // full operand word.
-                automatic int src_byte        = shuffle_index(8*b, NrLanes, EW64);
+                automatic int src_byte        = shuffle_index(8*b, NrLanes, EW64, VLEN);
                 automatic int src_byte_lane   = src_byte[idx_width(StrbWidth) +: idx_width(NrLanes)];
                 automatic int src_byte_offset = src_byte[idx_width(StrbWidth)-1:0];
 
                 // Find the destination byte
                 automatic int dest_bit_seq  = b + vrf_pnt_q;
                 automatic int dest_byte_seq = dest_bit_seq / StrbWidth;
-                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW64);
+                automatic int dest_byte     = shuffle_index(dest_byte_seq, NrLanes, EW64, VLEN);
 
                 alu_result_flat[StrbWidth*dest_byte + dest_bit_seq[idx_width(StrbWidth)-1:0]] =
                   (!vinsn_issue.vm && !masku_operand_a_i[src_byte_lane][8*src_byte_offset+1]) ?
@@ -609,7 +611,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Shuffle result for masked instructions
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
-      automatic int shuffle_byte             = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
+      automatic int shuffle_byte             = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew, VLEN);
       alu_result_vm_seq[8*shuffle_byte +: 8] = alu_result_vm_m[8*b +: 8];
     end
 
@@ -711,7 +713,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Copy data from the mask operands into the mask queue
         for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
           // Map vrf_seq_byte to the corresponding byte in the VRF word.
-          automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+          automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew, VLEN);
 
           // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
           // NOTE: This does not work if the number of lanes is not a power of two.
@@ -727,7 +729,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
           automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
           // Shuffle this source byte
-          automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
+          automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask, VLEN);
           // Account for the bit offset
           automatic int mask_bit = (mask_byte << $clog2(StrbWidth)) +
             mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;

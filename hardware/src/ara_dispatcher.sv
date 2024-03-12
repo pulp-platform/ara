@@ -11,6 +11,8 @@
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
     parameter int           unsigned VLEN         = 0,
+    parameter type                   ara_req_t    = logic,
+    parameter type                   ara_resp_t   = logic,
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7

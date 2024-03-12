@@ -9,9 +9,11 @@
 // and coherence with Ariane's own load/store unit.
 
 module vlsu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned VLEN    = 0,
-    parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes   = 0,
+    parameter  int  unsigned VLEN      = 0,
+    parameter  type          vaddr_t   = logic,  // Type used to address vector register file elements
+    parameter  type          pe_req_t  = logic,
+    parameter  type          pe_resp_t = logic,
     // AXI Interface parameters
     parameter  int  unsigned AxiDataWidth = 0,
     parameter  int  unsigned AxiAddrWidth = 0,
@@ -123,7 +125,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .AxiDataWidth(AxiDataWidth),
     .AxiAddrWidth(AxiAddrWidth),
     .axi_ar_t    (axi_ar_t    ),
-    .axi_aw_t    (axi_aw_t    )
+    .axi_aw_t    (axi_aw_t    ),
+    .pe_req_t    (pe_req_t    ),
+    .pe_resp_t   (pe_resp_t   )
   ) i_addrgen (
     .clk_i                      (clk_i                      ),
     .rst_ni                     (rst_ni                     ),
@@ -167,7 +171,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_r_t     (axi_r_t     ),
     .NrLanes     (NrLanes     ),
     .VLEN        (VLEN        ),
-    .vaddr_t     (vaddr_t     )
+    .vaddr_t     (vaddr_t     ),
+    .pe_req_t    (pe_req_t    ),
+    .pe_resp_t   (pe_resp_t   )
   ) i_vldu (
     .clk_i                  (clk_i                     ),
     .rst_ni                 (rst_ni                    ),
@@ -212,7 +218,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_b_t     (axi_b_t     ),
     .NrLanes     (NrLanes     ),
     .VLEN        (VLEN        ),
-    .vaddr_t     (vaddr_t     )
+    .vaddr_t     (vaddr_t     ),
+    .pe_req_t    (pe_req_t    ),
+    .pe_resp_t   (pe_resp_t   )
   ) i_vstu (
     .clk_i                  (clk_i                      ),
     .rst_ni                 (rst_ni                     ),
