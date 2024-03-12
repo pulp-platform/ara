@@ -11,7 +11,7 @@
 module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter int unsigned NrLanes               = 0,
     parameter type         pe_req_t              = logic,
-    parameter type         pe_resp_t             = logic
+    parameter type         pe_resp_t             = logic,
     parameter type         operand_request_cmd_t = logic,
     parameter type         vfu_operation_t       = logic
   ) (

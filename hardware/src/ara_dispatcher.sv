@@ -20,7 +20,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Support for fixed-point data types
     parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Dependent parameters: DO NOT CHANGE
-    localparam type                  vlen_t       = logic[$clog2(VLEN+1)-1:0]
+    localparam type                  vlen_t       = logic[$clog2(VLEN+1)-1:0],
+    localparam int          unsigned VLENB        = VLEN / 8
   ) (
     // Clock and reset
     input  logic                                 clk_i,

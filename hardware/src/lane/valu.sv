@@ -572,7 +572,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                     valu_result[8*b +: 8]  :
                     alu_operand_a[8*b +: 8];
               end
-              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes);
+              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes, VLEN);
               result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
               result_queue_d[result_queue_write_pnt_q].be    = be(1, vinsn_issue_q.vtype.vsew);
 

@@ -9,20 +9,21 @@
 // need it.
 
 module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned CmdBufDepth    = 2,
-    parameter  int           unsigned DataBufDepth   = 2,
-    parameter  int           unsigned NrSlaves       = 1,
-    parameter  int           unsigned NrLanes        = 0,
-    parameter  int           unsigned VLEN           = 0,
+    parameter  int           unsigned CmdBufDepth         = 2,
+    parameter  int           unsigned DataBufDepth        = 2,
+    parameter  int           unsigned NrSlaves            = 1,
+    parameter  int           unsigned NrLanes             = 0,
+    parameter  int           unsigned VLEN                = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport          = FPUSupportHalfSingleDouble,
     // Supported conversions
-    parameter  logic                  SupportIntExt2 = 1'b0,
-    parameter  logic                  SupportIntExt4 = 1'b0,
-    parameter  logic                  SupportIntExt8 = 1'b0,
+    parameter  logic                  SupportIntExt2      = 1'b0,
+    parameter  logic                  SupportIntExt4      = 1'b0,
+    parameter  logic                  SupportIntExt8      = 1'b0,
     // Support neutral value filling
-    parameter  logic                  SupportReduct  = 1'b0,
-    parameter  logic                  SupportNtrVal  = 1'b0,
+    parameter  logic                  SupportReduct       = 1'b0,
+    parameter  logic                  SupportNtrVal       = 1'b0,
+    parameter  type                   operand_queue_cmd_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth      = $bits(elen_t),
     localparam int           unsigned StrbWidth      = DataWidth/8,
@@ -153,7 +154,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
   always_comb begin: type_conversion
     // Shuffle the input operand
-    automatic logic [idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew, VLEN);
+    automatic logic [idx_width(StrbWidth)-1:0] select = deshuffle_index(select_q, 1, cmd.eew);
 
     // Default: no conversion
     conv_operand = ibuf_operand;
@@ -374,15 +375,15 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         if (last_packet && incomplete_packet) begin
           if (SupportNtrVal) unique case (cmd.eew)
             EW8 : for (int unsigned b = 0; b < 8; b++) begin
-                    automatic int unsigned bs = shuffle_index(b, 1, EW8, VLEN);
+                    automatic int unsigned bs = shuffle_index(b, 1, EW8);
                     if ((b >> 0) >= cmd.vl[2:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
                   end
             EW16: for (int unsigned b = 0; b < 8; b++) begin
-                    automatic int unsigned bs = shuffle_index(b, 1, EW16, VLEN);
+                    automatic int unsigned bs = shuffle_index(b, 1, EW16);
                     if ((b >> 1) >= cmd.vl[1:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
                   end
             EW32: for (int unsigned b = 0; b < 8; b++) begin
-                    automatic int unsigned bs = shuffle_index(b, 1, EW32, VLEN);
+                    automatic int unsigned bs = shuffle_index(b, 1, EW32);
                     if ((b >> 2) >= cmd.vl[0:0]) conv_operand[8*bs +: 8] = ntr.w8[b];
                   end
             default:;
