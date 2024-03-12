@@ -9,13 +9,15 @@
 
 module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     parameter int  unsigned NrLanes      = 0,
+    parameter int  unsigned VLEN         = 0,
     // AXI Interface parameters
     parameter int  unsigned AxiDataWidth = 0,
     parameter int  unsigned AxiAddrWidth = 0,
     parameter type          axi_ar_t     = logic,
     parameter type          axi_aw_t     = logic,
     // Dependant parameters. DO NOT CHANGE!
-    parameter type          axi_addr_t   = logic [AxiAddrWidth-1:0]
+    localparam type         axi_addr_t   = logic [AxiAddrWidth-1:0],
+    localparam type         vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                           clk_i,
     input  logic                           rst_ni,

@@ -10,6 +10,7 @@
 
 module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int  unsigned NrLanes = 0,
+    parameter  int  unsigned VLEN    = 0,
     parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
     // AXI Interface parameters
     parameter  int  unsigned AxiDataWidth = 0,
@@ -23,7 +24,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  type          axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth    = $bits(elen_t),
-    localparam type          strb_t       = logic [DataWidth/8-1:0]
+    localparam type          strb_t       = logic [DataWidth/8-1:0],
+    localparam type          vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                    clk_i,
     input  logic                    rst_ni,
@@ -112,6 +114,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
 
   addrgen #(
     .NrLanes     (NrLanes     ),
+    .VLEN        (VLEN        ),
     .AxiDataWidth(AxiDataWidth),
     .AxiAddrWidth(AxiAddrWidth),
     .axi_ar_t    (axi_ar_t    ),
@@ -156,6 +159,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .AxiDataWidth(AxiDataWidth),
     .axi_r_t     (axi_r_t     ),
     .NrLanes     (NrLanes     ),
+    .VLEN        (VLEN        ),
     .vaddr_t     (vaddr_t     )
   ) i_vldu (
     .clk_i                  (clk_i                     ),
@@ -200,6 +204,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_w_t     (axi_w_t     ),
     .axi_b_t     (axi_b_t     ),
     .NrLanes     (NrLanes     ),
+    .VLEN        (VLEN        ),
     .vaddr_t     (vaddr_t     )
   ) i_vstu (
     .clk_i                  (clk_i                      ),

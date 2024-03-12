@@ -9,6 +9,7 @@
 
 module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int    unsigned NrLanes      = 0,
+    parameter  int    unsigned VLEN         = 0,
     // Support for fixed-point data types
     parameter  fixpt_support_e FixPtSupport = FixedPointEnable,
     // Type used to address vector register file elements
@@ -16,7 +17,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     // Dependant parameters. DO NOT CHANGE!
     localparam int    unsigned DataWidth    = $bits(elen_t),
     localparam int    unsigned StrbWidth    = DataWidth/8,
-    localparam type            strb_t       = logic [StrbWidth-1:0]
+    localparam type            strb_t       = logic [StrbWidth-1:0],
+    localparam type            vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                         clk_i,
     input  logic                         rst_ni,
@@ -465,7 +467,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
               // Store the result in the result queue
               result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
-              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
+              result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + ((vinsn_issue_q.vl - issue_cnt_q) >> (int'(EW64) - vinsn_issue_q.vtype.vsew));
               result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
               result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
               if (!narrowing(vinsn_issue_q.op) || !narrowing_select_q)

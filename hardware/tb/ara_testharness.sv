@@ -67,6 +67,7 @@ module ara_testharness #(
 
   ara_soc #(
     .NrLanes     (NrLanes      ),
+    .VLEN        (VLEN         ),
     .AxiAddrWidth(AxiAddrWidth ),
     .AxiDataWidth(AxiDataWidth ),
     .AxiIdWidth  (AxiIdWidth   ),

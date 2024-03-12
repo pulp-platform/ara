@@ -13,6 +13,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     parameter  int           unsigned DataBufDepth   = 2,
     parameter  int           unsigned NrSlaves       = 1,
     parameter  int           unsigned NrLanes        = 0,
+    parameter  int           unsigned VLEN           = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble,
     // Supported conversions
@@ -24,7 +25,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     parameter  logic                  SupportNtrVal  = 1'b0,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth      = $bits(elen_t),
-    localparam int           unsigned StrbWidth      = DataWidth/8
+    localparam int           unsigned StrbWidth      = DataWidth/8,
+    localparam type                   vlen_t         = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,

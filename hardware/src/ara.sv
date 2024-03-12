@@ -9,6 +9,7 @@
 module ara import ara_pkg::*; #(
     // RVV Parameters
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
+    parameter  int           unsigned VLEN         = 0,                          // VLEN [bit]
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
@@ -28,7 +29,8 @@ module ara import ara_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
-    localparam int           unsigned NrPEs        = NrLanes + 4
+    localparam int           unsigned NrPEs        = NrLanes + 4,
+    localparam type                  vlen_t        = logic[$clog2(VLEN+1)-1:0]
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -85,7 +87,8 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
 
   ara_dispatcher #(
-    .NrLanes(NrLanes)
+    .NrLanes(NrLanes),
+    .VLEN   (VLEN   )
   ) i_dispatcher (
     .clk_i             (clk_i           ),
     .rst_ni            (rst_ni          ),
@@ -145,7 +148,10 @@ module ara import ara_pkg::*; #(
   elen_t     result_scalar;
   logic      result_scalar_valid;
 
-  ara_sequencer #(.NrLanes(NrLanes)) i_sequencer (
+  ara_sequencer #(
+    .NrLanes(NrLanes),
+    .VLEN   (VLEN   )
+  ) i_sequencer (
     .clk_i                 (clk_i                    ),
     .rst_ni                (rst_ni                   ),
     // Interface with the dispatcher
@@ -229,6 +235,7 @@ module ara import ara_pkg::*; #(
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
       .NrLanes     (NrLanes     ),
+      .VLEN        (VLEN        ),
       .FPUSupport  (FPUSupport  ),
       .FPExtSupport(FPExtSupport),
       .FixPtSupport(FixPtSupport)
@@ -309,6 +316,7 @@ module ara import ara_pkg::*; #(
 
   vlsu #(
     .NrLanes     (NrLanes     ),
+    .VLEN        (VLEN        ),
     .AxiDataWidth(AxiDataWidth),
     .AxiAddrWidth(AxiAddrWidth),
     .axi_ar_t    (axi_ar_t    ),
@@ -373,6 +381,7 @@ module ara import ara_pkg::*; #(
 
   sldu #(
     .NrLanes(NrLanes),
+    .VLEN   (VLEN   ),
     .vaddr_t(vaddr_t)
   ) i_sldu (
     .clk_i                   (clk_i                            ),
@@ -409,6 +418,7 @@ module ara import ara_pkg::*; #(
 
   masku #(
     .NrLanes(NrLanes),
+    .VLEN   (VLEN   ),
     .vaddr_t(vaddr_t)
   ) i_masku (
     .clk_i                   (clk_i                           ),

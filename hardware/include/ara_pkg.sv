@@ -17,12 +17,6 @@ package ara_pkg;
   localparam int unsigned ELEN  = 64;
   // Maximum size of a single vector element, in bytes.
   localparam int unsigned ELENB = ELEN / 8;
-  // Number of bits in a vector register.
-  localparam int unsigned VLEN  = `ifdef VLEN `VLEN `else 0 `endif;
-  // Number of bytes in a vector register.
-  localparam int unsigned VLENB = VLEN / 8;
-  // Maximum vector length (in elements).
-  localparam int unsigned MAXVL = VLEN; // SEW = EW8, LMUL = 8. VL = 8 * VLEN / 8 = VLEN.
 
   // Number of vector instructions that can run in parallel.
   localparam int unsigned NrVInsn = 8;
@@ -105,7 +99,6 @@ package ara_pkg;
   //  Definitions  //
   ///////////////////
 
-  typedef logic [$clog2(MAXVL+1)-1:0] vlen_t;
   typedef logic [$clog2(NrVInsn)-1:0] vid_t;
   typedef logic [ELEN-1:0] elen_t;
 
@@ -979,8 +972,9 @@ package ara_pkg;
   localparam int unsigned NrVRFBanksPerLane = 8;
 
   // Find the starting address of a vector register vid
-  function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB / NrLanes / 8);
+  function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes, int vlen);
+    int vlenb = vlen / 8;
+    vaddr = vid * (vlenb / NrLanes / 8);
   endfunction: vaddr
 
   // Differenciate between SLDU and ADDRGEN operands from opqueue
