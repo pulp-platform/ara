@@ -30,7 +30,8 @@ module ara import ara_pkg::*; #(
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
     localparam int           unsigned NrPEs        = NrLanes + 4,
-    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0]
+    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0],
+    localparam int           unsigned VLENB        = VLEN / 8
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -633,15 +634,15 @@ module ara import ara_pkg::*; #(
   if (NrLanes > MaxNrLanes)
     $error("[ara] Ara supports at most MaxNrLanes lanes.");
 
-  if (ara_pkg::VLEN == 0)
+  if (VLEN == 0)
     $error("[ara] The vector length must be greater than zero.");
 
-  if (ara_pkg::VLEN < ELEN)
+  if (VLEN < ELEN)
     $error(
       "[ara] The vector length must be greater or equal than the maximum size of a single vector element"
     );
 
-  if (ara_pkg::VLEN != 2**$clog2(ara_pkg::VLEN))
+  if (VLEN != 2**$clog2(VLEN))
     $error("[ara] The vector length must be a power of two.");
 
 endmodule : ara

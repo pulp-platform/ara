@@ -22,6 +22,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  type                   pe_resp_t             = logic,
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
+    localparam int           unsigned VLENB           = VLEN / 8,
     localparam int           unsigned MaxVLenPerLane  = VLEN / NrLanes,       // In bits
     localparam int           unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
     localparam int           unsigned VRFSizePerLane  = MaxVLenPerLane * 32,  // In bits

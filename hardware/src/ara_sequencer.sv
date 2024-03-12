@@ -165,6 +165,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VSE:VSXE]           : vfu = VFU_StoreUnit;
       [VSLIDEUP:VSLIDEDOWN]: vfu = VFU_SlideUnit;
       [VMVXS:VFMVFS]       : vfu = VFU_None;
+      default              : vfu = VFU_None;
     endcase
   endfunction : vfu
 

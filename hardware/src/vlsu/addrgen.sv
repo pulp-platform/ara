@@ -15,6 +15,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     parameter int  unsigned AxiAddrWidth = 0,
     parameter type          axi_ar_t     = logic,
     parameter type          axi_aw_t     = logic,
+    parameter  type         pe_req_t     = logic,
+    parameter  type         pe_resp_t    = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam type         axi_addr_t   = logic [AxiAddrWidth-1:0],
     localparam type         vlen_t       = logic[$clog2(VLEN+1)-1:0]
@@ -201,7 +203,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     shuffled_word = addrgen_operand_i;
     // Deshuffle the whole NrLanes * 8 Byte word
     for (int unsigned b = 0; b < 8*NrLanes; b++) begin
-      automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, pe_req_q.eew_vs2, VLEN);
+      automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, pe_req_q.eew_vs2);
       deshuffled_word[8*b +: 8] = shuffled_word[8*b_shuffled +: 8];
     end
 
