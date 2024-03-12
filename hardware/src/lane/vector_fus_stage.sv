@@ -9,6 +9,7 @@
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int           unsigned NrLanes      = 0,
+    parameter  int           unsigned VLEN         = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
@@ -19,7 +20,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     parameter  type                   vaddr_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth    = $bits(elen_t),
-    localparam type                   strb_t       = logic [DataWidth/8-1:0]
+    localparam type                   strb_t       = logic [DataWidth/8-1:0],
+    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -99,6 +101,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
 
   valu #(
     .NrLanes(NrLanes),
+    .VLEN(VLEN),
     .FixPtSupport(FixPtSupport),
     .vaddr_t(vaddr_t)
   ) i_valu (
@@ -146,6 +149,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
 
   vmfpu #(
     .NrLanes   (NrLanes   ),
+    .VLEN(VLEN),
     .FPUSupport(FPUSupport),
     .FPExtSupport(FPExtSupport),
     .FixPtSupport(FixPtSupport),

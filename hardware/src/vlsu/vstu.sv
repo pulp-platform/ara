@@ -15,6 +15,7 @@
 
 module vstu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int  unsigned NrLanes = 0,
+    parameter  int  unsigned VLEN    = 0,
     parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
     // AXI Interface parameters
     parameter  int  unsigned AxiDataWidth = 0,
@@ -24,6 +25,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
     localparam int           DataWidth    = $bits(elen_t),
     localparam type          strb_t       = logic[DataWidth/8-1:0],
+    localparam type          vlen_t       = logic[$clog2(VLEN+1)-1:0]
     localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
   )(
     input  logic                           clk_i,

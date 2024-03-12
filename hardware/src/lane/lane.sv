@@ -11,6 +11,7 @@
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes         = 1, // Number of lanes
+    parameter  int           unsigned VLEN            = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
@@ -26,7 +27,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Address of an element in the lane's VRF
     localparam type                   vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0],
     localparam int           unsigned DataWidth       = $bits(elen_t), // Width of the lane datapath
-    localparam type                   strb_t          = logic [DataWidth/8-1:0] // Byte-strobe type
+    localparam type                   strb_t          = logic [DataWidth/8-1:0], // Byte-strobe type
+    // vl_csr type
+    localparam type                   vlen_t          = logic [$clog2(VLEN+1)-1:0]
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,
@@ -192,8 +195,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       sldu_result_gnt_opqueues;
 
   operand_requester #(
-    .NrBanks(NrVRFBanksPerLane),
     .NrLanes(NrLanes          ),
+    .VLEN   (VLEN             ),
+    .NrBanks(NrVRFBanksPerLane),
     .vaddr_t(vaddr_t          )
   ) i_operand_requester (
     .clk_i                    (clk_i                   ),
@@ -305,6 +309,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   operand_queues_stage #(
     .NrLanes   (NrLanes   ),
+    .VLEN      (VLEN      ),
     .FPUSupport(FPUSupport)
   ) i_operand_queues (
     .clk_i                            (clk_i                              ),
@@ -355,6 +360,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   vector_fus_stage #(
     .NrLanes     (NrLanes     ),
+    .VLEN        (VLEN        ),
     .FPUSupport  (FPUSupport  ),
     .FPExtSupport(FPExtSupport),
     .FixPtSupport(FixPtSupport),

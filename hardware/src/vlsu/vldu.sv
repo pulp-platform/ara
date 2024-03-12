@@ -9,6 +9,7 @@
 
 module vldu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int  unsigned NrLanes = 0,
+    parameter  int  unsigned VLEN    = 0,
     parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
     // AXI Interface parameters
     parameter  int  unsigned AxiDataWidth = 0,
@@ -17,6 +18,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
     localparam int           DataWidth    = $bits(elen_t),
     localparam type          strb_t       = logic[DataWidth/8-1:0],
+    localparam type          vlen_t       = logic[$clog2(VLEN+1)-1:0],
     localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
   ) (
     input  logic                           clk_i,
@@ -286,7 +288,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Initialize id and addr fields of the result queue requests
         for (int lane = 0; lane < NrLanes; lane++) begin
           result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
-          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue_q.vd, NrLanes) +
+          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue_q.vd, NrLanes, VLEN) +
             (((vinsn_issue_q.vl - (issue_cnt_q >> int'(vinsn_issue_q.vtype.vsew))) / NrLanes) >>
             (int'(EW64) - int'(vinsn_issue_q.vtype.vsew)));
         end
