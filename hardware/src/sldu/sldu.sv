@@ -385,7 +385,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t issue_cnt_d, issue_cnt_q;
   // Respected by default: input_limit_d  = 8*NrLanes + out_pnt_d - in_pnt_d;
   // To enforce: output_limit_d = out_pnt_d + issue_cnt_d;
-  logic [idx_width(MAXVL+1):0] output_limit_d, output_limit_q;
+  // MAXVL == VLEN (when LMUL == 8, i.e., the maximum possible)
+  logic [idx_width(VLEN+1):0] output_limit_d, output_limit_q;
 
   // Remaining bytes of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
@@ -543,7 +544,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
           // Shuffle the output enable
           for (int unsigned b = 0; b < 8*NrLanes; b++)
-            out_en_flat[shuffle_index(b, NrLanes, vinsn_issue_q.vtype.vsew, VLEN)] = out_en_seq[b];
+            out_en_flat[shuffle_index(b, NrLanes, vinsn_issue_q.vtype.vsew)] = out_en_seq[b];
 
           // Mask the output enable with the mask vector
           out_en = out_en_flat & ({8*NrLanes{vinsn_issue_q.vm | (vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu})}} | mask_q);
@@ -652,7 +653,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             if (vinsn_issue_q.op == VSLIDEDOWN && vinsn_issue_q.use_scalar_op) begin
               // Copy the scalar operand to the last word
               automatic int out_seq_byte = issue_cnt_q;
-              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew, VLEN);
+              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
               automatic int tgt_lane = out_byte[3 +: $clog2(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 
