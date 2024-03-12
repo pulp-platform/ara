@@ -9,10 +9,12 @@
 // queues. This stage also includes the VRF arbiter.
 
 module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned VLEN    = 0,
-    parameter  int  unsigned NrBanks = 0,     // Number of banks in the vector register file
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes               = 0,
+    parameter  int  unsigned VLEN                  = 0,
+    parameter  int  unsigned NrBanks               = 0,     // Number of banks in the vector register file
+    parameter  type          vaddr_t               = logic, // Type used to address vector register file elements
+    parameter  type          operand_request_cmd_t = logic,
+    parameter  type          operand_queue_cmd_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam type          strb_t  = logic[$bits(elen_t)/8-1:0],
     localparam type          vlen_t  = logic[$clog2(VLEN+1)-1:0]

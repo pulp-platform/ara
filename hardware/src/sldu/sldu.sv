@@ -8,9 +8,11 @@
 // instructions, which need access to the whole Vector Register File.
 
 module sldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned VLEN    = 0,
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements,
+    parameter  int  unsigned NrLanes   = 0,
+    parameter  int  unsigned VLEN      = 0,
+    parameter  type          vaddr_t   = logic, // Type used to address vector register file elements,
+    parameter  type          pe_req_t  = logic,
+    parameter  type          pe_resp_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
@@ -541,7 +543,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
           // Shuffle the output enable
           for (int unsigned b = 0; b < 8*NrLanes; b++)
-            out_en_flat[shuffle_index(b, NrLanes, vinsn_issue_q.vtype.vsew)] = out_en_seq[b];
+            out_en_flat[shuffle_index(b, NrLanes, vinsn_issue_q.vtype.vsew, VLEN)] = out_en_seq[b];
 
           // Mask the output enable with the mask vector
           out_en = out_en_flat & ({8*NrLanes{vinsn_issue_q.vm | (vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu})}} | mask_q);
@@ -650,7 +652,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             if (vinsn_issue_q.op == VSLIDEDOWN && vinsn_issue_q.use_scalar_op) begin
               // Copy the scalar operand to the last word
               automatic int out_seq_byte = issue_cnt_q;
-              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
+              automatic int out_byte = shuffle_index(out_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew, VLEN);
               automatic int tgt_lane = out_byte[3 +: $clog2(NrLanes)];
               automatic int tgt_lane_offset = out_byte[2:0];
 

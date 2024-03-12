@@ -14,9 +14,11 @@
 // upon receiving vector memory operations.
 
 module vstu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  int  unsigned VLEN    = 0,
-    parameter  type          vaddr_t = logic,  // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes   = 0,
+    parameter  int  unsigned VLEN      = 0,
+    parameter  type          vaddr_t   = logic,  // Type used to address vector register file elements
+    parameter  type          pe_req_t  = logic,
+    parameter  type          pe_resp_t = logic,
     // AXI Interface parameters
     parameter  int  unsigned AxiDataWidth = 0,
     parameter  int  unsigned AxiAddrWidth = 0,
@@ -236,7 +238,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           // Map axy_byte to the corresponding byte in the VRF word (sequential)
           automatic int vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
           // And then shuffle it
-          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.eew_vs1);
+          automatic int vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.eew_vs1, VLEN);
 
           // Is this byte a valid byte in the VRF word?
           if (vrf_seq_byte < issue_cnt_q) begin
