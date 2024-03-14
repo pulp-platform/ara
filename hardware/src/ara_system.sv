@@ -69,6 +69,51 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   ara_axi_req_t     ariane_axi_req, ara_axi_req_inval, ara_axi_req;
   ara_axi_resp_t    ariane_axi_resp, ara_axi_resp_inval, ara_axi_resp;
 
+  ///////////
+  //  XIF  //
+  ///////////
+
+core_v_xif #(
+    .X_NUM_RS               (2),
+    .X_ID_WIDTH             (4),
+    .X_RFR_WIDTH            (32),
+    .X_RFW_WIDTH            (32),
+    .X_NUM_HARTS            (1),
+    .X_HARTID_WIDTH         (1),
+    .X_MISA                 ('0),
+    .X_ECS_XS               ('0),
+    .X_DUALREAD             (0),
+    .X_DUALWRITE            (0),
+    .X_ISSUE_REGISTER_SPLIT (0),
+    .X_MEM_WIDTH            (32)
+  ) i_xif ();
+
+  // Compressed interface
+  // assign i_xif.compressed_valid
+  assign i_xif.compressed_ready = '0;
+  // assign i_xif.compressed_req
+  // assign i_xif.compressed_resp
+
+  // Issue interface
+  // assign i_xif.issue_valid
+  assign i_xif.issue_ready = acc_resp.req_ready;
+  // assign i_xif.issue_req
+  // assign i_xif.issue_resp
+
+  // Register interface
+  // assign i_xif.register_valid
+  assign i_xif.register_ready = acc_resp.req_ready;
+  // assign i_xif.register
+
+  // Commit interface
+  // assign i_xif.commit_valid
+  // assign i_xif.commit
+
+  // Result interface
+  assign i_xif.result_valid = acc_resp.resp_valid;
+  // assign i_xif.result_ready
+  // assign i_xif.result
+
   //////////////////////
   //  Ara and Ariane  //
   //////////////////////
