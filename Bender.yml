@@ -61,6 +61,7 @@ sources:
     - hardware/src/lane/lane.sv
     # Level 5
     - hardware/src/ara.sv
+    - hardware/src/core_v_xif.sv
     # Level 6
     - hardware/src/ara_system.sv
     # Level 7
