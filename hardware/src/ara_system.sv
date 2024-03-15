@@ -88,31 +88,20 @@ core_v_xif #(
     .X_MEM_WIDTH            (32)
   ) i_xif ();
 
-  // Compressed interface
-  // assign i_xif.compressed_valid
-  assign i_xif.compressed_ready = '0;
-  // assign i_xif.compressed_req
-  // assign i_xif.compressed_resp
-
-  // Issue interface
-  // assign i_xif.issue_valid
-  assign i_xif.issue_ready = acc_resp.req_ready;
-  // assign i_xif.issue_req
-  // assign i_xif.issue_resp
-
-  // Register interface
-  // assign i_xif.register_valid
-  assign i_xif.register_ready = acc_resp.req_ready;
-  // assign i_xif.register
-
-  // Commit interface
-  // assign i_xif.commit_valid
-  // assign i_xif.commit
-
-  // Result interface
-  assign i_xif.result_valid = acc_resp.resp_valid;
-  // assign i_xif.result_ready
-  // assign i_xif.result
+core_v_xif #(
+    .X_NUM_RS               (2),
+    .X_ID_WIDTH             (4),
+    .X_RFR_WIDTH            (32),
+    .X_RFW_WIDTH            (32),
+    .X_NUM_HARTS            (1),
+    .X_HARTID_WIDTH         (1),
+    .X_MISA                 ('0),
+    .X_ECS_XS               ('0),
+    .X_DUALREAD             (0),
+    .X_DUALWRITE            (0),
+    .X_ISSUE_REGISTER_SPLIT (0),
+    .X_MEM_WIDTH            (32)
+  ) i_xif_pack ();
 
   //////////////////////
   //  Ara and Ariane  //
@@ -138,11 +127,39 @@ core_v_xif #(
   // Pack invalidation interface into acc interface
   accelerator_resp_t                    acc_resp_pack;
   always_comb begin : pack_inval
-    acc_resp_pack             = acc_resp;
-    acc_resp_pack.inval_valid = inval_valid;
-    acc_resp_pack.inval_addr  = inval_addr;
-    inval_ready               = acc_req.inval_ready;
-    acc_cons_en               = acc_req.acc_cons_en;
+    // acc_resp_pack             = acc_resp;
+    // acc_resp_pack.inval_valid = inval_valid;
+    // acc_resp_pack.inval_addr  = inval_addr;
+    // inval_ready               = acc_req.inval_ready;
+    // acc_cons_en               = acc_req.acc_cons_en;
+    // Adding inval to XIF
+    // i_xif_pack.core_v_xif_coprocessor_issue.issue_valid       = i_xif.core_v_xif_cpu_issue.issue_ready;
+    // i_xif_pack.core_v_xif_cpu_issue.issue_ready               = i_xif.core_v_xif_coprocessor_issue.issue_ready;
+    // i_xif_pack.core_v_xif_coprocessor_issue.issue_req         = i_xif.core_v_xif_cpu_issue.issue_ready;
+    // i_xif_pack.core_v_xif_cpu_issue.issue_resp                = i_xif.core_v_xif_coprocessor_issue.issue_ready;
+    // i_xif_pack.core_v_xif_coprocessor_register.register_valid = i_xif.core_v_xif_cpu_register.register_valid;
+    // i_xif_pack.core_v_xif_cpu_register.register_ready         = i_xif.core_v_xif_coprocessor_register.register_ready;
+    // i_xif_pack.core_v_xif_coprocessor_register.register       = i_xif.core_v_xif_cpu_register.register;
+    // i_xif_pack.core_v_xif_coprocessor_commit.commit_valid     = i_xif.core_v_xif_coprocessor_commit.commit_valid;
+    // i_xif_pack.core_v_xif_coprocessor_commit.commit           = i_xif.core_v_xif_cpu_commit.commit; 
+    // i_xif_pack.core_v_xif_cpu_result.result_valid             = i_xif.core_v_xif_coprocessor_result.result_valid;
+    // i_xif_pack.core_v_xif_coprocessor_result.result_ready     = i_xif.core_v_xif_coprocessor_result.result_ready;
+    // i_xif_pack.core_v_xif_cpu_result.result                   = i_xif.core_v_xif_coprocessor_result.result;
+    // i_xif_pack.core_v_xif_coprocessor_mod.mod_req             = i_xif.core_v_xif_cpu_mod.mod_req;
+    // i_xif_pack.core_v_xif_cpu_mod.mod_resp                    = i_xif.core_v_xif_coprocessor_mod.mod_resp;
+
+
+    // i_xif_pack.core_v_xif_cpu_mod.mod_resp.inval_valid = inval_valid;
+    // i_xif_pack.core_v_xif_cpu_mod.mod_resp.inval_addr  = inval_addr;
+    // inval_ready                                        = i_xif.core_v_xif_cpu_mod.mod_req.inval_ready;
+    // inval_ready                                        = i_xif_pack.core_v_xif_cpu_mod.mod_req.inval_ready;
+    // acc_cons_en                                        = i_xif.core_v_xif_cpu_mod.mod_req.acc_cons_en;
+    // acc_cons_en                                        = i_xif_pack.core_v_xif_cpu_mod.mod_req.acc_cons_en;
+
+    i_xif.core_v_xif_cpu_mod.mod_resp.inval_valid         = inval_valid;
+    i_xif.core_v_xif_cpu_mod.mod_resp.inval_addr          = inval_addr;
+    inval_ready                                           = i_xif.core_v_xif_cpu_mod.mod_req.inval_ready;
+    acc_cons_en                                           = i_xif.core_v_xif_cpu_mod.mod_req.acc_cons_en;
   end
 
 `ifdef IDEAL_DISPATCHER
@@ -150,10 +167,18 @@ core_v_xif #(
   accel_dispatcher_ideal i_accel_dispatcher_ideal (
     .clk_i            (clk_i                 ),
     .rst_ni           (rst_ni                ),
-    .acc_req_o        (acc_req               ),
-    .acc_resp_i       (acc_resp              ),
+    // .acc_req_o        (acc_req               ),
+    // .acc_resp_i       (acc_resp              ),
     .acc_resp_valid_i (acc_resp_valid        ),
-    .acc_resp_ready_o (acc_resp_ready        )
+    .acc_resp_ready_o (acc_resp_ready        ),
+    .xif_compressed_p (i_xif.core_v_xif_cpu_compressed),
+    .xif_issue_p      (i_xif.core_v_xif_cpu_issue     ),
+    .xif_register_p   (i_xif.core_v_xif_cpu_register  ),
+    .xif_commit_p     (i_xif.core_v_xif_cpu_commit    ),
+    .xif_mem_p        (i_xif.core_v_xif_cpu_mem       ),
+    .xif_mem_result_p (i_xif.core_v_xif_cpu_mem_result),
+    .xif_result_p     (i_xif.core_v_xif_cpu_result    ),
+    .xif_mod_p        (i_xif.core_v_xif_cpu_mod       )
   );
 `else
   cva6 #(
@@ -179,13 +204,30 @@ core_v_xif #(
     .debug_req_i      ('0                    ),
     .rvfi_o           (                      ),
     // Accelerator ports
-    .cvxif_req_o      (acc_req               ),
-    .cvxif_resp_i     (acc_resp_pack         ),
+    // .cvxif_req_o      (acc_req               ),
+    // .cvxif_resp_i     (acc_resp_pack         ),
     .l15_req_o        (                      ),
     .l15_rtrn_i       ( '0                   ),
     // Memory interface
     .axi_req_o        (ariane_narrow_axi_req ),
-    .axi_resp_i       (ariane_narrow_axi_resp)
+    .axi_resp_i       (ariane_narrow_axi_resp),
+    // XIF
+    // .xif_compressed_p   (i_xif_pack.core_v_xif_cpu_compressed),
+    // .xif_issue_p        (i_xif_pack.core_v_xif_cpu_issue     ),
+    // .xif_register_p     (i_xif_pack.core_v_xif_cpu_register  ),
+    // .xif_commit_p       (i_xif_pack.core_v_xif_cpu_commit    ),
+    // .xif_mem_p          (i_xif_pack.core_v_xif_cpu_mem       ),
+    // .xif_mem_result_p   (i_xif_pack.core_v_xif_cpu_mem_result),
+    // .xif_result_p       (i_xif_pack.core_v_xif_cpu_result    ),
+    // .xif_mod_p          (i_xif_pack.core_v_xif_cpu_mod       )
+    .xif_compressed_p   (i_xif.core_v_xif_cpu_compressed),
+    .xif_issue_p        (i_xif.core_v_xif_cpu_issue     ),
+    .xif_register_p     (i_xif.core_v_xif_cpu_register  ),
+    .xif_commit_p       (i_xif.core_v_xif_cpu_commit    ),
+    .xif_mem_p          (i_xif.core_v_xif_cpu_mem       ),
+    .xif_mem_result_p   (i_xif.core_v_xif_cpu_mem_result),
+    .xif_result_p       (i_xif.core_v_xif_cpu_result    ),
+    .xif_mod_p          (i_xif.core_v_xif_cpu_mod       )
   );
 `endif
 
@@ -262,15 +304,23 @@ core_v_xif #(
     .axi_req_t   (ara_axi_req_t   ),
     .axi_resp_t  (ara_axi_resp_t  )
   ) i_ara (
-    .clk_i           (clk_i         ),
-    .rst_ni          (rst_ni        ),
-    .scan_enable_i   (scan_enable_i ),
-    .scan_data_i     (1'b0          ),
-    .scan_data_o     (/* Unused */  ),
-    .acc_req_i       (acc_req       ),
-    .acc_resp_o      (acc_resp      ),
-    .axi_req_o       (ara_axi_req   ),
-    .axi_resp_i      (ara_axi_resp  )
+    .clk_i              (clk_i         ),
+    .rst_ni             (rst_ni        ),
+    .scan_enable_i      (scan_enable_i ),
+    .scan_data_i        (1'b0          ),
+    .scan_data_o        (/* Unused */  ),
+    // .acc_req_i          (acc_req       ),
+    // .acc_resp_o         (acc_resp      ),
+    .axi_req_o          (ara_axi_req   ),
+    .axi_resp_i         (ara_axi_resp  ),
+    .xif_compressed_p   (i_xif.core_v_xif_coprocessor_compressed),
+    .xif_issue_p        (i_xif.core_v_xif_coprocessor_issue     ),
+    .xif_register_p     (i_xif.core_v_xif_coprocessor_register  ),
+    .xif_commit_p       (i_xif.core_v_xif_coprocessor_commit    ),
+    .xif_mem_p          (i_xif.core_v_xif_coprocessor_mem       ),
+    .xif_mem_result_p   (i_xif.core_v_xif_coprocessor_mem_result),
+    .xif_result_p       (i_xif.core_v_xif_coprocessor_result    ),
+    .xif_mod_p          (i_xif.core_v_xif_coprocessor_mod       )
   );
 
   axi_mux #(

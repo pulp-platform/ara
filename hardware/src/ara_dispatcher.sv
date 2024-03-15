@@ -40,7 +40,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                 core_st_pending_o,
     input  logic                                 load_complete_i,
     input  logic                                 store_complete_i,
-    input  logic                                 store_pending_i
+    input  logic                                 store_pending_i,
+    // XIF
+    core_v_xif                                   xif_compressed_p,
+    core_v_xif                                   xif_issue_p,
+    core_v_xif                                   xif_register_p,
+    core_v_xif                                   xif_commit_p,
+    core_v_xif                                   xif_mem_p,
+    core_v_xif                                   xif_mem_result_p,
+    core_v_xif                                   xif_result_p,
+    core_v_xif                                   xif_mod_p
   );
 
   import cf_math_pkg::idx_width;
@@ -3224,5 +3233,83 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // The token must change at every new instruction
     ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
   end: p_decoder
+
+  ///////////
+  //  XIF  //
+  ///////////
+
+
+  // Compressed interface:
+  // Handshake
+  // assign = xif_compressed_p.compressed_valid;
+  // assign xif_compressed_p.compressed_ready = ;
+  // Inputs
+  // assign = xif_compressed_p.compressed_req.instr;
+  // assign = xif_compressed_p.compressed_req.hartid;
+  // Outputs
+  // assign xif_compressed_p.compressed_resp.isntr = ;
+  // assign xif_compressed_p.compressed_resp.accept = ;
+
+  // Issue interface:
+  // Handshake
+  assign acc_req_i.req_valid = xif_issue_p.issue_valid;
+  assign xif_issue_p.issue_ready = acc_resp_o.req_ready;
+  // Inputs
+  assign acc_req_i.insn = xif_issue_p.issue_req.instr;
+  // assign = xif_issue_p.instr_req.hartid;
+  assign acc_req_i.trans_id = xif_issue_p.issue_req.id;
+  // Outputs
+  // assign xif_issue_p.issue_resp.accept = ;
+  // assign xif_issue_p.issue_resp.writeback = ;
+  // assign xif_issue_p.issue_resp.register_read = ;
+  // assign xif_issue_p.issue_resp.ecswrite = ;
+
+  // Register interface:
+  // Handshake
+  // assign acc_req_i.req_valid = xif_register_p.register_valid;
+  assign xif_register_p.register_ready = acc_resp_o.req_ready;
+  // Inputs
+  // assign = xif_register_p.register.hartid;
+  // assign acc_req_i.trans_id = xif_register_p.register.id;
+  assign acc_req_i.rs1 = xif_register_p.register.rs[0];
+  assign acc_req_i.rs2 = xif_register_p.register.rs[1];
+  // assign = xif_register_p.register.rs_valid;
+  // assign = xif_register_p.register.ecs;
+  // assign = xif_register_p.register.ecs_valid;
+
+  // Commit interface:
+  // Handshake
+  // assign = xif_commit_p.commit_valid;
+  // Inputs
+  // assign = xif_commit_p.commit.hartid;
+  // assign acc_req_i.trans_id = xif_commit_p.commit.id;
+  // assign = xif_commit_p.commit.commit_kill;
+
+  // Result interface:
+  // Handshake
+  assign xif_result_p.result_valid = acc_resp_o.resp_valid;
+  assign acc_req_i.resp_ready = xif_result_p.result_ready;
+  // Outputs
+  // assign xif_result_p.result.hartid = ;
+  assign xif_result_p.result.id = acc_resp_o.trans_id;
+  assign xif_result_p.result.data = acc_resp_o.result;
+  // assign xif_result_p.result.rd = ;
+  // assign xif_result_p.result.we = ;
+  // assign xif_result_p.result.ecswe = ;
+  // assign xif_result_p.result.ecsdata = ;
+
+  // Modified interface for ara/cva6:
+  assign acc_req_i.frm = xif_mod_p.mod_req.frm;
+  assign acc_req_i.store_pending = xif_mod_p.mod_req.store_pending_req;
+  // assign acc_req_i.acc_cons_en = xif_mod_p.acc_cons_en;
+  // assign acc_req_i.inval_ready = xif_mod_p.inval_ready;
+  assign xif_mod_p.mod_resp.error = acc_resp_o.error;
+  assign xif_mod_p.mod_resp.store_pending_resp = acc_resp_o.store_pending;
+  assign xif_mod_p.mod_resp.store_complete = acc_resp_o.store_complete;
+  assign xif_mod_p.mod_resp.load_complete = acc_resp_o.load_complete;
+  assign xif_mod_p.mod_resp.fflags = acc_resp_o.fflags;
+  assign xif_mod_p.mod_resp.fflags_valid = acc_resp_o.fflags_valid;
+  // assign xif_mod_p.inval_valid = acc_resp_o.inval_valid;
+  // assign xif_mod_p.inval_addr = acc_resp_o.inval_addr;
 
 endmodule : ara_dispatcher
