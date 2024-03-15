@@ -129,6 +129,24 @@ interface core_v_xif
     logic err;  // Did the instruction cause a bus error?
   } x_result_t;
 
+  typedef struct packed {
+    fpnew_pkg::roundmode_e  frm;
+    logic                   store_pending_req;
+    logic                   acc_cons_en;
+    logic                   inval_ready;
+  } x_mod_req_t;
+
+  typedef struct packed {
+    logic                   error;
+    logic                   store_pending_resp;
+    logic                   store_complete;
+    logic                   load_complete;
+    logic [4:0]             fflags;
+    logic                   fflags_valid;
+    logic                   inval_valid;
+    logic [63:0]            inval_addr;
+  } x_mod_resp_t;
+
   // Compressed interface
   logic               compressed_valid;
   logic               compressed_ready;
@@ -164,6 +182,10 @@ interface core_v_xif
   logic               result_valid;
   logic               result_ready;
   x_result_t          result;
+
+  // Modified interface for ara and cva6 
+  x_mod_req_t         mod_req;
+  x_mod_resp_t        mod_resp;             
 
   // Port directions for host CPU
   modport core_v_xif_cpu_compressed (
@@ -209,6 +231,11 @@ interface core_v_xif
     input  result
   );
 
+  modport core_v_xif_cpu_mod (
+    output mod_req,
+    input  mod_resp
+  );
+
   // Port directions for CO-PROCESSOR
   modport core_v_xif_coprocessor_compressed (
     input   compressed_valid,
@@ -251,6 +278,11 @@ interface core_v_xif
     output  result_valid,
     input   result_ready,
     output  result
+  );
+
+  modport core_v_xif_coprocessor_mod (
+    input   mod_req,
+    output  mod_resp
   );
 
 

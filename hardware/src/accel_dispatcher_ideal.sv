@@ -25,10 +25,97 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   input logic                     rst_ni,
   // Accelerator interaface
   output accelerator_req_t  acc_req_o,
-  input  accelerator_resp_t acc_resp_i
+  input  accelerator_resp_t acc_resp_i,
+  // XIF
+  core_v_xif                xif_compressed_p,
+  core_v_xif                xif_issue_p,
+  core_v_xif                xif_register_p,
+  core_v_xif                xif_commit_p,
+  core_v_xif                xif_mem_p,
+  core_v_xif                xif_mem_result_p,
+  core_v_xif                xif_result_p,
+  core_v_xif                xif_mod_p
 );
 
   localparam string vtrace = `STRINGIFY(`VTRACE);
+
+  ///////////
+  //  XIF  //
+  ///////////
+
+
+  // Compressed interface:
+  // Handshake
+  // assign xif_compressed_p.compressed_valid = ;
+  // assign = xif_compressed_p.compressed_ready;
+  // Outputs
+  // assign xif_compressed_p.compressed_req.instr = ;
+  // assign xif_compressed_p.compressed_req.hartid = ;
+  // Inputs
+  // assign = xif_compressed_p.compressed_resp.isntr;
+  // assign = xif_compressed_p.compressed_resp.accept;
+
+  // Issue interface:
+  // Handshake
+  assign xif_issue_p.issue_valid = acc_req_o.req_valid;
+  assign acc_resp_i.req_ready = xif_issue_p.issue_ready;
+  // Outputs
+  assign xif_issue_p.issue_req.instr = acc_req_o.insn;
+  // assign xif_issue_p.instr_req.hartid = ;
+  assign xif_issue_p.issue_req.id = acc_req_o.trans_id;
+  // Inputs
+  // assign = xif_issue_p.issue_resp.accept;
+  // assign = xif_issue_p.issue_resp.writeback;
+  // assign = xif_issue_p.issue_resp.register_read;
+  // assign = xif_issue_p.issue_resp.ecswrite;
+
+  // Register interface:
+  // Handshake
+  assign xif_register_p.register_valid = acc_req_o.req_valid;
+  // assign acc_resp_i.req_ready = xif_register_p.register_ready;
+  // Outputs
+  // assign xif_register_p.register.hartid = ;
+  assign xif_register_p.register.id = acc_req_o.trans_id;
+  assign xif_register_p.register.rs[0] = acc_req_o.rs1;
+  assign xif_register_p.register.rs[1] = acc_req_o.rs2;
+  // assign xif_register_p.register.rs_valid = ;
+  // assign xif_register_p.register.ecs = ;
+  // assign xif_register_p.register.ecs_valid = ;
+
+  // Commit interface:
+  // Handshake
+  // assign xif_commit_p.commit_valid = ;
+  // Outputs
+  // assign xif_commit_p.commit.hartid = ;
+  assign xif_commit_p.commit.id = acc_req_o.trans_id;
+  // assign xif_commit_p.commit.commit_kill = ;
+
+  // Result interface:
+  // Handshake
+  assign acc_resp_i.resp_valid = xif_result_p.result_valid;
+  assign xif_result_p.result_ready = acc_req_o.resp_ready;
+  // Inputs
+  // assign = xif_result_p.result.hartid;
+  assign acc_resp_i.trans_id = xif_result_p.result.id;
+  assign acc_resp_i.result = xif_result_p.result.data;
+  // assign = xif_result_p.result.rd;
+  // assign = xif_result_p.result.we;
+  // assign = xif_result_p.result.ecswe;
+  // assign = xif_result_p.result.ecsdata;
+
+  // Modified interface for ara/cva6:
+  assign xif_mod_p.mod_req.frm = acc_req_o.frm;
+  assign xif_mod_p.mod_req.store_pending_req = acc_req_o.store_pending;
+  // assign xif_mod_p.acc_cons_en = acc_req_o.acc_cons_en;
+  // assign xif_mod_p.inval_ready = acc_req_o.inval_ready;
+  assign acc_resp_i.error = xif_mod_p.mod_resp.error;
+  assign acc_resp_i.store_pending = xif_mod_p.mod_resp.store_pending_resp;
+  assign acc_resp_i.store_complete = xif_mod_p.mod_resp.store_complete;
+  assign acc_resp_i.load_complete = xif_mod_p.mod_resp.load_complete;
+  assign acc_resp_i.fflags = xif_mod_p.mod_resp.fflags;
+  assign acc_resp_i.fflags_valid = xif_mod_p.mod_resp.fflags_valid;
+  // assign acc_resp_i.inval_valid = xif_mod_p.inval_valid;
+  // assign acc_resp_i.inval_addr = xif_mod_p.inval_addr;
 
   //////////
   // Data //
