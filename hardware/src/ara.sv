@@ -44,12 +44,8 @@ module ara import ara_pkg::*; #(
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i,
     // XIF
-    core_v_xif                xif_compressed_p,
     core_v_xif                xif_issue_p,
     core_v_xif                xif_register_p,
-    core_v_xif                xif_commit_p,
-    core_v_xif                xif_mem_p,
-    core_v_xif                xif_mem_result_p,
     core_v_xif                xif_result_p,
     core_v_xif                xif_mod_p
   );
@@ -100,7 +96,7 @@ module ara import ara_pkg::*; #(
     .rst_ni            (rst_ni          ),
     // Interface with Ariane
     // .acc_req_i         (acc_req_i       ),
-    // .acc_resp_o        (acc_resp_o      ),
+    .acc_resp_o        (acc_resp_o      ),
     // Interface with the sequencer
     .ara_req_o         (ara_req         ),
     .ara_req_valid_o   (ara_req_valid   ),
@@ -119,12 +115,8 @@ module ara import ara_pkg::*; #(
     .store_complete_i  (store_complete  ),
     .store_pending_i   (store_pending   ),
     // XIF
-    .xif_compressed_p  (xif_compressed_p),
     .xif_issue_p       (xif_issue_p     ),
     .xif_register_p    (xif_register_p  ),
-    .xif_commit_p      (xif_commit_p    ),
-    .xif_mem_p         (xif_mem_p       ),
-    .xif_mem_result_p  (xif_mem_result_p),
     .xif_result_p      (xif_result_p    ),
     .xif_mod_p         (xif_mod_p       )
   );
