@@ -24,6 +24,8 @@
 // Contributor: Michael Platzer <michael.platzer@hotmail.com>
 // Contributor: Davide Schiavone <davide@openhwgroup.org>
 
+// This version has been adapted to work with ara/cva6
+
 interface core_v_xif
 #(
   parameter int unsigned X_NUM_RS               = 2,  // Number of register file read ports that can be used by the eXtension interface
@@ -185,7 +187,8 @@ interface core_v_xif
 
   // Modified interface for ara and cva6 
   x_mod_req_t         mod_req;
-  x_mod_resp_t        mod_resp;             
+  x_mod_resp_t        mod_resp;
+  x_mod_resp_t        mod_resp_pack;
 
   // Port directions for host CPU
   modport core_v_xif_cpu_compressed (
@@ -230,10 +233,10 @@ interface core_v_xif
     output result_ready,
     input  result
   );
-
+  // Additional port for function in ara/cva6
   modport core_v_xif_cpu_mod (
     output mod_req,
-    input  mod_resp
+    input  mod_resp_pack
   );
 
   // Port directions for CO-PROCESSOR
@@ -285,6 +288,18 @@ interface core_v_xif
     output  mod_resp
   );
 
+  // Port directions for inval packing
+  modport core_v_xif_pack_mod (
+    input  mod_resp,
+    input  mod_req,
+    output mod_resp_pack
+  );
+
+  // Specifc port directions for ideal dispatcher
+  modport core_v_xif_ideal_mod (
+    output mod_req,
+    input  mod_resp
+  );
 
 endinterface : core_v_xif
 
