@@ -586,7 +586,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
     // The final address can be found similarly...
     if (num_bytes >= max_burst_bytes) begin
-        aligned_next_start_addr = aligned_addr(addr + max_burst_bytes, clog2_AxiStrobeWidth);
+        aligned_next_start_addr = aligned_addr(addr + max_burst_bytes, eff_axi_dw_log);
     end else begin
         aligned_next_start_addr = aligned_addr(addr + num_bytes - 1, eff_axi_dw_log) + eff_axi_dw;
     end
@@ -685,6 +685,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           aligned_start_addr_d = aligned_addr(axi_addrgen_d.addr, clog2_AxiStrobeWidth);
           // Pre-calculate the next_2page_msb. This should not require much energy if the addr
           // has zeroes in the upper positions.
+          // We can use this also for the misaligned address calculation, as the next 2 page msb
+          // will be the same either way.
           next_2page_msb_d = aligned_start_addr_d[AxiAddrWidth-1:12] + 1;
           // The final address can be found similarly...
           set_end_addr (
