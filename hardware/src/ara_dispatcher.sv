@@ -42,10 +42,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_complete_i,
     input  logic                                 store_pending_i,
     // XIF
-    core_v_xif                                   xif_issue_p,
-    core_v_xif                                   xif_register_p,
-    core_v_xif                                   xif_result_p,
-    core_v_xif                                   xif_mod_p
+    input core_v_xif_pkg::x_req_t   core_v_xif_req_i,
+    output core_v_xif_pkg::x_resp_t core_v_xif_resp_o
   );
 
   import cf_math_pkg::idx_width;
@@ -3230,38 +3228,42 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
   end: p_decoder
 
+
   ///////////
   //  XIF  //
   ///////////
 
-  // Issue interface:
-  assign acc_req_i.req_valid = xif_issue_p.issue_valid;
-  assign xif_issue_p.issue_ready = acc_resp_o.req_ready;
-  assign acc_req_i.insn = xif_issue_p.issue_req.instr;
-  assign acc_req_i.trans_id = xif_issue_p.issue_req.id;
+  // Issue interface
+  assign acc_req_i.req_valid = core_v_xif_req_i.issue_valid;
+  assign core_v_xif_resp_o.issue_ready = acc_resp_o.req_ready;
+  assign acc_req_i.insn = core_v_xif_req_i.issue_req.instr;
+  assign acc_req_i.trans_id = core_v_xif_req_i.issue_req.id;
+  // Register interface
+  // assign acc_req_i.req_valid = core_v_xif_req_i.register_valid;
+  assign core_v_xif_resp_o.register_ready = acc_resp_o.req_ready;
+  // assign acc_req_i.trans_id = core_v_xif_req_i.register.id;
+  assign acc_req_i.rs1 = core_v_xif_req_i.register.rs[0];
+  assign acc_req_i.rs2 = core_v_xif_req_i.register.rs[1];
+  // Commit interface
+  // assign acc_req_i.trans_id = core_v_xif_req_i.commit.id;
+  // Result interface
+  assign core_v_xif_resp_o.result_valid = acc_resp_o.resp_valid;
+  assign acc_req_i.resp_ready = core_v_xif_req_i.result_ready;
+  assign core_v_xif_resp_o.result.id = acc_resp_o.trans_id;
+  assign core_v_xif_resp_o.result.data = acc_resp_o.result;
+  // Additional signals
+  assign core_v_xif_resp_o.acc_resp.error = acc_resp_o.error;
+  assign core_v_xif_resp_o.acc_resp.store_pending = acc_resp_o.store_pending;
+  assign core_v_xif_resp_o.acc_resp.store_complete = acc_resp_o.store_complete;
+  assign core_v_xif_resp_o.acc_resp.load_complete = acc_resp_o.load_complete;
+  assign core_v_xif_resp_o.acc_resp.fflags = acc_resp_o.fflags;
+  assign core_v_xif_resp_o.acc_resp.fflags_valid = acc_resp_o.fflags_valid;
+  assign core_v_xif_resp_o.acc_resp.inval_valid = acc_resp_o.inval_valid;
+  assign core_v_xif_resp_o.acc_resp.inval_addr = acc_resp_o.inval_addr;
 
-  // Register interface:
-  assign acc_req_i.rs1 = xif_register_p.register.rs[0];
-  assign acc_req_i.rs2 = xif_register_p.register.rs[1];
-
-  // Result interface:
-  assign xif_result_p.result_valid = acc_resp_o.resp_valid;
-  assign acc_req_i.resp_ready = xif_result_p.result_ready;
-  assign xif_result_p.result.id = acc_resp_o.trans_id;
-  assign xif_result_p.result.data = acc_resp_o.result;
-
-  // Modified interface:
-  assign acc_req_i.frm = xif_mod_p.mod_req.frm;
-  assign acc_req_i.store_pending = xif_mod_p.mod_req.store_pending_req;
-  assign acc_req_i.acc_cons_en = xif_mod_p.mod_req.acc_cons_en;
-  assign acc_req_i.inval_ready = xif_mod_p.mod_req.inval_ready;
-  assign xif_mod_p.mod_resp.error = acc_resp_o.error;
-  assign xif_mod_p.mod_resp.store_pending_resp = acc_resp_o.store_pending;
-  assign xif_mod_p.mod_resp.store_complete = acc_resp_o.store_complete;
-  assign xif_mod_p.mod_resp.load_complete = acc_resp_o.load_complete;
-  assign xif_mod_p.mod_resp.fflags = acc_resp_o.fflags;
-  assign xif_mod_p.mod_resp.fflags_valid = acc_resp_o.fflags_valid;
-  assign xif_mod_p.mod_resp.inval_valid = acc_resp_o.inval_valid;
-  assign xif_mod_p.mod_resp.inval_addr = acc_resp_o.inval_addr;
+  assign acc_req_i.frm = core_v_xif_req_i.acc_req.frm;
+  assign acc_req_i.store_pending = core_v_xif_req_i.acc_req.store_pending;
+  assign acc_req_i.acc_cons_en = core_v_xif_req_i.acc_req.acc_cons_en;
+  assign acc_req_i.inval_ready = core_v_xif_req_i.acc_req.inval_ready;
 
 endmodule : ara_dispatcher

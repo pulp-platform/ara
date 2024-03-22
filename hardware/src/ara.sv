@@ -44,10 +44,8 @@ module ara import ara_pkg::*; #(
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i,
     // XIF
-    core_v_xif                xif_issue_p,
-    core_v_xif                xif_register_p,
-    core_v_xif                xif_result_p,
-    core_v_xif                xif_mod_p
+    input core_v_xif_pkg::x_req_t   core_v_xif_req_i,
+    output core_v_xif_pkg::x_resp_t core_v_xif_resp_o
   );
 
   import cf_math_pkg::idx_width;
@@ -92,33 +90,28 @@ module ara import ara_pkg::*; #(
   ara_dispatcher #(
     .NrLanes(NrLanes)
   ) i_dispatcher (
-    .clk_i             (clk_i           ),
-    .rst_ni            (rst_ni          ),
-    // Interface with Ariane
-    // .acc_req_i         (acc_req_i       ),
-    .acc_resp_o        (acc_resp_o      ),
+    .clk_i              (clk_i           ),
+    .rst_ni             (rst_ni          ),
     // Interface with the sequencer
-    .ara_req_o         (ara_req         ),
-    .ara_req_valid_o   (ara_req_valid   ),
-    .ara_req_ready_i   (ara_req_ready   ),
-    .ara_resp_i        (ara_resp        ),
-    .ara_resp_valid_i  (ara_resp_valid  ),
-    .ara_idle_i        (ara_idle        ),
+    .ara_req_o          (ara_req         ),
+    .ara_req_valid_o    (ara_req_valid   ),
+    .ara_req_ready_i    (ara_req_ready   ),
+    .ara_resp_i         (ara_resp        ),
+    .ara_resp_valid_i   (ara_resp_valid  ),
+    .ara_idle_i         (ara_idle        ),
     // Interface with the lanes
-    .vxsat_flag_i      (vxsat_flag      ),
-    .alu_vxrm_o        (alu_vxrm        ),
-    .fflags_ex_i       (fflags_ex       ),
-    .fflags_ex_valid_i (fflags_ex_valid ),
+    .vxsat_flag_i       (vxsat_flag      ),
+    .alu_vxrm_o         (alu_vxrm        ),
+    .fflags_ex_i        (fflags_ex       ),
+    .fflags_ex_valid_i  (fflags_ex_valid ),
     // Interface with the Vector Store Unit
-    .core_st_pending_o (core_st_pending ),
-    .load_complete_i   (load_complete   ),
-    .store_complete_i  (store_complete  ),
-    .store_pending_i   (store_pending   ),
+    .core_st_pending_o  (core_st_pending ),
+    .load_complete_i    (load_complete   ),
+    .store_complete_i   (store_complete  ),
+    .store_pending_i    (store_pending   ),
     // XIF
-    .xif_issue_p       (xif_issue_p     ),
-    .xif_register_p    (xif_register_p  ),
-    .xif_result_p      (xif_result_p    ),
-    .xif_mod_p         (xif_mod_p       )
+    .core_v_xif_req_i  (core_v_xif_req_i ),
+    .core_v_xif_resp_o (core_v_xif_resp_o)
   );
 
   /////////////////
