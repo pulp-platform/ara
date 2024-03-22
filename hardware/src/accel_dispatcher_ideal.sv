@@ -27,47 +27,11 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
   output accelerator_req_t  acc_req_o,
   input  accelerator_resp_t acc_resp_i,
   // XIF
-  core_v_xif                xif_issue_p,
-  core_v_xif                xif_register_p,
-  core_v_xif                xif_result_p,
-  core_v_xif                xif_mod_p
+  output core_v_xif_pkg::x_req_t  core_v_xif_req_o,
+  input  core_v_xif_pkg::x_resp_t core_v_xif_resp_i
 );
 
   localparam string vtrace = `STRINGIFY(`VTRACE);
-
-  /////////
-  // XIF //
-  /////////
-
-  // Issue interface:
-  assign xif_issue_p.issue_valid = acc_req_o.req_valid;
-  assign acc_resp_i.req_ready = xif_issue_p.issue_ready;
-  assign xif_issue_p.issue_req.instr = acc_req_o.insn;
-  assign xif_issue_p.issue_req.id = acc_req_o.trans_id;
-
-  // Register interface:
-  assign xif_register_p.register.rs[0] = acc_req_o.rs1;
-  assign xif_register_p.register.rs[1] = acc_req_o.rs2;
-
-  // Result interface:
-  assign acc_resp_i.resp_valid = xif_result_p.result_valid;
-  assign xif_result_p.result_ready = acc_req_o.resp_ready;
-  assign acc_resp_i.trans_id = xif_result_p.result.id;
-  assign acc_resp_i.result = xif_result_p.result.data;
-
-  // Modified interface:
-  assign xif_mod_p.mod_req.frm = acc_req_o.frm;
-  assign xif_mod_p.mod_req.store_pending_req = acc_req_o.store_pending;
-  assign xif_mod_p.mod_req.acc_cons_en = acc_req_o.acc_cons_en;
-  assign xif_mod_p.mod_req.inval_ready = acc_req_o.inval_ready;
-  assign acc_resp_i.error = xif_mod_p.mod_resp.error;
-  assign acc_resp_i.store_pending = xif_mod_p.mod_resp.store_pending_resp;
-  assign acc_resp_i.store_complete = xif_mod_p.mod_resp.store_complete;
-  assign acc_resp_i.load_complete = xif_mod_p.mod_resp.load_complete;
-  assign acc_resp_i.fflags = xif_mod_p.mod_resp.fflags;
-  assign acc_resp_i.fflags_valid = xif_mod_p.mod_resp.fflags_valid;
-  assign acc_resp_i.inval_valid = xif_mod_p.mod_resp.inval_valid;
-  assign acc_resp_i.inval_addr = xif_mod_p.mod_resp.inval_addr;
 
   //////////
   // Data //
@@ -177,6 +141,47 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
       $finish(0);
     end
   end
+
+  ///////////
+  //  XIF  //
+  ///////////
+
+  // Issue interface
+  assign core_v_xif_req_o.issue_valid = acc_req_o.req_valid;
+  assign acc_resp_i.req_ready = core_v_xif_resp_i.issue_ready;
+  assign core_v_xif_req_o.issue_req.instr = acc_req_o.insn;
+  assign core_v_xif_req_o.issue_req.id = acc_req_o.trans_id;
+  // Register interface
+  assign core_v_xif_req_o.register_valid = acc_req_o.req_valid;
+  // assign acc_resp_i.req_ready = core_v_xif_resp_i.register_ready;
+  assign core_v_xif_req_o.register.id = acc_req_o.trans_id;
+  assign core_v_xif_req_o.register.rs[0] = acc_req_o.rs1;
+  assign core_v_xif_req_o.register.rs[1] = acc_req_o.rs2;
+  // Commit interface
+  assign core_v_xif_req_o.commit.id = acc_req_o.trans_id;
+  // Result interface
+  assign acc_resp_i.resp_valid = core_v_xif_resp_i.result_valid;
+  assign core_v_xif_req_o.result_ready = acc_req_o.resp_ready;
+  assign acc_resp_i.trans_id = core_v_xif_resp_i.result.id;
+  assign acc_resp_i.result = core_v_xif_resp_i.result.data;
+  // Additional signals
+  assign core_v_xif_req_o.acc_req.frm = acc_req_o.frm;
+  assign core_v_xif_req_o.acc_req.store_pending = acc_req_o.store_pending;
+  assign core_v_xif_req_o.acc_req.acc_cons_en = acc_req_o.acc_cons_en;
+  assign core_v_xif_req_o.acc_req.inval_ready = acc_req_o.inval_ready;
+
+  assign acc_resp_i.error = core_v_xif_resp_i.acc_resp.error;
+  assign acc_resp_i.store_pending = core_v_xif_resp_i.acc_resp.store_pending;
+  assign acc_resp_i.store_complete = core_v_xif_resp_i.acc_resp.store_complete;
+  assign acc_resp_i.load_complete = core_v_xif_resp_i.acc_resp.load_complete;
+  assign acc_resp_i.fflags = core_v_xif_resp_i.acc_resp.fflags;
+  assign acc_resp_i.fflags_valid = core_v_xif_resp_i.acc_resp.fflags_valid;
+  assign acc_resp_i.inval_valid = core_v_xif_resp_i.acc_resp.inval_valid;
+  assign acc_resp_i.inval_addr = core_v_xif_resp_i.acc_resp.inval_addr;
+
+
+
+
 endmodule
 
 // The following is another definition of the module, possibly more flexible

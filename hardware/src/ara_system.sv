@@ -69,25 +69,6 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   ara_axi_req_t     ariane_axi_req, ara_axi_req_inval, ara_axi_req;
   ara_axi_resp_t    ariane_axi_resp, ara_axi_resp_inval, ara_axi_resp;
 
-  ///////////
-  //  XIF  //
-  ///////////
-
-core_v_xif #(
-    .X_NUM_RS               (2),
-    .X_ID_WIDTH             (4),
-    .X_RFR_WIDTH            (32),
-    .X_RFW_WIDTH            (32),
-    .X_NUM_HARTS            (1),
-    .X_HARTID_WIDTH         (1),
-    .X_MISA                 ('0),
-    .X_ECS_XS               ('0),
-    .X_DUALREAD             (0),
-    .X_DUALWRITE            (0),
-    .X_ISSUE_REGISTER_SPLIT (0),
-    .X_MEM_WIDTH            (32)
-  ) i_xif ();
-
   //////////////////////
   //  Ara and Ariane  //
   //////////////////////
@@ -105,25 +86,36 @@ core_v_xif #(
   logic                                 inval_valid;
   logic                                 inval_ready;
 
+  ///////////
+  //  XIF  //
+  ///////////
+
+  core_v_xif_pkg::x_req_t core_v_xif_req;
+  core_v_xif_pkg::x_resp_t core_v_xif_resp;
+  core_v_xif_pkg::x_resp_t core_v_xif_resp_pack;
+
+
   // Support max 8 cores, for now
   logic [63:0] hart_id;
   assign hart_id = {'0, hart_id_i};
 
   // Pack invalidation interface into acc interface
-  pack_inval #(
-      .AxiAddrWidth ()
-  ) i_pack_inval (
-    .clk_i            (clk_i                          ),
-    .rst_ni           (rst_ni                         ),
+  // accelerator_resp_t                    acc_resp_pack;
+  // always_comb begin : pack_inval
+  //   acc_resp_pack             = acc_resp;
+  //   acc_resp_pack.inval_valid = inval_valid;
+  //   acc_resp_pack.inval_addr  = inval_addr;
+  //   inval_ready               = acc_req.inval_ready;
+  //   acc_cons_en               = acc_req.acc_cons_en;
+  // end
 
-    .inval_valid_i    (inval_valid                    ),
-    .inval_addr_i     (inval_addr                     ),
-
-    .inval_ready_o    (inval_ready                    ),
-    .acc_cons_en_o    (acc_cons_en                    ),
-    // XIF
-    .xif_mod_p        (i_xif.core_v_xif_pack_mod      )
-  );
+  always_comb begin : pack_inval_
+    core_v_xif_resp_pack                      = core_v_xif_resp;
+    core_v_xif_resp_pack.acc_resp.inval_valid = inval_valid;
+    core_v_xif_resp_pack.acc_resp.inval_addr  = inval_addr;
+    inval_ready                               = core_v_xif_req.acc_req.inval_ready;
+    acc_cons_en                               = core_v_xif_req.acc_req.acc_cons_en;
+  end
 
 `ifdef IDEAL_DISPATCHER
   // Perfect dispatcher to Ara
@@ -132,11 +124,8 @@ core_v_xif #(
     .rst_ni           (rst_ni                ),
     .acc_resp_valid_i (acc_resp_valid        ),
     .acc_resp_ready_o (acc_resp_ready        ),
-    // XIF
-    .xif_issue_p      (i_xif.core_v_xif_cpu_issue),
-    .xif_register_p   (i_xif.core_v_xif_cpu_register),
-    .xif_result_p     (i_xif.core_v_xif_cpu_result),
-    .xif_mod_p        (i_xif.core_v_xif_ideal_mod)
+    .core_v_xif_req_o  (core_v_xif_req       ),
+    .core_v_xif_resp_i (core_v_xif_resp      )
   );
 `else
   cva6 #(
@@ -152,26 +141,24 @@ core_v_xif #(
     .axi_req_t (ariane_axi_req_t),
     .axi_rsp_t (ariane_axi_resp_t)
   ) i_ariane (
-    .clk_i            (clk_i                 ),
-    .rst_ni           (rst_ni                ),
-    .boot_addr_i      (boot_addr_i           ),
-    .hart_id_i        (hart_id               ),
-    .irq_i            ('0                    ),
-    .ipi_i            ('0                    ),
-    .time_irq_i       ('0                    ),
-    .debug_req_i      ('0                    ),
-    .rvfi_o           (                      ),
+    .clk_i             (clk_i                 ),
+    .rst_ni            (rst_ni                ),
+    .boot_addr_i       (boot_addr_i           ),
+    .hart_id_i         (hart_id               ),
+    .irq_i             ('0                    ),
+    .ipi_i             ('0                    ),
+    .time_irq_i        ('0                    ),
+    .debug_req_i       ('0                    ),
+    .rvfi_o            (                      ),
     // Accelerator ports
-    .l15_req_o        (                      ),
-    .l15_rtrn_i       ( '0                   ),
+    .l15_req_o         (                      ),
+    .l15_rtrn_i        ( '0                   ),
     // Memory interface
-    .axi_req_o        (ariane_narrow_axi_req ),
-    .axi_resp_i       (ariane_narrow_axi_resp),
+    .axi_req_o         (ariane_narrow_axi_req ),
+    .axi_resp_i        (ariane_narrow_axi_resp),
     // XIF
-    .xif_issue_p      (i_xif.core_v_xif_cpu_issue),
-    .xif_register_p   (i_xif.core_v_xif_cpu_register),
-    .xif_result_p     (i_xif.core_v_xif_cpu_result),
-    .xif_mod_p        (i_xif.core_v_xif_cpu_mod)
+    .core_v_xif_req_o  (core_v_xif_req        ),
+    .core_v_xif_resp_i (core_v_xif_resp_pack  )
   );
 `endif
 
@@ -248,18 +235,15 @@ core_v_xif #(
     .axi_req_t   (ara_axi_req_t   ),
     .axi_resp_t  (ara_axi_resp_t  )
   ) i_ara (
-    .clk_i              (clk_i         ),
-    .rst_ni             (rst_ni        ),
-    .scan_enable_i      (scan_enable_i ),
-    .scan_data_i        (1'b0          ),
-    .scan_data_o        (/* Unused */  ),
-    .axi_req_o          (ara_axi_req   ),
-    .axi_resp_i         (ara_axi_resp  ),
-    // XIF
-    .xif_issue_p      (i_xif.core_v_xif_coprocessor_issue),
-    .xif_register_p   (i_xif.core_v_xif_coprocessor_register),
-    .xif_result_p     (i_xif.core_v_xif_coprocessor_result),
-    .xif_mod_p        (i_xif.core_v_xif_coprocessor_mod)
+    .clk_i           (clk_i             ),  
+    .rst_ni          (rst_ni            ),
+    .scan_enable_i   (scan_enable_i     ),
+    .scan_data_i     (1'b0              ),
+    .scan_data_o     (/* Unused */      ),
+    .axi_req_o       (ara_axi_req       ),
+    .axi_resp_i      (ara_axi_resp      ),
+    .core_v_xif_req_i  (core_v_xif_req  ),
+    .core_v_xif_resp_o (core_v_xif_resp )
   );
 
   axi_mux #(
