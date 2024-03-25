@@ -100,15 +100,6 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   assign hart_id = {'0, hart_id_i};
 
   // Pack invalidation interface into acc interface
-  // accelerator_resp_t                    acc_resp_pack;
-  // always_comb begin : pack_inval
-  //   acc_resp_pack             = acc_resp;
-  //   acc_resp_pack.inval_valid = inval_valid;
-  //   acc_resp_pack.inval_addr  = inval_addr;
-  //   inval_ready               = acc_req.inval_ready;
-  //   acc_cons_en               = acc_req.acc_cons_en;
-  // end
-
   always_comb begin : pack_inval_
     core_v_xif_resp_pack                      = core_v_xif_resp;
     core_v_xif_resp_pack.acc_resp.inval_valid = inval_valid;

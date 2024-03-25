@@ -26,12 +26,14 @@ package core_v_xif_pkg;
   } x_compressed_req_t;
 
   typedef struct packed {
-    logic [31:0] instr;
+    // logic [31:0] instr;
+    riscv::instruction_t  instr;
     logic accept;
   } x_compressed_resp_t;
 
   typedef struct packed {
-    logic [31:0] instr;
+    // logic [31:0] instr;
+    riscv::instruction_t instr;
     mode_t mode;
     hartid_t hartid;
     id_t id;
