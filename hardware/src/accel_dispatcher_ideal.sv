@@ -20,15 +20,18 @@
 `define N_VINSN 1
 `endif
 
-module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; (
+module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; #(
+  parameter type x_req_t = core_v_xif_pkg::x_req_t,
+  parameter type x_resp_t = core_v_xif_pkg::x_resp_t
+  ) (
   input logic                     clk_i,
   input logic                     rst_ni,
   // Accelerator interaface
   output accelerator_req_t  acc_req_o,
   input  accelerator_resp_t acc_resp_i,
   // XIF
-  output core_v_xif_pkg::x_req_t  core_v_xif_req_o,
-  input  core_v_xif_pkg::x_resp_t core_v_xif_resp_i
+  output x_req_t  core_v_xif_req_o,
+  input  x_resp_t core_v_xif_resp_i
 );
 
   localparam string vtrace = `STRINGIFY(`VTRACE);

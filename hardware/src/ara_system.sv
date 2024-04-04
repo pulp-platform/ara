@@ -77,8 +77,6 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   import acc_pkg::accelerator_resp_t;
 
   // Accelerator ports
-  accelerator_req_t                     acc_req;
-  accelerator_resp_t                    acc_resp;
   logic                                 acc_resp_valid;
   logic                                 acc_resp_ready;
   logic                                 acc_cons_en;
@@ -90,9 +88,21 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   //  XIF  //
   ///////////
 
-  core_v_xif_pkg::x_req_t core_v_xif_req;
-  core_v_xif_pkg::x_resp_t core_v_xif_resp;
-  core_v_xif_pkg::x_resp_t core_v_xif_resp_pack;
+  `include "core_v_xif.svh"
+
+  `CORE_V_XIF_BASE(ariane_pkg::NR_RGPR_PORTS, ariane_pkg::TRANS_ID_BITS, 1, 0, 0)
+  `CORE_V_XIF_COMPRESSED
+  `CORE_V_XIF_ISSUE
+  `CORE_V_XIF_REGISTER(ariane_pkg::NR_RGPR_PORTS, riscv::XLEN)
+  `CORE_V_XIF_COMMIT
+  `CORE_V_XIF_MEM(64)
+  `CORE_V_XIF_RESULT(riscv::XLEN)
+  `CORE_V_XIF_ACC
+  `CORE_V_XIF_T
+
+  x_req_t     core_v_xif_req;
+  x_resp_t    core_v_xif_resp;
+  x_resp_t    core_v_xif_resp_pack;
 
 
   // Support max 8 cores, for now
@@ -110,7 +120,10 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 
 `ifdef IDEAL_DISPATCHER
   // Perfect dispatcher to Ara
-  accel_dispatcher_ideal i_accel_dispatcher_ideal (
+  accel_dispatcher_ideal i_accel_dispatcher_ideal #(
+    .x_req_t (x_req_t),
+    .x_resp_t (x_resp_t)
+    ) (
     .clk_i            (clk_i                 ),
     .rst_ni           (rst_ni                ),
     .acc_resp_valid_i (acc_resp_valid        ),
@@ -130,7 +143,9 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .axi_aw_chan_t (ariane_axi_aw_t),
     .axi_w_chan_t (ariane_axi_w_t),
     .axi_req_t (ariane_axi_req_t),
-    .axi_rsp_t (ariane_axi_resp_t)
+    .axi_rsp_t (ariane_axi_resp_t),
+    .x_req_t (x_req_t),
+    .x_resp_t (x_resp_t)
   ) i_ariane (
     .clk_i             (clk_i                 ),
     .rst_ni            (rst_ni                ),
@@ -224,7 +239,9 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .axi_w_t     (ara_axi_w_t     ),
     .axi_b_t     (ara_axi_b_t     ),
     .axi_req_t   (ara_axi_req_t   ),
-    .axi_resp_t  (ara_axi_resp_t  )
+    .axi_resp_t  (ara_axi_resp_t  ),
+    .x_req_t (x_req_t),
+    .x_resp_t (x_resp_t)
   ) i_ara (
     .clk_i           (clk_i             ),  
     .rst_ni          (rst_ni            ),

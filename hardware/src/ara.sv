@@ -28,7 +28,9 @@ module ara import ara_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
-    localparam int           unsigned NrPEs        = NrLanes + 4
+    localparam int           unsigned NrPEs        = NrLanes + 4,
+    parameter type x_req_t = core_v_xif_pkg::x_req_t,
+    parameter type x_resp_t = core_v_xif_pkg::x_resp_t
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -37,15 +39,12 @@ module ara import ara_pkg::*; #(
     input  logic              scan_enable_i,
     input  logic              scan_data_i,
     output logic              scan_data_o,
-    // Interface with Ariane
-    input  accelerator_req_t  acc_req_i,
-    output accelerator_resp_t acc_resp_o,
     // AXI interface
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i,
     // XIF
-    input core_v_xif_pkg::x_req_t   core_v_xif_req_i,
-    output core_v_xif_pkg::x_resp_t core_v_xif_resp_o
+    input  x_req_t            core_v_xif_req_i,
+    output x_resp_t           core_v_xif_resp_o
   );
 
   import cf_math_pkg::idx_width;
@@ -88,7 +87,9 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
 
   ara_dispatcher #(
-    .NrLanes(NrLanes)
+    .NrLanes(NrLanes),
+    .x_req_t (x_req_t),
+    .x_resp_t (x_resp_t)
   ) i_dispatcher (
     .clk_i              (clk_i           ),
     .rst_ni             (rst_ni          ),

@@ -15,7 +15,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // External support for vfrec7, vfrsqrt7
     parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter fixpt_support_e        FixPtSupport = FixedPointEnable
+    parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
+
+    parameter type x_req_t = core_v_xif_pkg::x_req_t,
+    parameter type x_resp_t = core_v_xif_pkg::x_resp_t
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -39,8 +42,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_complete_i,
     input  logic                                 store_pending_i,
     // XIF
-    input core_v_xif_pkg::x_req_t                core_v_xif_req_i,
-    output core_v_xif_pkg::x_resp_t              core_v_xif_resp_o
+    input x_req_t                                core_v_xif_req_i,
+    output x_resp_t                              core_v_xif_resp_o
   );
 
   import cf_math_pkg::idx_width;
