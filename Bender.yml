@@ -60,9 +60,10 @@ sources:
     # Level 4
     - hardware/src/lane/lane.sv
     # Level 5
+    - hardware/src/core_v_xif_pkg.sv
+    - hardware/src/ara_lw_decoder.sv
     - hardware/src/ara.sv
     # Level 6
-    - hardware/src/core_v_xif_pkg.sv
     - hardware/src/ara_system.sv
     # Level 7
     - hardware/src/ara_soc.sv

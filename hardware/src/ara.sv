@@ -30,7 +30,9 @@ module ara import ara_pkg::*; #(
     // vector store unit, the slide unit, and the mask unit.
     localparam int           unsigned NrPEs        = NrLanes + 4,
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
-    parameter type x_resp_t = core_v_xif_pkg::x_resp_t
+    parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
+    parameter type x_issue_req_t = core_v_xif_pkg::x_issue_req_t,
+    parameter type x_issue_resp_t = core_v_xif_pkg::x_issue_resp_t
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -85,6 +87,8 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]      fflags_ex_valid;
   logic      [NrLanes-1:0]      vxsat_flag;
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
+  // XIF
+  x_resp_t                      core_v_xif_resp;
 
   ara_dispatcher #(
     .NrLanes(NrLanes),
@@ -112,7 +116,7 @@ module ara import ara_pkg::*; #(
     .store_pending_i    (store_pending   ),
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_i ),
-    .core_v_xif_resp_o (core_v_xif_resp_o)
+    .core_v_xif_resp_o (core_v_xif_resp)
   );
 
   /////////////////
@@ -445,6 +449,28 @@ module ara import ara_pkg::*; #(
     .vstu_mask_ready_i       (vstu_mask_ready                 ),
     .sldu_mask_ready_i       (sldu_mask_ready                 )
   );
+
+
+  // Light weigth decoder for instructions from the issue interface
+  x_issue_resp_t    x_issue_resp;
+  ara_lw_decoder #(
+    .x_issue_req_t (x_issue_req_t),
+    .x_issue_resp_t (x_issue_resp_t)
+    ) i_ara_lw_decoder (
+    .issue_req_i (core_v_xif_req_i.issue_req),
+    .issue_resp_o (x_issue_resp),
+    .instruction_o ()
+  );
+
+
+  // Assemble core_v_xif_resp_o
+  always_comb begin
+    core_v_xif_resp_o             = core_v_xif_resp;
+    core_v_xif_resp_o.issue_ready = 1'b1;
+    core_v_xif_resp_o.issue_resp  = x_issue_resp;
+  end
+
+
 
   //////////////////
   //  Assertions  //

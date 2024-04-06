@@ -145,7 +145,9 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .axi_req_t (ariane_axi_req_t),
     .axi_rsp_t (ariane_axi_resp_t),
     .x_req_t (x_req_t),
-    .x_resp_t (x_resp_t)
+    .x_resp_t (x_resp_t),
+    .x_issue_req_t (x_issue_req_t),
+    .x_issue_resp_t (x_issue_resp_t)
   ) i_ariane (
     .clk_i             (clk_i                 ),
     .rst_ni            (rst_ni                ),

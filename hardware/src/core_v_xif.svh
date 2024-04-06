@@ -32,6 +32,10 @@
     logic accept;                     \
     writeregflags_t writeback;        \
     readregflags_t register_read;     \
+    logic is_vfp;                     \
+    logic is_fs1;                     \
+    logic is_fs2;                     \
+    logic is_fd;                      \
     logic loadstore;                  \
   } x_issue_resp_t;
 
@@ -98,6 +102,7 @@
     logic store_pending;          \
     logic acc_cons_en;            \
     logic inval_ready;            \
+    riscv::instruction_t instr;   \
   } x_acc_req_t;                  \
                                   \
   typedef struct packed {         \
