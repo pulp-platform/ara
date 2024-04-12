@@ -20,7 +20,7 @@ If the compilation is succesful, the compiled binary can be found in `../bin/ara
 
 You can define a series of variables to tweak the execution of the exercise.
 - `SEW`: The width of a vector element. Can be one of `8`, `16`, `32`, or `64`. By default, `SEW = 64`.
-- `SIZE`: The size of the matrices used throughout the exercise. The three statically allocated matrices, `a`, `b`, and `c`, have `SIZE` rows and `SIZE` columns. You can also use those matrices a _vector_ of length `SIZE * SIZE`. By default, `SIZE = 64`.
+- `SIZE`: The size of the vectors/matrices used throughout the exercise. The three statically allocated matrices, `a`, `b`, and `c`, have `SIZE` rows and `SIZE` columns. When `a`, `b`, and `c` are used as vectors, they have `SIZE` elements (basically, you will use the first row of the matrix). By default, `SIZE = 64`.
 - `EX1`, `EX2`, `EX3`, `EX4`: Define each variable to `1` to run the corresponding exercise. By default, all exercises are deactivated.
 
 For example, to run `EX2` and `EX3` with elements of `32` bits and a matrix of size `64`, you can run `EX2=1 EX3=1 SEW=32 SIZE=64 make compile`.

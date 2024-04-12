@@ -25,7 +25,7 @@ void vvadd(velement_t *c, velement_t *a, velement_t *b, uint64_t len);
 // Stripmining loop
 
 void ex2(velement_t *c, velement_t *a, velement_t *b) {
-  // In this exercise, we will add vectors a and b (both of size SIZE*SIZE, much
+  // In this exercise, we will add vectors a and b (both of size SIZE, much
   // larger than the vector length) together, and store the result back in
   // vector c.
 
@@ -35,11 +35,11 @@ void ex2(velement_t *c, velement_t *a, velement_t *b) {
 
   // Initialize vector a to a[i] = i + 2
   printf("Initializing vector a...\n");
-  for (int i = 0; i < SIZE * SIZE; ++i)
+  for (int i = 0; i < SIZE; ++i)
     a[i] = i + 2;
   // Initialize vector b to b[i] = i - 3
   printf("Initializing vector b...\n");
-  for (int i = 0; i < SIZE * SIZE; ++i)
+  for (int i = 0; i < SIZE; ++i)
     b[i] = i - 3;
 
   /************
@@ -50,7 +50,7 @@ void ex2(velement_t *c, velement_t *a, velement_t *b) {
   // Check the vvadd(c, a, b, len) function for the vvadd kernel, and tasks 1
   // to 4.
   start_timer();
-  vvadd(c, a, b, SIZE * SIZE);
+  vvadd(c, a, b, SIZE);
   stop_timer();
 
   /************
@@ -93,7 +93,7 @@ void ex2(velement_t *c, velement_t *a, velement_t *b) {
    **********************/
 
   printf("Checking results...\n");
-  for (int i = 0; i < SIZE * SIZE; ++i)
+  for (int i = 0; i < SIZE; ++i)
     if (c[i] != 2 * i - 1) {
       printf("Error! Expected c[%d] = %d, but found %d instead. Aborting.\n", i,
              2 * i - 1, c[i]);
@@ -144,5 +144,5 @@ void vvadd(velement_t *c, velement_t *a, velement_t *b, uint64_t len) {
    ************/
 
   // Would your vvadd kernel change if Ara had a MAXVL twice as long? Half as
-  // long? What if MAXVL does not divide SIZE*SIZE? (Set SIZE=127, for example.)
+  // long? What if MAXVL does not divide SIZE? (Set SIZE=127, for example.)
 }
