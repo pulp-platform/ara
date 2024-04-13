@@ -46,7 +46,7 @@ package core_v_xif_pkg;
     logic is_vfp;
     logic is_fs1;
     logic is_fs2;
-    logic is_fd;
+    // logic is_fd;
     logic loadstore;
   } x_issue_resp_t;
 
