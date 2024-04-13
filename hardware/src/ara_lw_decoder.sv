@@ -122,8 +122,5 @@ module ara_lw_decoder import rvv_pkg::*; import ariane_pkg::*; #(
   assign issue_resp_o.register_read[0] 	= (is_rs1 || is_fs1);
   assign issue_resp_o.register_read[1] 	= (is_rs2 || is_fs2);
   assign issue_resp_o.is_vfp 			      = is_vfp;
-  assign issue_resp_o.is_fs1            = is_fs1;
-  assign issue_resp_o.is_fs2            = is_fs2;
-  assign issue_resp_o.is_fd             = is_fd;
  
 endmodule

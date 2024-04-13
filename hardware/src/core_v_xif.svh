@@ -33,9 +33,6 @@
     writeregflags_t writeback;        \
     readregflags_t register_read;     \
     logic is_vfp;                     \
-    logic is_fs1;                     \
-    logic is_fs2;                     \
-    logic is_fd;                      \
     logic loadstore;                  \
   } x_issue_resp_t;
 
