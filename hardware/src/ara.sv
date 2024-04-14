@@ -1,3 +1,4 @@
+
 // Copyright 2021 ETH Zurich and University of Bologna.
 // Solderpad Hardware License, Version 0.51, see LICENSE for details.
 // SPDX-License-Identifier: SHL-0.51
@@ -119,8 +120,13 @@ module ara import ara_pkg::*; #(
     .core_v_xif_resp_o (core_v_xif_resp  )
   );
 
+<<<<<<< HEAD
   x_resp_t  core_v_xif_resp_is;
   x_req_t   core_v_xif_req_is;
+=======
+
+
+>>>>>>> started work on fifo for 2 decoders
 
   // Light weigth decoder for instructions from the issue interface
   x_issue_resp_t    x_issue_resp;
@@ -133,6 +139,7 @@ module ara import ara_pkg::*; #(
     .instruction_o ()
   );
 
+<<<<<<< HEAD
 
   // prepare request
   always_comb begin
@@ -165,6 +172,11 @@ module ara import ara_pkg::*; #(
     core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_is.issue_resp.accept;
   end
 
+=======
+  // Second dispatcher to handle pre decoding
+  x_resp_t  core_v_xif_resp_is;
+  x_req_t   core_v_xif_req_is;
+>>>>>>> started work on fifo for 2 decoders
   ara_dispatcher #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
@@ -192,7 +204,74 @@ module ara import ara_pkg::*; #(
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_is ),
     .core_v_xif_resp_o (core_v_xif_resp_is)
+<<<<<<< HEAD
+=======
   );
+
+  logic new_instr;
+  logic load_next_instr;
+  edge_detect edge_detect_i_1 (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .d_i(core_v_xif_resp_is.issue_resp.accept),
+    .re_o(new_instr),
+    .fe_o()
+  );
+
+  edge_detect edge_detect_i_2 (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .d_i((core_v_xif_resp_o.register_ready && core_v_xif_req_i.register_valid)),
+    .re_o(load_next_instr),
+    .fe_o()
+>>>>>>> started work on fifo for 2 decoders
+  );
+
+  // fifo to store the pre decoded instructions
+  riscv::instruction_t instruction;
+  fifo_v3 #(
+    .DEPTH(32),
+    .dtype(riscv::instruction_t)
+  ) fifo_v3_i (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .flush_i('0),
+    .testmode_i('0),
+    .full_o(),
+    .empty_o(),
+    .usage_o(),
+    .data_i(core_v_xif_req_is.issue_req.instr),
+    .push_i(new_instr),
+    .data_o(),
+    .pop_i(load_next_instr)
+  );
+
+  always_comb begin
+    // Set default
+    core_v_xif_req_is                 = core_v_xif_req_i;
+    // Zero everything but the issue if
+    core_v_xif_req_is.register_valid    = '0;
+    core_v_xif_req_is.register.hartid   = '0;
+    core_v_xif_req_is.register.id       = '0;
+    core_v_xif_req_is.register.rs[0]    = '0;
+    core_v_xif_req_is.register.rs[1]    = '0;
+    core_v_xif_req_is.register.rs_valid = '0;
+    core_v_xif_req_is.commit_valid      = '0;
+    core_v_xif_req_is.commit            = '0;
+    core_v_xif_req_is.result_ready      = '0;
+    core_v_xif_req_is.acc_req           = '0;
+    // Construct relevant inputs
+    core_v_xif_req_is.register_valid    = 1'b1;
+    core_v_xif_req_is.result_ready      = 1'b1;
+    core_v_xif_req_is.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
+    // Construct releveant outputs
+    core_v_xif_resp_o             = core_v_xif_resp;
+    core_v_xif_resp_o.issue_ready = 1'b1;
+    core_v_xif_resp_o.issue_resp  = x_issue_resp;
+    core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_is.issue_resp.accept;
+
+    // If the instruction is a vector instruction we want to store it in the fifo
+  end
 
   /////////////////
   //  Sequencer  //
