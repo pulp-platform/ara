@@ -116,7 +116,82 @@ module ara import ara_pkg::*; #(
     .store_pending_i    (store_pending   ),
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_i ),
-    .core_v_xif_resp_o (core_v_xif_resp)
+    .core_v_xif_resp_o (core_v_xif_resp  )
+  );
+
+  x_resp_t  core_v_xif_resp_is;
+  x_req_t   core_v_xif_req_is;
+
+  // Light weigth decoder for instructions from the issue interface
+  x_issue_resp_t    x_issue_resp;
+  ara_lw_decoder #(
+    .x_issue_req_t (x_issue_req_t),
+    .x_issue_resp_t (x_issue_resp_t)
+    ) i_ara_lw_decoder (
+    .issue_req_i (core_v_xif_req_i.issue_req),
+    .issue_resp_o (x_issue_resp),
+    .instruction_o ()
+  );
+
+
+  // prepare request
+  always_comb begin
+    // Set default
+    core_v_xif_req_is                 = core_v_xif_req_i;
+    // Zero everything but the issue if
+    core_v_xif_req_is.register_valid    = '0;
+    core_v_xif_req_is.register.hartid   = '0;
+    core_v_xif_req_is.register.id       = '0;
+    core_v_xif_req_is.register.rs[0]    = '0;
+    core_v_xif_req_is.register.rs[1]    = '0;
+    core_v_xif_req_is.register.rs_valid = '0;
+    core_v_xif_req_is.commit_valid      = '0;
+    core_v_xif_req_is.commit            = '0;
+    core_v_xif_req_is.result_ready      = '0;
+    core_v_xif_req_is.acc_req           = '0;
+    // Construct relevant inputs
+    core_v_xif_req_is.register_valid    = 1'b1;
+    core_v_xif_req_is.result_ready      = 1'b1;
+    core_v_xif_req_is.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
+    // Construct releveant outputs
+    // core_v_xif_resp_o.issue_resp.accept =;
+    // core_v_xif_resp_o.issue_resp.writeback =;
+    // core_v_xif_resp_o.issue_resp.register_read =;
+    // core_v_xif_resp_o.issue_resp.is_vfp =;
+
+    core_v_xif_resp_o             = core_v_xif_resp;
+    core_v_xif_resp_o.issue_ready = 1'b1;
+    core_v_xif_resp_o.issue_resp  = x_issue_resp;
+    core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_is.issue_resp.accept;
+  end
+
+  ara_dispatcher #(
+    .NrLanes(NrLanes),
+    .x_req_t (x_req_t),
+    .x_resp_t (x_resp_t)
+  ) i_dispatcher_2 (
+    .clk_i              (clk_i           ),
+    .rst_ni             (rst_ni          ),
+    // Interface with the sequencer
+    .ara_req_o          (),
+    .ara_req_valid_o    (),
+    .ara_req_ready_i    (1'b1   ),
+    .ara_resp_i         (ara_resp        ),
+    .ara_resp_valid_i   (ara_resp_valid  ),
+    .ara_idle_i         (ara_idle        ),
+    // Interface with the lanes
+    .vxsat_flag_i       (vxsat_flag      ),
+    .alu_vxrm_o         (),
+    .fflags_ex_i        (fflags_ex       ),
+    .fflags_ex_valid_i  (fflags_ex_valid ),
+    // Interface with the Vector Store Unit
+    .core_st_pending_o  (),
+    .load_complete_i    (load_complete   ),
+    .store_complete_i   (store_complete  ),
+    .store_pending_i    (store_pending   ),
+    // XIF
+    .core_v_xif_req_i  (core_v_xif_req_is ),
+    .core_v_xif_resp_o (core_v_xif_resp_is)
   );
 
   /////////////////
@@ -449,28 +524,6 @@ module ara import ara_pkg::*; #(
     .vstu_mask_ready_i       (vstu_mask_ready                 ),
     .sldu_mask_ready_i       (sldu_mask_ready                 )
   );
-
-
-  // Light weigth decoder for instructions from the issue interface
-  x_issue_resp_t    x_issue_resp;
-  ara_lw_decoder #(
-    .x_issue_req_t (x_issue_req_t),
-    .x_issue_resp_t (x_issue_resp_t)
-    ) i_ara_lw_decoder (
-    .issue_req_i (core_v_xif_req_i.issue_req),
-    .issue_resp_o (x_issue_resp),
-    .instruction_o ()
-  );
-
-
-  // Assemble core_v_xif_resp_o
-  always_comb begin
-    core_v_xif_resp_o             = core_v_xif_resp;
-    core_v_xif_resp_o.issue_ready = 1'b1;
-    core_v_xif_resp_o.issue_resp  = x_issue_resp;
-  end
-
-
 
   //////////////////
   //  Assertions  //
