@@ -43,7 +43,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_pending_i,
     // XIF
     input x_req_t                                core_v_xif_req_i,
-    output x_resp_t                              core_v_xif_resp_o
+    output x_resp_t                              core_v_xif_resp_o,
+    input riscv::instruction_t                   instruction_i
   );
 
   import cf_math_pkg::idx_width;
@@ -74,6 +75,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     logic                                 core_st_pending_m;
     x_resp_t                              core_v_xif_resp_m;
 
+<<<<<<< HEAD
     ara_req_t                             ara_req_n;
     logic                                 ara_req_valid_n;
     logic                                 core_st_pending_n;
@@ -83,6 +85,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     assign ara_req_valid_n   = ara_req_valid_m;
     assign core_st_pending_n = core_st_pending_m;
     assign core_v_xif_resp_n = core_v_xif_resp_m;
+=======
+>>>>>>> started work on fifo for 2 decoders
 
     // Multiplexer to chose between id and ex stage decoder
     always_comb begin
@@ -99,6 +103,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       store_pending_m   = store_pending_i;
       core_v_xif_req_m  = core_v_xif_req_i;
 
+<<<<<<< HEAD
       ara_req_o         = ara_req_n;
       ara_req_valid_o   = ara_req_valid_n;
       core_st_pending_o = core_st_pending_n;
@@ -110,6 +115,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       core_v_xif_resp_o.issue_resp.register_read[0];
       core_v_xif_resp_o.issue_resp.register_read[1];
       core_v_xif_resp_o.issue_resp.is_vfp;
+=======
+      ara_req_o         = ara_req_m;
+      ara_req_valid_o   = ara_req_valid_m;
+      core_st_pending_o = core_st_pending_m;
+      core_v_xif_resp_o = core_v_xif_resp_m;
+
+      core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
+      // core_v_xif_resp_o.issue_resp.writeback;
+      // core_v_xif_resp_o.issue_resp.register_read[0];
+      // core_v_xif_resp_o.issue_resp.register_read[1];
+      // core_v_xif_resp_o.issue_resp.is_vfp;
+>>>>>>> started work on fifo for 2 decoders
     end
 
 
