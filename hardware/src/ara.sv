@@ -91,10 +91,22 @@ module ara import ara_pkg::*; #(
   // XIF
   x_resp_t                      core_v_xif_resp;
 
+  typedef struct packed {
+    vlen_t                      vstart;
+    vlen_t                      vl;
+    rvv_pkg::vtype_t            vtype;
+    vxsat_t                     vxsat;
+    vxrm_t                      vxrm;
+  } csr_sync_t;
+
+  csr_sync_t                    csr_sync;
+  logic                         accept_test;
+
   ara_dispatcher #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
-    .x_resp_t (x_resp_t)
+    .x_resp_t (x_resp_t),
+    .csr_sync_t (csr_sync_t)
   ) i_dispatcher (
     .clk_i              (clk_i           ),
     .rst_ni             (rst_ni          ),
@@ -117,16 +129,16 @@ module ara import ara_pkg::*; #(
     .store_pending_i    (store_pending   ),
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_i ),
-    .core_v_xif_resp_o (core_v_xif_resp  )
+    .core_v_xif_resp_o (core_v_xif_resp  ),
+    .issue_valid_i     (1'b1),
+    .accept_test_o     (accept_test      ),
+    // CSR sync
+    .sync_i            ('0               ),
+    .csr_sync_i        ('0               ),
+    .csr_sync_o        (csr_sync         )
   );
 
-<<<<<<< HEAD
-  x_resp_t  core_v_xif_resp_is;
-  x_req_t   core_v_xif_req_is;
-=======
 
-
->>>>>>> started work on fifo for 2 decoders
 
   // Light weigth decoder for instructions from the issue interface
   x_issue_resp_t    x_issue_resp;
@@ -139,48 +151,14 @@ module ara import ara_pkg::*; #(
     .instruction_o ()
   );
 
-<<<<<<< HEAD
-
-  // prepare request
-  always_comb begin
-    // Set default
-    core_v_xif_req_is                 = core_v_xif_req_i;
-    // Zero everything but the issue if
-    core_v_xif_req_is.register_valid    = '0;
-    core_v_xif_req_is.register.hartid   = '0;
-    core_v_xif_req_is.register.id       = '0;
-    core_v_xif_req_is.register.rs[0]    = '0;
-    core_v_xif_req_is.register.rs[1]    = '0;
-    core_v_xif_req_is.register.rs_valid = '0;
-    core_v_xif_req_is.commit_valid      = '0;
-    core_v_xif_req_is.commit            = '0;
-    core_v_xif_req_is.result_ready      = '0;
-    core_v_xif_req_is.acc_req           = '0;
-    // Construct relevant inputs
-    core_v_xif_req_is.register_valid    = 1'b1;
-    core_v_xif_req_is.result_ready      = 1'b1;
-    core_v_xif_req_is.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
-    // Construct releveant outputs
-    // core_v_xif_resp_o.issue_resp.accept =;
-    // core_v_xif_resp_o.issue_resp.writeback =;
-    // core_v_xif_resp_o.issue_resp.register_read =;
-    // core_v_xif_resp_o.issue_resp.is_vfp =;
-
-    core_v_xif_resp_o             = core_v_xif_resp;
-    core_v_xif_resp_o.issue_ready = 1'b1;
-    core_v_xif_resp_o.issue_resp  = x_issue_resp;
-    core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_is.issue_resp.accept;
-  end
-
-=======
   // Second dispatcher to handle pre decoding
-  x_resp_t  core_v_xif_resp_is;
-  x_req_t   core_v_xif_req_is;
->>>>>>> started work on fifo for 2 decoders
+  x_resp_t  core_v_xif_resp_decoder2;
+  x_req_t   core_v_xif_req_decoder2;
   ara_dispatcher #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
-    .x_resp_t (x_resp_t)
+    .x_resp_t (x_resp_t),
+    .csr_sync_t (csr_sync_t)
   ) i_dispatcher_2 (
     .clk_i              (clk_i           ),
     .rst_ni             (rst_ni          ),
@@ -202,74 +180,75 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
-    .core_v_xif_req_i  (core_v_xif_req_is ),
-    .core_v_xif_resp_o (core_v_xif_resp_is)
-<<<<<<< HEAD
-=======
+    .core_v_xif_req_i  (core_v_xif_req_decoder2 ),
+    .core_v_xif_resp_o (core_v_xif_resp_decoder2),
+    .issue_valid_i     (core_v_xif_req_decoder2.issue_valid),
+    .accept_test_o     (),
+    // CSR sync
+    .sync_i            (core_v_xif_req_i.acc_req.flush),
+    .csr_sync_i        (csr_sync          ),
+    .csr_sync_o        ()
   );
 
   logic new_instr;
   logic load_next_instr;
-  edge_detect edge_detect_i_1 (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .d_i(core_v_xif_resp_is.issue_resp.accept),
-    .re_o(new_instr),
-    .fe_o()
-  );
 
-  edge_detect edge_detect_i_2 (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .d_i((core_v_xif_resp_o.register_ready && core_v_xif_req_i.register_valid)),
-    .re_o(load_next_instr),
-    .fe_o()
->>>>>>> started work on fifo for 2 decoders
-  );
+  assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp.accept;
+  assign load_next_instr = core_v_xif_req_i.register_valid && ara_req_ready && core_v_xif_req_i.result_ready;
 
   // fifo to store the pre decoded instructions
   riscv::instruction_t instruction;
+  logic [63:0] usage;
   fifo_v3 #(
-    .DEPTH(32),
+    .DEPTH(64),
     .dtype(riscv::instruction_t)
   ) fifo_v3_i (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
-    .flush_i('0),
+    .flush_i(core_v_xif_req_i.acc_req.flush),
     .testmode_i('0),
     .full_o(),
     .empty_o(),
-    .usage_o(),
-    .data_i(core_v_xif_req_is.issue_req.instr),
-    .push_i(new_instr),
-    .data_o(),
-    .pop_i(load_next_instr)
+    .usage_o(usage),
+    .data_i(core_v_xif_req_i.issue_req.instr),
+    .push_i('0), // new_instr
+    .data_o(instruction),
+    .pop_i('0) // load_next_instr
   );
 
   always_comb begin
     // Set default
-    core_v_xif_req_is                 = core_v_xif_req_i;
-    // Zero everything but the issue if
-    core_v_xif_req_is.register_valid    = '0;
-    core_v_xif_req_is.register.hartid   = '0;
-    core_v_xif_req_is.register.id       = '0;
-    core_v_xif_req_is.register.rs[0]    = '0;
-    core_v_xif_req_is.register.rs[1]    = '0;
-    core_v_xif_req_is.register.rs_valid = '0;
-    core_v_xif_req_is.commit_valid      = '0;
-    core_v_xif_req_is.commit            = '0;
-    core_v_xif_req_is.result_ready      = '0;
-    core_v_xif_req_is.acc_req           = '0;
-    // Construct relevant inputs
-    core_v_xif_req_is.register_valid    = 1'b1;
-    core_v_xif_req_is.result_ready      = 1'b1;
-    core_v_xif_req_is.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
-    // Construct releveant outputs
+    core_v_xif_req_decoder2       = core_v_xif_req_i;
     core_v_xif_resp_o             = core_v_xif_resp;
-    core_v_xif_resp_o.issue_ready = 1'b1;
-    core_v_xif_resp_o.issue_resp  = x_issue_resp;
-    core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_is.issue_resp.accept;
 
+    // Zero everything but the issue if
+    core_v_xif_req_decoder2.register_valid    = '0;
+    core_v_xif_req_decoder2.register.hartid   = '0;
+    core_v_xif_req_decoder2.register.id       = '0;
+    core_v_xif_req_decoder2.register.rs[0]    = '0;
+    core_v_xif_req_decoder2.register.rs[1]    = '0;
+    core_v_xif_req_decoder2.register.rs_valid = '0;
+    core_v_xif_req_decoder2.commit_valid      = '0;
+    core_v_xif_req_decoder2.commit            = '0;
+    core_v_xif_req_decoder2.result_ready      = '0;
+    core_v_xif_req_decoder2.acc_req           = '0;
+
+    // Construct relevant inputs
+    core_v_xif_req_decoder2.register_valid    = 1'b1;
+    core_v_xif_req_decoder2.result_ready      = 1'b1;
+    core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid;
+    core_v_xif_req_decoder2.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
+
+    core_v_xif_resp_o.issue_ready = 1'b1;
+    core_v_xif_resp_o.issue_resp  = '0;
+
+    if (core_v_xif_req_i.issue_valid) begin
+      // Construct releveant outputs
+      core_v_xif_resp_o.issue_resp  = x_issue_resp;
+      core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
+      core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.register_ready;
+      // core_v_xif_resp_o.issue_ready = 1'b1;
+    end
     // If the instruction is a vector instruction we want to store it in the fifo
   end
 
