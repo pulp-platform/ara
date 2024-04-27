@@ -18,7 +18,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
 
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
-    parameter type x_resp_t = core_v_xif_pkg::x_resp_t
+    parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
+    parameter type csr_sync_t = logic
   ) (
     // Clock and reset
     input  logic                                 clk_i,
@@ -42,10 +43,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 store_complete_i,
     input  logic                                 store_pending_i,
     // XIF
-    input x_req_t                                core_v_xif_req_i,
+    input  x_req_t                               core_v_xif_req_i,
     output x_resp_t                              core_v_xif_resp_o,
-    input riscv::instruction_t                   instruction_i
+    input  logic                                 issue_valid_i,
+    input riscv::instruction_t                   instruction_i,
+    output logic                                 accept_test_o,
+    // Dispatcher sync
+    input  logic                                 sync_i,
+    input  csr_sync_t                            csr_sync_i,
+    output csr_sync_t                            csr_sync_o
   );
+
 
   import cf_math_pkg::idx_width;
 
@@ -75,20 +83,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     logic                                 core_st_pending_m;
     x_resp_t                              core_v_xif_resp_m;
 
-<<<<<<< HEAD
-    ara_req_t                             ara_req_n;
-    logic                                 ara_req_valid_n;
-    logic                                 core_st_pending_n;
-    x_resp_t                              core_v_xif_resp_n;
 
-    assign ara_req_n         = ara_req_m;
-    assign ara_req_valid_n   = ara_req_valid_m;
-    assign core_st_pending_n = core_st_pending_m;
-    assign core_v_xif_resp_n = core_v_xif_resp_m;
-=======
->>>>>>> started work on fifo for 2 decoders
-
-    // Multiplexer to chose between id and ex stage decoder
+    // Building io for different modes
     always_comb begin
       // Inputs
       ara_req_ready_m   = ara_req_ready_i;
@@ -102,33 +98,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       store_complete_m  = store_complete_i;
       store_pending_m   = store_pending_i;
       core_v_xif_req_m  = core_v_xif_req_i;
-
-<<<<<<< HEAD
-      ara_req_o         = ara_req_n;
-      ara_req_valid_o   = ara_req_valid_n;
-      core_st_pending_o = core_st_pending_n;
-      core_v_xif_resp_o = core_v_xif_resp_n;
-
-      // core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_n.acc_resp.error & core_v_xif_resp_n.register_ready;
-      core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_n.acc_resp.error;
-      core_v_xif_resp_o.issue_resp.writeback;
-      core_v_xif_resp_o.issue_resp.register_read[0];
-      core_v_xif_resp_o.issue_resp.register_read[1];
-      core_v_xif_resp_o.issue_resp.is_vfp;
-=======
+      // Default values
       ara_req_o         = ara_req_m;
       ara_req_valid_o   = ara_req_valid_m;
       core_st_pending_o = core_st_pending_m;
       core_v_xif_resp_o = core_v_xif_resp_m;
 
-      core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
-      // core_v_xif_resp_o.issue_resp.writeback;
-      // core_v_xif_resp_o.issue_resp.register_read[0];
-      // core_v_xif_resp_o.issue_resp.register_read[1];
-      // core_v_xif_resp_o.issue_resp.is_vfp;
->>>>>>> started work on fifo for 2 decoders
-    end
+      core_v_xif_resp_o.issue_resp.accept = '0;
+      accept_test_o     = '0;
 
+      if (core_v_xif_req_m.register_valid && ara_req_ready_m && core_v_xif_req_m.result_ready && issue_valid_i) begin
+        accept_test_o = ~core_v_xif_resp_m.acc_resp.error;
+        core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
+      end
+    end
 
   assign core_st_pending_m = core_v_xif_req_m.acc_req.store_pending;
 
@@ -512,7 +495,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
 
     if (state_d == NORMAL_OPERATION && state_q != RESHUFFLE) begin
-      if (core_v_xif_req_m.register_valid && ara_req_ready_m && core_v_xif_req_m.result_ready) begin
+      if (core_v_xif_req_m.register_valid && ara_req_ready_m && core_v_xif_req_m.result_ready && issue_valid_i) begin
         // Decoding
         is_decoding = 1'b1;
         // Acknowledge the request
@@ -3311,6 +3294,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // The token must change at every new instruction
     ara_req_d.token = (ara_req_valid_m && ara_req_ready_m) ? ~ara_req_m.token : ara_req_m.token;
+
+
+
+
+    // csr sync
+    if (sync_i) begin
+      vstart_d  = csr_sync_i.vstart;
+      vl_d      = csr_sync_i.vl;
+      vtype_d   = csr_sync_i.vtype;
+      vxsat_d   = csr_sync_i.vxsat;
+      vxrm_d    = csr_sync_i.vxrm;
+    end
   end: p_decoder
+
+
+  assign csr_sync_o.vstart = vstart_d;
+  assign csr_sync_o.vl     = vl_d;
+  assign csr_sync_o.vtype  = vtype_d;
+  assign csr_sync_o.vxsat  = vxsat_d;
+  assign csr_sync_o.vxrm   = vxrm_d;
 
 endmodule : ara_dispatcher
