@@ -33,7 +33,6 @@
     writeregflags_t writeback;        \
     readregflags_t register_read;     \
     logic is_vfp;                     \
-    logic loadstore;                  \
   } x_issue_resp_t;
 
 `define CORE_V_XIF_REGISTER(X_NUM_RS, X_RFR_WIDTH)  \
