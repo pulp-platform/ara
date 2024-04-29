@@ -1,3 +1,5 @@
+// 
+
 package core_v_xif_pkg;
 
     localparam int unsigned X_NUM_RS     		   = ariane_pkg::NR_RGPR_PORTS; //2 or 3
