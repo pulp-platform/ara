@@ -103,10 +103,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   x_req_t     core_v_xif_req;
   x_resp_t    core_v_xif_resp;
   x_resp_t    core_v_xif_resp_pack;
-
-  // x_issue_req_t test;
-  // assign test.test = 1'b1;
-
+  
 
   // Support max 8 cores, for now
   logic [63:0] hart_id;
