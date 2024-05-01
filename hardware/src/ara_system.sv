@@ -88,7 +88,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   //  XIF  //
   ///////////
 
-  `include "core_v_xif.svh"
+  `include "core_v_xif/core_v_xif.svh"
 
   `CORE_V_XIF_BASE(ariane_pkg::NR_RGPR_PORTS, ariane_pkg::TRANS_ID_BITS, 1, 0, 0)
   `CORE_V_XIF_COMPRESSED
@@ -103,7 +103,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   x_req_t     core_v_xif_req;
   x_resp_t    core_v_xif_resp;
   x_resp_t    core_v_xif_resp_pack;
-  
+
 
   // Support max 8 cores, for now
   logic [63:0] hart_id;

@@ -26,7 +26,7 @@ sources:
     # Headers
     - hardware/include/rvv_pkg.sv
     - hardware/include/ara_pkg.sv
-    - hardware/src/core_v_xif_pkg.sv
+    - hardware/include/core_v_xif/core_v_xif_pkg.sv
 
     # Sources
     # Level 1
