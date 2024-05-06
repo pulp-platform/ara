@@ -8,7 +8,7 @@
 // It also acknowledges instructions back to Ariane, perhaps with a
 // response or an error message.
 
-module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
+module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
@@ -272,36 +272,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
 
 
-
+  logic inv_accept;
 
 
 
   // Building io for different modes
-    always_comb begin
-      // Inputs
-      ara_req_ready_m   = ara_req_ready_i;
-      ara_resp_m        = ara_resp_i;
-      ara_resp_valid_m  = ara_resp_valid_i;
-      ara_idle_m        = ara_idle_i;
-      fflags_ex_m       = fflags_ex_i;
-      fflags_ex_valid_m = fflags_ex_valid_i;
-      vxsat_flag_m      = vxsat_flag_i;
-      load_complete_m   = load_complete_i;
-      store_complete_m  = store_complete_i;
-      store_pending_m   = store_pending_i;
-      core_v_xif_req_m  = core_v_xif_req_i;
-      // Default values
-      ara_req_o         = ara_req_m;
-      ara_req_valid_o   = ara_req_valid_m;
-      core_st_pending_o = core_st_pending_m;
-      core_v_xif_resp_o = core_v_xif_resp_m;
+  always_comb begin
+    // Inputs
+    ara_req_ready_m   = ara_req_ready_i;
+    ara_resp_m        = ara_resp_i;
+    ara_resp_valid_m  = ara_resp_valid_i;
+    ara_idle_m        = ara_idle_i;
+    fflags_ex_m       = fflags_ex_i;
+    fflags_ex_valid_m = fflags_ex_valid_i;
+    vxsat_flag_m      = vxsat_flag_i;
+    load_complete_m   = load_complete_i;
+    store_complete_m  = store_complete_i;
+    store_pending_m   = store_pending_i;
+    core_v_xif_req_m  = core_v_xif_req_i;
+    // Default values
+    ara_req_o         = ara_req_m;
+    ara_req_valid_o   = ara_req_valid_m;
+    core_st_pending_o = core_st_pending_m;
+    core_v_xif_resp_o = core_v_xif_resp_m;
 
-      core_v_xif_resp_o.issue_resp.accept = '0;
-      accept_test_o     = '0;
+    // core_v_xif_resp_o.issue_resp.accept = '0;
+    accept_test_o     = '0;
 
-      accept_test_o = ~core_v_xif_resp_m.acc_resp.error;
-      core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
-    end
+    accept_test_o = ~core_v_xif_resp_m.acc_resp.error;
+    // core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
+    // if (~core_v_xif_resp_m.acc_resp.error != core_v_xif_resp_m.issue_resp.accept)
+    //   $error("Error: mismatch in accept singal!\n");
+  end
 
   assign core_st_pending_m = core_v_xif_req_m.acc_req.store_pending;
 
@@ -350,6 +352,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     core_v_xif_resp_m.register_ready  = 1'b0;
     core_v_xif_resp_m.result_valid = 1'b0;
+
+    core_v_xif_resp_m.issue_resp.accept = 1'b1;
+    inv_accept = 1'b1;
 
     core_v_xif_resp_m.result       = '{
       id      : core_v_xif_req_m.register.id,
@@ -505,11 +510,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
 
     if (state_d == NORMAL_OPERATION && state_q != RESHUFFLE) begin
-      if (core_v_xif_req_m.register_valid && ara_req_ready_m && core_v_xif_req_m.result_ready) begin
+      if (core_v_xif_req_m.register_valid && ara_req_ready_m && core_v_xif_req_m.result_ready ) begin
         // Decoding
         is_decoding = 1'b1;
         // Acknowledge the request
         core_v_xif_resp_m.register_ready = ara_req_ready_m;
+
 
         // Decode the instructions based on their opcode
         unique case (core_v_xif_req_m.acc_req.instr.itype.opcode)
@@ -539,8 +545,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetivli_type.zimm10));
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
                   vtype_d = vtype_xlen(riscv::xlen_t'(core_v_xif_req_m.register.rs[1][7:0]));
-                end else
+                end else begin
                   core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                end
 
                 // Check whether the updated vtype makes sense
                 if ((vtype_d.vsew > rvv_pkg::vew_e'($clog2(ELENB))) || // SEW <= ELEN
@@ -1339,6 +1347,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       core_v_xif_resp_m.result_valid  = 1'b1;
                       ara_req_valid_d   = 1'b0;
                     end
+                    core_v_xif_resp_m.issue_resp.accept = 1'b1;
                   end
                   6'b010100: begin
                     ara_req_d.use_vd_op = 1'b1;
@@ -2013,6 +2022,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         core_v_xif_resp_m.result_valid  = 1'b1;
                         ara_req_valid_d   = 1'b0;
                       end
+                      core_v_xif_resp_m.issue_resp.accept = 1'b1;
                     end
                     6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
                     6'b011001: ara_req_d.op = ara_pkg::VMFLE;
@@ -2123,6 +2133,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                           // Trigger an error
                           core_v_xif_resp_m.acc_resp.error = 1'b1;
                           ara_req_valid_d  = 1'b0;
+                          core_v_xif_resp_m.issue_resp.accept = 1'b0;
                         end
                       endcase
                     end
@@ -2639,6 +2650,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 core_v_xif_resp_m.acc_resp.error = 1'b1;
                 core_v_xif_resp_m.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
+                core_v_xif_resp_m.issue_resp.accept = 1'b0;
               end
             endcase
 
@@ -2776,6 +2788,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               if (ara_resp_m.error)
                 vstart_d = ara_resp_m.error_vl;
             end
+            core_v_xif_resp_m.issue_resp.accept = 1'b1;
           end
 
           /////////////////////
@@ -2852,6 +2865,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 core_v_xif_resp_m.acc_resp.error = 1'b1;
                 core_v_xif_resp_m.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
+                core_v_xif_resp_m.issue_resp.accept = 1'b0;
               end
             endcase
 
@@ -2984,6 +2998,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               if (ara_resp_m.error)
                 vstart_d = ara_resp_m.error_vl;
             end
+            core_v_xif_resp_m.issue_resp.accept = 1'b1;
           end
 
           ////////////////////////////
@@ -3012,7 +3027,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     vxsat_d           = vxsat_e'(core_v_xif_req_m.register.rs[0][0]);
                     core_v_xif_resp_m.result.data = vlen_t'(vxsat_q);
                   end
-                  default: core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  default: begin
+                    core_v_xif_resp_m.acc_resp.error = 1'b1;
+                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                  end
                 endcase
               end
               3'b010: begin // csrrs
@@ -3025,17 +3043,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VXRM: begin
                     vxrm_d            = vxrm_q | vxrm_t'(core_v_xif_req_m.register.rs[0][1:0]);
@@ -3045,7 +3072,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     vxsat_d           = vxsat_q | vxsat_e'(core_v_xif_req_m.register.rs[0][0]);
                     core_v_xif_resp_m.result.data = vlen_t'(vxsat_q);
                   end
-                  default: core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  default: begin
+                    core_v_xif_resp_m.acc_resp.error = 1'b1;
+                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                  end
                 endcase
               end
               3'b011: begin // csrrc
@@ -3058,23 +3088,35 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VXSAT: begin
                     vxsat_d           = vxsat_q & ~vxsat_e'(core_v_xif_req_m.register.rs[0][0]);
                     core_v_xif_resp_m.result.data = vxsat_q;
                   end
-                  default: core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  default: begin
+                    core_v_xif_resp_m.acc_resp.error = 1'b1;
+                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                  end
                 endcase
               end
               3'b101: begin // csrrwi
@@ -3094,7 +3136,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     vxsat_d           = core_v_xif_req_m.acc_req.instr.itype.rs1[15];
                     core_v_xif_resp_m.result.data = vxsat_q;
                   end
-                  default: core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  default: begin
+                    core_v_xif_resp_m.acc_resp.error = 1'b1;
+                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                  end
                 endcase
               end
               3'b110: begin // csrrsi
@@ -3107,24 +3152,36 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VXSAT: begin
                     // logic [19:15] rs1; So, LSB is [15]
                     vxsat_d           = vxsat_q | vxsat_e'(core_v_xif_req_m.acc_req.instr.itype.rs1[15]);
                     core_v_xif_resp_m.result.data = vxsat_q;
                   end
-                  default: core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  default: begin
+                    core_v_xif_resp_m.acc_resp.error = 1'b1;
+                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                  end
                 endcase
               end
               3'b111: begin // csrrci
@@ -3137,30 +3194,43 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
-                    else core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                    else begin
+                      core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
+                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                    end
                   end
                   riscv::CSR_VXSAT: begin
                     // logic [19:15] rs1; So, LSB is [15]
                     vxsat_d           = vxsat_q & ~vxsat_e'(core_v_xif_req_m.acc_req.instr.itype.rs1[15]);
                     core_v_xif_resp_m.result.data = vxsat_q;
                   end
-                  default: core_v_xif_resp_m.acc_resp.error = 1'b1;
+                  default: begin
+                    core_v_xif_resp_m.acc_resp.error = 1'b1;
+                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
+                  end
                 endcase
               end
               default: begin
                 // Trigger an illegal instruction
                 core_v_xif_resp_m.acc_resp.error = 1'b1;
                 core_v_xif_resp_m.result_valid = 1'b1;
+                core_v_xif_resp_m.issue_resp.accept = 1'b0;
               end
             endcase
           end
@@ -3169,6 +3239,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Trigger an illegal instruction
             core_v_xif_resp_m.acc_resp.error = 1'b1;
             core_v_xif_resp_m.result_valid = 1'b1;
+            core_v_xif_resp_m.issue_resp.accept = 1'b0;
           end
         endcase
       end
@@ -3246,6 +3317,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     if (illegal_insn) begin
       core_v_xif_resp_m.acc_resp.error = 1'b1;
       ara_req_valid_d  = 1'b0;
+      core_v_xif_resp_m.issue_resp.accept = 1'b0;
     end
 
     // Update the EEW
@@ -3325,4 +3397,4 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   assign csr_sync_o.vxsat  = vxsat_d;
   assign csr_sync_o.vxrm   = vxrm_d;
 
-endmodule : ara_dispatcher
+endmodule : ara_pre_decoder

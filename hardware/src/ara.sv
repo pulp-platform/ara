@@ -129,7 +129,6 @@ module ara import ara_pkg::*; #(
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
-    .issue_valid_i     (1'b1),
     .accept_test_o     (accept_test      ),
     // CSR sync
     .sync_i            ('0               ),
@@ -153,18 +152,19 @@ module ara import ara_pkg::*; #(
   // Second dispatcher to handle pre decoding
   x_resp_t  core_v_xif_resp_decoder2;
   x_req_t   core_v_xif_req_decoder2;
-  ara_dispatcher #(
+  logic   pre_decoder_accept_test;
+  ara_pre_decoder #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
     .x_resp_t (x_resp_t),
     .csr_sync_t (csr_sync_t)
-  ) i_dispatcher_2 (
+  ) i_pre_decoder (
     .clk_i              (clk_i           ),
     .rst_ni             (rst_ni          ),
     // Interface with the sequencer
     .ara_req_o          (),
     .ara_req_valid_o    (),
-    .ara_req_ready_i    (1'b1   ),
+    .ara_req_ready_i    (core_v_xif_req_decoder2.issue_valid),
     .ara_resp_i         (ara_resp        ),
     .ara_resp_valid_i   (ara_resp_valid  ),
     .ara_idle_i         (ara_idle        ),
@@ -181,8 +181,7 @@ module ara import ara_pkg::*; #(
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_decoder2 ),
     .core_v_xif_resp_o (core_v_xif_resp_decoder2),
-    .issue_valid_i     (core_v_xif_req_decoder2.issue_valid),
-    .accept_test_o     (),
+    .accept_test_o     (pre_decoder_accept_test),
     // CSR sync
     .sync_i            (core_v_xif_req_i.acc_req.flush),
     .csr_sync_i        (csr_sync          ),
@@ -193,20 +192,21 @@ module ara import ara_pkg::*; #(
   logic load_next_instr;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp.accept;
-  assign load_next_instr = core_v_xif_req_i.register_valid && ara_req_ready && core_v_xif_req_i.result_ready;
+  assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
 
   // fifo to store the pre decoded instructions
   riscv::instruction_t instruction;
   logic [63:0] usage;
+  logic buffer_full;
   fifo_v3 #(
-    .DEPTH(64),
+    .DEPTH(16),
     .dtype(riscv::instruction_t)
   ) fifo_v3_i (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .flush_i(core_v_xif_req_i.acc_req.flush),
     .testmode_i('0),
-    .full_o(),
+    .full_o(buffer_full),
     .empty_o(),
     .usage_o(usage),
     .data_i(core_v_xif_req_i.issue_req.instr),
@@ -219,6 +219,7 @@ module ara import ara_pkg::*; #(
     // Set default
     core_v_xif_req_decoder2       = core_v_xif_req_i;
     core_v_xif_resp_o             = core_v_xif_resp;
+    core_v_xif_resp_o.issue_ready = 1'b0;
 
     // Zero everything but the issue if
     core_v_xif_req_decoder2.register_valid    = '0;
@@ -233,22 +234,25 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.acc_req           = '0;
 
     // Construct relevant inputs
-    core_v_xif_req_decoder2.register_valid    = 1'b1;
+    core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;;
     core_v_xif_req_decoder2.result_ready      = 1'b1;
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
 
-    core_v_xif_resp_o.issue_ready = 1'b1;
-    core_v_xif_resp_o.issue_resp  = '0;
 
-    if (core_v_xif_req_i.issue_valid) begin
+    if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) core_v_xif_resp_o.issue_ready = 1'b1;
+    // if (core_v_xif_req_i.issue_valid && !buffer_full) core_v_xif_resp_o.issue_ready = 1'b1;
+
+
+    // if (core_v_xif_req_i.issue_valid) begin
       // Construct releveant outputs
       core_v_xif_resp_o.issue_resp  = x_issue_resp;
-      core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
-      core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.register_ready;
-      // core_v_xif_resp_o.issue_ready = 1'b1;
-    end
-    // If the instruction is a vector instruction we want to store it in the fifo
+      // core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
+    // end
+    // If we are currently flushing the fifo then we can't push an instruction.
+    // if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) 
+    //   core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.register_ready;
+
   end
 
   /////////////////
