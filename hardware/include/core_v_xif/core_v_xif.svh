@@ -102,6 +102,7 @@
     logic inval_ready;            \
     riscv::instruction_t instr;   \
     logic flush;                  \
+    logic flush_unissued;         \
   } x_acc_req_t;                  \
                                   \
   typedef struct packed {         \
