@@ -89,6 +89,7 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
   // XIF
   x_resp_t                      core_v_xif_resp;
+  riscv::instruction_t instruction;
 
   typedef struct packed {
     vlen_t                      vstart;
@@ -127,6 +128,7 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
+    .instruction_i     (instruction      ), //instruction/core_v_xif_req_i.acc_req.instr
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
     .accept_test_o     (accept_test      ),
@@ -193,7 +195,6 @@ module ara import ara_pkg::*; #(
 
   logic [63:0] usage;
   logic buffer_full;
-  riscv::instruction_t instruction;
 
   logic push_to_buffer;
   logic pre_buffer_full_d, pre_buffer_full_q;
@@ -288,11 +289,12 @@ module ara import ara_pkg::*; #(
     // if (core_v_xif_req_i.issue_valid) begin
       // Construct releveant outputs
       core_v_xif_resp_o.issue_resp  = x_issue_resp;
-      // core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
+    // core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
+    // core_v_xif_resp_o.issue_resp.accept = !core_v_xif_resp_decoder2.acc_resp.error;
     // end
     // If we are currently flushing the fifo then we can't push an instruction.
     // if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) 
-    //   core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.register_ready;
+      // core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.result_valid;
 
   end
 

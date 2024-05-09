@@ -7,7 +7,7 @@ packages:
     dependencies:
     - common_cells
   ariane:
-    revision: 2f18d29f52d460949b50c4ef0886b0a29c21e38a
+    revision: 4b426b30648a2499b70205a8dd5dfabea272e4d9
     version: null
     source:
       Git: https://github.com/Fzurbonsen/cva6.git
@@ -17,8 +17,8 @@ packages:
     - fpnew
     - tech_cells_generic
   axi:
-    revision: ac5deb3ff086aa34b168f392c051e92603d6c0e2
-    version: 0.39.2
+    revision: 9402c8a9ce0a7b5253c3c29e788612d771e8b5d6
+    version: 0.39.3
     source:
       Git: https://github.com/pulp-platform/axi.git
     dependencies:
