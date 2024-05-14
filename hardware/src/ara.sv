@@ -29,6 +29,9 @@ module ara import ara_pkg::*; #(
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
     localparam int           unsigned NrPEs        = NrLanes + 4,
+
+    parameter int            unsigned HARTID_WIDTH = ariane_pkg::NR_RGPR_PORTS,
+    parameter int            unsigned ID_WIDTH     = ariane_pkg::TRANS_ID_BITS,
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
     parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
     parameter type x_issue_req_t = core_v_xif_pkg::x_issue_req_t,
@@ -66,6 +69,7 @@ module ara import ara_pkg::*; #(
   localparam int unsigned StrbWidth = DataWidth / 8;
   typedef logic [StrbWidth-1:0] strb_t;
 
+
   //////////////////
   //  Dispatcher  //
   //////////////////
@@ -89,7 +93,12 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
   // XIF
   x_resp_t                      core_v_xif_resp;
-  riscv::instruction_t instruction;
+
+  typedef struct packed {
+    riscv::instruction_t instr;
+    logic [HARTID_WIDTH-1:0] hartid;
+    logic [ID_WIDTH-1:0] id;
+  } instr_pack_t;
 
   typedef struct packed {
     vlen_t                      vstart;
@@ -101,6 +110,7 @@ module ara import ara_pkg::*; #(
 
   csr_sync_t                    csr_sync;
   logic                         accept_test;
+  instr_pack_t                  instruction;
 
   ara_dispatcher #(
     .NrLanes(NrLanes),
@@ -128,7 +138,7 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
-    .instruction_i     (instruction      ), //instruction/core_v_xif_req_i.acc_req.instr
+    .instruction_i     (instruction.instr), //instruction.instr/core_v_xif_req_i.acc_req.instr
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
     .accept_test_o     (accept_test      ),
@@ -198,7 +208,7 @@ module ara import ara_pkg::*; #(
 
   logic push_to_buffer;
   logic pre_buffer_full_d, pre_buffer_full_q;
-  riscv::instruction_t instruction_d, instruction_q;
+  instr_pack_t instruction_d, instruction_q;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp.accept;
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
@@ -217,7 +227,7 @@ module ara import ara_pkg::*; #(
 
     // If we have space in the fifo then we can load a new instruction.
     if (!buffer_full && new_instr) begin
-      instruction_d     = core_v_xif_req_i.issue_req.instr;
+      instruction_d     = '{core_v_xif_req_i.issue_req.instr, core_v_xif_req_i.issue_req.hartid, core_v_xif_req_i.issue_req.id};
       pre_buffer_full_d = 1'b1;
     end
 
@@ -231,8 +241,8 @@ module ara import ara_pkg::*; #(
   // Buffer in fornt of the fifo
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if(~rst_ni) begin
-      instruction_q      <= 0;
-      pre_buffer_full_q <= 0;
+      instruction_q     <= '0;
+      pre_buffer_full_q <= '0;
     end else begin
       instruction_q     <= instruction_d;
       pre_buffer_full_q <= pre_buffer_full_d;
@@ -242,7 +252,7 @@ module ara import ara_pkg::*; #(
   // fifo to store the pre decoded instructions
   fifo_v3 #(
     .DEPTH(4),
-    .dtype(riscv::instruction_t)
+    .dtype(instr_pack_t) //riscv::instruction_t
   ) fifo_v3_i (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
@@ -277,24 +287,19 @@ module ara import ara_pkg::*; #(
 
     // Construct relevant inputs
     core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;;
-    core_v_xif_req_decoder2.result_ready      = 1'b1;
-    core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid;
+    core_v_xif_req_decoder2.result_ready      = core_v_xif_req_i.issue_valid;
+    core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
     core_v_xif_req_decoder2.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
+
+    core_v_xif_resp_o.issue_resp  = x_issue_resp;
 
 
     if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) core_v_xif_resp_o.issue_ready = 1'b1;
-    // if (core_v_xif_req_i.issue_valid && !buffer_full) core_v_xif_resp_o.issue_ready = 1'b1;
 
 
-    // if (core_v_xif_req_i.issue_valid) begin
-      // Construct releveant outputs
-      core_v_xif_resp_o.issue_resp  = x_issue_resp;
-    // core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
-    // core_v_xif_resp_o.issue_resp.accept = !core_v_xif_resp_decoder2.acc_resp.error;
-    // end
-    // If we are currently flushing the fifo then we can't push an instruction.
     // if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) 
-      // core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.result_valid;
+    //   core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.result_valid;
+    // core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
 
   end
 
@@ -302,7 +307,7 @@ module ara import ara_pkg::*; #(
   //  Sequencer  //
   /////////////////
 
-  // Interface with the PEs
+  // Interface with the PEs   
   pe_req_t                         pe_req;
   logic                            pe_req_valid;
   logic              [NrPEs-1:0]   pe_req_ready;

@@ -95,7 +95,6 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   `CORE_V_XIF_ISSUE
   `CORE_V_XIF_REGISTER(ariane_pkg::NR_RGPR_PORTS, riscv::XLEN)
   `CORE_V_XIF_COMMIT
-  `CORE_V_XIF_MEM(64)
   `CORE_V_XIF_RESULT(riscv::XLEN)
   `CORE_V_XIF_ACC
   `CORE_V_XIF_T
@@ -242,6 +241,8 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .axi_b_t     (ara_axi_b_t     ),
     .axi_req_t   (ara_axi_req_t   ),
     .axi_resp_t  (ara_axi_resp_t  ),
+    .HARTID_WIDTH  (ariane_pkg::NR_RGPR_PORTS),
+    .ID_WIDTH      (ariane_pkg::TRANS_ID_BITS),
     .x_req_t        (x_req_t      ),
     .x_resp_t       (x_resp_t     ),
     .x_issue_req_t  (x_issue_req_t),

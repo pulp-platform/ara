@@ -300,9 +300,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     accept_test_o     = '0;
 
     accept_test_o = ~core_v_xif_resp_m.acc_resp.error;
-    // core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
-    // if (~core_v_xif_resp_m.acc_resp.error != core_v_xif_resp_m.issue_resp.accept)
-    //   $error("Error: mismatch in accept singal!\n");
+    core_v_xif_resp_o.issue_resp.accept = ~core_v_xif_resp_m.acc_resp.error;
   end
 
   assign core_st_pending_m = core_v_xif_req_m.acc_req.store_pending;
@@ -353,7 +351,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     core_v_xif_resp_m.register_ready  = 1'b0;
     core_v_xif_resp_m.result_valid = 1'b0;
 
-    core_v_xif_resp_m.issue_resp.accept = 1'b1;
     inv_accept = 1'b1;
 
     core_v_xif_resp_m.result       = '{
@@ -547,7 +544,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   vtype_d = vtype_xlen(riscv::xlen_t'(core_v_xif_req_m.register.rs[1][7:0]));
                 end else begin
                   core_v_xif_resp_m.acc_resp.error = 1'b1;
-                  core_v_xif_resp_m.issue_resp.accept = 1'b0;
                 end
 
                 // Check whether the updated vtype makes sense
@@ -1347,7 +1343,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                       core_v_xif_resp_m.result_valid  = 1'b1;
                       ara_req_valid_d   = 1'b0;
                     end
-                    core_v_xif_resp_m.issue_resp.accept = 1'b1;
                   end
                   6'b010100: begin
                     ara_req_d.use_vd_op = 1'b1;
@@ -2022,7 +2017,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                         core_v_xif_resp_m.result_valid  = 1'b1;
                         ara_req_valid_d   = 1'b0;
                       end
-                      core_v_xif_resp_m.issue_resp.accept = 1'b1;
                     end
                     6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
                     6'b011001: ara_req_d.op = ara_pkg::VMFLE;
@@ -2133,7 +2127,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                           // Trigger an error
                           core_v_xif_resp_m.acc_resp.error = 1'b1;
                           ara_req_valid_d  = 1'b0;
-                          core_v_xif_resp_m.issue_resp.accept = 1'b0;
                         end
                       endcase
                     end
@@ -2650,7 +2643,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 core_v_xif_resp_m.acc_resp.error = 1'b1;
                 core_v_xif_resp_m.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
-                core_v_xif_resp_m.issue_resp.accept = 1'b0;
               end
             endcase
 
@@ -2788,7 +2780,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
               if (ara_resp_m.error)
                 vstart_d = ara_resp_m.error_vl;
             end
-            core_v_xif_resp_m.issue_resp.accept = 1'b1;
           end
 
           /////////////////////
@@ -2865,7 +2856,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 core_v_xif_resp_m.acc_resp.error = 1'b1;
                 core_v_xif_resp_m.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
-                core_v_xif_resp_m.issue_resp.accept = 1'b0;
               end
             endcase
 
@@ -2998,7 +2988,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
               if (ara_resp_m.error)
                 vstart_d = ara_resp_m.error_vl;
             end
-            core_v_xif_resp_m.issue_resp.accept = 1'b1;
           end
 
           ////////////////////////////
@@ -3029,7 +3018,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin
                     core_v_xif_resp_m.acc_resp.error = 1'b1;
-                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
                   end
                 endcase
               end
@@ -3045,7 +3033,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VL: begin
@@ -3053,7 +3040,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VLENB: begin
@@ -3061,7 +3047,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VXRM: begin
@@ -3074,7 +3059,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin
                     core_v_xif_resp_m.acc_resp.error = 1'b1;
-                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
                   end
                 endcase
               end
@@ -3090,7 +3074,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VL: begin
@@ -3098,7 +3081,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VLENB: begin
@@ -3106,7 +3088,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VXSAT: begin
@@ -3115,7 +3096,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin
                     core_v_xif_resp_m.acc_resp.error = 1'b1;
-                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
                   end
                 endcase
               end
@@ -3138,7 +3118,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin
                     core_v_xif_resp_m.acc_resp.error = 1'b1;
-                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
                   end
                 endcase
               end
@@ -3154,7 +3133,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VL: begin
@@ -3162,7 +3140,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VLENB: begin
@@ -3170,7 +3147,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VXSAT: begin
@@ -3180,7 +3156,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin
                     core_v_xif_resp_m.acc_resp.error = 1'b1;
-                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
                   end
                 endcase
               end
@@ -3196,7 +3171,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = xlen_vtype(vtype_q);
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VL: begin
@@ -3204,7 +3178,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = vl_q;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VLENB: begin
@@ -3212,7 +3185,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     if (core_v_xif_req_m.acc_req.instr.itype.rs1 == '0) core_v_xif_resp_m.result.data = VLENB;
                     else begin
                       core_v_xif_resp_m.acc_resp.error                                 = 1'b1;
-                      core_v_xif_resp_m.issue_resp.accept = 1'b0;
                     end
                   end
                   riscv::CSR_VXSAT: begin
@@ -3222,7 +3194,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin
                     core_v_xif_resp_m.acc_resp.error = 1'b1;
-                    core_v_xif_resp_m.issue_resp.accept = 1'b0;
                   end
                 endcase
               end
@@ -3230,7 +3201,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 // Trigger an illegal instruction
                 core_v_xif_resp_m.acc_resp.error = 1'b1;
                 core_v_xif_resp_m.result_valid = 1'b1;
-                core_v_xif_resp_m.issue_resp.accept = 1'b0;
               end
             endcase
           end
@@ -3239,7 +3209,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             // Trigger an illegal instruction
             core_v_xif_resp_m.acc_resp.error = 1'b1;
             core_v_xif_resp_m.result_valid = 1'b1;
-            core_v_xif_resp_m.issue_resp.accept = 1'b0;
           end
         endcase
       end
@@ -3317,7 +3286,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     if (illegal_insn) begin
       core_v_xif_resp_m.acc_resp.error = 1'b1;
       ara_req_valid_d  = 1'b0;
-      core_v_xif_resp_m.issue_resp.accept = 1'b0;
     end
 
     // Update the EEW

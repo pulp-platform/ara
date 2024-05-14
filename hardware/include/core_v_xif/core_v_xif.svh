@@ -25,7 +25,6 @@
 `define CORE_V_XIF_ISSUE              \
   typedef struct packed {             \
     riscv::instruction_t instr;       \
-    mode_t mode;                      \
     hartid_t hartid;                  \
     id_t id;                          \
   } x_issue_req_t;                    \
@@ -52,35 +51,6 @@
     logic commit_kill;      \
   } x_commit_t;
 
-`define CORE_V_XIF_MEM(X_MEM_WIDTH)   \
-  typedef struct packed {             \
-    hartid_t hartid;                  \
-    id_t id;                          \
-    logic [31:0] addr;                \
-    mode_t mode;                      \
-    logic we;                         \
-    logic [2:0] size;                 \
-    logic [X_MEM_WIDTH/8-1:0] be;     \
-    logic [1:0] attr;                 \
-    logic [X_MEM_WIDTH  -1:0] wdata;  \
-    logic last;                       \
-    logic spec;                       \
-  } x_mem_req_t;                      \
-                                      \
-  typedef struct packed {             \
-    logic exc;                        \
-    logic [5:0] exccode;              \
-    logic dbg;                        \
-  } x_mem_resp_t;                     \
-                                      \
-  typedef struct packed {             \
-    hartid_t hartid;                  \
-    id_t id;                          \
-    logic [X_MEM_WIDTH-1:0] rdata;    \
-    logic err;                        \
-    logic dbg;                        \
-  } x_mem_result_t;
-
 `define CORE_V_XIF_RESULT(X_RFW_WIDTH)  \
   typedef struct packed {               \
     hartid_t hartid;                    \
@@ -88,10 +58,6 @@
     logic [X_RFW_WIDTH     -1:0] data;  \
     logic [4:0] rd;                     \
     writeregflags_t we;                 \
-    logic exc;                          \
-    logic [5:0] exccode;                \
-    logic dbg;                          \
-    logic err;                          \
   } x_result_t;
 
 `define CORE_V_XIF_ACC            \
