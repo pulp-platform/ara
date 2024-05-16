@@ -45,7 +45,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     // XIF
     input  x_req_t                               core_v_xif_req_i,
     output x_resp_t                              core_v_xif_resp_o,
-    input riscv::instruction_t                   instruction_i,
     output logic                                 accept_test_o,
     // Dispatcher sync
     input  logic                                 sync_i,
