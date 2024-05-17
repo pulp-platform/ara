@@ -133,8 +133,6 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 `else
   cva6 #(
     .ArianeCfg(ArianeCfg),
-    .cvxif_req_t (acc_pkg::accelerator_req_t),
-    .cvxif_resp_t (acc_pkg::accelerator_resp_t),
     .AxiAddrWidth ( AxiAddrWidth ),
     .AxiDataWidth ( AxiNarrowDataWidth ),
     .AxiIdWidth ( AxiIdWidth ),
