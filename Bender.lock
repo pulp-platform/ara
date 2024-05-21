@@ -7,7 +7,7 @@ packages:
     dependencies:
     - common_cells
   ariane:
-    revision: df6a94901bb1375a24609954382707ca2c89fada
+    revision: 74a66a94421ab3a1d21d38152d70ffe654d106ce
     version: null
     source:
       Git: https://github.com/Fzurbonsen/cva6.git

@@ -195,77 +195,40 @@ module ara import ara_pkg::*; #(
     .core_v_xif_resp_o (core_v_xif_resp_decoder2),
     .accept_test_o     (pre_decoder_accept_test),
     // CSR sync
-    .sync_i            (core_v_xif_req_i.acc_req.flush),
+    .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill),
     .csr_sync_i        (csr_sync          ),
     .csr_sync_o        ()
   );
 
   logic new_instr;
   logic load_next_instr;
-
-  logic [63:0] usage;
   logic buffer_full;
-
-  logic push_to_buffer;
-  logic pre_buffer_full_d, pre_buffer_full_q;
-  instr_pack_t instruction_d, instruction_q;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp.accept;
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
 
-  always_comb begin
-    // Default values
-    push_to_buffer    = 1'b0;
-    instruction_d     = instruction_q;
-    pre_buffer_full_d = pre_buffer_full_q;
+  instr_pack_t instr_to_buffer;
+  instr_pack_t instr_test;
 
-    // If we have space in the fifo and an instruction in the pre buffer we push it to the fifo.
-    if (!buffer_full && pre_buffer_full_q) begin
-      push_to_buffer    = 1'b1;
-      pre_buffer_full_d = 1'b0;
-    end
+  assign instr_to_buffer = '{core_v_xif_req_i.issue_req.instr, core_v_xif_req_i.issue_req.hartid, core_v_xif_req_i.issue_req.id};
 
-    // If we have space in the fifo then we can load a new instruction.
-    if (!buffer_full && new_instr) begin
-      instruction_d     = '{core_v_xif_req_i.issue_req.instr, core_v_xif_req_i.issue_req.hartid, core_v_xif_req_i.issue_req.id};
-      pre_buffer_full_d = 1'b1;
-    end
-
-    // If we are flushing the unissued instructions then we also need to flush the pre buffer
-    if (core_v_xif_req_i.acc_req.flush_unissued) begin
-      push_to_buffer    = 1'b0;
-      pre_buffer_full_d = 1'b0;
-    end
-  end
-
-  // Buffer in fornt of the fifo
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if(~rst_ni) begin
-      instruction_q     <= '0;
-      pre_buffer_full_q <= '0;
-    end else begin
-      instruction_q     <= instruction_d;
-      pre_buffer_full_q <= pre_buffer_full_d;
-    end
-  end
-
-  // fifo to store the pre decoded instructions
-  fifo_v3 #(
-    .DEPTH(4),
-    .dtype(instr_pack_t) //riscv::instruction_t
-  ) fifo_v3_i (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .flush_i(core_v_xif_req_i.acc_req.flush),
-    .testmode_i('0),
-    .full_o(buffer_full),
-    .empty_o(),
-    .usage_o(usage),
-    .data_i(instruction_q),
-    .push_i(push_to_buffer), // push_to_buffer
-    .data_o(instruction),
-    .pop_i(load_next_instr) // load_next_instr
-  );
+  ara_ring_buffer #(
+    .ID_WIDTH(ID_WIDTH),
+    .DEPTH(8),
+    .dtype(instr_pack_t)
+    ) i_ring_buffer (
+      .clk_i(clk_i),
+      .rst_ni(rst_ni),
+      .full_o(buffer_full),
+      .empty_o(),
+      .push_i(new_instr),
+      .pop_i(load_next_instr),
+      .flush_i(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill),
+      .flush_id_i(core_v_xif_req_i.commit.id),
+      .id_i(instr_to_buffer.id),
+      .data_i(instr_to_buffer),
+      .data_o(instruction)
+    );
 
   always_comb begin
     // Set default
@@ -289,18 +252,12 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;;
     core_v_xif_req_decoder2.result_ready      = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
-    core_v_xif_req_decoder2.acc_req.instr     = core_v_xif_req_i.issue_req.instr;
 
     core_v_xif_resp_o.issue_resp  = x_issue_resp;
 
 
-    if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) core_v_xif_resp_o.issue_ready = 1'b1;
-
-
-    // if (core_v_xif_req_i.issue_valid && !buffer_full && !core_v_xif_req_i.acc_req.flush) 
-    //   core_v_xif_resp_o.issue_ready = core_v_xif_resp_decoder2.result_valid;
-    // core_v_xif_resp_o.issue_resp.accept = core_v_xif_resp_decoder2.issue_resp.accept;
-
+    if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill))
+      core_v_xif_resp_o.issue_ready = 1'b1;
   end
 
   /////////////////
