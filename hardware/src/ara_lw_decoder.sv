@@ -19,6 +19,8 @@ module ara_lw_decoder import rvv_pkg::*; import ariane_pkg::*; #(
   logic        is_load;
   logic        is_store;
 
+  logic opVec, opLoad, opStore, opAmo, opSys;
+
   // Cast instruction into the `rvv_instruction_t` struct
   rvv_instruction_t instr;
   assign instr = rvv_instruction_t'(issue_req_i.instr);
@@ -40,11 +42,18 @@ module ara_lw_decoder import rvv_pkg::*; import ariane_pkg::*; #(
     is_load  = instr.i_type.opcode == riscv::OpcodeLoadFp;
     is_store = instr.i_type.opcode == riscv::OpcodeStoreFp;
 
+    opVec = '0;
+    opLoad = '0;
+    opStore = '0;
+    opAmo = '0;
+    opSys = '0;
+
     // Decode based on the opcode
     case (instr.i_type.opcode)
 
       // Arithmetic vector operations
       riscv::OpcodeVec: begin
+        opVec = 1'b1;
         issue_resp_o.accept = 1'b1;
         case (instr.varith_type.func3)
           OPFVV: begin
@@ -69,6 +78,8 @@ module ara_lw_decoder import rvv_pkg::*; import ariane_pkg::*; #(
       // Memory vector operations
       riscv::OpcodeLoadFp,
       riscv::OpcodeStoreFp: begin
+        opLoad = 1'b1;
+        opStore = 1'b1;
         case ({instr.vmem_type.mew, instr.vmem_type.width})
           4'b0000, //VLxE8/VSxE8
           4'b0101, //VLxE16/VSxE16
@@ -87,6 +98,7 @@ module ara_lw_decoder import rvv_pkg::*; import ariane_pkg::*; #(
 
       // Atomic vector operations
       riscv::OpcodeAmo: begin
+        opAmo = 1'b1;
         case (instr.vamo_type.width)
           3'b000, //VAMO*EI8.V
           3'b101, //VAMO*EI16.V
@@ -100,6 +112,7 @@ module ara_lw_decoder import rvv_pkg::*; import ariane_pkg::*; #(
 
       // CSRR/W instructions into vector CSRs
       riscv::OpcodeSystem: begin
+        opSys = 1'b1;
         case (instr.i_type.funct3)
           3'b001, //CSRRW
           3'b010, //CSRRS,

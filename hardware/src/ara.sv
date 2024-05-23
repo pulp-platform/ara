@@ -109,8 +109,8 @@ module ara import ara_pkg::*; #(
   } csr_sync_t;
 
   csr_sync_t                    csr_sync;
-  logic                         accept_test;
   instr_pack_t                  instruction;
+  instr_pack_t                  instruction_int;
 
   ara_dispatcher #(
     .NrLanes(NrLanes),
@@ -138,10 +138,9 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
-    .instruction_i     (instruction.instr), //instruction.instr/core_v_xif_req_i.acc_req.instr
+    .instruction_i     (instruction_int.instr), //instruction.instr/core_v_xif_req_i.acc_req.instr
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
-    .accept_test_o     (accept_test      ),
     // CSR sync
     .sync_i            ('0               ),
     .csr_sync_i        ('0               ),
@@ -164,7 +163,6 @@ module ara import ara_pkg::*; #(
   // Second dispatcher to handle pre decoding
   x_resp_t  core_v_xif_resp_decoder2;
   x_req_t   core_v_xif_req_decoder2;
-  logic   pre_decoder_accept_test;
   ara_pre_decoder #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
@@ -178,7 +176,7 @@ module ara import ara_pkg::*; #(
     .ara_req_valid_o    (),
     .ara_req_ready_i    (core_v_xif_req_decoder2.issue_valid),
     .ara_resp_i         (ara_resp        ),
-    .ara_resp_valid_i   (ara_resp_valid  ),
+    .ara_resp_valid_i   (1'b1  ),
     .ara_idle_i         (ara_idle        ),
     // Interface with the lanes
     .vxsat_flag_i       (vxsat_flag      ),
@@ -191,9 +189,8 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
-    .core_v_xif_req_i  (core_v_xif_req_decoder2 ),
+    .core_v_xif_req_i  (core_v_xif_req_decoder2),
     .core_v_xif_resp_o (core_v_xif_resp_decoder2),
-    .accept_test_o     (pre_decoder_accept_test),
     // CSR sync
     .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill),
     .csr_sync_i        (csr_sync          ),
@@ -203,6 +200,9 @@ module ara import ara_pkg::*; #(
   logic new_instr;
   logic load_next_instr;
   logic buffer_full;
+
+  logic ring_buffer_valid;
+  logic ring_buffer_ready;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp.accept;
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
@@ -222,13 +222,35 @@ module ara import ara_pkg::*; #(
       .full_o(buffer_full),
       .empty_o(),
       .push_i(new_instr),
-      .pop_i(load_next_instr),
+      .commit_i(core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit.commit_kill),
       .flush_i(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill),
-      .flush_id_i(core_v_xif_req_i.commit.id),
+      .ready_i(ring_buffer_ready),
+      .valid_o(ring_buffer_valid),
+      .commit_id_i(core_v_xif_req_i.commit.id),
       .id_i(instr_to_buffer.id),
       .data_i(instr_to_buffer),
       .data_o(instruction)
     );
+
+  fall_through_register #(
+    .T(instr_pack_t)
+  ) i_issued_instr_register (
+    .clk_i     (clk_i          ),
+    .rst_ni    (rst_ni         ),
+    .clr_i     (1'b0           ),
+    .testmode_i(1'b0           ),
+    .data_i    (instruction    ),
+    .valid_i   (ring_buffer_valid),
+    .ready_o   (ring_buffer_ready),
+    .data_o    (instruction_int),
+    .valid_o   (               ),
+    .ready_i   (load_next_instr)
+  );
+
+  logic vfp_mismatch, regre_mismatch;
+
+  assign vfp_mismatch = new_instr && (x_issue_resp.is_vfp != core_v_xif_resp_decoder2.issue_resp.is_vfp);
+  assign regre_mismatch = new_instr && (x_issue_resp.register_read != core_v_xif_resp_decoder2.issue_resp.register_read);
 
   always_comb begin
     // Set default
@@ -254,6 +276,12 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
 
     core_v_xif_resp_o.issue_resp  = x_issue_resp;
+    // core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
+    core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
+    // core_v_xif_resp_o.issue_resp.writeback = core_v_xif_resp_decoder2.issue_resp.writeback;
+    // core_v_xif_resp_o.issue_resp.is_vfp = core_v_xif_resp_decoder2.issue_resp.is_vfp;
+
+    // core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
 
 
     if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill))
