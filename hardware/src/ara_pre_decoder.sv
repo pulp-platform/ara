@@ -303,8 +303,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     is_decoding = 1'b0;
     in_lane_op  = 1'b0;
 
-    core_v_xif_resp_o.register_ready  = 1'b0;
-    core_v_xif_resp_o.result_valid = 1'b0;
 
     inv_accept = 1'b1;
 
@@ -323,13 +321,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     is_fd  = 1'b0;
     is_vfp = 1'b0;
 
-
-
-    core_v_xif_resp_o.result       = '{
-      id      : core_v_xif_req_i.register.id,
-      default       : '0
-    };
-
     core_v_xif_resp_o.acc_resp       = '{
       load_complete : load_zero_vl | load_complete_q,
       store_complete : store_zero_vl | store_complete_q,
@@ -337,9 +328,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       fflags_valid  : |fflags_ex_valid_i,
       default       : '0
     };
-
-    // fflags
-    for (int lane = 0; lane < NrLanes; lane++) core_v_xif_resp_o.acc_resp.fflags |= fflags_ex_i[lane];
 
     ara_req_d = '{
       vl           : vl_q,
@@ -362,8 +350,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     vxsat_d |= |vxsat_flag_i;
     // Fixed-point rounding mode is applied to all lanes
     for (int lane = 0; lane < NrLanes; lane++) alu_vxrm_o[lane] = vxrm_q;
-    // Rounding mode is shared between all lanes
-    for (int lane = 0; lane < NrLanes; lane++) core_v_xif_resp_o.acc_resp.fflags |= fflags_ex_i[lane];
     // Special states
     case (state_q)
       // Is Ara idle?
@@ -375,10 +361,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       RESHUFFLE: begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req.instr.instr); //core_v_xif_req_i.issue_req.instr.instr
-
-        // Stall the interface, wait for the backend to accept the injected uop
-        core_v_xif_resp_o.register_ready  = 1'b0;
-        core_v_xif_resp_o.result_valid = 1'b0;
 
         // Handle LMUL > 1
         rs_lmul_cnt_d       = rs_lmul_cnt_q;
@@ -482,9 +464,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       if (1'b1) begin
         // Decoding
         is_decoding = 1'b1;
-        // Acknowledge the request
-        core_v_xif_resp_o.register_ready = ara_req_ready_i;
-
 
         // Decode the instructions based on their opcode
         unique case (core_v_xif_req_i.issue_req.instr.itype.opcode)
@@ -496,15 +475,11 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req.instr.instr);
             opVec = 1'b1;
-            // These always respond at the same cycle
-            core_v_xif_resp_o.result_valid = 1'b1;
-
             // Decode based on their func3 field
             unique case (insn.varith_type.func3)
               // Configuration instructions
               OPCFG: begin: opcfg
                 // These can be acknowledged regardless of the state of Ara
-                core_v_xif_resp_o.register_ready = 1'b1;
                 is_config       = 1'b1;
 
                 // Issue if info
@@ -520,7 +495,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
                   vtype_d = vtype_xlen(riscv::xlen_t'(core_v_xif_req_i.register.rs[1][7:0]));
                 end else begin
-                  core_v_xif_resp_o.acc_resp.error = 1'b1;
                   insn_error = 1'b1;
                 end
 
@@ -565,9 +539,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     end
                   end
                 end
-
-                // Return the new vl
-                core_v_xif_resp_o.result.data = vl_d;
 
                 // If the vtype has changed, wait for the backend before issuing any new instructions.
                 // This is to avoid hazards on implicit register labels when LMUL_old > LMUL_new
@@ -1280,10 +1251,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010000: begin // VWXUNARY0
                     // vmv.x.s
-                    // Stall the interface until we get the result
-                    core_v_xif_resp_o.register_ready  = 1'b0;
-                    core_v_xif_resp_o.result_valid = 1'b0;
-
                     case (insn.varith_type.rs1)
                       5'b00000: begin
                         ara_req_d.op      = ara_pkg::VMVXS;
@@ -1318,15 +1285,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       default:;
                     endcase
-
-                    // Wait until the back-end answers to acknowledge those instructions
-                    if (ara_resp_valid_i) begin
-                      core_v_xif_resp_o.register_ready   = 1'b1;
-                      core_v_xif_resp_o.result.data = ara_resp_i.resp;
-                      core_v_xif_resp_o.acc_resp.error  = ara_resp_i.error;
-                      core_v_xif_resp_o.result_valid  = 1'b1;
-                      ara_req_valid_d   = 1'b0;
-                    end
                   end
                   6'b010100: begin
                     ara_req_d.use_vd_op = 1'b1;
@@ -1965,10 +1923,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                     6'b001010: ara_req_d.op = ara_pkg::VFSGNJX;
                     6'b010000: begin // VWFUNARY0
                       // vmv.f.s
-                      // Stall the interface until we get the result
-                      core_v_xif_resp_o.register_ready  = 1'b0;
-                      core_v_xif_resp_o.result_valid = 1'b0;
-
                       ara_req_d.op         = ara_pkg::VFMVFS;
                       ara_req_d.use_vd     = 1'b0;
                       ara_req_d.vl         = 1;
@@ -1999,15 +1953,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                         end
                         default: vfmvfs_result = ara_resp_i.resp;
                       endcase
-
-                      // Wait until the back-end answers to acknowledge those instructions
-                      if (ara_resp_valid_i) begin
-                        core_v_xif_resp_o.register_ready   = 1'b1;
-                        core_v_xif_resp_o.result.data = vfmvfs_result;
-                        core_v_xif_resp_o.acc_resp.error  = ara_resp_i.error;
-                        core_v_xif_resp_o.result_valid  = 1'b1;
-                        ara_req_valid_d   = 1'b0;
-                      end
                     end
                     6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
                     6'b011001: ara_req_d.op = ara_pkg::VMFLE;
@@ -2116,7 +2061,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                         end
                         default: begin
                           // Trigger an error
-                          core_v_xif_resp_o.acc_resp.error = 1'b1;
                           ara_req_valid_d  = 1'b0;
                           insn_error = 1'b1;
                         end
@@ -2590,9 +2534,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             // The instruction is a load
             is_vload = 1'b1;
 
-            // Wait before acknowledging this instruction
-            core_v_xif_resp_o.register_ready = 1'b0;
-
             // These generate a request to Ara's backend
             ara_req_d.vd        = insn.vmem_type.rd;
             ara_req_d.use_vd    = 1'b1;
@@ -2651,9 +2592,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   is_rs2   = insn.vmem_type.mop == 2'b10; // Strided operation
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
-                core_v_xif_resp_o.register_ready  = 1'b1;
-                core_v_xif_resp_o.acc_resp.error = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
                 insn_error = 1'b1;
               end
@@ -2676,13 +2614,9 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   5'b10000: begin // Unit-strided, fault-only first
                     // TODO: Not implemented
                     illegal_insn     = 1'b1;
-                    core_v_xif_resp_o.register_ready  = 1'b1;
-                    core_v_xif_resp_o.result_valid = 1'b1;
                   end
                   default: begin // Reserved
                     illegal_insn     = 1'b1;
-                    core_v_xif_resp_o.register_ready  = 1'b1;
-                    core_v_xif_resp_o.result_valid = 1'b1;
                   end
                 endcase
               end
@@ -2711,7 +2645,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 // But the new eew is greater than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
                   illegal_insn     = 1'b1;
-                  core_v_xif_resp_o.result_valid = 1'b1;
                 end
               end
               // The new emul is greater than the previous lmul
@@ -2719,7 +2652,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 // But the new eew is lower than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
                   illegal_insn     = 1'b1;
-                  core_v_xif_resp_o.result_valid = 1'b1;
                 end
               end
               default:;
@@ -2730,19 +2662,15 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             unique case (ara_req_d.emul)
               LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               LMUL_RSVD: begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               default:;
             endcase
@@ -2753,8 +2681,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
               ignore_zero_vl_check = 1'b1;
               // The LMUL value is kept in the instruction itself
               illegal_insn     = 1'b0;
-              core_v_xif_resp_o.register_ready  = 1'b0;
-              core_v_xif_resp_o.result_valid = 1'b0;
               ara_req_valid_d  = 1'b1;
 
               // Maximum vector length. VLMAX = nf * VLEN / EW8.
@@ -2785,9 +2711,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
             // Wait until the back-end answers to acknowledge those instructions
             if (ara_resp_valid_i) begin
-              core_v_xif_resp_o.register_ready  = 1'b1;
-              core_v_xif_resp_o.acc_resp.error = ara_resp_i.error;
-              core_v_xif_resp_o.result_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
               // In case of error, modify vstart
               if (ara_resp_i.error)
@@ -2812,9 +2735,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
             // The instruction is a store
             is_vstore = 1'b1;
-
-            // Wait before acknowledging this instruction
-            core_v_xif_resp_o.register_ready = 1'b0;
 
             // vl depends on the EEW encoded in the instruction.
             // Ara does not reshuffle source vregs upon vector stores,
@@ -2881,9 +2801,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   is_rs2   = insn.vmem_type.mop == 2'b10; // Strided operation
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
-                core_v_xif_resp_o.register_ready  = 1'b1;
-                core_v_xif_resp_o.acc_resp.error = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
                 insn_error = 1'b1;
               end
@@ -2905,8 +2822,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin // Reserved
                     illegal_insn     = 1'b1;
-                    core_v_xif_resp_o.register_ready  = 1'b1;
-                    core_v_xif_resp_o.result_valid = 1'b1;
                   end
                 endcase
               end
@@ -2935,7 +2850,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 // But the new eew is greater than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) > 0) begin
                   illegal_insn     = 1'b1;
-                  core_v_xif_resp_o.result_valid = 1'b1;
                 end
               end
               // The new emul is greater than the previous lmul
@@ -2943,7 +2857,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 // But the new eew is lower than vsew
                 if (signed'(ara_req_d.vtype.vsew - vtype_q.vsew) < 0) begin
                   illegal_insn     = 1'b1;
-                  core_v_xif_resp_o.result_valid = 1'b1;
                 end
               end
               default:;
@@ -2954,19 +2867,15 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             unique case (ara_req_d.emul)
               LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
                 illegal_insn     = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
               end
               LMUL_RSVD: begin
                   illegal_insn     = 1'b1;
-                  core_v_xif_resp_o.result_valid = 1'b1;
               end
               default:;
             endcase
@@ -3003,16 +2912,11 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               illegal_insn     = 1'b0;
-              core_v_xif_resp_o.register_ready  = 1'b0;
-              core_v_xif_resp_o.result_valid = 1'b0;
               ara_req_valid_d  = 1'b1;
             end
 
             // Wait until the back-end answers to acknowledge those instructions
             if (ara_resp_valid_i) begin
-              core_v_xif_resp_o.register_ready  = 1'b1;
-              core_v_xif_resp_o.acc_resp.error = ara_resp_i.error;
-              core_v_xif_resp_o.result_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
               // If there is an error, change vstart
               if (ara_resp_i.error)
@@ -3028,8 +2932,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req.instr.instr);
             // These always respond at the same cycle
             opSys = 1'b1;
-
-            core_v_xif_resp_o.result_valid = 1'b1;
             is_config        = 1'b1;
 
             unique case (core_v_xif_req_i.issue_req.instr.itype.funct3)
@@ -3042,18 +2944,14 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   // Only vstart can be written with CSR instructions.
                   riscv::CSR_VSTART: begin
                     vstart_d          = core_v_xif_req_i.register.rs[0];
-                    core_v_xif_resp_o.result.data = vstart_q;
                   end
                   riscv::CSR_VXRM: begin
                     vxrm_d            = vxrm_t'(core_v_xif_req_i.register.rs[0][1:0]);
-                    core_v_xif_resp_o.result.data = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
                     vxsat_d           = vxsat_e'(core_v_xif_req_i.register.rs[0][0]);
-                    core_v_xif_resp_o.result.data = vlen_t'(vxsat_q);
                   end
                   default: begin
-                    core_v_xif_resp_o.acc_resp.error = 1'b1;
                     insn_error = 1'b1;
                   end
                 endcase
@@ -3066,42 +2964,32 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 case (riscv::csr_addr_t'(core_v_xif_req_i.issue_req.instr.itype.imm))
                   riscv::CSR_VSTART: begin
                     vstart_d          = vstart_q | vlen_t'(core_v_xif_req_i.register.rs[0]);
-                    core_v_xif_resp_o.result.data = vstart_q;
                   end
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = xlen_vtype(vtype_q);
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = vl_q;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = VLENB;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VXRM: begin
                     vxrm_d            = vxrm_q | vxrm_t'(core_v_xif_req_i.register.rs[0][1:0]);
-                    core_v_xif_resp_o.result.data = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
                     vxsat_d           = vxsat_q | vxsat_e'(core_v_xif_req_i.register.rs[0][0]);
-                    core_v_xif_resp_o.result.data = vlen_t'(vxsat_q);
                   end
                   default: begin
-                    core_v_xif_resp_o.acc_resp.error = 1'b1;
                     insn_error = 1'b1;
                   end
                 endcase
@@ -3114,38 +3002,29 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 case (riscv::csr_addr_t'(core_v_xif_req_i.issue_req.instr.itype.imm))
                   riscv::CSR_VSTART: begin
                     vstart_d          = vstart_q & ~vlen_t'(core_v_xif_req_i.register.rs[0]);
-                    core_v_xif_resp_o.result.data = vstart_q;
                   end
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = xlen_vtype(vtype_q);
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = vl_q;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = VLENB;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VXSAT: begin
                     vxsat_d           = vxsat_q & ~vxsat_e'(core_v_xif_req_i.register.rs[0][0]);
-                    core_v_xif_resp_o.result.data = vxsat_q;
                   end
                   default: begin
-                    core_v_xif_resp_o.acc_resp.error = 1'b1;
                     insn_error = 1'b1;
                   end
                 endcase
@@ -3159,19 +3038,15 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   // Only vstart can be written with CSR instructions.
                   riscv::CSR_VSTART: begin
                     vstart_d          = vlen_t'(core_v_xif_req_i.issue_req.instr.itype.rs1);
-                    core_v_xif_resp_o.result.data = vstart_q;
                   end
                   riscv::CSR_VXRM: begin
                     vxrm_d            = vxrm_t'(core_v_xif_req_i.register.rs[0][1:0]);
-                    core_v_xif_resp_o.result.data = vlen_t'(vxrm_q);
                   end
                   riscv::CSR_VXSAT: begin
                     // logic [19:15] rs1; So, LSB is [15]
                     vxsat_d           = core_v_xif_req_i.issue_req.instr.itype.rs1[15];
-                    core_v_xif_resp_o.result.data = vxsat_q;
                   end
                   default: begin
-                    core_v_xif_resp_o.acc_resp.error = 1'b1;
                     insn_error = 1'b1;
                   end
                 endcase
@@ -3184,39 +3059,30 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 case (riscv::csr_addr_t'(core_v_xif_req_i.issue_req.instr.itype.imm))
                   riscv::CSR_VSTART: begin
                     vstart_d          = vstart_q | vlen_t'(core_v_xif_req_i.issue_req.instr.itype.rs1);
-                    core_v_xif_resp_o.result.data = vstart_q;
                   end
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = xlen_vtype(vtype_q);
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = vl_q;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = VLENB;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VXSAT: begin
                     // logic [19:15] rs1; So, LSB is [15]
                     vxsat_d           = vxsat_q | vxsat_e'(core_v_xif_req_i.issue_req.instr.itype.rs1[15]);
-                    core_v_xif_resp_o.result.data = vxsat_q;
                   end
                   default: begin
-                    core_v_xif_resp_o.acc_resp.error = 1'b1;
                     insn_error = 1'b1;
                   end
                 endcase
@@ -3229,47 +3095,36 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                 unique case (riscv::csr_addr_t'(core_v_xif_req_i.issue_req.instr.itype.imm))
                   riscv::CSR_VSTART: begin
                     vstart_d          = vstart_q & ~vlen_t'(core_v_xif_req_i.issue_req.instr.itype.rs1);
-                    core_v_xif_resp_o.result.data = vstart_q;
                   end
                   riscv::CSR_VTYPE: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = xlen_vtype(vtype_q);
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VL: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = vl_q;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VLENB: begin
                     // Only reads are allowed
-                    if (core_v_xif_req_i.issue_req.instr.itype.rs1 == '0) core_v_xif_resp_o.result.data = VLENB;
-                    else begin
-                      core_v_xif_resp_o.acc_resp.error                                 = 1'b1;
+                    if (!(core_v_xif_req_i.issue_req.instr.itype.rs1 == '0)) begin
                       insn_error = 1'b1;
                     end
                   end
                   riscv::CSR_VXSAT: begin
                     // logic [19:15] rs1; So, LSB is [15]
                     vxsat_d           = vxsat_q & ~vxsat_e'(core_v_xif_req_i.issue_req.instr.itype.rs1[15]);
-                    core_v_xif_resp_o.result.data = vxsat_q;
                   end
                   default: begin
-                    core_v_xif_resp_o.acc_resp.error = 1'b1;
                     insn_error = 1'b1;
                   end
                 endcase
               end
               default: begin
                 // Trigger an illegal instruction
-                core_v_xif_resp_o.acc_resp.error = 1'b1;
-                core_v_xif_resp_o.result_valid = 1'b1;
                 insn_error = 1'b1;
               end
             endcase
@@ -3290,8 +3145,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
           default: begin
             // Trigger an illegal instruction
-            core_v_xif_resp_o.acc_resp.error = 1'b1;
-            core_v_xif_resp_o.result_valid = 1'b1;
             insn_error = 1'b1;
           end
         endcase
@@ -3306,51 +3159,12 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       if (ara_req_valid_d && (ara_req_d.op inside {VFREC7, VFRSQRT7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
 
-      // Check if we need to reshuffle our vector registers involved in the operation
-      // This operation is costly when occurs, so avoid it if possible
-      if (ara_req_valid_d && !core_v_xif_resp_o.acc_resp.error) begin
-        automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req.instr.instr);
-
-        // Is the instruction an in-lane one and could it be subject to reshuffling?
-        in_lane_op = ara_req_d.op inside {[VADD:VMERGE]} || ara_req_d.op inside {[VREDSUM:VMSBC]} ||
-                     ara_req_d.op inside {[VMANDNOT:VMXNOR]} || ara_req_d.op inside {VSLIDEUP, VSLIDEDOWN};
-        // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
-        // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
-        // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
-        reshuffle_req_d = {ara_req_d.use_vs1 && (ara_req_d.eew_vs1    != eew_q[ara_req_d.vs1]) && eew_valid_q[ara_req_d.vs1] && in_lane_op,
-                           ara_req_d.use_vs2 && (ara_req_d.eew_vs2    != eew_q[ara_req_d.vs2]) && eew_valid_q[ara_req_d.vs2] && in_lane_op,
-                           ara_req_d.use_vd  && (ara_req_d.vtype.vsew != eew_q[ara_req_d.vd ]) && eew_valid_q[ara_req_d.vd ] && vl_q != (VLENB >> ara_req_d.vtype.vsew)};
-
-        // Prepare the information to reshuffle the vector registers during the next cycles
-        // Reshuffle in the following order: vd, v2, v1. The order is arbitrary.
-        unique casez (reshuffle_req_d)
-          3'b??1: begin
-            eew_old_buffer_d = eew_q[insn.vmem_type.rd];
-            eew_new_buffer_d = ara_req_d.vtype.vsew;
-            vs_buffer_d      = insn.varith_type.rd;
-          end
-          3'b?10: begin
-            eew_old_buffer_d = eew_q[insn.vmem_type.rs2];
-            eew_new_buffer_d = ara_req_d.eew_vs2;
-            vs_buffer_d      = insn.varith_type.rs2;
-          end
-          3'b100: begin
-            eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
-            eew_new_buffer_d = ara_req_d.eew_vs1;
-            vs_buffer_d      = insn.varith_type.rs1;
-          end
-          default:;
-        endcase
-      end
-
       // Reshuffle if at least one of the three registers needs a reshuffle
       if (|reshuffle_req_d) begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req.instr.instr);
 
         // Stall the interface, and inject a reshuffling instruction
-        core_v_xif_resp_o.register_ready  = 1'b0;
-        core_v_xif_resp_o.result_valid = 1'b0;
         ara_req_valid_d  = 1'b0;
 
         // Initialize the reshuffle counter limit to handle LMUL > 1
@@ -3368,7 +3182,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
     // Raise an illegal instruction exception
     if (illegal_insn) begin
-      core_v_xif_resp_o.acc_resp.error = 1'b1;
       ara_req_valid_d  = 1'b0;
       insn_error = 1'b1;
     end
@@ -3409,29 +3222,8 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       endcase
     end
 
-    // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
-    // e.g. whole vector memory operations / whole vector register move
-    if (is_decoding && (vl_q == '0 || null_vslideup) && !is_config &&
-      !ignore_zero_vl_check && !core_v_xif_resp_o.acc_resp.error) begin
-      // If we are acknowledging a memory operation, we must tell Ariane that the memory
-      // operation was resolved (to decrement its pending load/store counter)
-      // This can collide with the same signal from the vector load/store unit, so we must
-      // delay the zero_vl acknowledge by 1 cycle
-      core_v_xif_resp_o.register_ready  = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
-      core_v_xif_resp_o.result_valid = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
-      ara_req_valid_d  = 1'b0;
-      load_zero_vl     = is_vload;
-      store_zero_vl    = is_vstore;
-    end
-
-    core_v_xif_resp_o.acc_resp.load_complete  = load_zero_vl  | load_complete_q;
-    core_v_xif_resp_o.acc_resp.store_complete = store_zero_vl | store_complete_q;
-
     // The token must change at every new instruction
     ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
-
-
-
 
     // csr sync
     if (sync_i) begin

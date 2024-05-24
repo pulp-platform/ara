@@ -51,7 +51,6 @@ sources:
     - hardware/src/vlsu/addrgen.sv
     - hardware/src/vlsu/vldu.sv
     - hardware/src/vlsu/vstu.sv
-    - hardware/src/ara_lw_decoder.sv
     - hardware/src/ara_pre_decoder.sv
     - hardware/src/ara_ring_buffer.sv
     # Level 2

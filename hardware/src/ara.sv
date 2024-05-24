@@ -147,19 +147,6 @@ module ara import ara_pkg::*; #(
     .csr_sync_o        (csr_sync         )
   );
 
-
-
-  // Light weigth decoder for instructions from the issue interface
-  x_issue_resp_t    x_issue_resp;
-  ara_lw_decoder #(
-    .x_issue_req_t (x_issue_req_t),
-    .x_issue_resp_t (x_issue_resp_t)
-    ) i_ara_lw_decoder (
-    .issue_req_i (core_v_xif_req_i.issue_req),
-    .issue_resp_o (x_issue_resp),
-    .instruction_o ()
-  );
-
   // Second dispatcher to handle pre decoding
   x_resp_t  core_v_xif_resp_decoder2;
   x_req_t   core_v_xif_req_decoder2;
@@ -175,7 +162,7 @@ module ara import ara_pkg::*; #(
     .ara_req_o          (),
     .ara_req_valid_o    (),
     .ara_req_ready_i    (core_v_xif_req_decoder2.issue_valid),
-    .ara_resp_i         (ara_resp        ),
+    .ara_resp_i         ('0        ),
     .ara_resp_valid_i   (1'b1  ),
     .ara_idle_i         (ara_idle        ),
     // Interface with the lanes
@@ -247,11 +234,6 @@ module ara import ara_pkg::*; #(
     .ready_i   (load_next_instr)
   );
 
-  logic vfp_mismatch, regre_mismatch;
-
-  assign vfp_mismatch = new_instr && (x_issue_resp.is_vfp != core_v_xif_resp_decoder2.issue_resp.is_vfp);
-  assign regre_mismatch = new_instr && (x_issue_resp.register_read != core_v_xif_resp_decoder2.issue_resp.register_read);
-
   always_comb begin
     // Set default
     core_v_xif_req_decoder2       = core_v_xif_req_i;
@@ -275,14 +257,8 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.result_ready      = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
 
-    core_v_xif_resp_o.issue_resp  = x_issue_resp;
-    // core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
+
     core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
-    // core_v_xif_resp_o.issue_resp.writeback = core_v_xif_resp_decoder2.issue_resp.writeback;
-    // core_v_xif_resp_o.issue_resp.is_vfp = core_v_xif_resp_decoder2.issue_resp.is_vfp;
-
-    // core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
-
 
     if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill))
       core_v_xif_resp_o.issue_ready = 1'b1;
