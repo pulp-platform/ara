@@ -35,7 +35,9 @@ module ara import ara_pkg::*; #(
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
     parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
     parameter type x_issue_req_t = core_v_xif_pkg::x_issue_req_t,
-    parameter type x_issue_resp_t = core_v_xif_pkg::x_issue_resp_t
+    parameter type x_issue_resp_t = core_v_xif_pkg::x_issue_resp_t,
+    parameter type x_result_t = core_v_xif_pkg::x_result_t,
+    parameter type x_acc_resp_t = core_v_xif_pkg::x_acc_resp_t
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -116,6 +118,8 @@ module ara import ara_pkg::*; #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
     .x_resp_t (x_resp_t),
+    .x_result_t  (x_result_t),
+    .x_acc_resp_t(x_acc_resp_t),
     .csr_sync_t (csr_sync_t)
   ) i_dispatcher (
     .clk_i              (clk_i           ),
@@ -154,6 +158,9 @@ module ara import ara_pkg::*; #(
     .NrLanes(NrLanes),
     .x_req_t (x_req_t),
     .x_resp_t (x_resp_t),
+    .x_issue_req_t(x_issue_req_t),
+    .x_issue_resp_t(x_issue_resp_t),
+    .x_acc_resp_t(x_acc_resp_t),
     .csr_sync_t (csr_sync_t)
   ) i_pre_decoder (
     .clk_i              (clk_i           ),
@@ -179,7 +186,7 @@ module ara import ara_pkg::*; #(
     .core_v_xif_req_i  (core_v_xif_req_decoder2),
     .core_v_xif_resp_o (core_v_xif_resp_decoder2),
     // CSR sync
-    .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill),
+    .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
     .csr_sync_i        (csr_sync          ),
     .csr_sync_o        ()
   );
@@ -191,13 +198,13 @@ module ara import ara_pkg::*; #(
   logic ring_buffer_valid;
   logic ring_buffer_ready;
 
-  assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp.accept;
+  assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept;
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
 
   instr_pack_t instr_to_buffer;
   instr_pack_t instr_test;
 
-  assign instr_to_buffer = '{core_v_xif_req_i.issue_req.instr, core_v_xif_req_i.issue_req.hartid, core_v_xif_req_i.issue_req.id};
+  assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id};
 
   ara_ring_buffer #(
     .ID_WIDTH(ID_WIDTH),
@@ -209,11 +216,11 @@ module ara import ara_pkg::*; #(
       .full_o(buffer_full),
       .empty_o(),
       .push_i(new_instr),
-      .commit_i(core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit.commit_kill),
-      .flush_i(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill),
+      .commit_i(core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
+      .flush_i(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
       .ready_i(ring_buffer_ready),
       .valid_o(ring_buffer_valid),
-      .commit_id_i(core_v_xif_req_i.commit.id),
+      .commit_id_i(core_v_xif_req_i.commit_id),
       .id_i(instr_to_buffer.id),
       .data_i(instr_to_buffer),
       .data_o(instruction)
@@ -241,16 +248,24 @@ module ara import ara_pkg::*; #(
     core_v_xif_resp_o.issue_ready = 1'b0;
 
     // Zero everything but the issue if
-    core_v_xif_req_decoder2.register_valid    = '0;
-    core_v_xif_req_decoder2.register.hartid   = '0;
-    core_v_xif_req_decoder2.register.id       = '0;
-    core_v_xif_req_decoder2.register.rs[0]    = '0;
-    core_v_xif_req_decoder2.register.rs[1]    = '0;
-    core_v_xif_req_decoder2.register.rs_valid = '0;
-    core_v_xif_req_decoder2.commit_valid      = '0;
-    core_v_xif_req_decoder2.commit            = '0;
-    core_v_xif_req_decoder2.result_ready      = '0;
-    core_v_xif_req_decoder2.acc_req           = '0;
+    core_v_xif_req_decoder2.register_valid      = '0;
+    core_v_xif_req_decoder2.register_hartid     = '0;
+    core_v_xif_req_decoder2.register_id         = '0;
+    core_v_xif_req_decoder2.register_rs[0]      = '0;
+    core_v_xif_req_decoder2.register_rs[1]      = '0;
+    core_v_xif_req_decoder2.register_rs_valid   = '0;
+    core_v_xif_req_decoder2.commit_valid        = '0;
+    core_v_xif_req_decoder2.commit_id           = '0;
+    core_v_xif_req_decoder2.commit_hartid       = '0;
+    core_v_xif_req_decoder2.commit_commit_kill  = '0;
+    core_v_xif_req_decoder2.result_ready        = '0;
+    // core_v_xif_req_decoder2.frm                 = '0;
+    core_v_xif_req_decoder2.store_pending       = '0;
+    core_v_xif_req_decoder2.acc_cons_en         = '0;
+    core_v_xif_req_decoder2.inval_ready         = '0;
+    core_v_xif_req_decoder2.instr               = '0;
+    core_v_xif_req_decoder2.flush               = '0;
+    core_v_xif_req_decoder2.flush_unissued      = '0;
 
     // Construct relevant inputs
     core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;;
@@ -258,9 +273,12 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
 
 
-    core_v_xif_resp_o.issue_resp = core_v_xif_resp_decoder2.issue_resp;
+    core_v_xif_resp_o.issue_resp_accept         = core_v_xif_resp_decoder2.issue_resp_accept;
+    core_v_xif_resp_o.issue_resp_writeback      = core_v_xif_resp_decoder2.issue_resp_writeback;
+    core_v_xif_resp_o.issue_resp_register_read  = core_v_xif_resp_decoder2.issue_resp_register_read;
+    core_v_xif_resp_o.issue_resp_is_vfp         = core_v_xif_resp_decoder2.issue_resp_is_vfp;
 
-    if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit.commit_kill))
+    if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill))
       core_v_xif_resp_o.issue_ready = 1'b1;
   end
 

@@ -67,6 +67,8 @@
     logic acc_cons_en;            \
     logic inval_ready;            \
     riscv::instruction_t instr;   \
+    logic flush;                  \
+    logic flush_unissued;         \
   } x_acc_req_t;                  \
                                   \
   typedef struct packed {         \
@@ -80,25 +82,79 @@
     logic [63:0] inval_addr;      \
   } x_acc_resp_t;
 
-`define CORE_V_XIF_T                        \
+// `define CORE_V_XIF_T                        \
+//   typedef struct {                          \
+//   	logic             issue_valid;          \
+//     x_issue_req_t  	  issue_req;            \
+//     logic             register_valid;       \
+//     x_register_t   	  register;             \
+//     logic             commit_valid;         \
+//     x_commit_t     	  commit;               \
+//     logic             result_ready;         \
+//     x_acc_req_t 		  acc_req;              \
+//   }	x_req_t;                                \
+//                                             \
+//   typedef struct packed {                   \
+//     logic             issue_ready;          \
+//     x_issue_resp_t 	  issue_resp;           \
+//     logic             register_ready;       \
+//     logic             result_valid;         \
+//     x_result_t      	result;               \
+//     x_acc_resp_t 			acc_resp;             \
+//   } x_resp_t;
+
+`define CORE_V_XIF_T(X_NUM_RS, X_RFR_WIDTH, X_RFW_WIDTH)\
   typedef struct {                          \
-  	logic             issue_valid;          \
-    x_issue_req_t  	  issue_req;            \
-    logic             register_valid;       \
-    x_register_t   	  register;             \
+    logic                 issue_valid;      \
+    riscv::instruction_t  issue_req_instr;      \
+    hartid_t              issue_req_hartid;     \
+    id_t                  issue_req_id;         \
+                                            \
+    logic                   register_valid;                   \
+    hartid_t                register_hartid;                  \
+    id_t                    register_id;                      \
+    logic [X_RFR_WIDTH-1:0] register_rs[X_NUM_RS-1:0];        \
+    readregflags_t          register_rs_valid;                \
+                                                              \
     logic             commit_valid;         \
-    x_commit_t     	  commit;               \
-    logic             result_ready;         \
-    x_acc_req_t 		  acc_req;              \
-  }	x_req_t;                                \
+    hartid_t          commit_hartid;        \
+    id_t              commit_id;            \
+    logic             commit_commit_kill;   \
+                                            \
+    logic                   result_ready;           \
+    fpnew_pkg::roundmode_e  frm;                    \
+    logic                   store_pending;          \
+    logic                   acc_cons_en;            \
+    logic                   inval_ready;            \
+    riscv::instruction_t    instr;                  \
+    logic                   flush;                  \
+    logic                   flush_unissued;         \
+  } x_req_t;                                \
                                             \
   typedef struct packed {                   \
     logic             issue_ready;          \
-    x_issue_resp_t 	  issue_resp;           \
+    logic             issue_resp_accept;               \
+    writeregflags_t   issue_resp_writeback;            \
+    readregflags_t    issue_resp_register_read;        \
+    logic             issue_resp_is_vfp;               \
+                                            \
     logic             register_ready;       \
-    logic             result_valid;         \
-    x_result_t      	result;               \
-    x_acc_resp_t 			acc_resp;             \
+                                            \
+    logic                         result_valid; \
+    hartid_t                      result_hartid;\
+    id_t                          result_id;    \
+    logic [X_RFW_WIDTH     -1:0]  result_data;  \
+    logic [4:0]                   result_rd;    \
+    writeregflags_t               result_we;    \
+                                                \
+    logic error;                  \
+    logic store_pending;          \
+    logic store_complete;         \
+    logic load_complete;          \
+    logic [4:0] fflags;           \
+    logic fflags_valid;           \
+    logic inval_valid;            \
+    logic [63:0] inval_addr;      \
   } x_resp_t;
 
 `endif

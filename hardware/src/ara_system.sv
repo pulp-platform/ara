@@ -97,7 +97,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   `CORE_V_XIF_COMMIT
   `CORE_V_XIF_RESULT(riscv::XLEN)
   `CORE_V_XIF_ACC
-  `CORE_V_XIF_T
+  `CORE_V_XIF_T(ariane_pkg::NR_RGPR_PORTS, riscv::XLEN, riscv::XLEN)
 
   x_req_t     core_v_xif_req;
   x_resp_t    core_v_xif_resp;
@@ -110,11 +110,11 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 
   // Pack invalidation interface into acc interface
   always_comb begin : pack_inval_
-    core_v_xif_resp_pack                      = core_v_xif_resp;
-    core_v_xif_resp_pack.acc_resp.inval_valid = inval_valid;
-    core_v_xif_resp_pack.acc_resp.inval_addr  = inval_addr;
-    inval_ready                               = core_v_xif_req.acc_req.inval_ready;
-    acc_cons_en                               = core_v_xif_req.acc_req.acc_cons_en;
+    core_v_xif_resp_pack             = core_v_xif_resp;
+    core_v_xif_resp_pack.inval_valid = inval_valid;
+    core_v_xif_resp_pack.inval_addr  = inval_addr;
+    inval_ready                      = core_v_xif_req.inval_ready;
+    acc_cons_en                      = core_v_xif_req.acc_cons_en;
   end
 
 `ifdef IDEAL_DISPATCHER
@@ -245,7 +245,9 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .x_req_t        (x_req_t      ),
     .x_resp_t       (x_resp_t     ),
     .x_issue_req_t  (x_issue_req_t),
-    .x_issue_resp_t (x_issue_resp_t)
+    .x_issue_resp_t (x_issue_resp_t),
+    .x_result_t     (x_result_t   ),
+    .x_acc_resp_t   (x_acc_resp_t )
   ) i_ara (
     .clk_i           (clk_i             ),  
     .rst_ni          (rst_ni            ),
