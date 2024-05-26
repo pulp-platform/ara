@@ -90,103 +90,14 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 
   `include "core_v_xif/core_v_xif.svh"
 
-  // `CORE_V_XIF_BASE(ariane_pkg::NR_RGPR_PORTS, ariane_pkg::TRANS_ID_BITS, 1, 0, 0)
-  // `CORE_V_XIF_COMPRESSED
-  // `CORE_V_XIF_ISSUE
-  // `CORE_V_XIF_REGISTER(ariane_pkg::NR_RGPR_PORTS, riscv::XLEN)
-  // `CORE_V_XIF_COMMIT
-  // `CORE_V_XIF_RESULT(riscv::XLEN)
-  // `CORE_V_XIF_ACC
-  // `CORE_V_XIF_T
-
-  localparam int unsigned X_NUM_RS = ariane_pkg::NR_RGPR_PORTS;
-  localparam int unsigned X_ID_WIDTH = ariane_pkg::TRANS_ID_BITS;
-  localparam int unsigned X_HARTID_WIDTH = 1;
-  localparam int unsigned X_DUALREAD = 0;
-  localparam int unsigned X_DUALWRITE = 0;
-  localparam int unsigned X_RFR_WIDTH = riscv::XLEN;
-  localparam int unsigned X_RFW_WIDTH = riscv::XLEN;
-
-  typedef logic [X_NUM_RS+X_DUALREAD-1:0] readregflags_t;
-  typedef logic [X_DUALWRITE:0] writeregflags_t;
-  typedef logic [1:0] mode_t;
-  typedef logic [X_ID_WIDTH-1:0] id_t;
-  typedef logic [X_HARTID_WIDTH-1:0] hartid_t;
-
-  typedef struct packed {
-    riscv::instruction_t instr;
-    hartid_t hartid;
-    id_t id;
-  } x_issue_req_t;
-
-  typedef struct packed {
-    logic accept;
-    writeregflags_t writeback;
-    readregflags_t register_read;
-    logic is_vfp;
-  } x_issue_resp_t;
-
-  typedef struct {
-    hartid_t hartid;
-    id_t id;
-    logic [X_RFR_WIDTH-1:0] rs[X_NUM_RS-1:0];
-    readregflags_t rs_valid;
-  } x_register_t;
-
-  typedef struct packed {
-    hartid_t hartid;
-    id_t id;
-    logic commit_kill;
-  } x_commit_t;
-
-  typedef struct packed {
-    hartid_t hartid;
-    id_t id;
-    logic [X_RFW_WIDTH     -1:0] data;
-    logic [4:0] rd;
-    writeregflags_t we;
-  } x_result_t;
-
-  typedef struct packed {
-    fpnew_pkg::roundmode_e frm;
-    logic store_pending;
-    logic acc_cons_en;
-    logic inval_ready;
-    riscv::instruction_t instr;
-    logic flush;
-    logic flush_unissued;
-  } x_acc_req_t; 
-
-  typedef struct packed {
-    logic error;
-    logic store_pending;
-    logic store_complete;
-    logic load_complete;
-    logic [4:0] fflags;
-    logic fflags_valid;
-    logic inval_valid;
-    logic [63:0] inval_addr;
-  } x_acc_resp_t;
-
-  typedef struct {
-    logic             issue_valid;
-    x_issue_req_t     issue_req;
-    logic             register_valid;
-    x_register_t      register;
-    logic             commit_valid;
-    x_commit_t        commit;
-    logic             result_ready;
-    x_acc_req_t       acc_req;
-  } x_req_t;
-
-  typedef struct packed {
-    logic             issue_ready;
-    x_issue_resp_t    issue_resp;
-    logic             register_ready;
-    logic             result_valid;
-    x_result_t        result;
-    x_acc_resp_t      acc_resp;
-  } x_resp_t;
+  `CORE_V_XIF_BASE(ariane_pkg::NR_RGPR_PORTS, ariane_pkg::TRANS_ID_BITS, 1, 0, 0)
+  `CORE_V_XIF_COMPRESSED
+  `CORE_V_XIF_ISSUE
+  `CORE_V_XIF_REGISTER(ariane_pkg::NR_RGPR_PORTS, riscv::XLEN)
+  `CORE_V_XIF_COMMIT
+  `CORE_V_XIF_RESULT(riscv::XLEN)
+  `CORE_V_XIF_ACC
+  `CORE_V_XIF_T
 
   x_req_t     core_v_xif_req;
   x_resp_t    core_v_xif_resp;
