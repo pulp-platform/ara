@@ -259,8 +259,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
   logic inv_accept;
 
-  logic opVec, opLoad, opStore, opAmo, opSys;
-
   assign core_st_pending_o = core_v_xif_req_i.store_pending;
   assign core_v_xif_resp_o.issue_resp_accept = ~insn_error;
 
@@ -319,11 +317,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     inv_accept = 1'b1;
 
     insn_error   = 1'b0;
-    opVec = 1'b0;
-    opLoad = 1'b0;
-    opStore = 1'b0;
-    opAmo = 1'b0;
-    opSys = 1'b0;
 
     is_rs1 = 1'b0;
     is_rs2 = 1'b0;
@@ -486,7 +479,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
           riscv::OpcodeVec: begin
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req_instr.instr);
-            opVec = 1'b1;
             // Decode based on their func3 field
             unique case (insn.varith_type.func3)
               // Configuration instructions
@@ -2541,8 +2533,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
           riscv::OpcodeLoadFp: begin
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req_instr.instr);
-            opLoad = 1'b1;
-
             // The instruction is a load
             is_vload = 1'b1;
 
@@ -2743,8 +2733,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
           riscv::OpcodeStoreFp: begin
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req_instr.instr);
-            opStore = 1'b1;
-
             // The instruction is a store
             is_vstore = 1'b1;
 
@@ -2943,7 +2931,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
           riscv::OpcodeSystem: begin
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req_instr.instr);
             // These always respond at the same cycle
-            opSys = 1'b1;
             is_config        = 1'b1;
 
             unique case (core_v_xif_req_i.issue_req_instr.itype.funct3)
@@ -3144,7 +3131,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
           riscv::OpcodeAmo: begin
             automatic rvv_instruction_t insn = rvv_instruction_t'(core_v_xif_req_i.issue_req_instr.instr);
-            opAmo = 1'b1;
             case (insn.vamo_type.width)
               3'b000, //VAMO*EI8.V
               3'b101, //VAMO*EI16.V

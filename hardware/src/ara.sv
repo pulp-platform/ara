@@ -202,7 +202,6 @@ module ara import ara_pkg::*; #(
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
 
   instr_pack_t instr_to_buffer;
-  instr_pack_t instr_test;
 
   assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id};
 
@@ -263,12 +262,9 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.store_pending       = '0;
     core_v_xif_req_decoder2.acc_cons_en         = '0;
     core_v_xif_req_decoder2.inval_ready         = '0;
-    core_v_xif_req_decoder2.instr               = '0;
-    core_v_xif_req_decoder2.flush               = '0;
-    core_v_xif_req_decoder2.flush_unissued      = '0;
 
     // Construct relevant inputs
-    core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;;
+    core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.result_ready      = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
 
