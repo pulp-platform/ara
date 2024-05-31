@@ -106,7 +106,7 @@ To install Bender and initialize all the hardware IPs, run the following command
 # Go to the hardware folder
 cd hardware
 # Install Bender and checkout all the IPs
-make update
+make checkout
 ```
 
 ### Patches (only once!)
