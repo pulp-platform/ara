@@ -17,12 +17,12 @@ dependencies:
 workspace:
   checkout_dir: "hardware/deps"
 
-export_include_dirs:
-  - hardware/include
-
 sources:
-  files:
+  include_dirs:
     # Headers
+    - hardware/include
+  files:
+    # Packages
     - hardware/include/rvv_pkg.sv
     - hardware/include/ara_pkg.sv
 
