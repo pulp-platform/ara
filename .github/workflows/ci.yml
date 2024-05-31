@@ -277,7 +277,7 @@ jobs:
         ln -s $VERILATOR_ROOT/share/verilator/include $VERILATOR_ROOT/include
         ln -s $VERILATOR_ROOT/share/verilator/bin/verilator_includer $VERILATOR_ROOT/bin/verilator_includer
     - name: Download RTL submodules
-      run: make -C hardware update
+      run: make -C hardware checkout
     - name: Compile Verilated model of Ara
       run: |
         sudo apt-get install libelf-dev
