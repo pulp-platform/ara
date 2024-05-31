@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - [f]dotproduct works on the vector length in elements
  - Optimize DWT
  - Fix pathfinder performance
+ - Bump LLVM to v18.1.6
 
 ## 3.0.0 - 2023-09-08
 
