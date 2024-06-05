@@ -113,6 +113,7 @@ module ara import ara_pkg::*; #(
   csr_sync_t                    csr_sync;
   instr_pack_t                  instruction;
   instr_pack_t                  instruction_int;
+  logic                         instruction_valid;
 
   ara_dispatcher #(
     .NrLanes(NrLanes),
@@ -142,7 +143,8 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
-    .instruction_i     (instruction_int.instr), //instruction.instr/core_v_xif_req_i.acc_req.instr
+    .instruction_i     (instruction_int.instr),
+    .insturction_valid_i (instruction_valid),
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
     // CSR sync
@@ -199,7 +201,7 @@ module ara import ara_pkg::*; #(
   logic ring_buffer_ready;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept;
-  assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready;
+  assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready && instruction_valid;
 
   instr_pack_t instr_to_buffer;
 
@@ -236,7 +238,7 @@ module ara import ara_pkg::*; #(
     .valid_i   (ring_buffer_valid),
     .ready_o   (ring_buffer_ready),
     .data_o    (instruction_int),
-    .valid_o   (               ),
+    .valid_o   (instruction_valid),
     .ready_i   (load_next_instr)
   );
 

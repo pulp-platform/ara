@@ -48,6 +48,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  x_req_t                               core_v_xif_req_i,
     output x_resp_t                              core_v_xif_resp_o,
     input riscv::instruction_t                   instruction_i,
+    input logic                                  insturction_valid_i,
     // Dispatcher sync
     input  logic                                 sync_i,
     input  csr_sync_t                            csr_sync_i,
@@ -459,7 +460,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
 
     if (state_d == NORMAL_OPERATION && state_q != RESHUFFLE) begin
-      if (core_v_xif_req_i.register_valid && ara_req_ready_i && core_v_xif_req_i.result_ready) begin
+      if (core_v_xif_req_i.register_valid && ara_req_ready_i && core_v_xif_req_i.result_ready && insturction_valid_i) begin
         // Decoding
         is_decoding = 1'b1;
         // Acknowledge the request
