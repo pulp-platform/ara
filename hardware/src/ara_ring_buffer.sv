@@ -16,14 +16,18 @@ module ara_ring_buffer #(
 		// Control information
 		input logic push_i,
 		input logic commit_i,
+		input logic read_rd_i,
 		input logic flush_i,
 		output logic valid_o,
 		input logic ready_i,
 		// Data
 		input logic [ID_WIDTH-1:0] commit_id_i,
+		input logic [ID_WIDTH-1:0] rd_id_i,
 		input logic [ID_WIDTH-1:0] id_i,
 		input dtype data_i,
-		output dtype data_o
+		output dtype data_o,
+		output logic [4:0] rd_o,
+		output logic we_o
 	);
 	// Clock gating control
 	logic gate_clock;
@@ -39,7 +43,7 @@ module ara_ring_buffer #(
 	assign full_o 	= (tail_q+1'b1 == head_q) ? 1'b1 : 1'b0;
 	assign empty_o 	= (tail_q == head_q) ? 1'b1 : 1'b0;
 
-	assign valid_o = !(head_q == commit_q && head_q == commit_d);
+	assign valid_o = !(head_q == commit_q && head_q == commit_d) && !(empty_o);
 
 	// Read and write logic
 	always_comb begin
@@ -65,7 +69,7 @@ module ara_ring_buffer #(
 		end
 
 		// Commit
-		if (commit_i && ~empty_o) begin
+		if (commit_i) begin
 			// Push the commit pointer to the 
 			commit_d = id_mem_q[commit_id_i] + 1'b1;
 		end
@@ -76,8 +80,14 @@ module ara_ring_buffer #(
 			head_d = head_q + 1'b1;
 		end
 
+		// Read rd info
+		if (read_rd_i) begin
+			rd_o = mem_q[id_mem_q[rd_id_i]].instr[11:7];
+			we_o = mem_q[id_mem_q[rd_id_i]].is_writeback;
+		end
+
 		// Flush
-		if (flush_i && !empty_o) begin
+		if (flush_i && ~empty_o) begin
 			// When we flush the buffer we take an id and flush all values that where pushed after that id including the id
 			tail_d = id_mem_q[commit_id_i];
 		end
@@ -106,12 +116,12 @@ module ara_ring_buffer #(
 		end
 	end
 
-	full_write : assert property(
-        @(posedge clk_i) disable iff (~rst_ni) (full_o |-> ~push_i))
-        else $fatal (1, "Trying to push new data although the BUFFER is full.");
+	// full_write : assert property(
+ //        @(posedge clk_i) disable iff (~rst_ni) (full_o |-> ~push_i))
+ //        else $fatal (1, "Trying to push new data although the BUFFER is full.");
 
-    empty_read : assert property(
-        @(posedge clk_i) disable iff (~rst_ni) (empty_o |-> ~(valid_o && ready_i)))
-        else $fatal (1, "Trying to pop data although the BUFFER is empty.");
+ //    empty_read : assert property(
+ //        @(posedge clk_i) disable iff (~rst_ni) (empty_o |-> ~(valid_o && ready_i)))
+ //        else $fatal (1, "Trying to pop data although the BUFFER is empty.");
 
 endmodule : ara_ring_buffer

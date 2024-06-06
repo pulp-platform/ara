@@ -32,6 +32,7 @@ module ara import ara_pkg::*; #(
 
     parameter int            unsigned HARTID_WIDTH = ariane_pkg::NR_RGPR_PORTS,
     parameter int            unsigned ID_WIDTH     = ariane_pkg::TRANS_ID_BITS,
+    parameter type writeregflags_t = logic,
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
     parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
     parameter type x_issue_req_t = core_v_xif_pkg::x_issue_req_t,
@@ -100,6 +101,7 @@ module ara import ara_pkg::*; #(
     riscv::instruction_t instr;
     logic [HARTID_WIDTH-1:0] hartid;
     logic [ID_WIDTH-1:0] id;
+    writeregflags_t is_writeback;
   } instr_pack_t;
 
   typedef struct packed {
@@ -204,27 +206,33 @@ module ara import ara_pkg::*; #(
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready && instruction_valid;
 
   instr_pack_t instr_to_buffer;
+  logic [4:0] return_rd;
+  writeregflags_t we;
 
-  assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id};
+  assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id, core_v_xif_resp_o.issue_resp_writeback};
 
   ara_ring_buffer #(
     .ID_WIDTH(ID_WIDTH),
     .DEPTH(8),
     .dtype(instr_pack_t)
     ) i_ring_buffer (
-      .clk_i(clk_i),
-      .rst_ni(rst_ni),
-      .full_o(buffer_full),
-      .empty_o(),
-      .push_i(new_instr),
-      .commit_i(core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
-      .flush_i(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
-      .ready_i(ring_buffer_ready),
-      .valid_o(ring_buffer_valid),
-      .commit_id_i(core_v_xif_req_i.commit_id),
-      .id_i(instr_to_buffer.id),
-      .data_i(instr_to_buffer),
-      .data_o(instruction)
+      .clk_i        (clk_i                      ),
+      .rst_ni       (rst_ni                     ),
+      .full_o       (buffer_full                ),
+      .empty_o      (                           ),
+      .push_i       (new_instr                  ),
+      .commit_i     (core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
+      .read_rd_i    (core_v_xif_resp_o.result_valid),
+      .flush_i      (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
+      .ready_i      (ring_buffer_ready          ),
+      .valid_o      (ring_buffer_valid          ),
+      .commit_id_i  (core_v_xif_req_i.commit_id ),
+      .rd_id_i      (core_v_xif_resp_o.result_id),
+      .id_i         (instr_to_buffer.id         ),
+      .data_i       (instr_to_buffer            ),
+      .data_o       (instruction                ),
+      .rd_o         (return_rd                  ),
+      .we_o         (we                         )
     );
 
   fall_through_register #(
@@ -265,19 +273,23 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2.acc_cons_en         = '0;
     core_v_xif_req_decoder2.inval_ready         = '0;
 
-    // Construct relevant inputs
+    // Construct relevant inputs for pre decoder
     core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.result_ready      = core_v_xif_req_i.issue_valid;
     core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
 
-
+    // issue response
+    if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill))
+      core_v_xif_resp_o.issue_ready = 1'b1;
     core_v_xif_resp_o.issue_resp_accept         = core_v_xif_resp_decoder2.issue_resp_accept;
     core_v_xif_resp_o.issue_resp_writeback      = core_v_xif_resp_decoder2.issue_resp_writeback;
     core_v_xif_resp_o.issue_resp_register_read  = core_v_xif_resp_decoder2.issue_resp_register_read;
     core_v_xif_resp_o.issue_resp_is_vfp         = core_v_xif_resp_decoder2.issue_resp_is_vfp;
 
-    if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill))
-      core_v_xif_resp_o.issue_ready = 1'b1;
+    // result
+    core_v_xif_resp_o.result_rd = return_rd;
+    core_v_xif_resp_o.result_we = we;
+
   end
 
   /////////////////
