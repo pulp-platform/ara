@@ -51,7 +51,8 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     // Dispatcher sync
     input  logic                                 sync_i,
     input  csr_sync_t                            csr_sync_i,
-    output csr_sync_t                            csr_sync_o
+    output csr_sync_t                            csr_sync_o,
+    output logic                                 csr_stall_o
   );
 
 
@@ -316,7 +317,8 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
     inv_accept = 1'b1;
 
-    insn_error   = 1'b0;
+    insn_error    = 1'b0;
+    csr_stall_o   = '0;
 
     is_rs1 = 1'b0;
     is_rs2 = 1'b0;
@@ -466,7 +468,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     endcase
 
     if (1'b1) begin
-      if (1'b1) begin
+      if (core_v_xif_req_i.issue_valid) begin
         // Decoding
         is_decoding = 1'b1;
 
@@ -498,6 +500,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetivli_type.zimm10));
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
                   vtype_d = vtype_xlen(riscv::xlen_t'(core_v_xif_req_i.register_rs[1][7:0]));
+                  csr_stall_o = 1'b1;
                 end else begin
                   insn_error = 1'b1;
                 end

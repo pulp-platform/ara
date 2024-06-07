@@ -113,6 +113,10 @@ module ara import ara_pkg::*; #(
   } csr_sync_t;
 
   csr_sync_t                    csr_sync;
+  logic                         csr_stall;
+  logic                         csr_block;
+  logic                         csr_stall_d, csr_stall_q;
+  logic [ID_WIDTH-1:0]          csr_instr_id_d, csr_instr_id_q;
   instr_pack_t                  instruction;
   instr_pack_t                  instruction_int;
   logic                         instruction_valid;
@@ -192,7 +196,8 @@ module ara import ara_pkg::*; #(
     // CSR sync
     .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
     .csr_sync_i        (csr_sync          ),
-    .csr_sync_o        ()
+    .csr_sync_o        (),
+    .csr_stall_o       (csr_stall         )
   );
 
   logic new_instr;
@@ -202,7 +207,7 @@ module ara import ara_pkg::*; #(
   logic ring_buffer_valid;
   logic ring_buffer_ready;
 
-  assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept;
+  assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept && !csr_block;
   assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready && instruction_valid;
 
   instr_pack_t instr_to_buffer;
@@ -255,6 +260,9 @@ module ara import ara_pkg::*; #(
     core_v_xif_req_decoder2       = core_v_xif_req_i;
     core_v_xif_resp_o             = core_v_xif_resp;
     core_v_xif_resp_o.issue_ready = 1'b0;
+    csr_block                     = 1'b0;
+    csr_stall_d                   = csr_stall_q;
+    csr_instr_id_d                = csr_instr_id_q;
 
     // Zero everything but the issue if
     core_v_xif_req_decoder2.register_valid      = '0;
@@ -286,10 +294,48 @@ module ara import ara_pkg::*; #(
     core_v_xif_resp_o.issue_resp_register_read  = core_v_xif_resp_decoder2.issue_resp_register_read;
     core_v_xif_resp_o.issue_resp_is_vfp         = core_v_xif_resp_decoder2.issue_resp_is_vfp;
 
+    // If we predecode a vsetvl instruction we need to stall to wait for its response to correctly compute the CSR's in the predecoder
+    if (csr_stall) begin 
+      csr_stall_d = 1'b1;
+      csr_instr_id_d = core_v_xif_req_i.issue_req_id;
+    end
+
+    // If we are waiting for a vsetvl to complete we need to mask the outpu of the pre decoder
+    if (csr_stall_q) begin
+      csr_block = 1'b1;
+      core_v_xif_resp_o.issue_ready = 1'b0;
+      // If the registers for the stalling instruction are passed we can resolve the stall of the pre decoder
+      if (instruction_int.id == csr_instr_id_q && core_v_xif_req_i.register_valid) begin
+        core_v_xif_req_decoder2.register_valid  = 1'b1;
+        core_v_xif_req_decoder2.result_ready    = 1'b1;
+        core_v_xif_req_decoder2.issue_valid     = 1'b1;
+        core_v_xif_req_decoder2.register_rs[0]  = core_v_xif_req_i.register_rs[0];
+        core_v_xif_req_decoder2.register_rs[1]  = core_v_xif_req_i.register_rs[1];
+        // Mask decoded instruction
+        core_v_xif_req_decoder2.issue_req_instr = instruction_int.instr;
+        // Stop stalling the pre decoder
+        csr_stall_d = 1'b0;
+      end
+    end
+
+    if (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill) begin
+      csr_stall_d = 1'b0;
+    end
+
     // result
     core_v_xif_resp_o.result_rd = return_rd;
     core_v_xif_resp_o.result_we = we;
 
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : csr_stall_fsm
+    if(~rst_ni) begin
+      csr_stall_q     <= 0;
+      csr_instr_id_q  <= 0;
+    end else begin
+      csr_stall_q     <= csr_stall_d;
+      csr_instr_id_q  <= csr_instr_id_d;
+    end
   end
 
   /////////////////
