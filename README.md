@@ -213,6 +213,7 @@ We also provide Synopsys Spyglass linting scripts in the hardware/spyglass. Run 
 
 ## Publications
 
+
 If you want to use Ara, you can cite us:
 ```
 @Article{Ara2020,
