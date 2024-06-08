@@ -32,6 +32,7 @@ module ara import ara_pkg::*; #(
 
     parameter int            unsigned HARTID_WIDTH = ariane_pkg::NR_RGPR_PORTS,
     parameter int            unsigned ID_WIDTH     = ariane_pkg::TRANS_ID_BITS,
+    parameter type readregflags_t = logic,
     parameter type writeregflags_t = logic,
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
     parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
@@ -98,9 +99,17 @@ module ara import ara_pkg::*; #(
   x_resp_t                      core_v_xif_resp;
 
   typedef struct packed {
+    // issue information
     riscv::instruction_t instr;
     logic [HARTID_WIDTH-1:0] hartid;
     logic [ID_WIDTH-1:0] id;
+    readregflags_t register_read;
+    // register information
+    logic [riscv::XLEN-1:0] rs1;
+    logic [riscv::XLEN-1:0] rs2;
+    readregflags_t rs_valid;
+    fpnew_pkg::roundmode_e frm;
+    // result information
     writeregflags_t is_writeback;
   } instr_pack_t;
 
@@ -120,9 +129,11 @@ module ara import ara_pkg::*; #(
   instr_pack_t                  instruction;
   instr_pack_t                  instruction_int;
   logic                         instruction_valid;
+  logic                         instruction_ready;
 
   ara_dispatcher #(
     .NrLanes(NrLanes),
+    .instr_pack_t(instr_pack_t),
     .x_req_t (x_req_t),
     .x_resp_t (x_resp_t),
     .x_result_t  (x_result_t),
@@ -149,8 +160,9 @@ module ara import ara_pkg::*; #(
     .store_complete_i   (store_complete  ),
     .store_pending_i    (store_pending   ),
     // XIF
-    .instruction_i     (instruction_int.instr),
+    .instruction_i     (instruction_int),
     .insturction_valid_i (instruction_valid),
+    .insturction_ready_o (insturction_ready),
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
     // CSR sync
@@ -208,36 +220,46 @@ module ara import ara_pkg::*; #(
   logic ring_buffer_ready;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept && !csr_block;
-  assign load_next_instr = core_v_xif_req_i.register_valid && core_v_xif_resp_o.register_ready && instruction_valid;
+  assign load_next_instr = insturction_ready && instruction_valid;
 
+  // Issued instruction
   instr_pack_t instr_to_buffer;
+  // Result information
   logic [4:0] return_rd;
   writeregflags_t we;
 
-  assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id, core_v_xif_resp_o.issue_resp_writeback};
+  assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id,
+                             core_v_xif_resp_o.issue_resp_register_read, '0, '0, '0, fpnew_pkg::RNE, core_v_xif_resp_o.issue_resp_writeback};
 
   ara_ring_buffer #(
     .ID_WIDTH(ID_WIDTH),
     .DEPTH(8),
+    .readregflags_t(readregflags_t),
     .dtype(instr_pack_t)
     ) i_ring_buffer (
-      .clk_i        (clk_i                      ),
-      .rst_ni       (rst_ni                     ),
-      .full_o       (buffer_full                ),
-      .empty_o      (                           ),
-      .push_i       (new_instr                  ),
-      .commit_i     (core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
-      .read_rd_i    (core_v_xif_resp_o.result_valid),
-      .flush_i      (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
-      .ready_i      (ring_buffer_ready          ),
-      .valid_o      (ring_buffer_valid          ),
-      .commit_id_i  (core_v_xif_req_i.commit_id ),
-      .rd_id_i      (core_v_xif_resp_o.result_id),
-      .id_i         (instr_to_buffer.id         ),
-      .data_i       (instr_to_buffer            ),
-      .data_o       (instruction                ),
-      .rd_o         (return_rd                  ),
-      .we_o         (we                         )
+      .clk_i                (clk_i                              ),
+      .rst_ni               (rst_ni                             ),
+      .full_o               (buffer_full                        ),
+      .empty_o              (                                   ),
+      .push_i               (new_instr                          ),
+      .commit_i             (core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
+      .register_valid_i     (core_v_xif_req_i.register_valid    ),
+      .read_rd_i            (core_v_xif_resp_o.result_valid     ),
+      .flush_i              (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
+      .ready_i              (ring_buffer_ready                  ),
+      .valid_o              (ring_buffer_valid                  ),
+      .commit_id_i          (core_v_xif_req_i.commit_id         ),
+      .reg_id_i             (core_v_xif_req_i.register_id       ),
+      .rd_id_i              (core_v_xif_resp_o.result_id        ),
+      .id_i                 (instr_to_buffer.id                 ),
+      .data_i               (instr_to_buffer                    ),
+      .rs1_i                (core_v_xif_req_i.register_rs[0]    ),
+      .rs2_i                (core_v_xif_req_i.register_rs[1]    ),
+      .rs_valid_i           (core_v_xif_req_i.register_rs_valid ),
+      .frm_i                (core_v_xif_req_i.frm               ),
+      .data_o               (instruction                        ),
+      .rd_o                 (return_rd                          ),
+      .we_o                 (we                                 )
     );
 
   fall_through_register #(
@@ -295,7 +317,7 @@ module ara import ara_pkg::*; #(
     core_v_xif_resp_o.issue_resp_is_vfp         = core_v_xif_resp_decoder2.issue_resp_is_vfp;
 
     // If we predecode a vsetvl instruction we need to stall to wait for its response to correctly compute the CSR's in the predecoder
-    if (csr_stall) begin 
+    if (csr_stall) begin
       csr_stall_d = 1'b1;
       csr_instr_id_d = core_v_xif_req_i.issue_req_id;
     end
@@ -322,10 +344,12 @@ module ara import ara_pkg::*; #(
       csr_stall_d = 1'b0;
     end
 
+    // register
+    core_v_xif_resp_o.register_ready = core_v_xif_req_i.register_valid;
+
     // result
     core_v_xif_resp_o.result_rd = return_rd;
     core_v_xif_resp_o.result_we = we;
-
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : csr_stall_fsm

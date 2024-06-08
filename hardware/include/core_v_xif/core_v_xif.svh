@@ -1,4 +1,10 @@
-// 
+// Copyright 2024 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Frederic zur Bonsen <fzurbonsen@sutdent.ethz.ch>
+// Description:
+// Core-V eXtension Interface implementation.
 
 
 `ifndef CORE_V_XIF_SVH_
@@ -115,6 +121,7 @@
     id_t                          register_id;                \
     logic [X_RFR_WIDTH-1:0]       register_rs[X_NUM_RS-1:0];  \
     readregflags_t                register_rs_valid;          \
+    fpnew_pkg::roundmode_e        frm;                        \
                                                               \
     logic                         commit_valid;               \
     hartid_t                      commit_hartid;              \
@@ -122,7 +129,7 @@
     logic                         commit_commit_kill;         \
                                                               \
     logic                         result_ready;               \
-    fpnew_pkg::roundmode_e        frm;                        \
+                                                              \
     logic                         store_pending;              \
     logic                         acc_cons_en;                \
     logic                         inval_ready;                \

@@ -242,6 +242,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .axi_resp_t  (ara_axi_resp_t  ),
     .HARTID_WIDTH  (ariane_pkg::NR_RGPR_PORTS),
     .ID_WIDTH      (ariane_pkg::TRANS_ID_BITS),
+    .readregflags_t (readregflags_t),
     .writeregflags_t(writeregflags_t),
     .x_req_t        (x_req_t      ),
     .x_resp_t       (x_resp_t     ),

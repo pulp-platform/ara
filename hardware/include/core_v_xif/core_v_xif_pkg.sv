@@ -1,4 +1,10 @@
-// 
+// Copyright 2024 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+//
+// Author: Frederic zur Bonsen <fzurbonsen@sutdent.ethz.ch>
+// Description:
+// Core-V eXtension Interface implementation.
 
 package core_v_xif_pkg;
 
