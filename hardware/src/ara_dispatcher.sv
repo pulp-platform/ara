@@ -50,7 +50,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     output x_resp_t                              core_v_xif_resp_o,
     input instr_pack_t                           instruction_i,
     input logic                                  insturction_valid_i,
-    output logic                                 insturction_ready_o,
+    output logic                                 instruction_ready_o,
     // Dispatcher sync
     input  logic                                 sync_i,
     input  csr_sync_t                            csr_sync_i,
@@ -305,7 +305,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     is_decoding = 1'b0;
     in_lane_op  = 1'b0;
 
-    insturction_ready_o  = 1'b0;
+    instruction_ready_o  = 1'b0;
     core_v_xif_resp_o.result_valid = 1'b0;
 
     x_result       = '{
@@ -360,7 +360,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         automatic rvv_instruction_t insn = rvv_instruction_t'(instruction_i.instr.instr);
 
         // Stall the interface, wait for the backend to accept the injected uop
-        insturction_ready_o  = 1'b0;
+        instruction_ready_o  = 1'b0;
         core_v_xif_resp_o.result_valid = 1'b0;
 
         // Handle LMUL > 1
@@ -466,7 +466,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Decoding
         is_decoding = 1'b1;
         // Acknowledge the request
-        insturction_ready_o = ara_req_ready_i;
+        instruction_ready_o = ara_req_ready_i;
 
         // Decode the instructions based on their opcode
         unique case (instruction_i.instr.itype.opcode)
@@ -486,7 +486,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Configuration instructions
               OPCFG: begin: opcfg
                 // These can be acknowledged regardless of the state of Ara
-                insturction_ready_o = 1'b1;
+                instruction_ready_o = 1'b1;
                 is_config       = 1'b1;
 
                 // Update vtype
@@ -1250,7 +1250,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010000: begin // VWXUNARY0
                     // vmv.x.s
                     // Stall the interface until we get the result
-                    insturction_ready_o  = 1'b0;
+                    instruction_ready_o  = 1'b0;
                     core_v_xif_resp_o.result_valid = 1'b0;
 
                     case (insn.varith_type.rs1)
@@ -1290,7 +1290,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                     // Wait until the back-end answers to acknowledge those instructions
                     if (ara_resp_valid_i) begin
-                      insturction_ready_o   = 1'b1;
+                      instruction_ready_o   = 1'b1;
                       x_result.data = ara_resp_i.resp;
                       acc_resp.error  = ara_resp_i.error;
                       core_v_xif_resp_o.result_valid  = 1'b1;
@@ -1928,7 +1928,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     6'b010000: begin // VWFUNARY0
                       // vmv.f.s
                       // Stall the interface until we get the result
-                      insturction_ready_o  = 1'b0;
+                      instruction_ready_o  = 1'b0;
                       core_v_xif_resp_o.result_valid = 1'b0;
 
                       ara_req_d.op         = ara_pkg::VFMVFS;
@@ -1964,7 +1964,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                       // Wait until the back-end answers to acknowledge those instructions
                       if (ara_resp_valid_i) begin
-                        insturction_ready_o   = 1'b1;
+                        instruction_ready_o   = 1'b1;
                         x_result.data = vfmvfs_result;
                         acc_resp.error  = ara_resp_i.error;
                         core_v_xif_resp_o.result_valid  = 1'b1;
@@ -2547,7 +2547,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             is_vload = 1'b1;
 
             // Wait before acknowledging this instruction
-            insturction_ready_o = 1'b0;
+            instruction_ready_o = 1'b0;
 
             // These generate a request to Ara's backend
             ara_req_d.vd        = insn.vmem_type.rd;
@@ -2592,7 +2592,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
-                insturction_ready_o  = 1'b1;
+                instruction_ready_o  = 1'b1;
                 acc_resp.error = 1'b1;
                 core_v_xif_resp_o.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
@@ -2616,12 +2616,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   5'b10000: begin // Unit-strided, fault-only first
                     // TODO: Not implemented
                     illegal_insn     = 1'b1;
-                    insturction_ready_o  = 1'b1;
+                    instruction_ready_o  = 1'b1;
                     core_v_xif_resp_o.result_valid = 1'b1;
                   end
                   default: begin // Reserved
                     illegal_insn     = 1'b1;
-                    insturction_ready_o  = 1'b1;
+                    instruction_ready_o  = 1'b1;
                     core_v_xif_resp_o.result_valid = 1'b1;
                   end
                 endcase
@@ -2693,7 +2693,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               ignore_zero_vl_check = 1'b1;
               // The LMUL value is kept in the instruction itself
               illegal_insn     = 1'b0;
-              insturction_ready_o  = 1'b0;
+              instruction_ready_o  = 1'b0;
               core_v_xif_resp_o.result_valid = 1'b0;
               ara_req_valid_d  = 1'b1;
 
@@ -2725,7 +2725,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
             // Wait until the back-end answers to acknowledge those instructions
             if (ara_resp_valid_i) begin
-              insturction_ready_o  = 1'b1;
+              instruction_ready_o  = 1'b1;
               acc_resp.error = ara_resp_i.error;
               core_v_xif_resp_o.result_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
@@ -2753,7 +2753,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             is_vstore = 1'b1;
 
             // Wait before acknowledging this instruction
-            insturction_ready_o = 1'b0;
+            instruction_ready_o = 1'b0;
 
             // vl depends on the EEW encoded in the instruction.
             // Ara does not reshuffle source vregs upon vector stores,
@@ -2805,7 +2805,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
-                insturction_ready_o  = 1'b1;
+                instruction_ready_o  = 1'b1;
                 acc_resp.error = 1'b1;
                 core_v_xif_resp_o.result_valid = 1'b1;
                 ara_req_valid_d  = 1'b0;
@@ -2828,7 +2828,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: begin // Reserved
                     illegal_insn     = 1'b1;
-                    insturction_ready_o  = 1'b1;
+                    instruction_ready_o  = 1'b1;
                     core_v_xif_resp_o.result_valid = 1'b1;
                   end
                 endcase
@@ -2926,14 +2926,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               endcase
 
               illegal_insn     = 1'b0;
-              insturction_ready_o  = 1'b0;
+              instruction_ready_o  = 1'b0;
               core_v_xif_resp_o.result_valid = 1'b0;
               ara_req_valid_d  = 1'b1;
             end
 
             // Wait until the back-end answers to acknowledge those instructions
             if (ara_resp_valid_i) begin
-              insturction_ready_o  = 1'b1;
+              instruction_ready_o  = 1'b1;
               acc_resp.error = ara_resp_i.error;
               core_v_xif_resp_o.result_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
@@ -3182,7 +3182,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         automatic rvv_instruction_t insn = rvv_instruction_t'(instruction_i.instr.instr);
 
         // Stall the interface, and inject a reshuffling instruction
-        insturction_ready_o  = 1'b0;
+        instruction_ready_o  = 1'b0;
         core_v_xif_resp_o.result_valid = 1'b0;
         ara_req_valid_d  = 1'b0;
 
@@ -3249,7 +3249,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must
       // delay the zero_vl acknowledge by 1 cycle
-      insturction_ready_o  = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
+      instruction_ready_o  = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
       core_v_xif_resp_o.result_valid = ~((is_vload & load_complete_q) | (is_vstore & store_complete_q));
       ara_req_valid_d  = 1'b0;
       load_zero_vl     = is_vload;

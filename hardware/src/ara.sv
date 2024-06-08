@@ -162,7 +162,7 @@ module ara import ara_pkg::*; #(
     // XIF
     .instruction_i     (instruction_int),
     .insturction_valid_i (instruction_valid),
-    .insturction_ready_o (insturction_ready),
+    .instruction_ready_o (instruction_ready),
     .core_v_xif_req_i  (core_v_xif_req_i ),
     .core_v_xif_resp_o (core_v_xif_resp  ),
     // CSR sync
@@ -220,7 +220,7 @@ module ara import ara_pkg::*; #(
   logic ring_buffer_ready;
 
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept && !csr_block;
-  assign load_next_instr = insturction_ready && instruction_valid;
+  assign load_next_instr = instruction_ready && instruction_valid;
 
   // Issued instruction
   instr_pack_t instr_to_buffer;
@@ -327,7 +327,7 @@ module ara import ara_pkg::*; #(
       csr_block = 1'b1;
       core_v_xif_resp_o.issue_ready = 1'b0;
       // If the registers for the stalling instruction are passed we can resolve the stall of the pre decoder
-      if (instruction_int.id == csr_instr_id_q && core_v_xif_req_i.register_valid) begin
+      if (core_v_xif_req_i.register_id == csr_instr_id_q && core_v_xif_req_i.register_valid) begin
         core_v_xif_req_decoder2.register_valid  = 1'b1;
         core_v_xif_req_decoder2.result_ready    = 1'b1;
         core_v_xif_req_decoder2.issue_valid     = 1'b1;
