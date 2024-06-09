@@ -133,7 +133,7 @@ module ara_ring_buffer #(
 			// When we flush the buffer we take an id and flush all values that where pushed after that id including the id
 			tail_d = id_mem_q[commit_id_i];
 			// Update usage
-			usage_d = usage_q - (tail_q - id_mem_q[commit_id_i]);
+			usage_d = tail_d - head_d;
 		end
 
 		// Assign output
