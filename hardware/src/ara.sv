@@ -126,7 +126,6 @@ module ara import ara_pkg::*; #(
   logic                         csr_block;
   logic                         csr_stall_d, csr_stall_q;
   logic [ID_WIDTH-1:0]          csr_instr_id_d, csr_instr_id_q;
-  instr_pack_t                  instruction;
   instr_pack_t                  instruction_int;
   logic                         instruction_valid;
   logic                         instruction_ready;
@@ -216,9 +215,6 @@ module ara import ara_pkg::*; #(
   logic load_next_instr;
   logic buffer_full;
 
-  logic ring_buffer_valid;
-  logic ring_buffer_ready;
-
   assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept && !csr_block;
   assign load_next_instr = instruction_ready && instruction_valid;
 
@@ -246,8 +242,8 @@ module ara import ara_pkg::*; #(
       .register_valid_i     (core_v_xif_req_i.register_valid    ),
       .read_rd_i            (core_v_xif_resp_o.result_valid     ),
       .flush_i              (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
-      .ready_i              (ring_buffer_ready                  ),
-      .valid_o              (ring_buffer_valid                  ),
+      .ready_i              (load_next_instr                  ),
+      .valid_o              (instruction_valid                  ),
       .commit_id_i          (core_v_xif_req_i.commit_id         ),
       .reg_id_i             (core_v_xif_req_i.register_id       ),
       .rd_id_i              (core_v_xif_resp_o.result_id        ),
@@ -257,25 +253,10 @@ module ara import ara_pkg::*; #(
       .rs2_i                (core_v_xif_req_i.register_rs[1]    ),
       .rs_valid_i           (core_v_xif_req_i.register_rs_valid ),
       .frm_i                (core_v_xif_req_i.frm               ),
-      .data_o               (instruction                        ),
+      .data_o               (instruction_int                        ),
       .rd_o                 (return_rd                          ),
       .we_o                 (we                                 )
     );
-
-  fall_through_register #(
-    .T(instr_pack_t)
-  ) i_issued_instr_register (
-    .clk_i     (clk_i          ),
-    .rst_ni    (rst_ni         ),
-    .clr_i     (1'b0           ),
-    .testmode_i(1'b0           ),
-    .data_i    (instruction    ),
-    .valid_i   (ring_buffer_valid),
-    .ready_o   (ring_buffer_ready),
-    .data_o    (instruction_int),
-    .valid_o   (instruction_valid),
-    .ready_i   (load_next_instr)
-  );
 
   always_comb begin
     // Set default
