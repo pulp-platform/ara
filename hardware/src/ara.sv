@@ -330,9 +330,6 @@ module ara import ara_pkg::*; #(
     // result
     core_v_xif_resp_o.result_rd = instruction_int.instr[11:7];
     core_v_xif_resp_o.result_we = instruction_int.is_writeback;
-    if (core_v_xif_req_i.result_ready && core_v_xif_resp_o.result_valid) begin
-      
-    end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : csr_stall_fsm
