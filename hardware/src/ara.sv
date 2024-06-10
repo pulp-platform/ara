@@ -227,9 +227,12 @@ module ara import ara_pkg::*; #(
   assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id,
                              core_v_xif_resp_o.issue_resp_register_read, '0, '0, '0, fpnew_pkg::RNE, core_v_xif_resp_o.issue_resp_writeback};
 
+  // to keep track of the returned instructions
+  logic [ID_WIDTH-1:0]  result_id;
+
   ara_ring_buffer #(
     .ID_WIDTH(ID_WIDTH),
-    .DEPTH(8),
+    .DEPTH(4),
     .readregflags_t(readregflags_t),
     .dtype(instr_pack_t)
     ) i_ring_buffer (
@@ -240,22 +243,18 @@ module ara import ara_pkg::*; #(
       .push_i               (new_instr                          ),
       .commit_i             (core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
       .register_valid_i     (core_v_xif_req_i.register_valid    ),
-      .read_rd_i            (core_v_xif_resp_o.result_valid     ),
       .flush_i              (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
       .ready_i              (load_next_instr                  ),
       .valid_o              (instruction_valid                  ),
       .commit_id_i          (core_v_xif_req_i.commit_id         ),
       .reg_id_i             (core_v_xif_req_i.register_id       ),
-      .rd_id_i              (core_v_xif_resp_o.result_id        ),
       .id_i                 (instr_to_buffer.id                 ),
       .data_i               (instr_to_buffer                    ),
       .rs1_i                (core_v_xif_req_i.register_rs[0]    ),
       .rs2_i                (core_v_xif_req_i.register_rs[1]    ),
       .rs_valid_i           (core_v_xif_req_i.register_rs_valid ),
       .frm_i                (core_v_xif_req_i.frm               ),
-      .data_o               (instruction_int                        ),
-      .rd_o                 (return_rd                          ),
-      .we_o                 (we                                 )
+      .data_o               (instruction_int                    )
     );
 
   always_comb begin
@@ -329,8 +328,11 @@ module ara import ara_pkg::*; #(
     core_v_xif_resp_o.register_ready = core_v_xif_req_i.register_valid;
 
     // result
-    core_v_xif_resp_o.result_rd = return_rd;
-    core_v_xif_resp_o.result_we = we;
+    core_v_xif_resp_o.result_rd = instruction_int.instr[11:7];
+    core_v_xif_resp_o.result_we = instruction_int.is_writeback;
+    if (core_v_xif_req_i.result_ready && core_v_xif_resp_o.result_valid) begin
+      
+    end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin : csr_stall_fsm
