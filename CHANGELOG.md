@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 
+ - Disable common_cells assertions when simulating with Verilator
+ - Bender checkout instead of update
+ - Remove Bender.local (use Bender.lock for reproducibility)
+ - Update CVA6 to OpenHW group master branch
  - Optimize Jacobi2d
  - Benchmark only the vector kernel in roi_align
  - Improve cache warming functions
