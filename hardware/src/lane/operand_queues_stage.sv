@@ -9,7 +9,7 @@
 module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter int     unsigned NrLanes = 0,
     // Support for floating-point data types
-    parameter fpu_support_e FPUSupport = FPUSupportHalfSingleDouble
+    parameter fpu_support_e FPUSupport = FPUSupportAll
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,

@@ -10,7 +10,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     // RVV Parameters
     parameter int                      unsigned NrLanes            = 0,                               // Number of parallel vector lanes.
     // Support for floating-point data types
-    parameter fpu_support_e                     FPUSupport         = FPUSupportHalfSingleDouble,
+    parameter fpu_support_e                     FPUSupport         = FPUSupportAll,
     // External support for vfrec7, vfrsqrt7
     parameter fpext_support_e                   FPExtSupport       = FPExtSupportEnable,
     // Support for fixed-point data types

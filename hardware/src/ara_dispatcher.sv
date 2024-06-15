@@ -11,7 +11,7 @@
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
     // Support for floating-point data types
-    parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    parameter fpu_support_e          FPUSupport   = FPUSupportAll,
     // External support for vfrec7, vfrsqrt7
     parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
@@ -2230,9 +2230,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     end
                   end
 
-                  // Ara can support 16-bit float, 32-bit float, 64-bit float.
+                  // Ara can support 8-bit float, 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
                   unique case (FPUSupport)
+                    FPUSupportAll: if (int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
+                          illegal_insn = 1'b1;
                     FPUSupportHalfSingleDouble: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||
                           int'(ara_req_d.vtype.vsew) > int'(EW64) || int'(ara_req_d.eew_vs2) > int'(EW64))
                           illegal_insn = 1'b1;
@@ -2476,6 +2478,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
                   unique case (FPUSupport)
+                    FPUSupportAll: if (int'(ara_req_d.vtype.vsew) > int'(EW64)) illegal_insn = 1'b1;
                     FPUSupportHalfSingleDouble: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||
                           int'(ara_req_d.vtype.vsew) > int'(EW64)) illegal_insn = 1'b1;
                     FPUSupportHalfSingle: if (int'(ara_req_d.vtype.vsew) < int'(EW16) ||

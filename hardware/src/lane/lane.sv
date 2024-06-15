@@ -12,7 +12,7 @@
 module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int           unsigned NrLanes         = 1, // Number of lanes
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport      = FPUSupportAll,
     // External support for vfrec7, vfrsqrt7
     parameter  fpext_support_e        FPExtSupport    = FPExtSupportEnable,
     // Support for fixed-point data types
