@@ -54,6 +54,8 @@ module ara_ring_buffer #(
 	// Usage indicator
 	logic [ADDR_DEPTH:0] usage_d, usage_q;
 	logic [ADDR_DEPTH:0] usage;
+	logic [ADDR_DEPTH-1:0] usage_cap;
+
 
 	// assign full_o 	= (tail_q+1'b1 == head_q) ? 1'b1 : 1'b0;
 	// assign empty_o 	= (tail_q == head_q) ? 1'b1 : 1'b0;
@@ -75,6 +77,7 @@ module ara_ring_buffer #(
 		commit_d 	= commit_q;
 		usage_d 	= usage_q;
 		usage 		= '0;
+		usage_cap   = '0;
 		gate_clock 	= 1'b1;
 		
 		// Write
@@ -123,8 +126,8 @@ module ara_ring_buffer #(
 			// When we flush the buffer we take an id and flush all values that where pushed after that id including the id
 			tail_d = id_mem_q[commit_id_i];
 			// Update usage
-			usage = head_d - id_mem_q[commit_id_i];
-			usage_d = usage;
+			usage_cap = id_mem_q[commit_id_i] - head_d;
+			usage_d = usage_cap;
 		end
 
 		// Assign output
