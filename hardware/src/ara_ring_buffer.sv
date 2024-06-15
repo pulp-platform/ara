@@ -31,7 +31,6 @@ module ara_ring_buffer #(
 		// Data
 		input logic [ID_WIDTH-1:0] commit_id_i,
 		input logic [ID_WIDTH-1:0] reg_id_i,
-		input logic [ID_WIDTH-1:0] rd_id_i,
 		input logic [ID_WIDTH-1:0] id_i,
 		input dtype data_i,
 		// Register information
@@ -40,8 +39,7 @@ module ara_ring_buffer #(
 		input readregflags_t rs_valid_i,
 		input fpnew_pkg::roundmode_e frm_i,
 		// Instruction information
-		output dtype data_o,
-		output logic [4:0] rd_o
+		output dtype data_o
 	);
 	// Clock gating control
 	logic gate_clock;
@@ -53,9 +51,15 @@ module ara_ring_buffer #(
 	logic [ADDR_DEPTH-1:0] tail_d, tail_q;
 	// Pointer to indicate the commitable instructions
 	logic [ADDR_DEPTH-1:0] commit_d, commit_q;
+	// Usage indicator
+	logic [ADDR_DEPTH:0] usage_d, usage_q;
+	logic [ADDR_DEPTH:0] usage;
 
-	assign full_o 	= (tail_q+1'b1 == head_q) ? 1'b1 : 1'b0;
-	assign empty_o 	= (tail_q == head_q) ? 1'b1 : 1'b0;
+	// assign full_o 	= (tail_q+1'b1 == head_q) ? 1'b1 : 1'b0;
+	// assign empty_o 	= (tail_q == head_q) ? 1'b1 : 1'b0;
+	assign full_o 	= (usage_q == DEPTH[$clog2(DEPTH):0]);
+	assign empty_o	= (usage_q == '0);
+
 
 	assign valid_o = (mem_q[head_q].rs_valid != '0 || mem_d[head_q].rs_valid != '0) && !(head_q == commit_q && head_q == commit_d) && !(empty_o); // (mem_q[head_q].rs_valid == mem_q[head_q].register_read)
 	// (mem_q[head_q].rs_valid != '0 && mem_d[head_q].rs_valid != '0) &&
@@ -69,6 +73,8 @@ module ara_ring_buffer #(
 		head_d 		= head_q;
 		tail_d 		= tail_q;
 		commit_d 	= commit_q;
+		usage_d 	= usage_q;
+		usage 		= '0;
 		gate_clock 	= 1'b1;
 		
 		// Write
@@ -81,6 +87,9 @@ module ara_ring_buffer #(
 			id_mem_d[id_i] = tail_q;
 			// Push the tail by one
 			tail_d = tail_q + 1'b1;
+			// Increment usage
+			usage = usage_q + 1'b1;
+			usage_d = usage;
 		end
 
 		// Write Register information
@@ -104,12 +113,18 @@ module ara_ring_buffer #(
 		if (valid_o && ~empty_o && ready_i) begin
 			// Pop the head by one
 			head_d = head_q + 1'b1;
+			// Decrease usage
+			usage = usage_d -1'b1;
+			usage_d = usage;
 		end
 
 		// Flush
 		if (flush_i && ~empty_o) begin
 			// When we flush the buffer we take an id and flush all values that where pushed after that id including the id
 			tail_d = id_mem_q[commit_id_i];
+			// Update usage
+			usage = head_d - id_mem_q[commit_id_i];
+			usage_d = usage;
 		end
 
 		// Assign output
@@ -122,10 +137,12 @@ module ara_ring_buffer #(
 			head_q 		<= '0;
 			tail_q 		<= '0;
 			commit_q 	<= '0;
+			usage_q		<= '0;
 		end else begin
 			head_q 		<= head_d;
 			tail_q 		<= tail_d;
 			commit_q 	<= commit_d;
+			usage_q 	<= usage_d;
 		end
 	end
 
