@@ -24,5 +24,7 @@ add wave -noupdate -group Ara -group vlsu -group vldu /ara_tb/dut/i_ara_soc/i_sy
 add wave -noupdate -group Ara -group vlsu -group vstu /ara_tb/dut/i_ara_soc/i_system/i_ara/i_vlsu/i_vstu/*
 add wave -noupdate -group Ara -group vlsu /ara_tb/dut/i_ara_soc/i_system/i_ara/i_vlsu/*
 
-add wave -noupdate -group Ara -group ring_buffer /ara_tb/dut/i_ara_soc/i_system/i_ara/i_ring_buffer/*
-add wave -noupdate -group Ara -group pre_decoder /ara_tb/dut/i_ara_soc/i_system/i_ara/i_pre_decoder/*
+
+add wave -noupdate -group Ara -group xif_handler /ara_tb/dut/i_ara_soc/i_system/i_ara/i_xif_handler/*
+add wave -noupdate -group Ara -group xif_handler -group ring_buffer /ara_tb/dut/i_ara_soc/i_system/i_ara/i_xif_handler/i_ring_buffer/*
+add wave -noupdate -group Ara -group xif_handler -group pre_decoder /ara_tb/dut/i_ara_soc/i_system/i_ara/i_xif_handler/i_pre_decoder/*

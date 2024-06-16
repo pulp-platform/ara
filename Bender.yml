@@ -53,6 +53,7 @@ sources:
     - hardware/src/vlsu/vstu.sv
     - hardware/src/ara_pre_decoder.sv
     - hardware/src/ara_ring_buffer.sv
+    - hardware/src/ara_xif_handler.sv
     # Level 2
     - hardware/src/lane/operand_queues_stage.sv
     - hardware/src/lane/valu.sv

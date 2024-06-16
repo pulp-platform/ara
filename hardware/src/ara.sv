@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: SHL-0.51
 //
 // Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+//         Frederic zur Bonsen <fzurbonsen@student.ethz.ch>
 // Description:
 // Ara's top-level, interfacing with Ariane.
 
@@ -170,177 +171,44 @@ module ara import ara_pkg::*; #(
     .csr_sync_o        (csr_sync         )
   );
 
-  // Second dispatcher to handle pre decoding
-  x_resp_t  core_v_xif_resp_decoder2;
-  x_req_t   core_v_xif_req_decoder2;
-  ara_pre_decoder #(
+ 
+  ara_xif_handler #(
     .NrLanes(NrLanes),
-    .x_req_t (x_req_t),
-    .x_resp_t (x_resp_t),
+    .HARTID_WIDTH(HARTID_WIDTH),
+    .ID_WIDTH(ID_WIDTH),
+    .readregflags_t(readregflags_t),
+    .writeregflags_t(writeregflags_t),
+    .x_req_t(x_req_t),
+    .x_resp_t(x_resp_t),
     .x_issue_req_t(x_issue_req_t),
     .x_issue_resp_t(x_issue_resp_t),
+    .x_result_t(x_result_t),
     .x_acc_resp_t(x_acc_resp_t),
-    .csr_sync_t (csr_sync_t)
-  ) i_pre_decoder (
-    .clk_i              (clk_i           ),
-    .rst_ni             (rst_ni          ),
-    // Interface with the sequencer
-    .ara_req_o          (),
-    .ara_req_valid_o    (),
-    .ara_req_ready_i    (core_v_xif_req_decoder2.issue_valid),
-    .ara_resp_i         ('0        ),
-    .ara_resp_valid_i   (1'b1  ),
-    .ara_idle_i         (ara_idle        ),
-    // Interface with the lanes
-    .vxsat_flag_i       (vxsat_flag      ),
-    .alu_vxrm_o         (),
-    .fflags_ex_i        (fflags_ex       ),
-    .fflags_ex_valid_i  (fflags_ex_valid ),
-    // Interface with the Vector Store Unit
-    .core_st_pending_o  (),
-    .load_complete_i    (load_complete   ),
-    .store_complete_i   (store_complete  ),
-    .store_pending_i    (store_pending   ),
+    .csr_sync_t(csr_sync_t),
+    .instr_pack_t(instr_pack_t)
+  ) i_xif_handler (
+    .clk_i                        (clk_i),
+    .rst_ni                       (rst_ni),
     // XIF
-    .core_v_xif_req_i  (core_v_xif_req_decoder2),
-    .core_v_xif_resp_o (core_v_xif_resp_decoder2),
-    // CSR sync
-    .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
-    .csr_sync_i        (csr_sync          ),
-    .csr_sync_o        (),
-    .csr_stall_o       (csr_stall         )
+    .core_v_xif_req_i             (core_v_xif_req_i),
+    .core_v_xif_resp_o            (core_v_xif_resp_o),
+    // <-> Ara Dispatcher
+    .instruction_o                (instruction_int),
+    .instruction_valid_o          (instruction_valid),
+    .instruction_ready_i          (instruction_ready),
+    .csr_sync_i                   (csr_sync),
+    .core_v_xif_resp_i            (core_v_xif_resp),
+    // Temp
+    .ara_idle                     (ara_idle),
+    .vxsat_flag                   (vxsat_flag),
+    .fflags_ex                    (fflags_ex),
+    .fflags_ex_valid              (fflags_ex_valid),
+    .load_complete                (load_complete),
+    .store_complete               (store_complete),
+    .store_pending                (store_pending)
   );
 
-  logic new_instr;
-  logic load_next_instr;
-  logic buffer_full;
 
-  assign new_instr = core_v_xif_req_i.issue_valid && core_v_xif_resp_o.issue_ready && core_v_xif_resp_o.issue_resp_accept && !csr_block;
-  assign load_next_instr = instruction_ready && instruction_valid;
-
-  // Issued instruction
-  instr_pack_t instr_to_buffer;
-  // Result information
-  logic [4:0] return_rd;
-  writeregflags_t we;
-
-  assign instr_to_buffer = '{core_v_xif_req_i.issue_req_instr, core_v_xif_req_i.issue_req_hartid, core_v_xif_req_i.issue_req_id,
-                             core_v_xif_resp_o.issue_resp_register_read, '0, '0, '0, fpnew_pkg::RNE, core_v_xif_resp_o.issue_resp_writeback};
-
-  // to keep track of the returned instructions
-  logic [ID_WIDTH-1:0]  result_id;
-
-  ara_ring_buffer #(
-    .ID_WIDTH(ID_WIDTH),
-    .DEPTH(4),
-    .readregflags_t(readregflags_t),
-    .dtype(instr_pack_t)
-    ) i_ring_buffer (
-      .clk_i                (clk_i                              ),
-      .rst_ni               (rst_ni                             ),
-      .full_o               (buffer_full                        ),
-      .empty_o              (                                   ),
-      .push_i               (new_instr                          ),
-      .commit_i             (core_v_xif_req_i.commit_valid && !core_v_xif_req_i.commit_commit_kill),
-      .register_valid_i     (core_v_xif_req_i.register_valid    ),
-      .flush_i              (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
-      .ready_i              (load_next_instr                  ),
-      .valid_o              (instruction_valid                  ),
-      .commit_id_i          (core_v_xif_req_i.commit_id         ),
-      .reg_id_i             (core_v_xif_req_i.register_id       ),
-      .id_i                 (instr_to_buffer.id                 ),
-      .data_i               (instr_to_buffer                    ),
-      .rs1_i                (core_v_xif_req_i.register_rs[0]    ),
-      .rs2_i                (core_v_xif_req_i.register_rs[1]    ),
-      .rs_valid_i           (core_v_xif_req_i.register_rs_valid ),
-      .frm_i                (core_v_xif_req_i.frm               ),
-      .data_o               (instruction_int                    )
-    );
-
-  always_comb begin
-    // Set default
-    core_v_xif_req_decoder2       = core_v_xif_req_i;
-    core_v_xif_resp_o             = core_v_xif_resp;
-    core_v_xif_resp_o.issue_ready = 1'b0;
-    csr_block                     = 1'b0;
-    csr_stall_d                   = csr_stall_q;
-    csr_instr_id_d                = csr_instr_id_q;
-
-    // Zero everything but the issue if
-    core_v_xif_req_decoder2.register_valid      = '0;
-    core_v_xif_req_decoder2.register_hartid     = '0;
-    core_v_xif_req_decoder2.register_id         = '0;
-    core_v_xif_req_decoder2.register_rs[0]      = '0;
-    core_v_xif_req_decoder2.register_rs[1]      = '0;
-    core_v_xif_req_decoder2.register_rs_valid   = '0;
-    core_v_xif_req_decoder2.commit_valid        = '0;
-    core_v_xif_req_decoder2.commit_id           = '0;
-    core_v_xif_req_decoder2.commit_hartid       = '0;
-    core_v_xif_req_decoder2.commit_commit_kill  = '0;
-    core_v_xif_req_decoder2.result_ready        = '0;
-    // core_v_xif_req_decoder2.frm                 = '0;
-    core_v_xif_req_decoder2.store_pending       = '0;
-    core_v_xif_req_decoder2.acc_cons_en         = '0;
-    core_v_xif_req_decoder2.inval_ready         = '0;
-
-    // Construct relevant inputs for pre decoder
-    core_v_xif_req_decoder2.register_valid    = core_v_xif_req_i.issue_valid;
-    core_v_xif_req_decoder2.result_ready      = core_v_xif_req_i.issue_valid;
-    core_v_xif_req_decoder2.issue_valid       = core_v_xif_req_i.issue_valid && !buffer_full;
-
-    // issue response
-    if (core_v_xif_req_i.issue_valid && !buffer_full && !(core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill))
-      core_v_xif_resp_o.issue_ready = 1'b1;
-    core_v_xif_resp_o.issue_resp_accept         = core_v_xif_resp_decoder2.issue_resp_accept;
-    core_v_xif_resp_o.issue_resp_writeback      = core_v_xif_resp_decoder2.issue_resp_writeback;
-    core_v_xif_resp_o.issue_resp_register_read  = core_v_xif_resp_decoder2.issue_resp_register_read;
-    core_v_xif_resp_o.issue_resp_is_vfp         = core_v_xif_resp_decoder2.issue_resp_is_vfp;
-
-    // If we predecode a vsetvl instruction we need to stall to wait for its response to correctly compute the CSR's in the predecoder
-    if (csr_stall) begin
-      csr_stall_d = 1'b1;
-      csr_instr_id_d = core_v_xif_req_i.issue_req_id;
-    end
-
-    // If we are waiting for a vsetvl to complete we need to mask the outpu of the pre decoder
-    if (csr_stall_q) begin
-      csr_block = 1'b1;
-      core_v_xif_resp_o.issue_ready = 1'b0;
-      // If the registers for the stalling instruction are passed we can resolve the stall of the pre decoder
-      if (core_v_xif_req_i.register_id == csr_instr_id_q && core_v_xif_req_i.register_valid) begin
-        core_v_xif_req_decoder2.register_valid  = 1'b1;
-        core_v_xif_req_decoder2.result_ready    = 1'b1;
-        core_v_xif_req_decoder2.issue_valid     = 1'b1;
-        core_v_xif_req_decoder2.register_rs[0]  = core_v_xif_req_i.register_rs[0];
-        core_v_xif_req_decoder2.register_rs[1]  = core_v_xif_req_i.register_rs[1];
-        // Mask decoded instruction
-        core_v_xif_req_decoder2.issue_req_instr = instruction_int.instr;
-        // Stop stalling the pre decoder
-        csr_stall_d = 1'b0;
-      end
-    end
-
-    if (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill) begin
-      csr_stall_d = 1'b0;
-    end
-
-    // register
-    core_v_xif_resp_o.register_ready = core_v_xif_req_i.register_valid;
-
-    // result
-    core_v_xif_resp_o.result_rd = instruction_int.instr[11:7];
-    core_v_xif_resp_o.result_we = instruction_int.is_writeback;
-  end
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin : csr_stall_fsm
-    if(~rst_ni) begin
-      csr_stall_q     <= 0;
-      csr_instr_id_q  <= 0;
-    end else begin
-      csr_stall_q     <= csr_stall_d;
-      csr_instr_id_q  <= csr_instr_id_d;
-    end
-  end
 
   /////////////////
   //  Sequencer  //
