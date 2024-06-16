@@ -63,29 +63,14 @@ module ara_xif_handler #(
     .clk_i              (clk_i           ),
     .rst_ni             (rst_ni          ),
     // Interface with the sequencer
-    .ara_req_o          (),
-    .ara_req_valid_o    (),
     .ara_req_ready_i    (core_v_xif_req_decoder2.issue_valid),
-    .ara_resp_i         ('0        ),
-    .ara_resp_valid_i   (1'b1  ),
     .ara_idle_i         (ara_idle        ),
-    // Interface with the lanes
-    .vxsat_flag_i       (vxsat_flag      ),
-    .alu_vxrm_o         (),
-    .fflags_ex_i        (fflags_ex       ),
-    .fflags_ex_valid_i  (fflags_ex_valid ),
-    // Interface with the Vector Store Unit
-    .core_st_pending_o  (),
-    .load_complete_i    (load_complete   ),
-    .store_complete_i   (store_complete  ),
-    .store_pending_i    (store_pending   ),
     // XIF
     .core_v_xif_req_i  (core_v_xif_req_decoder2),
     .core_v_xif_resp_o (core_v_xif_resp_decoder2),
     // CSR sync
     .sync_i            (core_v_xif_req_i.commit_valid && core_v_xif_req_i.commit_commit_kill),
     .csr_sync_i        (csr_sync_i          ),
-    .csr_sync_o        (),
     .csr_stall_o       (csr_stall         )
   );
 

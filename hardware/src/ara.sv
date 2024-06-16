@@ -171,7 +171,7 @@ module ara import ara_pkg::*; #(
     .csr_sync_o        (csr_sync         )
   );
 
- 
+
   ara_xif_handler #(
     .NrLanes(NrLanes),
     .HARTID_WIDTH(HARTID_WIDTH),

@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: SHL-0.51
 //
 // Author: Matheus Cavalcante <matheusd@iis.ee.ethz.ch>
+//         Frederic zur Bonsen <fzurbonsen@student.ethz.ch>
 // Description:
-// Ara's dispatcher interfaces Ariane's requests with the vector lanes.
-// It also acknowledges instructions back to Ariane, perhaps with a
-// response or an error message.
+// Ara's predecoder to detect legallity: this module needs to be slimmed and has unused functionality.
 
 module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
@@ -28,32 +27,19 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 clk_i,
     input  logic                                 rst_ni,
     // Interface with Ara's backend
-    output ara_req_t                             ara_req_o,
-    output logic                                 ara_req_valid_o,
     input  logic                                 ara_req_ready_i,
-    input  ara_resp_t                            ara_resp_i,
-    input  logic                                 ara_resp_valid_i,
     input  logic                                 ara_idle_i,
-    // Interface with the lanes
-    input  logic              [NrLanes-1:0][4:0] fflags_ex_i,
-    input  logic              [NrLanes-1:0]      fflags_ex_valid_i,
-    // Rounding mode is shared between all lanes
-    input  logic              [NrLanes-1:0]      vxsat_flag_i,
-    output vxrm_t             [NrLanes-1:0]      alu_vxrm_o,
-    // Interface with the Vector Store Unit
-    output logic                                 core_st_pending_o,
-    input  logic                                 load_complete_i,
-    input  logic                                 store_complete_i,
-    input  logic                                 store_pending_i,
     // XIF
     input  x_req_t                               core_v_xif_req_i,
     output x_resp_t                              core_v_xif_resp_o,
     // Dispatcher sync
     input  logic                                 sync_i,
     input  csr_sync_t                            csr_sync_i,
-    output csr_sync_t                            csr_sync_o,
     output logic                                 csr_stall_o
   );
+
+  ara_resp_t  ara_resp;
+  assign ara_resp = '0;
 
 
   import cf_math_pkg::idx_width;
@@ -120,18 +106,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
   ara_req_t ara_req_d;
   logic     ara_req_valid_d;
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      ara_req_o       <= '0;
-      ara_req_valid_o <= 1'b0;
-    end else begin
-      if (ara_req_ready_i) begin
-        ara_req_o       <= ara_req_d;
-        ara_req_valid_o <= ara_req_valid_d;
-      end
-    end
-  end
 
   /////////////
   //  State  //
@@ -219,12 +193,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
   // If the vslideup offset is greater than vl_q, the vslideup has no effects
   logic null_vslideup;
 
-  // Pipeline the VLSU's load and store complete signals, for timing reasons
-  logic load_complete_q;
-  logic store_complete_q;
-  `FF(load_complete_q, load_complete_i, 1'b0)
-  `FF(store_complete_q, store_complete_i, 1'b0)
-
   // NP2 Slide support
   logic is_stride_np2;
   logic [idx_width(idx_width(VLENB << 3)):0] sldu_popc;
@@ -260,7 +228,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
   logic inv_accept;
 
-  assign core_st_pending_o = core_v_xif_req_i.store_pending;
   assign core_v_xif_resp_o.issue_resp_accept = ~insn_error;
 
   assign core_v_xif_resp_o.issue_resp_writeback         = (is_rd || is_fd);
@@ -269,9 +236,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
   assign core_v_xif_resp_o.issue_resp_is_vfp            = is_vfp;
 
   assign core_v_xif_resp_o.error = acc_resp.error;
-  assign core_v_xif_resp_o.store_pending = acc_resp.store_pending;
-  assign core_v_xif_resp_o.store_complete = acc_resp.store_complete;
-  assign core_v_xif_resp_o.load_complete = acc_resp.load_complete;
   assign core_v_xif_resp_o.fflags = acc_resp.fflags;
   assign core_v_xif_resp_o.fflags_valid = acc_resp.fflags_valid;
   assign core_v_xif_resp_o.inval_valid = acc_resp.inval_valid;
@@ -329,10 +293,10 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     is_vfp = 1'b0;
 
     acc_resp       = '{
-      load_complete : load_zero_vl | load_complete_q,
-      store_complete : store_zero_vl | store_complete_q,
-      store_pending : store_pending_i,
-      fflags_valid  : |fflags_ex_valid_i,
+      load_complete : '0,
+      store_complete : '0,
+      store_pending : '0,
+      fflags_valid  : '0,
       default       : '0
     };
 
@@ -354,9 +318,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     ignore_zero_vl_check = 1'b0;
 
     // Saturation in any lane will raise vxsat flag
-    vxsat_d |= |vxsat_flag_i;
-    // Fixed-point rounding mode is applied to all lanes
-    for (int lane = 0; lane < NrLanes; lane++) alu_vxrm_o[lane] = vxrm_q;
+    vxsat_d |= '0;
     // Special states
     case (state_q)
       // Is Ara idle?
@@ -1952,13 +1914,13 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                       unique case (vtype_q.vsew)
                         EW16: begin
                           vfmvfs_result[63:16] = '1;
-                          vfmvfs_result[15:0]  = ara_resp_i.resp[15:0];
+                          vfmvfs_result[15:0]  = ara_resp.resp[15:0];
                         end
                         EW32: begin
                           vfmvfs_result[63:32] = '1;
-                          vfmvfs_result[31:0]  = ara_resp_i.resp[31:0];
+                          vfmvfs_result[31:0]  = ara_resp.resp[31:0];
                         end
-                        default: vfmvfs_result = ara_resp_i.resp;
+                        default: vfmvfs_result = ara_resp.resp;
                       endcase
                     end
                     6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
@@ -2715,11 +2677,11 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin
+            if (1'b1) begin
               ara_req_valid_d  = 1'b0;
               // In case of error, modify vstart
-              if (ara_resp_i.error)
-                vstart_d = ara_resp_i.error_vl;
+              if (ara_resp.error)
+                vstart_d = ara_resp.error_vl;
             end
           end
 
@@ -2919,11 +2881,11 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin
+            if (1'b1) begin
               ara_req_valid_d  = 1'b0;
               // If there is an error, change vstart
-              if (ara_resp_i.error)
-                vstart_d = ara_resp_i.error_vl;
+              if (ara_resp.error)
+                vstart_d = ara_resp.error_vl;
             end
           end
 
@@ -3223,9 +3185,6 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       endcase
     end
 
-    // The token must change at every new instruction
-    ara_req_d.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
-
     // csr sync
     if (sync_i) begin
       vstart_d  = csr_sync_i.vstart;
@@ -3235,12 +3194,4 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
       vxrm_d    = csr_sync_i.vxrm;
     end
   end: p_decoder
-
-
-  assign csr_sync_o.vstart = vstart_d;
-  assign csr_sync_o.vl     = vl_d;
-  assign csr_sync_o.vtype  = vtype_d;
-  assign csr_sync_o.vxsat  = vxsat_d;
-  assign csr_sync_o.vxrm   = vxrm_d;
-
 endmodule : ara_pre_decoder
