@@ -38,12 +38,9 @@ module ara import ara_pkg::*; #(
     input  logic              scan_data_i,
     output logic              scan_data_o,
 
-    // CSR input
-    input  logic              en_ld_st_translation_i,
-
     // Interface with Ariane
-    input  cva6_to_acc_t  acc_req_i,
-    output acc_to_cva6_t  acc_resp_o,
+    input  cva6_to_acc_t      acc_req_i,
+    output acc_to_cva6_t      acc_resp_o,
     // AXI interface
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i
@@ -94,8 +91,8 @@ module ara import ara_pkg::*; #(
     .clk_i             (clk_i           ),
     .rst_ni            (rst_ni          ),
     // Interface with Ariane
-    .acc_req_i         (acc_req_i       ),
-    .acc_resp_o        (acc_resp_o      ),
+    .acc_req_i         (acc_req_i.acc_req  ),
+    .acc_resp_o        (acc_resp_o.acc_resp),
     // Interface with the sequencer
     .ara_req_o         (ara_req         ),
     .ara_req_valid_o   (ara_req_valid   ),
@@ -364,15 +361,15 @@ module ara import ara_pkg::*; #(
     // CSR input
     .en_ld_st_translation_i     (acc_req_i.acc_mmu_en                                  ),
     // Interface with CVA6's sv39 MMU
-    .mmu_misaligned_ex_o        (acc_resp_o.mmu_misaligned_ex_o                        ),
-    .mmu_req_o                  (acc_resp_o.mmu_req_o                                  ),
-    .mmu_vaddr_o                (acc_resp_o.mmu_vaddr_o                                ),
-    .mmu_is_store_o             (acc_resp_o.mmu_is_store_o                             ),
-    .mmu_dtlb_hit_i             (acc_req_i.mmu_dtlb_hit_i                              ),
-    .mmu_dtlb_ppn_i             (acc_req_i.mmu_dtlb_ppn_i                              ),
-    .mmu_valid_i                (acc_req_i.mmu_valid_i                                 ),
-    .mmu_paddr_i                (acc_req_i.mmu_paddr_i                                 ),
-    .mmu_exception_i            (acc_req_i.mmu_exception_i                             ),
+    .mmu_misaligned_ex_o        (acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex            ),
+    .mmu_req_o                  (acc_resp_o.acc_mmu_req.acc_mmu_req                      ),
+    .mmu_vaddr_o                (acc_resp_o.acc_mmu_req.acc_mmu_vaddr                    ),
+    .mmu_is_store_o             (acc_resp_o.acc_mmu_req.acc_mmu_is_store                 ),
+    .mmu_dtlb_hit_i             (acc_req_i.acc_mmu_resp.acc_mmu_dtlb_hit                 ),
+    .mmu_dtlb_ppn_i             (acc_req_i.acc_mmu_resp.acc_mmu_dtlb_ppn                 ),
+    .mmu_valid_i                (acc_req_i.acc_mmu_resp.acc_mmu_valid                    ),
+    .mmu_paddr_i                (acc_req_i.acc_mmu_resp.acc_mmu_paddr                    ),
+    .mmu_exception_i            (acc_req_i.acc_mmu_resp.acc_mmu_exception                ),
     // Load unit
     .ldu_result_req_o           (ldu_result_req                                        ),
     .ldu_result_addr_o          (ldu_result_addr                                       ),

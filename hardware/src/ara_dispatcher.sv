@@ -21,8 +21,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                 clk_i,
     input  logic                                 rst_ni,
     // Interfaces with Ariane
-    input  cva6_to_acc_t                         acc_req_i,
-    output acc_to_cva6_t                         acc_resp_o,
+    input  accelerator_req_t                     acc_req_i,
+    output accelerator_resp_t                    acc_resp_o,
     // Interface with Ara's backend
     output ara_req_t                             ara_req_o,
     output logic                                 ara_req_valid_o,
