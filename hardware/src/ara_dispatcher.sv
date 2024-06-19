@@ -3150,6 +3150,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.exception.tval  = acc_req_i.insn;
       end
 
+      // Reset vstart to zero for successful vector instructions
+      // Corner cases:
+      // * vstart exception reporting, e.g., VLSU, is handled above
+      // * CSR operations are not considered vector instructions
+      if ( acc_resp_o.resp_valid
+            & !acc_resp_o.exception.valid
+            & (acc_req_i.insn.itype.opcode != riscv::OpcodeSystem)
+          ) begin
+        csr_vstart_d = '0;
+      end
+
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
       if ( ara_req_valid_d && !acc_resp_o.exception.valid ) begin
