@@ -1259,7 +1259,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     if (ara_resp_valid_i) begin
                       acc_resp_o.req_ready   = 1'b1;
                       acc_resp_o.result = ara_resp_i.resp;
-                      acc_resp_o.error  = ara_resp_i.error;
+                      acc_resp_o.exception  = ara_resp_i.exception;
                       acc_resp_o.resp_valid  = 1'b1;
                       ara_req_valid_d   = 1'b0;
                     end
@@ -1933,7 +1933,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       if (ara_resp_valid_i) begin
                         acc_resp_o.req_ready   = 1'b1;
                         acc_resp_o.result = vfmvfs_result;
-                        acc_resp_o.error  = ara_resp_i.error;
+                        acc_resp_o.exception  = ara_resp_i.exception;
                         acc_resp_o.resp_valid  = 1'b1;
                         ara_req_valid_d   = 1'b0;
                       end
@@ -2693,12 +2693,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Wait until the back-end answers to acknowledge those instructions
             if (ara_resp_valid_i) begin
               acc_resp_o.req_ready  = 1'b1;
-              acc_resp_o.error = ara_resp_i.error;
+              acc_resp_o.exception  = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
-              // In case of error, modify vstart
-              if (ara_resp_i.error)
-                csr_vstart_d = ara_resp_i.error_vl;
+              // In case of exception, modify vstart
+              if ( ara_resp_i.exception.valid ) begin
+                csr_vstart_d = ara_resp_i.exception_vstart;
+              end
             end
           end
 
@@ -2891,7 +2892,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
               endcase
 
-              illegal_insn     = 1'b0;
               acc_resp_o.req_ready  = 1'b0;
               acc_resp_o.resp_valid = 1'b0;
               ara_req_valid_d  = 1'b1;
@@ -2900,12 +2900,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Wait until the back-end answers to acknowledge those instructions
             if (ara_resp_valid_i) begin
               acc_resp_o.req_ready  = 1'b1;
-              acc_resp_o.error = ara_resp_i.error;
+              acc_resp_o.exception  = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
               ara_req_valid_d  = 1'b0;
-              // If there is an error, change vstart
-              if (ara_resp_i.error)
-                csr_vstart_d = ara_resp_i.error_vl;
+              // In case of exception, modify vstart
+              if ( ara_resp_i.exception.valid ) begin
+                csr_vstart_d = ara_resp_i.exception_vstart;
+              end
             end
           end
 
@@ -3164,7 +3165,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
-      if (ara_req_valid_d && !acc_resp_o.error) begin
+      if ( ara_req_valid_d && !acc_resp_o.exception.valid ) begin
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
@@ -3267,7 +3268,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
     // e.g. whole vector memory operations / whole vector register move
     if (is_decoding && (csr_vl_q == '0 || null_vslideup) && !is_config &&
-      !ignore_zero_vl_check && !acc_resp_o.error) begin
+      !ignore_zero_vl_check && !acc_resp_o.exception.valid) begin
       // If we are acknowledging a memory operation, we must tell Ariane that the memory
       // operation was resolved (to decrement its pending load/store counter)
       // This can collide with the same signal from the vector load/store unit, so we must

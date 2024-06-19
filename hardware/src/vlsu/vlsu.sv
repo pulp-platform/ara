@@ -42,8 +42,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic      [1:0]         pe_req_ready_o,         // Load (0) and Store (1) units
     output pe_resp_t  [1:0]         pe_resp_o,              // Load (0) and Store (1) units
     output logic                    addrgen_ack_o,
-    output logic                    addrgen_error_o,
-    output vlen_t                   addrgen_error_vl_o,
+    output ariane_pkg::exception_t  addrgen_exception_o,
+    output vlen_t                   addrgen_exception_vstart_o,
     // Interface with the lanes
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
@@ -68,6 +68,11 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      [NrLanes-1:0] ldu_result_gnt_i,
     input  logic      [NrLanes-1:0] ldu_result_final_gnt_i
   );
+
+  logic load_complete, store_complete;
+  logic addrgen_exception_load, addrgen_exception_store;
+  assign load_complete_o  = load_complete  | addrgen_exception_load;
+  assign store_complete_o = store_complete | addrgen_exception_store;
 
   ///////////////////
   //  Definitions  //
@@ -133,8 +138,10 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_valid_i             (pe_req_valid_i             ),
     .pe_vinsn_running_i         (pe_vinsn_running_i         ),
     .addrgen_ack_o              (addrgen_ack_o              ),
-    .addrgen_error_o            (addrgen_error_o            ),
-    .addrgen_error_vl_o         (addrgen_error_vl_o         ),
+    .addrgen_exception_o        ( addrgen_exception_o       ),
+    .addrgen_exception_vstart_o     ( addrgen_exception_vstart_o    ),
+    .addrgen_exception_load_o   ( addrgen_exception_load    ),
+    .addrgen_exception_store_o  ( addrgen_exception_store   ),
     // Interface with the lanes
     .addrgen_operand_i          (addrgen_operand_i          ),
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),
@@ -165,7 +172,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_r_valid_i          (axi_resp.r_valid          ),
     .axi_r_ready_o          (axi_req.r_ready           ),
     // Interface with the dispatcher
-    .load_complete_o        (load_complete_o           ),
+    .load_complete_o        (load_complete             ),
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                  ),
     .pe_req_valid_i         (pe_req_valid_i            ),
@@ -213,7 +220,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_b_ready_o          (axi_req.b_ready            ),
     // Interface with the dispatcher
     .store_pending_o        (store_pending_o            ),
-    .store_complete_o       (store_complete_o           ),
+    .store_complete_o       (store_complete             ),
     // Interface with the main sequencer
     .pe_req_i               (pe_req_i                   ),
     .pe_req_valid_i         (pe_req_valid_i             ),
