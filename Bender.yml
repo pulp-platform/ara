@@ -10,7 +10,7 @@ package:
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.39.1                               }
   common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1                               }
-  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: ee89dcc00e6c1a1f4cf97ee1835e950fcfdeebb5 } # pulp-v1
+  cva6:               { git: "https://github.com/mp-17/cva6.git",                       rev: ea86d0ac5fe23ac7889cf8a8b8df7a8c0813bfad } # rebase/pulp-v1-os
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13                               }
   apb:                { git: "https://github.com/pulp-platform/apb.git",                version: 0.2.4                                }
 
