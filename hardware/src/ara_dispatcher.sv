@@ -2910,223 +2910,237 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           //  CSR Reads and Writes  //
           ////////////////////////////
 
-          riscv::OpcodeSystem: begin : OpcodeSystem
-            // These always respond at the same cycle
-            acc_resp_o.resp_valid = 1'b1;
-            is_config        = 1'b1;
+          riscv::OpcodeSystem: begin
+            // CSR ops have semantic dependency from vector instrucitons.
+            // Therefore, Ara must be idle before performing any CSR operation.
 
-            unique case (acc_req_i.insn.itype.funct3)
-              3'b001: begin // csrrw
-                // Decode the CSR.
-                case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
-                  // Only vstart can be written with CSR instructions.
-                  riscv::CSR_VSTART: begin
-                    csr_vstart_d          = acc_req_i.rs1;
-                    acc_resp_o.result = csr_vstart_q;
-                  end
-                  riscv::CSR_VXRM: begin
-                    csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[16:15]);
-                    acc_resp_o.result = vlen_t'(csr_vxrm_q);
-                  end
-                  riscv::CSR_VXSAT: begin
-                    csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[15]);
-                    acc_resp_o.result = vlen_t'(csr_vxsat_q);
-                  end
-                  riscv::CSR_VCSR: begin
-                    csr_vxrm_d            = vxrm_t'(  acc_req_i.rs1[17:16]  );
-                    csr_vxsat_d           = vxsat_e'( acc_req_i.rs1[15]    );
-                    acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
-                  end
-                  default: illegal_insn = 1'b1;
-                endcase
-              end
-              3'b010: begin // csrrs
-                // Decode the CSR.
-                case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
-                  riscv::CSR_VSTART: begin
-                    csr_vstart_d          = csr_vstart_q | vlen_t'(acc_req_i.rs1);
-                    acc_resp_o.result = csr_vstart_q;
-                  end
-                  riscv::CSR_VTYPE: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VL: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VLENB: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VXRM: begin
-                    csr_vxrm_d            = csr_vxrm_q | vxrm_t'(acc_req_i.rs1[16:15]);
-                    acc_resp_o.result = vlen_t'(csr_vxrm_q);
-                  end
-                  riscv::CSR_VXSAT: begin
-                    csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[15]);
-                    acc_resp_o.result = vlen_t'(csr_vxsat_q);
-                  end
-                  riscv::CSR_VCSR: begin
-                    csr_vxrm_d            = csr_vxrm_q  | vxrm_t'(acc_req_i.rs1[17:16]);
-                    csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[15]);
-                    acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
-                  end
-                  default: illegal_insn = 1'b1;
-                endcase
-              end
-              3'b011: begin // csrrc
-                // Decode the CSR.
-                case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
-                  riscv::CSR_VSTART: begin
-                    csr_vstart_d          = csr_vstart_q & ~vlen_t'(acc_req_i.rs1);
-                    acc_resp_o.result = csr_vstart_q;
-                  end
-                  riscv::CSR_VTYPE: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VL: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VLENB: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VXSAT: begin
-                    csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = csr_vxsat_q;
-                  end
-                  riscv::CSR_VXRM: begin
-                    csr_vxrm_d           = csr_vxrm_q & ~vxsat_e'(acc_req_i.rs1[1:0]);
-                    acc_resp_o.result = csr_vxrm_q;
-                  end
-                  riscv::CSR_VCSR: begin
-                    csr_vxrm_d            = csr_vxrm_q  & ~vxsat_e'(acc_req_i.rs1[2:1]);
-                    csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
-                  end
-                  default: illegal_insn = 1'b1;
-                endcase
-              end
-              3'b101: begin // csrrwi
-                // Decode the CSR.
-                case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
-                  // Only vstart can be written with CSR instructions.
-                  riscv::CSR_VSTART: begin
-                    csr_vstart_d          = vlen_t'(acc_req_i.rs1);
-                    acc_resp_o.result = csr_vstart_q;
-                  end
-                  riscv::CSR_VXRM: begin
-                    csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[1:0]);
-                    acc_resp_o.result = vlen_t'(csr_vxrm_q);
-                  end
-                  riscv::CSR_VXSAT: begin
-                    csr_vxsat_d           = acc_req_i.rs1[0];
-                    acc_resp_o.result = csr_vxsat_q;
-                  end
-                  riscv::CSR_VCSR: begin
-                    // logic [19:15] rs1; So, LSB is [15]
-                    csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[2:1]);
-                    csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = csr_vxsat_q;
-                  end
-                  default: illegal_insn = 1'b1;
-                endcase
-              end
-              3'b110: begin // csrrsi
-                // Decode the CSR.
-                case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
-                  riscv::CSR_VSTART: begin
-                    csr_vstart_d          = csr_vstart_q | vlen_t'(acc_req_i.rs1);
-                    acc_resp_o.result = csr_vstart_q;
-                  end
-                  riscv::CSR_VTYPE: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VL: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VLENB: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VXSAT: begin
-                    // logic [19:15] rs1; So, LSB is [15]
-                    csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = csr_vxsat_q;
-                  end
-                  riscv::CSR_VXRM: begin
-                    // logic [19:15] rs1; So, LSB is [15]
-                    csr_vxrm_d           = csr_vxrm_q | vxrm_t'(acc_req_i.rs1[1:0]);
-                    acc_resp_o.result = csr_vxrm_q;
-                  end
-                  riscv::CSR_VCSR: begin
-                    // logic [19:15] rs1; So, LSB is [15]
-                    csr_vxrm_d            = csr_vxrm_q  |  vxrm_t'(acc_req_i.rs1[2:1]);
-                    csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = { csr_vxrm_q,  csr_vxsat_q };
-                  end
-                  default: illegal_insn = 1'b1;
-                endcase
-              end
-              3'b111: begin // csrrci
-                // Decode the CSR.
-                unique case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
-                  riscv::CSR_VSTART: begin
-                    csr_vstart_d          = csr_vstart_q & ~vlen_t'(acc_req_i.rs1);
-                    acc_resp_o.result = csr_vstart_q;
-                  end
-                  riscv::CSR_VTYPE: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VL: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VLENB: begin
-                    // Only reads are allowed
-                    if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
-                    else illegal_insn = 1'b1;
-                  end
-                  riscv::CSR_VXSAT: begin
-                    csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = csr_vxsat_q;
-                  end
-                  riscv::CSR_VXRM: begin
-                    csr_vxrm_d           = csr_vxrm_q & ~vxsat_e'(acc_req_i.rs1[1:0]);
-                    acc_resp_o.result = csr_vxrm_q;
-                  end
-                  riscv::CSR_VCSR: begin
-                    // logic [19:15] rs1; So, LSB is [15]
-                    csr_vxrm_d           = csr_vxrm_q  &  ~vxrm_t'(acc_req_i.rs1[2:1]);
-                    csr_vxsat_d          = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
-                    acc_resp_o.result = { csr_vxrm_q,  csr_vxsat_q };
-                  end
-                  default: illegal_insn= 1'b1;
-                endcase
-              end
-              default: begin
-                // Trigger an illegal instruction
-                illegal_insn = 1'b1;
-              end
-            endcase // acc_req_i.insn.itype.funct3
-          end : OpcodeSystem
+            // Stall if there is any pending vector instruction
+            // NOTE: This is overconstraining. Not all CSR ops actually need to stall if a vector instruction is pending.
+            //       E.g., CSR vl is never updated by instructions past ara_dispatcher, except for "unit-stride fault-only-first loads". Reading vl would be safe otherwise.
+            //       E.g., CSR vlenb is a design-constant parameter, reading is always safe.
+            //       E.g., CSRs vxrm and vxsat have no influence on-non fixed-point instructions, it could be read and written safely when no fixed-point operation is running.
+            //       By better analyzing the spec, more of optimizations of such can be made. For the sake of simplicity, the current implementation treats CSR ops as one block.
+            if ( ara_idle_i ) begin
+              // These always respond at the same cycle
+              acc_resp_o.resp_valid = 1'b1;
+              is_config        = 1'b1;
+
+              unique case (acc_req_i.insn.itype.funct3)
+                3'b001: begin // csrrw
+                  // Decode the CSR.
+                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                    // Only vstart can be written with CSR instructions.
+                    riscv::CSR_VSTART: begin
+                      csr_vstart_d          = acc_req_i.rs1;
+                      acc_resp_o.result = csr_vstart_q;
+                    end
+                    riscv::CSR_VXRM: begin
+                      csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[16:15]);
+                      acc_resp_o.result = vlen_t'(csr_vxrm_q);
+                    end
+                    riscv::CSR_VXSAT: begin
+                      csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[15]);
+                      acc_resp_o.result = vlen_t'(csr_vxsat_q);
+                    end
+                    riscv::CSR_VCSR: begin
+                      csr_vxrm_d            = vxrm_t'(  acc_req_i.rs1[17:16]  );
+                      csr_vxsat_d           = vxsat_e'( acc_req_i.rs1[15]    );
+                      acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
+                    end
+                    default: illegal_insn = 1'b1;
+                  endcase
+                end
+                3'b010: begin // csrrs
+                  // Decode the CSR.
+                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                    riscv::CSR_VSTART: begin
+                      csr_vstart_d          = csr_vstart_q | vlen_t'(acc_req_i.rs1);
+                      acc_resp_o.result = csr_vstart_q;
+                    end
+                    riscv::CSR_VTYPE: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VL: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VLENB: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VXRM: begin
+                      csr_vxrm_d            = csr_vxrm_q | vxrm_t'(acc_req_i.rs1[16:15]);
+                      acc_resp_o.result = vlen_t'(csr_vxrm_q);
+                    end
+                    riscv::CSR_VXSAT: begin
+                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[15]);
+                      acc_resp_o.result = vlen_t'(csr_vxsat_q);
+                    end
+                    riscv::CSR_VCSR: begin
+                      csr_vxrm_d            = csr_vxrm_q  | vxrm_t'(acc_req_i.rs1[17:16]);
+                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[15]);
+                      acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
+                    end
+                    default: illegal_insn = 1'b1;
+                  endcase
+                end
+                3'b011: begin // csrrc
+                  // Decode the CSR.
+                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                    riscv::CSR_VSTART: begin
+                      csr_vstart_d          = csr_vstart_q & ~vlen_t'(acc_req_i.rs1);
+                      acc_resp_o.result = csr_vstart_q;
+                    end
+                    riscv::CSR_VTYPE: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VL: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VLENB: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VXSAT: begin
+                      csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = csr_vxsat_q;
+                    end
+                    riscv::CSR_VXRM: begin
+                      csr_vxrm_d           = csr_vxrm_q & ~vxsat_e'(acc_req_i.rs1[1:0]);
+                      acc_resp_o.result = csr_vxrm_q;
+                    end
+                    riscv::CSR_VCSR: begin
+                      csr_vxrm_d            = csr_vxrm_q  & ~vxsat_e'(acc_req_i.rs1[2:1]);
+                      csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
+                    end
+                    default: illegal_insn = 1'b1;
+                  endcase
+                end
+                3'b101: begin // csrrwi
+                  // Decode the CSR.
+                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                    // Only vstart can be written with CSR instructions.
+                    riscv::CSR_VSTART: begin
+                      csr_vstart_d          = vlen_t'(acc_req_i.rs1);
+                      acc_resp_o.result = csr_vstart_q;
+                    end
+                    riscv::CSR_VXRM: begin
+                      csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[1:0]);
+                      acc_resp_o.result = vlen_t'(csr_vxrm_q);
+                    end
+                    riscv::CSR_VXSAT: begin
+                      csr_vxsat_d           = acc_req_i.rs1[0];
+                      acc_resp_o.result = csr_vxsat_q;
+                    end
+                    riscv::CSR_VCSR: begin
+                      // logic [19:15] rs1; So, LSB is [15]
+                      csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[2:1]);
+                      csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = csr_vxsat_q;
+                    end
+                    default: illegal_insn = 1'b1;
+                  endcase
+                end
+                3'b110: begin // csrrsi
+                  // Decode the CSR.
+                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                    riscv::CSR_VSTART: begin
+                      csr_vstart_d          = csr_vstart_q | vlen_t'(acc_req_i.rs1);
+                      acc_resp_o.result = csr_vstart_q;
+                    end
+                    riscv::CSR_VTYPE: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VL: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VLENB: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VXSAT: begin
+                      // logic [19:15] rs1; So, LSB is [15]
+                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = csr_vxsat_q;
+                    end
+                    riscv::CSR_VXRM: begin
+                      // logic [19:15] rs1; So, LSB is [15]
+                      csr_vxrm_d           = csr_vxrm_q | vxrm_t'(acc_req_i.rs1[1:0]);
+                      acc_resp_o.result = csr_vxrm_q;
+                    end
+                    riscv::CSR_VCSR: begin
+                      // logic [19:15] rs1; So, LSB is [15]
+                      csr_vxrm_d            = csr_vxrm_q  |  vxrm_t'(acc_req_i.rs1[2:1]);
+                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = { csr_vxrm_q,  csr_vxsat_q };
+                    end
+                    default: illegal_insn = 1'b1;
+                  endcase
+                end
+                3'b111: begin // csrrci
+                  // Decode the CSR.
+                  unique case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                    riscv::CSR_VSTART: begin
+                      csr_vstart_d          = csr_vstart_q & ~vlen_t'(acc_req_i.rs1);
+                      acc_resp_o.result = csr_vstart_q;
+                    end
+                    riscv::CSR_VTYPE: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VL: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VLENB: begin
+                      // Only reads are allowed
+                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      else illegal_insn = 1'b1;
+                    end
+                    riscv::CSR_VXSAT: begin
+                      csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = csr_vxsat_q;
+                    end
+                    riscv::CSR_VXRM: begin
+                      csr_vxrm_d           = csr_vxrm_q & ~vxsat_e'(acc_req_i.rs1[1:0]);
+                      acc_resp_o.result = csr_vxrm_q;
+                    end
+                    riscv::CSR_VCSR: begin
+                      // logic [19:15] rs1; So, LSB is [15]
+                      csr_vxrm_d           = csr_vxrm_q  &  ~vxrm_t'(acc_req_i.rs1[2:1]);
+                      csr_vxsat_d          = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
+                      acc_resp_o.result = { csr_vxrm_q,  csr_vxsat_q };
+                    end
+                    default: illegal_insn= 1'b1;
+                  endcase
+                end
+                default: begin
+                  // Trigger an illegal instruction
+                  illegal_insn = 1'b1;
+                end
+              endcase // acc_req_i.insn.itype.funct3
+            end
+            else begin
+              acc_resp_o.req_ready = 1'b0;
+            end
+          end
 
           default: begin
             // Trigger an illegal instruction
