@@ -271,8 +271,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     null_vslideup = 1'b0;
 
-    is_decoding = 1'b0;
-    in_lane_op  = 1'b0;
+    is_decoding     = 1'b0;
+    in_lane_op      = 1'b0;
 
     acc_resp_o       = '{
       trans_id      : acc_req_i.trans_id,
@@ -331,6 +331,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         rs_lmul_cnt_d       = rs_lmul_cnt_q;
         rs_lmul_cnt_limit_d = rs_lmul_cnt_limit_q;
         rs_mask_request_d   = 1'b0;
+
+        // vstart is always 0 for a reshuffle
+        ara_req_d.vstart = '0;
 
         // These generate a reshuffle request to Ara's backend
         // When LMUL > 1, not all the regs that compose a large
@@ -3147,17 +3150,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.exception.tval  = acc_req_i.insn;
       end
 
-      // Reset vstart to zero for successful vector instructions
-      // Corner cases:
-      // * vstart exception reporting, e.g., VLSU, is handled above
-      // * CSR operations are not considered vector instructions
-      if ( acc_resp_o.resp_valid
-            & !acc_resp_o.exception.valid
-            & (acc_req_i.insn.itype.opcode != riscv::OpcodeSystem)
-          ) begin
-        csr_vstart_d = '0;
-      end
-
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
       if ( ara_req_valid_d && !acc_resp_o.exception.valid ) begin
@@ -3256,7 +3248,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
     // e.g. whole vector memory operations / whole vector register move
-    if (is_decoding && (csr_vl_q == '0 || null_vslideup) && !is_config &&
+    if (is_decoding && (csr_vstart_q >= csr_vl_q || null_vslideup) && !is_config &&
       !ignore_zero_vl_check && !acc_resp_o.exception.valid) begin
       // If we are acknowledging a memory operation, we must tell Ariane that the memory
       // operation was resolved (to decrement its pending load/store counter)
@@ -3267,6 +3259,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       ara_req_valid_d  = 1'b0;
       load_zero_vl     = is_vload;
       store_zero_vl    = is_vstore;
+    end
+
+    // Reset vstart to zero for successful vector instructions
+    // Corner cases:
+    // * vstart exception reporting, e.g., VLSU, is handled above
+    // * CSR operations are not considered vector instructions
+    if ( acc_resp_o.resp_valid
+          & !acc_resp_o.exception.valid
+          & (acc_req_i.insn.itype.opcode != riscv::OpcodeSystem)
+        ) begin
+      csr_vstart_d = '0;
     end
 
     acc_resp_o.load_complete  = load_zero_vl  | load_complete_q;
