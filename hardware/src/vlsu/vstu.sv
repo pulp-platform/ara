@@ -47,6 +47,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
+    input  logic                           addrgen_exception_valid_i,
     output logic                           axi_addrgen_req_ready_o,
     // Interface with the lanes
     input  elen_t            [NrLanes-1:0] stu_operand_i,

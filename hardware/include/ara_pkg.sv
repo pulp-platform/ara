@@ -157,17 +157,17 @@ package ara_pkg;
   } ara_op_e;
 
   // Return true if op is a load operation
-  function automatic is_load(ara_op_e op);
+  function automatic logic is_load(ara_op_e op);
     is_load = op inside {[VLE:VLXE]};
   endfunction : is_load
 
   // Return true if op is a store operation
-  function automatic is_store(ara_op_e op);
+  function automatic logic is_store(ara_op_e op);
     is_store = op inside {[VSE:VSXE]};
   endfunction : is_store
 
   // Return true of op is either VCPOP or VFIRST
-  function automatic vd_scalar(ara_op_e op);
+  function automatic logic vd_scalar(ara_op_e op);
     vd_scalar = op inside {[VCPOP:VFIRST]};
   endfunction : vd_scalar
 

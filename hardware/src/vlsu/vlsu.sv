@@ -59,6 +59,25 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      [NrLanes-1:0] mask_valid_i,
     output logic                    vldu_mask_ready_o,
     output logic                    vstu_mask_ready_o,
+    
+    // CSR input
+    input  logic                    en_ld_st_translation_i,
+
+    // Interface with CVA6's sv39 MMU
+    // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
+    output  ariane_pkg::exception_t        mmu_misaligned_ex_o,
+    output  logic                          mmu_req_o,        // request address translation
+    output  logic [riscv::VLEN-1:0]        mmu_vaddr_o,      // virtual address out
+    output  logic                          mmu_is_store_o,   // the translation is requested by a store
+    // if we need to walk the page table we can't grant in the same cycle
+    // Cycle 0
+    input logic                            mmu_dtlb_hit_i,   // sent in the same cycle as the request if translation hits in the DTLB
+    input logic [riscv::PPNW-1:0]          mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
+    // Cycle 1
+    input logic                            mmu_valid_i,      // translation is valid
+    input logic [riscv::PLEN-1:0]          mmu_paddr_i,      // translated address
+    input ariane_pkg::exception_t          mmu_exception_i,  // address translation threw an exception
+
     // Results
     output logic      [NrLanes-1:0] ldu_result_req_o,
     output vid_t      [NrLanes-1:0] ldu_result_id_o,
@@ -151,7 +170,19 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_addrgen_req_o          (axi_addrgen_req            ),
     .axi_addrgen_req_valid_o    (axi_addrgen_req_valid      ),
     .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready  ),
-    .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready  )
+    .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready  ),
+
+    // CSR input    
+    .en_ld_st_translation_i,
+    .mmu_misaligned_ex_o,
+    .mmu_req_o,        
+    .mmu_vaddr_o,      
+    .mmu_is_store_o,   
+    .mmu_dtlb_hit_i,   
+    .mmu_dtlb_ppn_i,   
+    .mmu_valid_i,
+    .mmu_paddr_i,   
+    .mmu_exception_i
   );
 
   ////////////////////////
@@ -180,6 +211,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_ready_o         (pe_req_ready_o[OffsetLoad]),
     .pe_resp_o              (pe_resp_o[OffsetLoad]     ),
     // Interface with the address generator
+    .addrgen_exception_valid_i ( addrgen_ack_o & addrgen_exception_o.valid ),
     .axi_addrgen_req_i      (axi_addrgen_req           ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid     ),
     .axi_addrgen_req_ready_o(ldu_axi_addrgen_req_ready ),
@@ -228,6 +260,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_ready_o         (pe_req_ready_o[OffsetStore]),
     .pe_resp_o              (pe_resp_o[OffsetStore]     ),
     // Interface with the address generator
+    .addrgen_exception_valid_i ( addrgen_ack_o & addrgen_exception_o.valid ),
     .axi_addrgen_req_i      (axi_addrgen_req            ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid      ),
     .axi_addrgen_req_ready_o(stu_axi_addrgen_req_ready  ),

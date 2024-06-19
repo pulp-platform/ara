@@ -37,6 +37,25 @@ module ara import ara_pkg::*; #(
     input  logic              scan_enable_i,
     input  logic              scan_data_i,
     output logic              scan_data_o,
+    
+    // CSR input
+    input  logic              en_ld_st_translation_i,
+    
+    // Interface with CVA6's sv39 MMU
+    // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
+    output  ariane_pkg::exception_t        mmu_misaligned_ex_o,
+    output  logic                          mmu_req_o,        // request address translation
+    output  logic [riscv::VLEN-1:0]        mmu_vaddr_o,      // virtual address out
+    output  logic                          mmu_is_store_o,   // the translation is requested by a store
+    // if we need to walk the page table we can't grant in the same cycle
+    // Cycle 0
+    input logic                            mmu_dtlb_hit_i,   // sent in the same cycle as the request if translation hits in the DTLB
+    input logic [riscv::PPNW-1:0]          mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
+    // Cycle 1
+    input logic                            mmu_valid_i,      // translation is valid
+    input logic [riscv::PLEN-1:0]          mmu_paddr_i,      // translated address
+    input ariane_pkg::exception_t          mmu_exception_i,  // address translation threw an exception
+
     // Interface with Ariane
     input  accelerator_req_t  acc_req_i,
     output accelerator_resp_t acc_resp_o,
@@ -354,6 +373,18 @@ module ara import ara_pkg::*; #(
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),
     .addrgen_operand_valid_i    (sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o    (addrgen_operand_ready                                 ),
+    // CSR input    
+    .en_ld_st_translation_i,
+    // Interface with CVA6's sv39 MMU
+    .mmu_misaligned_ex_o   ,
+    .mmu_req_o             ,
+    .mmu_vaddr_o           ,
+    .mmu_is_store_o        ,
+    .mmu_dtlb_hit_i        ,
+    .mmu_dtlb_ppn_i        ,
+    .mmu_valid_i           ,
+    .mmu_paddr_i           ,
+    .mmu_exception_i       ,
     // Load unit
     .ldu_result_req_o           (ldu_result_req                                        ),
     .ldu_result_addr_o          (ldu_result_addr                                       ),
