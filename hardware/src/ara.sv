@@ -123,8 +123,8 @@ module ara import ara_pkg::*; #(
   pe_resp_t          [NrPEs-1:0]   pe_resp;
   // Interface with the address generator
   logic                            addrgen_ack;
-  logic                            addrgen_error;
-  vlen_t                           addrgen_error_vl;
+  ariane_pkg::exception_t          addrgen_exception;
+  vlen_t                           addrgen_exception_vstart;
   logic              [NrLanes-1:0] alu_vinsn_done;
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
@@ -171,8 +171,8 @@ module ara import ara_pkg::*; #(
     .pe_scalar_resp_ready_o(pe_scalar_resp_ready     ),
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack              ),
-    .addrgen_error_i       (addrgen_error            ),
-    .addrgen_error_vl_i    (addrgen_error_vl         )
+    .addrgen_exception_i   (addrgen_exception        ),
+    .addrgen_exception_vstart_i(addrgen_exception_vstart     )
   );
 
   // Scalar move support
@@ -337,8 +337,8 @@ module ara import ara_pkg::*; #(
     .pe_req_ready_o             (pe_req_ready[NrLanes+OffsetStore : NrLanes+OffsetLoad]),
     .pe_resp_o                  (pe_resp[NrLanes+OffsetStore : NrLanes+OffsetLoad]     ),
     .addrgen_ack_o              (addrgen_ack                                           ),
-    .addrgen_error_o            (addrgen_error                                         ),
-    .addrgen_error_vl_o         (addrgen_error_vl                                      ),
+    .addrgen_exception_o        (addrgen_exception                                     ),
+    .addrgen_exception_vstart_o     (addrgen_exception_vstart                                  ),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),
