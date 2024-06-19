@@ -133,8 +133,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   typedef enum logic [1:0] {
     NORMAL_OPERATION,
     WAIT_IDLE,
-    RESHUFFLE,
-    SLDU_SEQUENCER
+    RESHUFFLE
   } state_e;
   state_e state_d, state_q, state_qq;
   // state_qq is the previous state signal. Useful to know from which state we come from.
@@ -208,14 +207,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic is_decoding;
   // Is this an in-lane operation?
   logic in_lane_op;
-  // If the vslideup offset is greater than vl_q, the vslideup has no effects
+  // If the vslideup offset is greater than csr_vl_q, the vslideup has no effects
   logic null_vslideup;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete_q;
   logic store_complete_q;
-  `FF(load_complete_q, load_complete_i, 1'b0)
-  `FF(store_complete_q, store_complete_i, 1'b0)
+  logic illegal_insn_load, illegal_insn_store;
+  `FF(load_complete_q, load_complete_i || illegal_insn_load, 1'b0)
+  `FF(store_complete_q, store_complete_i || illegal_insn_store, 1'b0)
 
   // NP2 Slide support
   logic is_stride_np2;
@@ -259,6 +259,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     rs_mask_request_d   = 1'b0;
 
     illegal_insn = 1'b0;
+    illegal_insn_load  = 1'b0;
+    illegal_insn_store = 1'b0;
     csr_vxsat_d      = csr_vxsat_q;
     csr_vxrm_d       = csr_vxrm_q;
 
@@ -275,8 +277,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     is_decoding = 1'b0;
     in_lane_op  = 1'b0;
 
-    acc_resp_o.req_ready  = 1'b0;
-    acc_resp_o.resp_valid = 1'b0;
     acc_resp_o       = '{
       trans_id      : acc_req_i.trans_id,
       load_complete : load_zero_vl | load_complete_q,
@@ -433,7 +433,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Decoding
         is_decoding = 1'b1;
         // Acknowledge the request
-        acc_resp_o.req_ready = ara_req_ready_i;
+        acc_resp_o.req_ready = 1'b1;
 
         // Decode the instructions based on their opcode
         unique case (acc_req_i.insn.itype.opcode)
@@ -445,7 +445,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // Instruction is of one of the RVV types
             automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
-            // These always respond at the same cycle
+            // These (mostly) always respond at the same cycle
             acc_resp_o.resp_valid = 1'b1;
 
             // Decode based on their func3 field
@@ -453,7 +453,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Configuration instructions
               OPCFG: begin: opcfg
                 // These can be acknowledged regardless of the state of Ara
-                acc_resp_o.req_ready = 1'b1;
+                // NOTE: unless there is a pending fault-only first vector load
                 is_config       = 1'b1;
 
                 // Update vtype
@@ -464,7 +464,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
                   csr_vtype_d = vtype_xlen(riscv::xlen_t'(acc_req_i.rs2[7:0]));
                 end else
-                  acc_resp_o.error = 1'b1;
+                  illegal_insn = 1'b1;
 
                 // Check whether the updated vtype makes sense
                 if ((csr_vtype_d.vsew > rvv_pkg::vew_e'($clog2(ELENB))) || // SEW <= ELEN
@@ -1256,12 +1256,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
 
                     // Wait until the back-end answers to acknowledge those instructions
-                    if (ara_resp_valid_i) begin
-                      acc_resp_o.req_ready   = 1'b1;
-                      acc_resp_o.result = ara_resp_i.resp;
+                    if ( ara_resp_valid_i ) begin
+                      acc_resp_o.req_ready  = 1'b1;
+                      acc_resp_o.resp_valid = 1'b1;
+                      acc_resp_o.result     = ara_resp_i.resp;
                       acc_resp_o.exception  = ara_resp_i.exception;
-                      acc_resp_o.resp_valid  = 1'b1;
-                      ara_req_valid_d   = 1'b0;
+                      ara_req_valid_d       = 1'b0;
                     end
                   end
                   6'b010100: begin
@@ -1931,11 +1931,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                       // Wait until the back-end answers to acknowledge those instructions
                       if (ara_resp_valid_i) begin
-                        acc_resp_o.req_ready   = 1'b1;
-                        acc_resp_o.result = vfmvfs_result;
+                        acc_resp_o.req_ready  = 1'b1;
+                        acc_resp_o.resp_valid = 1'b1;
+                        acc_resp_o.result     = vfmvfs_result;
                         acc_resp_o.exception  = ara_resp_i.exception;
-                        acc_resp_o.resp_valid  = 1'b1;
-                        ara_req_valid_d   = 1'b0;
+                        ara_req_valid_d       = 1'b0;
                       end
                     end
                     6'b011000: ara_req_d.op = ara_pkg::VMFEQ;
@@ -2045,8 +2045,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         end
                         default: begin
                           // Trigger an error
-                          acc_resp_o.error = 1'b1;
-                          ara_req_valid_d  = 1'b0;
+                          illegal_insn = 1'b1;
                         end
                       endcase
                     end
@@ -2560,9 +2559,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
                 acc_resp_o.req_ready  = 1'b1;
-                acc_resp_o.error = 1'b1;
                 acc_resp_o.resp_valid = 1'b1;
-                ara_req_valid_d  = 1'b0;
+                illegal_insn          = 1'b1;
+                ara_req_valid_d       = 1'b0;
               end
             endcase
 
@@ -2582,14 +2581,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   5'b10000: begin // Unit-strided, fault-only first
                     // TODO: Not implemented
-                    illegal_insn     = 1'b1;
-                    acc_resp_o.req_ready  = 1'b1;
-                    acc_resp_o.resp_valid = 1'b1;
+                    illegal_insn_load     = 1'b1;
                   end
                   default: begin // Reserved
-                    illegal_insn     = 1'b1;
-                    acc_resp_o.req_ready  = 1'b1;
-                    acc_resp_o.resp_valid = 1'b1;
+                    illegal_insn_load     = 1'b1;
                   end
                 endcase
               end
@@ -2616,17 +2611,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // The new emul is lower than the previous lmul
               2'b01: begin
                 // But the new eew is greater than vsew
-                  illegal_insn     = 1'b1;
-                  acc_resp_o.resp_valid = 1'b1;
                 if (signed'(ara_req_d.vtype.vsew - csr_vtype_q.vsew) > 0) begin
+                  illegal_insn_load     = 1'b1;
                 end
               end
               // The new emul is greater than the previous lmul
               2'b10: begin
                 // But the new eew is lower than vsew
                 if (signed'(ara_req_d.vtype.vsew - csr_vtype_q.vsew) < 0) begin
-                  illegal_insn     = 1'b1;
-                  acc_resp_o.resp_valid = 1'b1;
+                  illegal_insn_load     = 1'b1;
                 end
               end
               default:;
@@ -2636,20 +2629,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // access.
             unique case (ara_req_d.emul)
               LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_load     = 1'b1;
               end
               LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_load     = 1'b1;
               end
               LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_load     = 1'b1;
               end
               LMUL_RSVD: begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_load     = 1'b1;
               end
               default:;
             endcase
@@ -2659,9 +2648,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // Execute also if vl == 0
               ignore_zero_vl_check = 1'b1;
               // The LMUL value is kept in the instruction itself
-              illegal_insn     = 1'b0;
-              acc_resp_o.req_ready  = 1'b0;
-              acc_resp_o.resp_valid = 1'b0;
+              illegal_insn_load     = 1'b0;
               ara_req_valid_d  = 1'b1;
 
               // Maximum vector length. VLMAX = nf * VLEN / EW8.
@@ -2685,17 +2672,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 default: begin
                   // Trigger an error for the reserved simm values
-                  illegal_insn     = 1'b1;
+                  illegal_insn_load = 1'b1;
                 end
               endcase
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin
+            if ( ara_resp_valid_i ) begin
               acc_resp_o.req_ready  = 1'b1;
-              acc_resp_o.exception  = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
-              ara_req_valid_d  = 1'b0;
+              acc_resp_o.exception  = ara_resp_i.exception;
+              ara_req_valid_d       = 1'b0;
               // In case of exception, modify vstart
               if ( ara_resp_i.exception.valid ) begin
                 csr_vstart_d = ara_resp_i.exception_vstart;
@@ -2773,10 +2760,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
-                acc_resp_o.req_ready  = 1'b1;
-                acc_resp_o.error = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
-                ara_req_valid_d  = 1'b0;
+                illegal_insn  = 1'b1;
               end
             endcase
 
@@ -2795,9 +2779,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.vtype.vsew = EW8;
                   end
                   default: begin // Reserved
-                    illegal_insn     = 1'b1;
-                    acc_resp_o.req_ready  = 1'b1;
-                    acc_resp_o.resp_valid = 1'b1;
+                    illegal_insn_store    = 1'b1;
                   end
                 endcase
               end
@@ -2824,16 +2806,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               // The new emul is lower than the previous lmul
               2'b01: begin
                 // But the new eew is greater than vsew
-                  illegal_insn     = 1'b1;
                 if (signed'(ara_req_d.vtype.vsew - csr_vtype_q.vsew) > 0) begin
+                  illegal_insn_store    = 1'b1;
                 end
               end
               // The new emul is greater than the previous lmul
               2'b10: begin
                 // But the new eew is lower than vsew
                 if (signed'(ara_req_d.vtype.vsew - csr_vtype_q.vsew) < 0) begin
-                  illegal_insn     = 1'b1;
-                  acc_resp_o.resp_valid = 1'b1;
+                  illegal_insn_store    = 1'b1;
                 end
               end
               default:;
@@ -2843,20 +2824,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // access.
             unique case (ara_req_d.emul)
               LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_store     = 1'b1;
               end
               LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_store    = 1'b1;
               end
               LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) begin
-                illegal_insn     = 1'b1;
-                acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_store    = 1'b1;
               end
               LMUL_RSVD: begin
-                  illegal_insn     = 1'b1;
-                  acc_resp_o.resp_valid = 1'b1;
+                illegal_insn_store    = 1'b1;
               end
               default:;
             endcase
@@ -2866,6 +2843,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
               // Execute also if vl == 0
               ignore_zero_vl_check = 1'b1;
+              illegal_insn_store    = 1'b0;
 
               // Maximum vector length. VLMAX = nf * VLEN / EW8.
               ara_req_d.vtype.vsew = EW8;
@@ -2888,7 +2866,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 default: begin
                   // Trigger an error for the reserved simm values
-                  illegal_insn     = 1'b1;
+                  illegal_insn_store = 1'b1;
                 end
               endcase
 
@@ -2898,11 +2876,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
 
             // Wait until the back-end answers to acknowledge those instructions
-            if (ara_resp_valid_i) begin
+            if ( ara_resp_valid_i ) begin
               acc_resp_o.req_ready  = 1'b1;
-              acc_resp_o.exception  = ara_resp_i.exception;
               acc_resp_o.resp_valid = 1'b1;
-              ara_req_valid_d  = 1'b0;
+              acc_resp_o.exception  = ara_resp_i.exception;
+              ara_req_valid_d       = 1'b0;
               // In case of exception, modify vstart
               if ( ara_resp_i.exception.valid ) begin
                 csr_vstart_d = ara_resp_i.exception_vstart;
@@ -3148,8 +3126,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
           default: begin
             // Trigger an illegal instruction
-            acc_resp_o.error = 1'b1;
-            acc_resp_o.resp_valid = 1'b1;
+            illegal_insn = 1'b1;
           end
         endcase
       end
@@ -3162,6 +3139,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Check that we have we have vfrec7, vfrsqrt7
       if (ara_req_valid_d && (ara_req_d.op inside {VFREC7, VFRSQRT7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
+
+      // Raise an illegal instruction exception
+      if ( illegal_insn || illegal_insn_load || illegal_insn_store ) begin
+        ara_req_valid_d            = 1'b0;
+        acc_resp_o.req_ready       = 1'b1;
+        acc_resp_o.resp_valid      = 1'b1;
+        acc_resp_o.exception.valid = 1'b1;
+        acc_resp_o.exception.cause = riscv::ILLEGAL_INSTR;
+        acc_resp_o.exception.tval  = acc_req_i.insn;
+      end
 
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
@@ -3221,12 +3208,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Reshuffle
         state_d = RESHUFFLE;
       end
-    end
-
-    // Raise an illegal instruction exception
-    if (illegal_insn) begin
-      acc_resp_o.error = 1'b1;
-      ara_req_valid_d  = 1'b0;
     end
 
     // Update the EEW
