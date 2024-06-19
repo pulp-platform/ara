@@ -324,11 +324,11 @@ package ara_pkg;
     // Scalar response
     elen_t resp;
 
-    // Instruction triggered an error
-    logic error;
+    // Instruction triggered an exception
+    ariane_pkg::exception_t exception;
 
     // New value for vstart
-    vlen_t error_vl;
+    vlen_t exception_vstart;
   } ara_resp_t;
 
   ////////////////////
