@@ -276,6 +276,11 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       automatic vlen_t               effective_vector_body_length;
       automatic vaddr_t              vrf_addr;
 
+      automatic elen_t vl_byte;
+      automatic elen_t vstart_byte;
+      automatic elen_t vector_body_len_byte;
+      automatic elen_t vector_body_len_packets;
+
       // Bank we are currently requesting
       automatic int bank = requester_metadata_q.addr[idx_width(NrBanks)-1:0];
 
@@ -297,6 +302,15 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Prepare metadata upfront
       // Length of vector body in elements, i.e., vl - vstart
       vector_body_length = operand_request_i[requester_index].vl - operand_request_i[requester_index].vstart;
+
+      // Correct way on how to count packets
+      vl_byte     = operand_request_i[requester_index].vl     << operand_request_i[requester_index].vtype.vsew;
+      vstart_byte = operand_request_i[requester_index].vstart << operand_request_i[requester_index].vtype.vsew;
+      vector_body_len_byte = vl_byte - vstart_byte + (vstart_byte % 8);
+      vector_body_len_packets = vector_body_len_byte >> operand_request_i[requester_index].eew;
+      if (vector_body_len_packets << operand_request_i[requester_index].eew < vector_body_len_byte)
+        vector_body_len_packets += 1;
+
       // For memory operations, the number of elements initially refers to the new EEW (vsew here),
       // but the requester_index must refer to the old EEW (eew here)
       // This reasoning cannot be applied also to widening instructions, which modify vsew
@@ -305,10 +319,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                                    vector_body_length
                                     << operand_request_i[requester_index].vtype.vsew
                                   ) >> operand_request_i[requester_index].eew;
+
+
       // Final computed length
       effective_vector_body_length = ( operand_request_i[requester_index].scale_vl )
-                                      ? scaled_vector_body_length
+                                      ? vector_body_len_packets
                                       : vector_body_length;
+
       // Address of the vstart element of the vector in the VRF
       vrf_addr = vaddr(operand_request_i[requester_index].vs, NrLanes)
                   + (
