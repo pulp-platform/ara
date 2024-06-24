@@ -286,7 +286,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         end : pe_req_valid
       end : state_IDLE
 
-      ADDRGEN: begin : ADDRGEN
+      ADDRGEN: begin : state_ADDRGEN
         // Ara does not support misaligned AXI requests
         if (is_addr_error(pe_req_q.scalar_op, pe_req_q.vtype.vsew)) begin : eew_misaligned_error
           state_d         = IDLE;
@@ -336,9 +336,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             state_d           = WAIT_LAST_TRANSLATION;
           end : translation_enabled
         end : address_valid
-      end : ADDRGEN
+      end : state_ADDRGEN
 
-      ADDRGEN_IDX_OP: begin : ADDRGEN_IDX_OP
+      ADDRGEN_IDX_OP: begin : state_ADDRGEN_IDX_OP
         // NOTE: vstart is not supported for indexed operations
         //       the logic shuld be introduced:
         //       1. in the addrgen_operand_i operand read
@@ -443,10 +443,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if (idx_op_error_d || addrgen_req_ready || mmu_exception_d.valid ) begin : exception
           state_d = ADDRGEN_IDX_OP_END;
         end : exception
-      end : ADDRGEN_IDX_OP
+      end : state_ADDRGEN_IDX_OP
 
       // This state exists not to create combinatorial paths on the interface
-      ADDRGEN_IDX_OP_END : begin : ADDRGEN_IDX_OP_END
+      ADDRGEN_IDX_OP_END : begin : state_ADDRGEN_IDX_OP_END
         // Acknowledge the indexed memory operation
         addrgen_ack_o     = 1'b1;
         addrgen_req_valid = '0;
@@ -466,9 +466,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if ( mmu_exception_q.valid ) begin
           addrgen_exception_o = mmu_exception_q;
         end
-      end : ADDRGEN_IDX_OP_END
+      end : state_ADDRGEN_IDX_OP_END
 
-      WAIT_LAST_TRANSLATION : begin : WAIT_LAST_TRANSLATION
+      WAIT_LAST_TRANSLATION : begin : state_WAIT_LAST_TRANSLATION
         if ( last_translation_completed | mmu_exception_q.valid ) begin
           // Acknowledge the indexed memory operation
           addrgen_ack_o     = 1'b1;
@@ -480,7 +480,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // Propagate the exception from the MMU (if any)
           addrgen_exception_o = mmu_exception_q;
         end
-      end : WAIT_LAST_TRANSLATION
+      end : state_WAIT_LAST_TRANSLATION
     endcase // state_q
 
     // Immediately kill the load/store if the instruction was illegal
@@ -913,7 +913,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 //////////////////////
 
                 // TODO: check if idx_vaddr_valid_q is stable
-                if (idx_vaddr_valid_q) begin : idx_vaddr_valid_q
+                if (idx_vaddr_valid_q) begin : if_idx_vaddr_valid_q
 
                   // Check if the virtual address generates an exception
                   // NOTE: we can do this even before address translation, since the
@@ -971,7 +971,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                     // Account for the requested operands
                     axi_addrgen_d.len = axi_addrgen_q.len - 1;
                   end : aligned_vaddress
-                end : idx_vaddr_valid_q
+                end : if_idx_vaddr_valid_q
               end : indexed
             end : paddr_valid
 

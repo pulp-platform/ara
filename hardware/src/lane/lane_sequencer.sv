@@ -234,7 +234,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     end
 
     // We received a new vector instruction
-    if (pe_req_valid && pe_req_ready && !vinsn_running_d[pe_req.id]) begin : pe_req_valid
+    if (pe_req_valid && pe_req_ready && !vinsn_running_d[pe_req.id]) begin : if_pe_req_valid
       // Populate the VFU request
       vfu_operation_d = '{
         id             : pe_req.id,
@@ -776,7 +776,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         end
         default:;
       endcase // pe_req.vfu
-    end : pe_req_valid
+    end : if_pe_req_valid
   end: sequencer
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_sequencer_ff
