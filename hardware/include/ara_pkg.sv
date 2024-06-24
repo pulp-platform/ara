@@ -276,6 +276,7 @@ package ara_pkg;
     logic use_vs1;
     opqueue_conversion_e conversion_vs1;
     rvv_pkg::vew_e eew_vs1;
+    rvv_pkg::vew_e old_eew_vs1;
 
     // 2nd vector register operand
     logic [4:0] vs2;
@@ -380,6 +381,7 @@ package ara_pkg;
     logic use_vs1;
     opqueue_conversion_e conversion_vs1;
     rvv_pkg::vew_e eew_vs1;
+    rvv_pkg::vew_e old_eew_vs1;
 
     // 2nd vector register operand
     logic [4:0] vs2;

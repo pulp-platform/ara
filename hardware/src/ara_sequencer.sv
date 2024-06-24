@@ -413,6 +413,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               use_vs1       : ara_req_i.use_vs1,
               conversion_vs1: ara_req_i.conversion_vs1,
               eew_vs1       : ara_req_i.eew_vs1,
+              old_eew_vs1   : ara_req_i.old_eew_vs1,
               vs2           : ara_req_i.vs2,
               use_vs2       : ara_req_i.use_vs2,
               conversion_vs2: ara_req_i.conversion_vs2,

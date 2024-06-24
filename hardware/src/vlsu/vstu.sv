@@ -301,7 +301,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
             // Follow the vrf_seq_byte, but without the vstart information
             vrf_seq_byte_cnt = axi_byte - lower_byte + vrf_cnt_q;
             // And then shuffle it
-            vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.eew_vs1);
+            vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.old_eew_vs1);
 
             // Is this byte a valid byte in the VRF word?
             if (vrf_seq_byte_cnt < issue_cnt_bytes_q) begin

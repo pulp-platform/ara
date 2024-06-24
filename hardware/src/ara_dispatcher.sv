@@ -2744,7 +2744,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // These generate a request to Ara's backend
             ara_req_d.vs1       = insn.vmem_type.rd; // vs3 is encoded in the same position as rd
             ara_req_d.use_vs1   = 1'b1;
-            ara_req_d.eew_vs1   = eew_q[insn.vmem_type.rd]; // This is the vs1 EEW
+            ara_req_d.old_eew_vs1 = eew_q[insn.vmem_type.rd]; // This is the old vs1 EEW;
             ara_req_d.vm        = insn.vmem_type.vm;
             ara_req_d.scalar_op = acc_req_i.rs1;
             ara_req_valid_d     = 1'b1;
@@ -2911,6 +2911,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 csr_vstart_d = ara_resp_i.exception_vstart;
               end
             end
+            ara_req_d.eew_vs1 = ara_req_d.vtype.vsew; // This is the new vs1 EEW
           end
 
           ////////////////////////////
@@ -3186,7 +3187,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
-        reshuffle_req_d = {ara_req_d.use_vs1 && (ara_req_d.eew_vs1    != eew_q[ara_req_d.vs1]) && eew_valid_q[ara_req_d.vs1] && in_lane_op,
+        // During a vstore, if vstart > 0, reshuffle immediately not to complicate operand fetch stage
+        reshuffle_req_d = {ara_req_d.use_vs1 && (ara_req_d.eew_vs1    != eew_q[ara_req_d.vs1]) && eew_valid_q[ara_req_d.vs1] && (in_lane_op || (is_vstore && (csr_vstart_q != '0))),
                            ara_req_d.use_vs2 && (ara_req_d.eew_vs2    != eew_q[ara_req_d.vs2]) && eew_valid_q[ara_req_d.vs2] && in_lane_op,
                            ara_req_d.use_vd  && (ara_req_d.vtype.vsew != eew_q[ara_req_d.vd ]) && eew_valid_q[ara_req_d.vd ] && csr_vl_q != ((VLENB << ara_req_d.emul[1:0]) >> ara_req_d.vtype.vsew)};
         // Mask out requests if they refer to the same register!
@@ -3209,9 +3211,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             vs_buffer_d      = insn.varith_type.rs2;
           end
           3'b100: begin
-            eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
+            eew_old_buffer_d = is_vstore ? eew_q[insn.vmem_type.rd] : eew_q[insn.vmem_type.rs1];
             eew_new_buffer_d = ara_req_d.eew_vs1;
-            vs_buffer_d      = insn.varith_type.rs1;
+            vs_buffer_d      = is_vstore ? insn.vmem_type.rd : insn.varith_type.rs1;
           end
           default:;
         endcase
