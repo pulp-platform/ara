@@ -42,7 +42,7 @@ sources:
     - hardware/src/lane/simd_mul.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/lane/power_gating_generic.sv
-    - hardware/src/masku/masku.sv
+    - hardware/src/masku/masku_operands.sv
     - hardware/src/sldu/p2_stride_gen.sv
     - hardware/src/sldu/sldu_op_dp.sv
     - hardware/src/sldu/sldu.sv
@@ -55,6 +55,7 @@ sources:
     - hardware/src/lane/vmfpu.sv
     - hardware/src/lane/fixed_p_rounding.sv
     - hardware/src/vlsu/vlsu.sv
+    - hardware/src/masku/masku.sv
     # Level 3
     - hardware/src/lane/vector_fus_stage.sv
     # Level 4
