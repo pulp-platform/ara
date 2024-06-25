@@ -75,12 +75,12 @@ bmarks = $(bmarks_vvadd) $(bmarks_matmul)
 # Build rules
 #--------------------------------------------------------------------
 
-RISCV_PREFIX=riscv$(XLEN)-unknown-elf-
+RISCV_PREFIX := /scratch/vmaisto/cva6-sdk_fork/buildroot/output/host/bin/riscv64-buildroot-linux-gnu-
 RISCV_GCC = $(RISCV_PREFIX)gcc
 RISCV_GCC_OPTS = -std=gnu99 -O2 -ffast-math
-RISCV_LINK = $(RISCV_GCC) -T $(common)/test.ld $(incs)
+RISCV_LINK = $(RISCV_GCC)  $(incs)
 RISCV_LINK_OPTS = -nostdlib -nostartfiles -ffast-math -lc
-RISCV_OBJDUMP = $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.data
+RISCV_OBJDUMP = $(RISCV_PREFIX)objdump --disassemble-all --disassemble-zeroes -S
 RISCV_SIM = spike -p2
 
 VPATH += $(common) $(common)/../mt-matmul $(common)/../mt-vvadd 

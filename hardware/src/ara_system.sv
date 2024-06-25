@@ -73,12 +73,12 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   //  Ara and Ariane  //
   //////////////////////
 
-  import acc_pkg::accelerator_req_t;
-  import acc_pkg::accelerator_resp_t;
+  import acc_pkg::cva6_to_acc_t;
+  import acc_pkg::acc_to_cva6_t;
 
   // Accelerator ports
-  accelerator_req_t                     acc_req;
-  accelerator_resp_t                    acc_resp;
+  cva6_to_acc_t                         acc_req;
+  acc_to_cva6_t                         acc_resp;
   logic                                 acc_resp_valid;
   logic                                 acc_resp_ready;
   logic                                 acc_cons_en;
@@ -91,13 +91,13 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
   assign hart_id = {'0, hart_id_i};
 
   // Pack invalidation interface into acc interface
-  accelerator_resp_t                    acc_resp_pack;
+  acc_to_cva6_t acc_resp_pack;
   always_comb begin : pack_inval
-    acc_resp_pack             = acc_resp;
-    acc_resp_pack.inval_valid = inval_valid;
-    acc_resp_pack.inval_addr  = inval_addr;
-    inval_ready               = acc_req.inval_ready;
-    acc_cons_en               = acc_req.acc_cons_en;
+    acc_resp_pack                      = acc_resp;
+    acc_resp_pack.acc_resp.inval_valid = inval_valid;
+    acc_resp_pack.acc_resp.inval_addr  = inval_addr;
+    inval_ready                        = acc_req.acc_req.inval_ready;
+    acc_cons_en                        = acc_req.acc_req.acc_cons_en;
   end
 
 `ifdef IDEAL_DISPATCHER
@@ -113,8 +113,8 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 `else
   cva6 #(
     .CVA6Cfg          (CVA6Cfg                    ),
-    .cvxif_req_t      (acc_pkg::accelerator_req_t ),
-    .cvxif_resp_t     (acc_pkg::accelerator_resp_t),
+    .cvxif_req_t      (acc_pkg::cva6_to_acc_t     ),
+    .cvxif_resp_t     (acc_pkg::acc_to_cva6_t     ),
     .axi_ar_chan_t    (ariane_axi_ar_t            ),
     .axi_aw_chan_t    (ariane_axi_aw_t            ),
     .axi_w_chan_t     (ariane_axi_w_t             ),

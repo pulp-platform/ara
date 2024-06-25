@@ -37,9 +37,10 @@ module ara import ara_pkg::*; #(
     input  logic              scan_enable_i,
     input  logic              scan_data_i,
     output logic              scan_data_o,
+
     // Interface with Ariane
-    input  accelerator_req_t  acc_req_i,
-    output accelerator_resp_t acc_resp_o,
+    input  cva6_to_acc_t      acc_req_i,
+    output acc_to_cva6_t      acc_resp_o,
     // AXI interface
     output axi_req_t          axi_req_o,
     input  axi_resp_t         axi_resp_i
@@ -90,8 +91,8 @@ module ara import ara_pkg::*; #(
     .clk_i             (clk_i           ),
     .rst_ni            (rst_ni          ),
     // Interface with Ariane
-    .acc_req_i         (acc_req_i       ),
-    .acc_resp_o        (acc_resp_o      ),
+    .acc_req_i         (acc_req_i.acc_req  ),
+    .acc_resp_o        (acc_resp_o.acc_resp),
     // Interface with the sequencer
     .ara_req_o         (ara_req         ),
     .ara_req_valid_o   (ara_req_valid   ),
@@ -123,8 +124,8 @@ module ara import ara_pkg::*; #(
   pe_resp_t          [NrPEs-1:0]   pe_resp;
   // Interface with the address generator
   logic                            addrgen_ack;
-  logic                            addrgen_error;
-  vlen_t                           addrgen_error_vl;
+  ariane_pkg::exception_t          addrgen_exception;
+  vlen_t                           addrgen_exception_vstart;
   logic              [NrLanes-1:0] alu_vinsn_done;
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
@@ -171,8 +172,8 @@ module ara import ara_pkg::*; #(
     .pe_scalar_resp_ready_o(pe_scalar_resp_ready     ),
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack              ),
-    .addrgen_error_i       (addrgen_error            ),
-    .addrgen_error_vl_i    (addrgen_error_vl         )
+    .addrgen_exception_i   (addrgen_exception        ),
+    .addrgen_exception_vstart_i(addrgen_exception_vstart     )
   );
 
   // Scalar move support
@@ -191,6 +192,7 @@ module ara import ara_pkg::*; #(
   elen_t     [NrLanes-1:0]                     stu_operand;
   logic      [NrLanes-1:0]                     stu_operand_valid;
   logic      [NrLanes-1:0]                     stu_operand_ready;
+  logic                                        stu_exception_flush;
   // Slide unit/address generation operands
   elen_t     [NrLanes-1:0]                     sldu_addrgen_operand;
   target_fu_e[NrLanes-1:0]                     sldu_addrgen_operand_target_fu;
@@ -273,6 +275,7 @@ module ara import ara_pkg::*; #(
       .stu_operand_o                   (stu_operand[lane]                   ),
       .stu_operand_valid_o             (stu_operand_valid[lane]             ),
       .stu_operand_ready_i             (stu_operand_ready[lane]             ),
+      .stu_exception_flush_i           (stu_exception_flush                 ),
       // Interface with the slide/address generation unit
       .sldu_addrgen_operand_o          (sldu_addrgen_operand[lane]          ),
       .sldu_addrgen_operand_target_fu_o(sldu_addrgen_operand_target_fu[lane]),
@@ -337,8 +340,8 @@ module ara import ara_pkg::*; #(
     .pe_req_ready_o             (pe_req_ready[NrLanes+OffsetStore : NrLanes+OffsetLoad]),
     .pe_resp_o                  (pe_resp[NrLanes+OffsetStore : NrLanes+OffsetLoad]     ),
     .addrgen_ack_o              (addrgen_ack                                           ),
-    .addrgen_error_o            (addrgen_error                                         ),
-    .addrgen_error_vl_o         (addrgen_error_vl                                      ),
+    .addrgen_exception_o        (addrgen_exception                                     ),
+    .addrgen_exception_vstart_o (addrgen_exception_vstart                              ),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),
@@ -349,11 +352,24 @@ module ara import ara_pkg::*; #(
     .stu_operand_i              (stu_operand                                           ),
     .stu_operand_valid_i        (stu_operand_valid                                     ),
     .stu_operand_ready_o        (stu_operand_ready                                     ),
+    .stu_exception_flush_o      (stu_exception_flush                                   ),
     // Address Generation
     .addrgen_operand_i          (sldu_addrgen_operand                                  ),
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),
     .addrgen_operand_valid_i    (sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o    (addrgen_operand_ready                                 ),
+    // CSR input
+    .en_ld_st_translation_i     (acc_req_i.acc_mmu_en                                  ),
+    // Interface with CVA6's sv39 MMU
+    .mmu_misaligned_ex_o        (acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex            ),
+    .mmu_req_o                  (acc_resp_o.acc_mmu_req.acc_mmu_req                      ),
+    .mmu_vaddr_o                (acc_resp_o.acc_mmu_req.acc_mmu_vaddr                    ),
+    .mmu_is_store_o             (acc_resp_o.acc_mmu_req.acc_mmu_is_store                 ),
+    .mmu_dtlb_hit_i             (acc_req_i.acc_mmu_resp.acc_mmu_dtlb_hit                 ),
+    .mmu_dtlb_ppn_i             (acc_req_i.acc_mmu_resp.acc_mmu_dtlb_ppn                 ),
+    .mmu_valid_i                (acc_req_i.acc_mmu_resp.acc_mmu_valid                    ),
+    .mmu_paddr_i                (acc_req_i.acc_mmu_resp.acc_mmu_paddr                    ),
+    .mmu_exception_i            (acc_req_i.acc_mmu_resp.acc_mmu_exception                ),
     // Load unit
     .ldu_result_req_o           (ldu_result_req                                        ),
     .ldu_result_addr_o          (ldu_result_addr                                       ),

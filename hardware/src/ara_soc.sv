@@ -139,7 +139,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     UniqueIds         : 1'b0,
     AxiAddrWidth      : AxiAddrWidth,
     AxiDataWidth      : AxiWideDataWidth,
-    NoAddrRules       : NrAXISlaves
+    NoAddrRules       : NrAXISlaves,
+    default           : '0
   };
 
   axi_pkg::xbar_rule_64_t [NrAXISlaves-1:0] routing_rules;
