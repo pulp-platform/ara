@@ -155,13 +155,6 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Helper to fill with neutral values the last packet
   logic incomplete_packet, last_packet;
 
-  // To convert subnormal numbers to normalized form in floating-point numbers,
-  // it is necessary to determine the number of leading zeros in the mantissa.
-  // This is typically accomplished using a lzc (leading zero count) module,
-  // which can accurately count the number of leading zeros in a given number.
-  // By knowing the number of leading zeros in the mantissa, we can properly
-  // adjust the exponent and shift the binary point to achieve a normalized
-  // representation of the number.
 
   logic [3:0] lzc_count16[2];
   logic [4:0] lzc_count32;
@@ -169,27 +162,37 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   fp16_t fp16[2];
   fp32_t fp32;
 
-  // sew: 16-bit
-  for (genvar i = 0; i < 2; i = i + 1) begin
-    lzc #(
-      .WIDTH(10),
-      .MODE (1 )
-    ) leading_zero_e16_i (
-       .in_i    ( fp16[i].m         ),
-       .cnt_o   ( lzc_count16[i] ),
-       .empty_o ( /*Unused*/     )
-    );
-  end
+  if (FPUSupport != FPUSupportNone) begin
+   // To convert subnormal numbers to normalized form in floating-point numbers,
+   // it is necessary to determine the number of leading zeros in the mantissa.
+   // This is typically accomplished using a lzc (leading zero count) module,
+   // which can accurately count the number of leading zeros in a given number.
+   // By knowing the number of leading zeros in the mantissa, we can properly
+   // adjust the exponent and shift the binary point to achieve a normalized
+   // representation of the number.
 
-  // sew: 32-bit
-  lzc #(
-     .WIDTH (23),
-     .MODE  (1 )
-   ) leading_zero_e32(
-     .in_i    ( fp32.m      ),
-     .cnt_o   ( lzc_count32 ),
-     .empty_o ( /*Unused*/  )
-   );
+    // sew: 16-bit
+    for (genvar i = 0; i < 2; i = i + 1) begin
+      lzc #(
+        .WIDTH(10),
+        .MODE (1 )
+      ) leading_zero_e16_i (
+         .in_i    ( fp16[i].m      ),
+         .cnt_o   ( lzc_count16[i] ),
+         .empty_o ( /*Unused*/     )
+      );
+    end
+
+    // sew: 32-bit
+    lzc #(
+       .WIDTH (23),
+       .MODE  (1 )
+     ) leading_zero_e32(
+       .in_i    ( fp32.m      ),
+       .cnt_o   ( lzc_count32 ),
+       .empty_o ( /*Unused*/  )
+     );
+  end
 
   always_comb begin: type_conversion
     // Shuffle the input operand
