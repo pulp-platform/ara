@@ -229,6 +229,66 @@ package ara_pkg;
     logic [51:0] m;
   } fp64_t;
 
+  function automatic int unsigned fp_mantissa_bits(rvv_pkg::vew_e fp_dtype, logic is_alt);
+    unique case ({fp_dtype, is_alt})
+      {rvv_pkg::EW8,  1'b0}: fp_mantissa_bits = 2;
+      {rvv_pkg::EW8,  1'b1}: fp_mantissa_bits = 3;
+      {rvv_pkg::EW16, 1'b0}: fp_mantissa_bits = 10;
+      {rvv_pkg::EW16, 1'b1}: fp_mantissa_bits = 7;
+      {rvv_pkg::EW32, 1'b0}: fp_mantissa_bits = 23;
+      {rvv_pkg::EW64, 1'b0}: fp_mantissa_bits = 52;
+      default: fp_mantissa_bits = -1;
+    endcase
+  endfunction
+
+  function automatic fp32_t fp32_from_fp16(fp16_t fp16, logic [$clog2(fp_mantissa_bits(rvv_pkg::EW16, 0)):0] fp16_m_lzc);
+    automatic fp16_t fp16_temp;
+    automatic fp32_t fp32;
+
+    // Wide sign
+    fp32.s = fp16.s;
+
+    // Wide exponent
+    // 127 - 15 = 112
+    unique case(fp16.e)
+      '0:      fp32.e = (fp16.m == '0) ? '0 : 8'd112 - {4'd0, fp16_m_lzc}; // Zero or Subnormal
+      '1:      fp32.e = '1; // NaN
+      default: fp32.e = 8'd112 + {3'd0, fp16.e}; // Normal
+    endcase
+
+    // Wide mantissa
+    // If the input is NaN, output a quiet NaN mantissa.
+    // Otherwise, append trailing zeros to the mantissa.
+    fp16_temp.m = ((fp16.e == '0) && (fp16.m != '0)) ? (fp16.m << 1) << fp16_m_lzc : fp16.m;
+    fp32.m = ((fp16.e == '1) && (fp16.m != '0) ) ? {1'b1, 22'b0} : {fp16_temp.m, 13'b0};
+
+    fp32_from_fp16 = fp32;
+  endfunction
+
+  function automatic fp64_t fp64_from_fp32(fp32_t fp32, logic [$clog2(fp_mantissa_bits(rvv_pkg::EW32, 0)):0] fp32_m_lzc);
+    automatic fp32_t fp32_temp;
+    automatic fp64_t fp64;
+
+    // Wide sign
+    fp64.s = fp32.s;
+
+    // Wide exponent
+    // 1023 - 127 = 896
+    unique case(fp32.e)
+      '0:      fp64.e = (fp32.m == '0) ? '0 : 11'd896 - {6'd0, fp32_m_lzc}; // Zero or Subnormal
+      '1:      fp64.e = '1; // NaN
+      default: fp64.e = 11'd896 + {3'd0, fp32.e}; // Normal
+    endcase
+
+    // Wide mantissa
+    // If the input is NaN, output a quiet NaN mantissa.
+    // Otherwise, append trailing zeros to the mantissa.
+    fp32_temp.m = ((fp32.e == '0) && (fp32.m != '0)) ? (fp32.m << 1) << fp32_m_lzc : fp32.m;
+    fp64.m = ((fp32.e == '1) && (fp32.m != '0)) ? {1'b1, 51'b0} : {fp32_temp.m, 29'b0};
+
+    fp64_from_fp32 = fp64;
+  endfunction
+
   /////////////////////////////
   //  Accelerator interface  //
   /////////////////////////////
