@@ -155,42 +155,46 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Helper to fill with neutral values the last packet
   logic incomplete_packet, last_packet;
 
+  ////////////////////////////////
+  //  Floating-point conversion //
+  ////////////////////////////////
 
-  logic [3:0] lzc_count16[2];
-  logic [4:0] lzc_count32;
+  logic [$clog2(fp_mantissa_bits(EW16, 0))-1:0] fp16_m_lzc[2]; // 4 bits each
+  logic [$clog2(fp_mantissa_bits(EW32, 0))-1:0] fp32_m_lzc;    // 5 bits each
 
   fp16_t fp16[2];
   fp32_t fp32;
 
-  if (FPUSupport != FPUSupportNone) begin
-   // To convert subnormal numbers to normalized form in floating-point numbers,
-   // it is necessary to determine the number of leading zeros in the mantissa.
-   // This is typically accomplished using a lzc (leading zero count) module,
-   // which can accurately count the number of leading zeros in a given number.
-   // By knowing the number of leading zeros in the mantissa, we can properly
-   // adjust the exponent and shift the binary point to achieve a normalized
-   // representation of the number.
-
+  // To convert subnormal numbers to normalized form in floating-point numbers,
+  // it is necessary to determine the number of leading zeros in the mantissa.
+  // This is typically accomplished using a lzc (leading zero count) module,
+  // which can accurately count the number of leading zeros in a given number.
+  // By knowing the number of leading zeros in the mantissa, we can properly
+  // adjust the exponent and shift the binary point to achieve a normalized
+  // representation of the number.
+  if ({RVVH(FPUSupport), RVVF(FPUSupport)} == 2'b11) begin
     // sew: 16-bit
-    for (genvar i = 0; i < 2; i = i + 1) begin
+    for (genvar i = 0; i < 2; i++) begin
       lzc #(
-        .WIDTH(10),
-        .MODE (1 )
+        .WIDTH(fp_mantissa_bits(EW16, 0)),
+        .MODE (1)
       ) leading_zero_e16_i (
-         .in_i    ( fp16[i].m      ),
-         .cnt_o   ( lzc_count16[i] ),
-         .empty_o ( /*Unused*/     )
+        .in_i   (fp16[i].m    ),
+        .cnt_o  (fp16_m_lzc[i]),
+        .empty_o(/*Unused*/   )
       );
     end
+  end
 
+  if ({RVVF(FPUSupport), RVVD(FPUSupport)} == 2'b11) begin
     // sew: 32-bit
     lzc #(
-       .WIDTH (23),
-       .MODE  (1 )
-     ) leading_zero_e32(
-       .in_i    ( fp32.m      ),
-       .cnt_o   ( lzc_count32 ),
-       .empty_o ( /*Unused*/  )
+       .WIDTH(fp_mantissa_bits(EW32, 0)),
+       .MODE (1)
+     ) leading_zero_e32 (
+       .in_i   (fp32.m    ),
+       .cnt_o  (fp32_m_lzc),
+       .empty_o(/*Unused*/)
      );
   end
 
@@ -203,6 +207,9 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Default: packet complete
     incomplete_packet = 1'b0;
     last_packet       = 1'b0;
+
+    for (int i = 0; i < 2; i++) fp16[i] = '0;
+    for (int i = 0; i < 1; i++) fp32[i] = '0;
 
     // Reductions need to mask away the inactive elements
     // A temporary solution is to send a neutral value directly
@@ -376,56 +383,13 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           unique casez ({cmd.eew, RVVH(FPUSupport), RVVF(FPUSupport), RVVD(FPUSupport)})
             {EW16, 1'b1, 1'b1, 1'b?}: begin
               for (int e = 0; e < 2; e++) begin
-                automatic fp32_t fp32_o;
-                automatic fp16_t fp16_temp;
-                automatic logic [7:0] fp32_exp;
-
                 fp16[e] = ibuf_operand[8*select + 32*e +: 16];
-
-                fp16_temp.m = ((fp16[e].e == '0) && (fp16[e].m != '0)) ? fp16[e].m << (5'd1 + {1'd0, lzc_count16[e]}) : fp16[e].m;
-
-                fp32_exp = (fp16[e].m == '0) ? '0 : 8'd112 - {4'd0, lzc_count16[e]};  //127 - 15 = 112
-
-                unique case(fp16[e].e)
-                  '0:      fp32_o.e = fp32_exp; // Zero or Subnormal
-                  '1:      fp32_o.e = '1; // NaN
-                  default: fp32_o.e = 8'd112 + {3'd0, fp16[e].e}; // Normal ,127 - 15 = 112
-                endcase
-
-                fp32_o.s = fp16[e].s;
-
-                // If the input is NaN, output a quiet NaN mantissa.
-                // Otherwise, append trailing zeros to the mantissa.
-                fp32_o.m = ((fp16[e].e == '1) && (fp16[e].m != '0) ) ? {1'b1, 22'b0} : {fp16_temp.m, 13'b0};
-
-                conv_operand[32*e +: 32] = fp32_o;
+                conv_operand[32*e +: 32] = fp32_from_fp16(fp16[e], fp16_m_lzc[e]);
               end
             end
             {EW32, 1'b?, 1'b1, 1'b1}: begin
-              automatic fp64_t fp64;
-              automatic fp32_t fp32_temp;
-
-              automatic logic [10:0] fp64_exp;
-
-              fp32  = ibuf_operand[8*select +: 32];
-
-              fp32_temp.m = ((fp32.e == '0) && (fp32.m != '0)) ? fp32.m << (8'd1 + {3'd0, lzc_count32}) : fp32.m;
-
-              fp64_exp = (fp32.m == '0) ? '0 : 11'd896 - {6'd0, lzc_count32}; //1023 - 127 = 896
-
-              unique case(fp32.e)
-                '0:      fp64.e = fp64_exp; // Zero or Subnormal
-                '1:      fp64.e = '1; // NaN
-                default: fp64.e = 11'd896 + {3'd0, fp32.e}; // Normal , 1023 - 127 = 896
-              endcase
-
-              fp64.s = fp32.s;
-
-              // If the input is NaN, output a quiet NaN mantissa.
-              // Otherwise, append trailing zeros to the mantissa.
-              fp64.m = ((fp32.e == '1) && (fp32.m != '0)) ? {1'b1, 51'b0} : {fp32_temp.m, 29'b0};
-
-              conv_operand = fp64;
+              fp32 = ibuf_operand[8*select +: 32];
+              conv_operand = fp64_from_fp32(fp32, fp32_m_lzc);
             end
             default:;
           endcase
