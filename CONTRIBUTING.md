@@ -45,7 +45,7 @@ please find some of the most important points below.
     * :arrow_up: `:arrow_up:` When upgrading dependencies
     * :arrow_down: `:arrow_down:` When downgrading dependencies
     * :rotating_light: `:rotating_light:` When removing linter warnings
-    * :pencil2: `:pencil2:` Fixing typos
+    * :zany_face: `:zany_face:` Fixing typos
     * :recycle: `:recycle:` Refactoring code.
     * :boom: `:boom:` Introducing breaking changes
     * :truck: `:truck:` Moving or renaming files.
