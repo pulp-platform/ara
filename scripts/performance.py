@@ -113,6 +113,14 @@ def roi_align(args, cycles):
   crop_w  = int(args[6])
   performance = 9 * depth / cycles
   return [depth, performance]
+def lavamd(args, cycles):
+  box1d   = int(args[0])
+  par4box = int(args[1])
+  alpha   = float(args[2])
+  maxelm  = int(args[3])
+  # pseudo lavaMD iteration bounds: 1, 2, 4, par4box
+  performance = (1 * 2 * 4 * (51 * par4box + 4 * min(par4box, maxelm))) / cycles
+  return [par4box, performance]
 
 perfExtr = {
   'imatmul'    : imatmul,
@@ -130,6 +138,7 @@ perfExtr = {
   'dotproduct' : dotproduct,
   'fdotproduct': fdotproduct,
   'roi_align'  : roi_align,
+  'lavamd'     : lavamd,
 }
 
 # Maximum performance if Ara's BW can be fully utilized
@@ -149,6 +158,7 @@ ideal_maxPerf = {
   'dotproduct' : lambda l, s : l * 8/s,
   'fdotproduct': lambda l, s : l * 8/s,
   'roi_align'  : lambda l, s : l * 8/s,
+  'lavamd'     : lambda l, s : 0,
 }
 
 # Maximum performance taking into account Ara's limited
@@ -169,6 +179,7 @@ real_maxPerf = {
   'dotproduct' : lambda l, s : 4 * l/s,
   'fdotproduct': lambda l, s : 4 * l/s,
   'roi_align'  : lambda l, s : 3/5 * l * 8/s,
+  'lavamd'     : lambda l, s : 0,
 }
 
 def main():

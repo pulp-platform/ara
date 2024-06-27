@@ -39,6 +39,7 @@ threshold = {
   'dotproduct' : 500,
   'fdotproduct': 500,
   'roi_align'  : 500,
+  'lavamd'     : 500,
 }
 
 skip_check = {
@@ -57,6 +58,7 @@ skip_check = {
   'dotproduct' : 0,
   'fdotproduct': 0,
   'roi_align'  : 1, # This program has a larger scalar component
+  'lavamd'     : 0,
 }
 
 def main():
