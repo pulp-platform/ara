@@ -795,7 +795,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     //////////////////////////////
 
     if (!vinsn_queue_full && vfu_operation_valid_i &&
-      (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VMXNOR]})) begin
+      (vfu_operation_i.vfu == VFU_Alu || (vfu_operation_i.op inside {[VMSEQ:VMXNOR]} &&
+      !(vfu_operation_i.op inside {VCPOP, VMSIF, VMSOF, VMSBF, VFIRST})))) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
       // Do not wait for masks if, during a reduction, this lane is just a pass-through
       // The only valid instructions here with vl == '0 are reductions
