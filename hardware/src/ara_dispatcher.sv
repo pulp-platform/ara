@@ -136,7 +136,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     RESHUFFLE,
     SLDU_SEQUENCER
   } state_e;
-  state_e state_d, state_q;
+  state_e state_d, state_q, state_qq;
+  // state_qq is the previous state signal. Useful to know from which state we come from.
 
   // We need to memorize the element width used to store each vector on the lanes, so that we are
   // able to deshuffle it when needed.
@@ -158,6 +159,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       state_q             <= NORMAL_OPERATION;
+      state_qq            <= NORMAL_OPERATION;
       eew_q               <= '{default: rvv_pkg::EW8};
       eew_valid_q         <= '0;
       eew_old_buffer_q    <= rvv_pkg::EW8;
@@ -169,6 +171,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       rs_mask_request_q   <= 1'b0;
     end else begin
       state_q             <= state_d;
+      state_qq            <= state_q;
       eew_q               <= eew_d;
       eew_valid_q         <= eew_valid_d;
       eew_old_buffer_q    <= eew_old_buffer_d;
@@ -2913,14 +2916,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           riscv::OpcodeSystem: begin
             // CSR ops have semantic dependency from vector instrucitons.
             // Therefore, Ara must be idle before performing any CSR operation.
-
             // Stall if there is any pending vector instruction
             // NOTE: This is overconstraining. Not all CSR ops actually need to stall if a vector instruction is pending.
             //       E.g., CSR vl is never updated by instructions past ara_dispatcher, except for "unit-stride fault-only-first loads". Reading vl would be safe otherwise.
             //       E.g., CSR vlenb is a design-constant parameter, reading is always safe.
             //       E.g., CSRs vxrm and vxsat have no influence on-non fixed-point instructions, it could be read and written safely when no fixed-point operation is running.
             //       By better analyzing the spec, more of optimizations of such can be made. For the sake of simplicity, the current implementation treats CSR ops as one block.
-            if ( ara_idle_i ) begin
+            // Just always go to WAIT_IDLE for at least one cycle (if there is a vinsn before the CSR one, it can be that ara_idle_i is still deasserted when the CSR is here).
+            if (!state_qq != WAIT_IDLE) begin
+              state_d = WAIT_IDLE;
+              acc_resp_o.req_ready = 1'b0;
+            end else begin
               // These always respond at the same cycle
               acc_resp_o.resp_valid = 1'b1;
               is_config        = 1'b1;
@@ -3136,9 +3142,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   illegal_insn = 1'b1;
                 end
               endcase // acc_req_i.insn.itype.funct3
-            end
-            else begin
-              acc_resp_o.req_ready = 1'b0;
             end
           end
 
