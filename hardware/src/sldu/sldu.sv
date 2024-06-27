@@ -733,13 +733,14 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_write_pnt_d = NP2_BUFFER_PNT;
         // Prepare the read pointer
         result_queue_read_pnt_d = NP2_RESULT_PNT;
-        // Setup the mux sel as soon as we get one operand
-        if (sldu_operand_valid_i[0])
+        // Setup the mux sel as soon as we get the operands
+        if (&(sldu_operand_valid_i | sldu_operand_valid))
           np2_loop_mux_sel_d = NP2_LOOP_SEL;
         // Setup the p2-stride generator
         p2_stride_gen_stride_d = stride_t'(vinsn_issue_q.stride >> vinsn_issue_q.vtype.vsew);
         p2_stride_gen_valid_d  = 1'b1;
         // Start processing the first VRF chunk as soon as the result queue is completely empty
+        // and the VRF chunk is complete
         if (np2_loop_mux_sel_q == NP2_LOOP_SEL && result_queue_empty) begin
           state_d = SLIDE_NP2_RUN;
         end
