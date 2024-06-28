@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
+ - Stall Ara and wait for ara_idle upon CSR write/read
+ - Fix how VLSU reports exceptions
+ - Set vstart=0 upon succesfull vector instructions
+ - Fix vstart usage in ara dispatcher
+ - Fix reshuffle mechanism
 
 ### Added
 
@@ -30,6 +35,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - [f]dotproduct works on the vector length in elements
  - Optimize DWT
  - Fix pathfinder performance
+ - Rename CSRs in dispatcher to improve clarity
+ - Change from reporting "errors" to full "exceptions"
+ - Bump CVA6 to version that supports "exceptions" reporting
 
 ## 3.0.0 - 2023-09-08
 
