@@ -10,7 +10,7 @@ package:
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.39.1                               }
   common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1                               }
-  cva6:               { git: "https://github.com/mp-17/cva6.git",                       rev: ea86d0ac5fe23ac7889cf8a8b8df7a8c0813bfad } # rebase/pulp-v1-os
+  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: 95b7a7e8e7e5ef06e771ab836756d394d66cd885 } # mp/pulp-v1-araOS
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13                               }
   apb:                { git: "https://github.com/pulp-platform/apb.git",                version: 0.2.4                                }
 
@@ -28,7 +28,6 @@ sources:
 
     # Sources
     # Level 1
-    - hardware/src/axi_to_mem.sv
     - hardware/src/ctrl_registers.sv
     - hardware/src/cva6_accel_first_pass_decoder.sv
     - hardware/src/ara_dispatcher.sv

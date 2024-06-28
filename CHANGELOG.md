@@ -16,12 +16,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Set vstart=0 upon succesfull vector instructions
  - Fix vstart usage in ara dispatcher
  - Fix reshuffle mechanism
+ - Fix vstart usage for memory operations
 
 ### Added
 
  - Plot kernels-Vl performance plot
  - Print I$/D$ stall metrics
  - Add `spmv`, `conjugate_gradient`, and `gemv` kernels.
+ - Add MMU interface between Ara and CVA6
+ - Add virtual->physical address translation for Ara by sharing CVA6 MMU
+ - Add Ara VLSU support for MMU exceptions
 
 ### Changed
 
@@ -38,6 +42,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Rename CSRs in dispatcher to improve clarity
  - Change from reporting "errors" to full "exceptions"
  - Bump CVA6 to version that supports "exceptions" reporting
+ - Refactor addrgen module
 
 ## 3.0.0 - 2023-09-08
 

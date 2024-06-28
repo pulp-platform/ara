@@ -157,17 +157,17 @@ package ara_pkg;
   } ara_op_e;
 
   // Return true if op is a load operation
-  function automatic is_load(ara_op_e op);
+  function automatic logic is_load(ara_op_e op);
     is_load = op inside {[VLE:VLXE]};
   endfunction : is_load
 
   // Return true if op is a store operation
-  function automatic is_store(ara_op_e op);
+  function automatic logic is_store(ara_op_e op);
     is_store = op inside {[VSE:VSXE]};
   endfunction : is_store
 
   // Return true of op is either VCPOP or VFIRST
-  function automatic vd_scalar(ara_op_e op);
+  function automatic logic vd_scalar(ara_op_e op);
     vd_scalar = op inside {[VCPOP:VFIRST]};
   endfunction : vd_scalar
 
@@ -241,8 +241,12 @@ package ara_pkg;
   /////////////////////////////
 
   // Use Ariane's accelerator interface.
+  typedef acc_pkg::cva6_to_acc_t cva6_to_acc_t;
+  typedef acc_pkg::acc_to_cva6_t acc_to_cva6_t;
   typedef acc_pkg::accelerator_req_t accelerator_req_t;
   typedef acc_pkg::accelerator_resp_t accelerator_resp_t;
+  typedef acc_pkg::acc_mmu_req_t acc_mmu_req_t;
+  typedef acc_pkg::acc_mmu_resp_t acc_mmu_resp_t;
 
   /////////////////////////
   //  Backend interface  //
@@ -274,6 +278,7 @@ package ara_pkg;
     logic use_vs1;
     opqueue_conversion_e conversion_vs1;
     rvv_pkg::vew_e eew_vs1;
+    rvv_pkg::vew_e old_eew_vs1;
 
     // 2nd vector register operand
     logic [4:0] vs2;
@@ -368,11 +373,17 @@ package ara_pkg;
     // Rescale vl taking into account the new and old EEW
     logic scale_vl;
 
+    // The lane that provides the first element of the computation
+    logic [$clog2(MaxNrLanes)-1:0] start_lane;
+    // The lane that provides the last element of the computation
+    logic [$clog2(MaxNrLanes)-1:0] end_lane;
+
     // 1st vector register operand
     logic [4:0] vs1;
     logic use_vs1;
     opqueue_conversion_e conversion_vs1;
     rvv_pkg::vew_e eew_vs1;
+    rvv_pkg::vew_e old_eew_vs1;
 
     // 2nd vector register operand
     logic [4:0] vs2;
@@ -976,11 +987,20 @@ package ara_pkg;
   } opqueue_e;
 
   // Each lane has eight VRF banks
+  // NOTE: values != 8 are not supported
   localparam int unsigned NrVRFBanksPerLane = 8;
 
-  // Find the starting address of a vector register vid
+  // Find the starting address (in bytes) of a vector register chunk of vid
   function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes);
-    vaddr = vid * (VLENB / NrLanes / 8);
+    // Each vector register spans multiple words in each bank in each lane
+    // The start address is the same in every lane
+    // Therefore, within each lane, each vector register chunk starts on a given offset
+    vaddr = vid * (VLENB / NrLanes / NrVRFBanksPerLane);
+    // NOTE: the only extensively tested configuration of Ara keeps:
+    //        - (VLEN / NrLanes) constant to 1024;
+    //        - NrVRFBanksPerLane always equal to 8.
+    //        Given so, each vector register will span 2 words across all the banks and lanes,
+    //        therefore, vaddr = vid * 16
   endfunction: vaddr
 
   // Differenciate between SLDU and ADDRGEN operands from opqueue
@@ -1001,6 +1021,7 @@ package ara_pkg;
     resize_e cvt_resize;    // Resizing of FP conversions
 
     logic is_reduct; // Is this a reduction?
+    logic is_slide; // Is this a slide?
 
     rvv_pkg::vew_e eew;        // Effective element width
     opqueue_conversion_e conv; // Type conversion
@@ -1010,7 +1031,7 @@ package ara_pkg;
     // Vector machine metadata
     rvv_pkg::vtype_t vtype;
     vlen_t vl;
-    vlen_t vstart;
+    vlen_t vstart; // In the lanes, this is NOT the architectural vstart
 
     // Hazards
     logic [NrVInsn-1:0] hazard;
@@ -1018,7 +1039,7 @@ package ara_pkg;
 
   typedef struct packed {
     rvv_pkg::vew_e eew;        // Effective element width
-    vlen_t vl;                 // Vector length
+    vlen_t elem_count;         // Vector body length
     opqueue_conversion_e conv; // Type conversion
     logic [1:0] ntr_red;       // Neutral type for reductions
     logic is_reduct;           // Is this a reduction?
@@ -1105,6 +1126,7 @@ package ara_pkg;
     axi_pkg::size_t size;
     axi_pkg::len_t len;
     logic is_load;
+    logic is_exception;
   } addrgen_axi_req_t;
 
 
@@ -2038,5 +2060,15 @@ package ara_pkg;
     endcase
     return vfrsqrt7_o;
   endfunction : vfrsqrt7_fp64
+
+  ////////////////
+  // Exceptions //
+  ////////////////
+
+  // End-to-end store exception latency, i.e.,
+  // the latency from the addrgen store exception to the opqueues.
+  // We keep it as a define to implement conditional declaration.
+  `define StuExLat 1
+  localparam int unsigned StuExLat = `StuExLat;
 
 endpackage : ara_pkg
