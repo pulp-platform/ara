@@ -17,7 +17,7 @@ CUSTOM_BENDER_TARGETS   := -t fpga -t cv64a6_imafdcv_sv39 -t cva6 -t $(BOARD) --
 .PHONY: ara-chs-xilinx-all clean
 
 ara-chs-xilinx-all: $(MAKEFILE_DIR)/add_sources.vcu128.tcl
-	make -C $(BACKREF_CHS_ROOT) chs-xilinx-all
+	make -C $(BACKREF_CHS_ROOT) chs-xilinx-$(BOARD)
 
 $(MAKEFILE_DIR)/add_sources.vcu128.tcl:
 	cd $(BACKREF_CHS_ROOT) && \
