@@ -14,9 +14,9 @@ BACKREF_CHS_XIL_SCRIPTS := $(BACKREF_CHS_ROOT)/target/xilinx/scripts
 BOARD                   := vcu128
 CUSTOM_BENDER_TARGETS   := -t fpga -t cv64a6_imafdcv_sv39 -t cva6 -t $(BOARD) --define ARA
 
-.PHONY: ara-chs-xilinx-all clean
+.PHONY: ara-chs-xilinx-$(BOARD) clean
 
-ara-chs-xilinx-all: $(MAKEFILE_DIR)/add_sources.vcu128.tcl
+ara-chs-xilinx-$(BOARD): $(MAKEFILE_DIR)/add_sources.vcu128.tcl
 	make -C $(BACKREF_CHS_ROOT) chs-xilinx-$(BOARD)
 
 $(MAKEFILE_DIR)/add_sources.vcu128.tcl:
