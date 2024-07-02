@@ -156,7 +156,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic    pe_req_valid_d;
 
   // This function determines the VFU responsible for handling this operation.
-  function automatic vfu_e vfu(ara_op_e op);
+  function automatic vfu_e vfu(ara_op_e op = VADD);
     unique case (op) inside
       [VADD:VWREDSUM]      : vfu = VFU_Alu;
       [VMUL:VFWREDOSUM]    : vfu = VFU_MFpu;
