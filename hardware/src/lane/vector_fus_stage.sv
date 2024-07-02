@@ -8,18 +8,21 @@
 // of each lane, namely the ALU and the Multiplier/FPU.
 
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned NrLanes      = 0,
+    parameter  int           unsigned NrLanes         = 0,
+    parameter  int           unsigned VLEN            = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    parameter  fpext_support_e        FPExtSupport    = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport    = FixedPointEnable,
     // Type used to address vector register file elements
-    parameter  type                   vaddr_t      = logic,
+    parameter  type                   vaddr_t         = logic,
+    parameter  type                   vfu_operation_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth    = $bits(elen_t),
-    localparam type                   strb_t       = logic [DataWidth/8-1:0]
+    localparam type                   strb_t       = logic [DataWidth/8-1:0],
+    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,
@@ -98,9 +101,11 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   //////////////////
 
   valu #(
-    .NrLanes(NrLanes),
-    .FixPtSupport(FixPtSupport),
-    .vaddr_t(vaddr_t)
+    .NrLanes        (NrLanes        ),
+    .VLEN           (VLEN           ),
+    .FixPtSupport   (FixPtSupport   ),
+    .vaddr_t        (vaddr_t        ),
+    .vfu_operation_t(vfu_operation_t)
   ) i_valu (
     .clk_i                (clk_i                          ),
     .rst_ni               (rst_ni                         ),
@@ -145,11 +150,13 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   ///////////////////
 
   vmfpu #(
-    .NrLanes   (NrLanes   ),
-    .FPUSupport(FPUSupport),
-    .FPExtSupport(FPExtSupport),
-    .FixPtSupport(FixPtSupport),
-    .vaddr_t   (vaddr_t   )
+    .NrLanes        (NrLanes        ),
+    .VLEN           (VLEN           ),
+    .FPUSupport     (FPUSupport     ),
+    .FPExtSupport   (FPExtSupport   ),
+    .FixPtSupport   (FixPtSupport   ),
+    .vaddr_t        (vaddr_t        ),
+    .vfu_operation_t(vfu_operation_t)
   ) i_vmfpu (
     .clk_i                (clk_i                           ),
     .rst_ni               (rst_ni                          ),

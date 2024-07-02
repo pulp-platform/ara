@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Rename CSRs in dispatcher to improve clarity
  - Change from reporting "errors" to full "exceptions"
  - Bump CVA6 to version that supports "exceptions" reporting
+ - VLEN is now a parameter of the ara architecture and does not depend on a define anymore
+ - vlen_t, as a consequence, is now define within the architecture as a parameter/localparam
 
 ## 3.0.0 - 2023-09-08
 

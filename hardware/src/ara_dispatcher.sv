@@ -10,12 +10,18 @@
 
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes      = 0,
+    parameter int           unsigned VLEN         = 0,
+    parameter type                   ara_req_t    = logic,
+    parameter type                   ara_resp_t   = logic,
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
     parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter fixpt_support_e        FixPtSupport = FixedPointEnable
+    parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
+    // Dependent parameters: DO NOT CHANGE
+    localparam type                  vlen_t       = logic[$clog2(VLEN+1)-1:0],
+    localparam int          unsigned VLENB        = VLEN / 8
   ) (
     // Clock and reset
     input  logic                                 clk_i,

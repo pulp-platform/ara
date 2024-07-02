@@ -8,12 +8,16 @@
 // instructions, which need access to the whole Vector Register File.
 
 module sldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes = 0,
-    parameter  type          vaddr_t = logic, // Type used to address vector register file elements
+    parameter  int  unsigned NrLanes   = 0,
+    parameter  int  unsigned VLEN      = 0,
+    parameter  type          vaddr_t   = logic, // Type used to address vector register file elements,
+    parameter  type          pe_req_t  = logic,
+    parameter  type          pe_resp_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
-    localparam type          strb_t    = logic [StrbWidth-1:0] // Byte-strobe type
+    localparam type          strb_t    = logic [StrbWidth-1:0], // Byte-strobe type
+    localparam type          vlen_t    = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                   clk_i,
     input  logic                   rst_ni,
@@ -381,7 +385,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t issue_cnt_d, issue_cnt_q;
   // Respected by default: input_limit_d  = 8*NrLanes + out_pnt_d - in_pnt_d;
   // To enforce: output_limit_d = out_pnt_d + issue_cnt_d;
-  logic [idx_width(MAXVL+1):0] output_limit_d, output_limit_q;
+  // MAXVL == VLEN (when LMUL == 8, i.e., the maximum possible)
+  logic [idx_width(VLEN+1):0] output_limit_d, output_limit_q;
 
   // Remaining bytes of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
@@ -556,7 +561,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           for (int lane = 0; lane < NrLanes; lane++) begin
             result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
             result_queue_d[result_queue_write_pnt_q][lane].addr =
-              vaddr(vinsn_issue_q.vd, NrLanes) + vrf_pnt_q;
+              vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + vrf_pnt_q;
           end
 
           // Bump pointers (reductions always finish in one shot)

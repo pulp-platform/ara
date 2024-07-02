@@ -188,6 +188,7 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
+  -GVLEN=$(vlen)                                                                \
   -O3                                                                           \
   -Wno-fatal                                                                    \
   -Wno-PINCONNECTEMPTY                                                          \
@@ -203,7 +204,6 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -Wno-WIDTHCONCAT                                                              \
   -Wno-ENUMVALUE                                                                \
   -Wno-COMBDLY                                                                  \
-  --hierarchical                                                                \
   tb/verilator/waiver.vlt                                                       \
   --Mdir $(veril_library)                                                       \
   -Itb/dpi                                                                      \

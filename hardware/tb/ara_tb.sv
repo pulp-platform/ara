@@ -29,6 +29,12 @@ module ara_tb;
   localparam NrLanes = 0;
   `endif
 
+  `ifdef VLEN
+  localparam VLEN = `VLEN;
+  `else
+  localparam VLEN = 0;
+  `endif
+
   localparam ClockPeriod  = 1ns;
   // Axi response delay [ps]
   localparam int unsigned AxiRespDelay = 200;
@@ -78,6 +84,7 @@ module ara_tb;
   `ifndef VERILATOR
   ara_testharness #(
     .NrLanes     (NrLanes         ),
+    .VLEN        (VLEN            ),
     .AxiAddrWidth(AxiAddrWidth    ),
     .AxiDataWidth(AxiWideDataWidth),
     .AxiRespDelay(AxiRespDelay    )

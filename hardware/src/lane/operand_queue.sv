@@ -9,22 +9,25 @@
 // need it.
 
 module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
-    parameter  int           unsigned CmdBufDepth    = 2,
-    parameter  int           unsigned DataBufDepth   = 2,
-    parameter  int           unsigned NrSlaves       = 1,
-    parameter  int           unsigned NrLanes        = 0,
+    parameter  int           unsigned CmdBufDepth         = 2,
+    parameter  int           unsigned DataBufDepth        = 2,
+    parameter  int           unsigned NrSlaves            = 1,
+    parameter  int           unsigned NrLanes             = 0,
+    parameter  int           unsigned VLEN                = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport     = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport          = FPUSupportHalfSingleDouble,
     // Supported conversions
-    parameter  logic                  SupportIntExt2 = 1'b0,
-    parameter  logic                  SupportIntExt4 = 1'b0,
-    parameter  logic                  SupportIntExt8 = 1'b0,
+    parameter  logic                  SupportIntExt2      = 1'b0,
+    parameter  logic                  SupportIntExt4      = 1'b0,
+    parameter  logic                  SupportIntExt8      = 1'b0,
     // Support neutral value filling
-    parameter  logic                  SupportReduct  = 1'b0,
-    parameter  logic                  SupportNtrVal  = 1'b0,
+    parameter  logic                  SupportReduct       = 1'b0,
+    parameter  logic                  SupportNtrVal       = 1'b0,
+    parameter  type                   operand_queue_cmd_t = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           unsigned DataWidth      = $bits(elen_t),
-    localparam int           unsigned StrbWidth      = DataWidth/8
+    localparam int           unsigned StrbWidth      = DataWidth/8,
+    localparam type                   vlen_t         = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                              clk_i,
     input  logic                              rst_ni,

@@ -10,15 +10,19 @@
 `include "ara/ara.svh"
 
 module lane import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int           unsigned NrLanes         = 1, // Number of lanes
+    parameter  int           unsigned NrLanes               = 1, // Number of lanes
+    parameter  int           unsigned VLEN                  = 0,
     // Support for floating-point data types
-    parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
+    parameter  fpu_support_e          FPUSupport            = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
-    parameter  fpext_support_e        FPExtSupport    = FPExtSupportEnable,
+    parameter  fpext_support_e        FPExtSupport          = FPExtSupportEnable,
     // Support for fixed-point data types
-    parameter  fixpt_support_e        FixPtSupport    = FixedPointEnable,
+    parameter  fixpt_support_e        FixPtSupport          = FixedPointEnable,
+    parameter  type                   pe_req_t              = logic,
+    parameter  type                   pe_resp_t             = logic,
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
+    localparam int           unsigned VLENB           = VLEN / 8,
     localparam int           unsigned MaxVLenPerLane  = VLEN / NrLanes,       // In bits
     localparam int           unsigned MaxVLenBPerLane = VLENB / NrLanes,      // In bytes
     localparam int           unsigned VRFSizePerLane  = MaxVLenPerLane * 32,  // In bits
@@ -26,7 +30,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Address of an element in the lane's VRF
     localparam type                   vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0],
     localparam int           unsigned DataWidth       = $bits(elen_t), // Width of the lane datapath
-    localparam type                   strb_t          = logic [DataWidth/8-1:0] // Byte-strobe type
+    localparam type                   strb_t          = logic [DataWidth/8-1:0], // Byte-strobe type
+    // vl_csr type
+    localparam type                   vlen_t          = logic [$clog2(VLEN+1)-1:0]
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,
@@ -95,6 +101,77 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                           mask_ready_o
   );
 
+  ///////////////////
+  //  Definitions  //
+  ///////////////////
+
+  // This is the interface between the lane's sequencer and the operand request stage, which
+  // makes consecutive requests to the vector elements inside the VRF.
+  typedef struct packed {
+    vid_t id; // ID of the vector instruction
+
+    logic [4:0] vs; // Vector register operand
+
+    logic scale_vl; // Rescale vl taking into account the new and old EEW
+
+    resize_e cvt_resize;    // Resizing of FP conversions
+
+    logic is_reduct; // Is this a reduction?
+
+    rvv_pkg::vew_e eew;        // Effective element width
+    opqueue_conversion_e conv; // Type conversion
+
+    target_fu_e target_fu;     // Target FU of the opqueue (if it is not clear)
+
+    // Vector machine metadata
+    rvv_pkg::vtype_t vtype;
+    vlen_t vl;
+    vlen_t vstart;
+
+    // Hazards
+    logic [NrVInsn-1:0] hazard;
+  } operand_request_cmd_t;
+
+  typedef struct packed {
+    rvv_pkg::vew_e eew;        // Effective element width
+    vlen_t vl;                 // Vector length
+    opqueue_conversion_e conv; // Type conversion
+    logic [1:0] ntr_red;       // Neutral type for reductions
+    logic is_reduct;           // Is this a reduction?
+    target_fu_e target_fu;     // Target FU of the opqueue (if it is not clear)
+  } operand_queue_cmd_t;
+
+  // This is the interface between the lane's sequencer and the lane's VFUs.
+  typedef struct packed {
+    vid_t id; // ID of the vector instruction
+
+    ara_op_e op; // Operation
+    logic vm;    // Masked instruction
+
+    logic use_vs1;   // This operation uses vs1
+    logic use_vs2;   // This operation uses vs1
+    logic use_vd_op; // This operation uses vd as an operand as well
+
+    elen_t scalar_op;    // Scalar operand
+    logic use_scalar_op; // This operation uses the scalar operand
+
+    vfu_e vfu; // VFU responsible for this instruction
+
+    logic [4:0] vd; // Vector destination register
+    logic use_vd;
+
+    logic swap_vs2_vd_op; // If asserted: vs2 is kept in MulFPU opqueue C, and vd_op in MulFPU A
+
+    fpnew_pkg::roundmode_e fp_rm; // Rounding-Mode for FP operations
+    logic wide_fp_imm;            // Widen FP immediate (re-encoding)
+    resize_e cvt_resize;    // Resizing of FP conversions
+
+    // Vector machine metadata
+    vlen_t vl;
+    vlen_t vstart;
+    rvv_pkg::vtype_t vtype;
+  } vfu_operation_t;
+
   /////////////////
   //  Spill Reg  //
   /////////////////
@@ -132,7 +209,13 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       mfpu_ready;
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
 
-  lane_sequencer #(.NrLanes(NrLanes)) i_lane_sequencer (
+  lane_sequencer #(
+    .NrLanes              (NrLanes              ),
+    .pe_req_t             (pe_req_t             ),
+    .pe_resp_t            (pe_resp_t            ),
+    .operand_request_cmd_t(operand_request_cmd_t),
+    .vfu_operation_t      (vfu_operation_t      )
+  ) i_lane_sequencer (
     .clk_i                  (clk_i                ),
     .rst_ni                 (rst_ni               ),
     .lane_id_i              (lane_id_i            ),
@@ -192,9 +275,12 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       sldu_result_gnt_opqueues;
 
   operand_requester #(
-    .NrBanks(NrVRFBanksPerLane),
-    .NrLanes(NrLanes          ),
-    .vaddr_t(vaddr_t          )
+    .NrLanes              (NrLanes              ),
+    .VLEN                 (VLEN                 ),
+    .NrBanks              (NrVRFBanksPerLane    ),
+    .vaddr_t              (vaddr_t              ),
+    .operand_request_cmd_t(operand_request_cmd_t),
+    .operand_queue_cmd_t  (operand_queue_cmd_t  )
   ) i_operand_requester (
     .clk_i                    (clk_i                   ),
     .rst_ni                   (rst_ni                  ),
@@ -304,8 +390,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic sldu_addrgen_operand_opqueues_valid;
 
   operand_queues_stage #(
-    .NrLanes   (NrLanes   ),
-    .FPUSupport(FPUSupport)
+    .NrLanes            (NrLanes            ),
+    .VLEN               (VLEN               ),
+    .FPUSupport         (FPUSupport         ),
+    .operand_queue_cmd_t(operand_queue_cmd_t)
   ) i_operand_queues (
     .clk_i                            (clk_i                              ),
     .rst_ni                           (rst_ni                             ),
@@ -354,11 +442,13 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic sldu_alu_ready, sldu_mfpu_ready;
 
   vector_fus_stage #(
-    .NrLanes     (NrLanes     ),
-    .FPUSupport  (FPUSupport  ),
-    .FPExtSupport(FPExtSupport),
-    .FixPtSupport(FixPtSupport),
-    .vaddr_t     (vaddr_t     )
+    .NrLanes        (NrLanes        ),
+    .VLEN           (VLEN           ),
+    .FPUSupport     (FPUSupport     ),
+    .FPExtSupport   (FPExtSupport   ),
+    .FixPtSupport   (FixPtSupport   ),
+    .vaddr_t        (vaddr_t        ),
+    .vfu_operation_t(vfu_operation_t)
   ) i_vfus (
     .clk_i                (clk_i                                  ),
     .rst_ni               (rst_ni                                 ),
