@@ -203,7 +203,6 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -Wno-WIDTHCONCAT                                                              \
   -Wno-ENUMVALUE                                                                \
   -Wno-COMBDLY                                                                  \
-  --hierarchical                                                                \
   tb/verilator/waiver.vlt                                                       \
   --Mdir $(veril_library)                                                       \
   -Itb/dpi                                                                      \
