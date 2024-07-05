@@ -11,14 +11,14 @@
 
 #include "printf.h"
 
-inline void cheshire_start() {
+void cheshire_start() {
   // Initialize Cheshire's UART
   uint32_t rtc_freq = *reg32(&__base_regs, CHESHIRE_RTC_FREQ_REG_OFFSET);
   uint64_t reset_freq = clint_get_core_freq(rtc_freq, 2500);
   uart_init(&__base_uart, reset_freq, __BOOT_BAUDRATE);
 }
 
-inline void cheshire_finish() {
+void cheshire_end() {
   // Flush teh UART
   uart_write_flush(&__base_uart);
 }

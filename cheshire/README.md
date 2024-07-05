@@ -8,7 +8,7 @@ Support for FPGA synthesis was added to Ara by integrating it into Cheshire. Sin
 
 1.  **Navigate to the Root Directory**
     Ensure you are in the root directory where the Makefile is located.
-    
+
 2.  **Set up environment**
     Set the `BACKREF_CHS_ROOT` variable to root directory of the Cheshire repository where you want to build the bitstream.
 
@@ -26,16 +26,16 @@ This command will:
 Here's how we use back-referencing in our setup:
 
 1.  **Generate Custom TCL File**:
-    
+
     -   We generate a custom `add_sources.vcu128.tcl` file using the `bender script vivado` command with our specific targets (`-t fpga -t cv64a6_imafdcv_sv39 -t cva6 -t vcu128 --define ARA`).
     -   This custom TCL file includes all the necessary sources and configurations required for the FPGA synthesis with Cheshire + Ara.
 
 2.  **Copy Custom TCL File**:
-    
+
     -   The generated custom TCL file is then copied into the Cheshire directory (`$(BACKREF_CHS_XIL_SCRIPTS)/add_sources.vcu128.tcl`).
 
 3.  **Invoke Cheshire Compile Flow**:
-    
+
     -   With the custom TCL file in place, we invoke the Cheshire compile flow by running `make -C $(BACKREF_CHS_ROOT) chs-xilinx-all`.
     -   The Cheshire compile flow target depends on the `add_sources.vcu128.tcl` file, and since we have provided our custom version, it will use ours for the synthesis process.
 
