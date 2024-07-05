@@ -6,22 +6,34 @@
 #
 # Copy and compile vector software on Cheshire
 
-CHS_ROOT ?= $(realpath ../../../../../..)
-ARA_SW   := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+CHS_ROOT ?= $(dir $(realpath $(firstword $(MAKEFILE_LIST))))/../../../../../..
+ARA_ROOT := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))/../..
 CHS_SW   := $(CHS_ROOT)/sw
-SRC      := $(wildcard $(ARA_SW)/*.c) $(wildcard $(ARA_SW)/*.h)
+ARA_SW   := $(ARA_ROOT)/cheshire/sw
+ARA_APPS := $(ARA_ROOT)/apps
+
+APPS   := $(patsubst $(ARA_APPS)/%/main.c,%,$(shell find $(ARA_APPS) -name "main.c"))
+SW_C   := $(wildcard $(ARA_SW)/src/*.c)
+DEPS_H := $(wildcard $(ARA_SW)/include/*.h)
+
+ARA_CONFIGURATION ?= 2_lanes
+include $(ARA_ROOT)/config/$(ARA_CONFIGURATION).mk
 
 # Get the original compiler options and add the support for vector extension
 CHS_SW_FLAGS ?= $(shell grep "^CHS_SW_FLAGS\s\+?=\s\+" -- $(CHS_SW)/sw.mk | sed 's/^.*?= //' | sed s/rv64gc/rv64gcv/)
+# Tweak the compilation to include Cheshire-related headers and files
+CHS_SW_FLAGS += -DCHESHIRE -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
 
-.PHONY: chs-sw-all copy_vector_sw
+.PHONY: chs-sw-all copy_vector_sw copy-vector-deps
 
 # Forward build command to the main Cheshire makefile and attach the correct -march
-# Rename the .c vector files not to break the cheshire vanilla flow
-chs-sw-all: copy-vector-sw
+chs-sw-all: copy-vector-sw copy-vector-deps
 	make -C $(CHS_ROOT) $@ CHS_SW_FLAGS="$(CHS_SW_FLAGS)"
-	for f in $(filter %.c, $(SRC)); do mv $(CHS_SW)/tests/$f $(CHS_SW)/tests/$f.bkp; done
 
-# Copy the vector programs to cheshire
-copy-vector-sw:
-	cp $(SRC) $(CHS_SW)/tests
+# Copy the dependencies from this folder to Cheshire
+copy-vector-deps: $(DEPS_H)
+	cp $^ $(CHS_SW)/tests
+
+# Copy the vector programs from the src folder to cheshire
+copy-vector-sw: $(SW_C)
+	cp $^ $(CHS_SW)/tests
