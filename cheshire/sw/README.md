@@ -1,9 +1,11 @@
 # Build software for Cheshire Ara
 
-Compile the `.c` programs in this folder with:
+## Compile the vector code for Cheshire
+
+Compile the source files with the vector extension support enable:
 
 ```bash
 make chs-sw-all
 ```
 
-This command will copy the necessary source files into Cheshire's `sw/tests` directory and compile them with the support for vector extension.
+This command will also copy the necessary dependencies to `sw/tests` and enable the vector extension at compile time.
