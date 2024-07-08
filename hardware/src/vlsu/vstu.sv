@@ -289,15 +289,15 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       // How many bytes are valid in this AXI word
       axi_valid_bytes   = upper_byte - lower_byte + 1;
 
-      valid_bytes = ( issue_cnt_bytes_q < (NrLanes * DataWidthB) ) ? vinsn_valid_bytes : vrf_valid_bytes;
-      valid_bytes = ( valid_bytes < axi_valid_bytes              ) ? valid_bytes       : axi_valid_bytes;
+      valid_bytes = (issue_cnt_bytes_q < (NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
+      valid_bytes = (valid_bytes       < axi_valid_bytes       ) ? valid_bytes       : axi_valid_bytes;
 
       // TODO: apply the same vstart logic also to mask_valid_i
       // For now, assume (vstart % NrLanes == 0)
       mask_valid = mask_valid_i;
 
       // Wait for all expected operands from the lanes
-      if ( &stu_operand_valid && (vinsn_issue_q.vm || (|mask_valid_i) ) ) begin : operands_ready
+      if (&stu_operand_valid && (vinsn_issue_q.vm || (|mask_valid_i))) begin : operands_ready
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
         vrf_cnt_d = vrf_cnt_q + valid_bytes;
 
@@ -378,9 +378,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       // Load issue_cnt_bytes_d for next instruction (if any)
       if (vinsn_queue_d.issue_cnt != 0) begin : issue_cnt_bytes_update
-        issue_cnt_bytes_d = ( vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl -
-                        vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vstart
-                      ) << unsigned'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
+        issue_cnt_bytes_d = (vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl - vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vstart)
+                            << unsigned'(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew);
         // Prepare the VRF start pointer
         vrf_word_start_byte = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vstart[$clog2(8*NrLanes)-1:0] <<
           vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vtype.vsew;
@@ -426,7 +425,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ////////////////////////
 
     // Clear instruction from queue and data in case of exceptions from addrgen
-    if ( vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_store_i) ) begin : exception
+    if (vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_store_i)) begin : exception
       // Bump issue counters and pointers of the vector instruction queue
       vinsn_queue_d.issue_cnt -= 1;
       issue_cnt_bytes_d = '0;
