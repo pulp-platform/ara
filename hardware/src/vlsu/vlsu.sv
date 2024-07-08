@@ -166,9 +166,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i         (pe_vinsn_running_i         ),
     .addrgen_ack_o              (addrgen_ack_o              ),
     .addrgen_exception_o        ( addrgen_exception_o       ),
-    .addrgen_exception_vstart_o ( addrgen_exception_vstart_o ),
-    .addrgen_illegal_load_o     (addrgen_illegal_load      ),
-    .addrgen_illegal_store_o    (addrgen_illegal_store     ),
+    .addrgen_exception_vstart_o ( addrgen_exception_vstart_o),
+    .addrgen_illegal_load_o     (addrgen_illegal_load       ),
+    .addrgen_illegal_store_o    (addrgen_illegal_store      ),
     // Interface with the lanes
     .addrgen_operand_i          (addrgen_operand_i          ),
     .addrgen_operand_target_fu_i(addrgen_operand_target_fu_i),

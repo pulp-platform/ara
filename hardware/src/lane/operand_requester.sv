@@ -276,7 +276,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       automatic operand_queue_cmd_t  operand_queue_cmd_tmp;
       automatic requester_metadata_t requester_metadata_tmp;
       automatic vlen_t               vector_body_length;
-      automatic vlen_t               scaled_vector_body_length;
       automatic vlen_t               effective_vector_body_length;
       automatic vaddr_t              vrf_addr;
 
@@ -320,29 +319,17 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       if (vector_body_len_packets << operand_request_i[requester_index].eew < vector_body_len_byte)
         vector_body_len_packets += 1;
 
-      // For memory operations, the number of elements initially refers to the new EEW (vsew here),
-      // but the requester_index must refer to the old EEW (eew here)
-      // This reasoning cannot be applied also to widening instructions, which modify vsew
-      // treating it as the EEW of vd
-      scaled_vector_body_length = (
-                                   vector_body_length
-                                    << operand_request_i[requester_index].vtype.vsew
-                                  ) >> operand_request_i[requester_index].eew;
-
-
       // Final computed length
-      effective_vector_body_length = ( operand_request_i[requester_index].scale_vl )
-                                      ? vector_body_len_packets
-                                      : vector_body_length;
+      effective_vector_body_length = (operand_request_i[requester_index].scale_vl)
+                                   ? vector_body_len_packets
+                                   : vector_body_length;
 
       // Address of the vstart element of the vector in the VRF
       // This vstart is NOT the architectural one and was modified in the lane
       // sequencer to provide the correct start address
       vrf_addr = vaddr(operand_request_i[requester_index].vs, NrLanes, VLEN)
-                  + (
-                      operand_request_i[requester_index].vstart
-                      >> (unsigned'(EW64) - unsigned'(operand_request_i[requester_index].eew))
-                    );
+               + (operand_request_i[requester_index].vstart >>
+                   (unsigned'(EW64) - unsigned'(operand_request_i[requester_index].eew)));
       // Init helper variables
       requester_metadata_tmp = '{
         id          : operand_request_i[requester_index].id,
@@ -396,7 +383,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
           end : op_req_valid
         end : state_q_IDLE
 
-        REQUESTING: begin : state_q_REQUESTING
+        REQUESTING: begin
           // Update waw counters
           for (int b = 0; b < NrVInsn; b++) begin : waw_counters_update
             if ( vinsn_result_written_d[b] ) begin : result_valid
@@ -404,7 +391,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             end : result_valid
           end : waw_counters_update
 
-          if (operand_queue_ready_i[requester_index]) begin : op_queue_ready
+          if (operand_queue_ready_i[requester_index]) begin
             automatic vlen_t num_bytes;
 
             // Operand request
@@ -431,11 +418,11 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             end : op_req_grant
 
             // Finished requesting all the elements
-            if (requester_metadata_d.len == '0) begin : req_finished
+            if (requester_metadata_d.len == '0) begin
               state_d = IDLE;
 
               // Accept a new instruction
-              if (operand_request_valid_i[requester_index]) begin : op_req_valid
+              if (operand_request_valid_i[requester_index]) begin
                 state_d                            = REQUESTING;
                 // Acknowledge the request
                 operand_request_ready_o[requester_index] = 1'b1;
@@ -458,15 +445,15 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 end : req_zero_rescaled_vl
 
                 // Mute the requisition if the vl is zero
-                if (operand_request_i[requester_index].vl == '0) begin : zero_vl
+                if (operand_request_i[requester_index].vl == '0) begin
                   state_d                              = IDLE;
                   operand_queue_cmd_valid_o[requester_index] = 1'b0;
-                end : zero_vl
-              end : op_req_valid
-            end : req_finished
-          end : op_queue_ready
-        end : state_q_REQUESTING
-      endcase // state_q
+                end
+              end
+            end
+          end
+        end
+      endcase
       // Always keep the hazard bits up to date with the global hazard table
       requester_metadata_d.hazard &= global_hazard_table_i[requester_metadata_d.id];
 

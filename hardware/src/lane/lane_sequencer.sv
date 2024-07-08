@@ -201,7 +201,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     vfu_operation_valid_d = 1'b0;
 
     // If the operand requesters are busy, abort the request and wait for another cycle.
-    if (pe_req_valid) begin : stall_op_req_busy
+    if (pe_req_valid) begin
       unique case (pe_req.vfu)
         VFU_Alu : begin
           pe_req_ready = !(operand_request_valid_o[AluA] ||
@@ -234,11 +234,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           pe_req_ready = !(operand_request_valid_o[MaskB]);
         end
         default:;
-      endcase // stall_op_req_busy
+      endcase
     end
 
     // We received a new vector instruction
-    if (pe_req_valid && pe_req_ready && !vinsn_running_d[pe_req.id]) begin : if_pe_req_valid
+    if (pe_req_valid && pe_req_ready && !vinsn_running_d[pe_req.id]) begin
       // Populate the VFU request
       vfu_operation_d = '{
         id             : pe_req.id,
@@ -261,7 +261,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       };
       vfu_operation_valid_d = (vfu_operation_d.vfu != VFU_None) ? 1'b1 : 1'b0;
 
-      // Vector length calculation for the
+      // Vector length calculation
       vfu_operation_d.vl = pe_req.vl / NrLanes;
       // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
       if (lane_id_i < pe_req.vl[idx_width(NrLanes)-1:0]) vfu_operation_d.vl += 1;
@@ -490,13 +490,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // extra operand regardless of whether it is valid in this lane or not.
           // This is done to balance the data received by the store unit, which expects
           // L*64-bits packets only.
-          if (lane_id_i > pe_req.end_lane) begin : tweak_vl_StA
+          if (lane_id_i > pe_req.end_lane) begin
             operand_request[StA].vl += 1;
-          end : tweak_vl_StA
+          end
           operand_request_push[StA] = pe_req.use_vs1;
 
           // This vector instruction uses masks
-          // TODO: add vstart support here
           operand_request[MaskM] = '{
             id     : pe_req.id,
             vs     : VMASK,
@@ -530,9 +529,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           // Since this request goes outside of the lane, we might need to request an
           // extra operand regardless of whether it is valid in this lane or not.
-          if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req_i.vl) begin : tweak_vl_SlideAddrGenA
+          if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req_i.vl) begin
             operand_request[SlideAddrGenA].vl += 1;
-          end : tweak_vl_SlideAddrGenA
+          end
           operand_request_push[SlideAddrGenA] = pe_req_i.op == VSXE;
         end
 
@@ -779,8 +778,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           operand_request_push[MaskB] = 1'b1;
         end
         default:;
-      endcase // pe_req.vfu
-    end : if_pe_req_valid
+      endcase
+    end
   end: sequencer
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_sequencer_ff

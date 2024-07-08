@@ -282,8 +282,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // How many bytes are we committing?
         automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
-        valid_bytes = ( issue_cnt_bytes_q < (NrLanes * DataWidthB) ) ? vinsn_valid_bytes : vrf_valid_bytes;
-        valid_bytes = ( valid_bytes       < axi_valid_bytes        ) ? valid_bytes       : axi_valid_bytes;
+        valid_bytes = (issue_cnt_bytes_q < (NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
+        valid_bytes = (valid_bytes       < axi_valid_bytes       ) ? valid_bytes       : axi_valid_bytes;
 
         // Bump R beat and VRF word pointers
         axi_r_byte_pnt_d    = axi_r_byte_pnt_q + valid_bytes;
@@ -293,9 +293,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         // Copy data from the R channel into the result queue
         for (int unsigned axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin : axi_r_to_result_queue
           // Is this byte a valid byte in the R beat?
-          if ( ( axi_byte >= ( lower_byte + axi_r_byte_pnt_q ) ) &&
-               ( axi_byte <= upper_byte )
-              ) begin : is_axi_r_byte
+          if ((axi_byte >= (lower_byte + axi_r_byte_pnt_q)) && (axi_byte <= upper_byte)) begin : is_axi_r_byte
             // Map axi_byte to the corresponding byte in the VRF word (sequential)
             automatic int unsigned vrf_seq_byte = axi_byte - lower_byte - axi_r_byte_pnt_q + vrf_word_byte_pnt_q;
             // Follow the vrf_seq_byte, but without the vstart information
@@ -371,7 +369,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       end : vrf_word_ready
 
       // Consumed all valid bytes in this R beat
-      if ( ( axi_r_byte_pnt_d == ( upper_byte - lower_byte + 1 ) ) || ( issue_cnt_bytes_d == '0 ) ) begin : axi_r_beat_finish
+      if ((axi_r_byte_pnt_d == (upper_byte - lower_byte + 1)) || (issue_cnt_bytes_d == '0)) begin : axi_r_beat_finish
         // Request another beat
         axi_r_ready_o = 1'b1;
         axi_r_byte_pnt_d   = '0;
@@ -493,7 +491,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     /////////////////////////
 
     // Clear instruction queue in case of exceptions from addrgen
-    if ( vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_load_i) ) begin : exception
+    if (vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_load_i)) begin : exception
       // Signal done to sequencer
       pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
 
