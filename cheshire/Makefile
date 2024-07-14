@@ -22,13 +22,17 @@ include $(ARA_ROOT)/config/$(ARA_CONFIGURATION).mk
 BOARD                   := vcu128
 CUSTOM_BENDER_TARGETS   := -t fpga -t cv64a6_imafdcv_sv39 -t cva6 -t $(BOARD) --define ARA --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen)
 
-.PHONY: ara-chs-xilinx-$(BOARD) ara-chs-flash-$(BOARD) update_xilinx_src clean
+.PHONY: ara-chs-xilinx-$(BOARD) ara-chs-flash-$(BOARD) apply-patches update_xilinx_src clean
 
 ara-chs-xilinx-$(BOARD): update_xilinx_src
 	make -C $(BACKREF_CHS_ROOT) chs-xilinx-$(BOARD)
 
 ara-chs-flash-$(BOARD):
 	make -C $(BACKREF_CHS_ROOT) chs-xilinx-flash-$(BOARD) VIVADO=$(VIVADO)
+
+apply-patches:
+	cd $(BACKREF_CHS_ROOT) && \
+	git apply $(ARA_ROOT)/cheshire/patches/device_tree.patch
 
 update_xilinx_src:
 	cd $(BACKREF_CHS_ROOT) && \
