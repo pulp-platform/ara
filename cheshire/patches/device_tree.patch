@@ -1,0 +1,13 @@
+diff --git a/sw/boot/cheshire.dtsi b/sw/boot/cheshire.dtsi
+index 76decc8..5561e87 100644
+--- a/sw/boot/cheshire.dtsi
++++ b/sw/boot/cheshire.dtsi
+@@ -30,7 +30,7 @@
+       status = "okay";
+       compatible = "eth,ariane", "riscv";
+       clock-frequency = <50000000>; // 50 MHz
+-      riscv,isa = "rv64imafdc";
++      riscv,isa = "rv64imafdcv";
+       mmu-type = "riscv,sv39";
+       tlb-split;
+       reg = <0>;
