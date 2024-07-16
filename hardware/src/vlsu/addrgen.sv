@@ -163,7 +163,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
   // Break the path from the VRF to the AXI request
   spill_register #(
-    .T(elen_t)
+    .T(axi_addr_t)
   ) i_addrgen_idx_op_spill_reg (
     .clk_i  (clk_i           ),
     .rst_ni (rst_ni          ),
