@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix vstart usage in ara dispatcher
  - Fix reshuffle mechanism
  - Fix vstart usage for memory operations
+ - Fix fft, exp, softmax, roi_align performance
 
 ### Added
 
