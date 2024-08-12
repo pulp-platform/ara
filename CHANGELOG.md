@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix vstart usage for memory operations
  - Fix fft, exp, softmax, roi_align performance
  - Fix printf bug (missing characters) - UART and CTRL memory regions are now idempotent
+ - Start int reductions only if ALU result queue is empty
 
 ### Added
 
