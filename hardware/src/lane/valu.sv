@@ -813,7 +813,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // Initialize counters and alu state if the instruction queue was empty
       // and the lane is not reducing
       if ((vinsn_queue_d.issue_cnt == '0) && !prevent_commit) begin
-        alu_state_d = is_reduction(vfu_operation_i.op) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+        // INTRA_LANE_REDUCTION state needs the result queue
+        // Start the reduction only if the commit queue (so, the result queue, too) is empty
+        alu_state_d = is_reduction(vfu_operation_i.op) && (commit_cnt_q == '0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
         // The next will be the first operation of this instruction
         // This information is useful for reduction operation
         // Initialize reduction-related sequential elements
