@@ -11,7 +11,7 @@ Check `DEPENDENCIES.md` for a list of hardware and software dependencies of Ara.
 
 ## Supported instructions
 
-Check `FUNCTIONALITIES.md` to check which instructions are currently support by Ara.
+Check `FUNCTIONALITIES.md` to check which instructions are currently supported by Ara.
 
 ## Get started
 
@@ -63,7 +63,7 @@ make verilator
 Ara's parameters are centralized in the `config` folder, which provides several configurations to the vector machine.
 Please check `config/README.md` for more details.
 
-Prepend `config=chosen_ara_configuration` to your Makefile commands, or export the `ARA_CONFIGURATION` variable, to chose a configuration other than the `default` one.
+Prepend `config=chosen_ara_configuration` to your Makefile commands, or export the `ARA_CONFIGURATION` variable to choose a configuration other than the `default` one.
 
 ## Software
 
@@ -236,4 +236,16 @@ If you want to use Ara, you can cite us:
   number={},
   pages={43-51},
   doi={10.1109/ASAP54787.2022.00017}}
+```
+```
+@ARTICLE{10500752,
+  author={Perotti, Matteo and Cavalcante, Matheus and Andri, Renzo and Cavigelli, Lukas and Benini, Luca},
+  journal={IEEE Transactions on Computers}, 
+  title={Ara2: Exploring Single- and Multi-Core Vector Processing With an Efficient RVV 1.0 Compliant Open-Source Processor}, 
+  year={2024},
+  volume={73},
+  number={7},
+  pages={1822-1836},
+  keywords={Vectors;Registers;Computer architecture;Vector processors;Multicore processing;Microarchitecture;Kernel;RISC-V;vector;ISA;RVV;processor;efficiency;multi-core},
+  doi={10.1109/TC.2024.3388896}}
 ```
