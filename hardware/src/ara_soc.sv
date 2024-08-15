@@ -24,7 +24,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // AXI Resp Delay [ps] for gate-level simulation
     parameter  int           unsigned AxiRespDelay = 200,
     // Main memory
-    parameter  int           unsigned L2NumWords   = 2**20,
+    parameter  int           unsigned L2NumWords   = (2**22) / NrLanes,
     // Dependant parameters. DO NOT CHANGE!
     localparam type                   axi_data_t   = logic [AxiDataWidth-1:0],
     localparam type                   axi_strb_t   = logic [AxiDataWidth/8-1:0],
