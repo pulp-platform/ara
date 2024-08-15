@@ -494,8 +494,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     CLICNumInterruptSrc   : 0,
     // idempotent region
     NrNonIdempotentRules : 2,
-    NonIdempotentAddrBase: {64'b0, 64'b0},
-    NonIdempotentLength  : {64'b0, 64'b0},
+    NonIdempotentAddrBase: {UARTBase, CTRLBase},
+    NonIdempotentLength  : {UARTLength, CTRLLength},
     NrExecuteRegionRules : 3,
     //                      DRAM,       Boot ROM,   Debug Module
     ExecuteRegionAddrBase: {DRAMBase, 64'h1_0000, 64'h0},
