@@ -8,6 +8,12 @@ def_args_dtype-matmul?= "float64 128 128 128"
 def_args_iconv2d     ?= "112 7"
 def_args_fconv2d     ?= "112 7"
 def_args_fconv3d     ?= "112 7"
+def_args_fconv3d64i  ?= "112 7"
+def_args_fconv3d32f  ?= "112 7"
+def_args_fconv3d32i  ?= "112 7"
+def_args_fconv3d16f  ?= "112 7"
+def_args_fconv3d16i  ?= "112 7"
+def_args_fconv3d8i   ?= "112 7"
 # Vector size
 def_args_fdotproduct ?= "512"
 # Vector size
