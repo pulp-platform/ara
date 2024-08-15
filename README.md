@@ -240,8 +240,8 @@ If you want to use Ara, you can cite us:
 ```
 @ARTICLE{10500752,
   author={Perotti, Matteo and Cavalcante, Matheus and Andri, Renzo and Cavigelli, Lukas and Benini, Luca},
-  journal={IEEE Transactions on Computers}, 
-  title={Ara2: Exploring Single- and Multi-Core Vector Processing With an Efficient RVV 1.0 Compliant Open-Source Processor}, 
+  journal={IEEE Transactions on Computers},
+  title={Ara2: Exploring Single- and Multi-Core Vector Processing With an Efficient RVV 1.0 Compliant Open-Source Processor},
   year={2024},
   volume={73},
   number={7},
