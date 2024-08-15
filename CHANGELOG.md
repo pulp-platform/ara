@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix reshuffle mechanism
  - Fix vstart usage for memory operations
  - Fix fft, exp, softmax, roi_align performance
+ - Fix printf bug (missing characters) - UART and CTRL memory regions are now idempotent
 
 ### Added
 
@@ -47,6 +48,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - VLEN is now a parameter of the ara architecture and does not depend on a define anymore
  - vlen_t, as a consequence, is now define within the architecture as a parameter/localparam
  - Refactor addrgen module
+ - Memory size is now constant with NrLanes
 
 ## 3.0.0 - 2023-09-08
 
