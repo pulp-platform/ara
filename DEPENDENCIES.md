@@ -32,6 +32,15 @@ This file is licensed under the MIT license.
 
 `conjugate_gradient` needs python package `sklearn` for generating symmetric and positivie-defined matrix
 
+### Tools
+
+Installing the toolchains, `spike`, and `verilator` requires some dependencies.
+We list here a non-exhaustive list of dependecies as reported by users. Ignore if they are not required by your system or if they give errors.
+
+Toolchains: `libmpc-dev, ninja-build`
+Spike: ``
+Verilator: `libelf-dev, help2man, linux-headers-$(uname -r) zlibc zlib1g zlib1g-dev libfl-dev libfl2 libgz flex`
+
 ### Verilator simulations
 
 In order to run Verilator simulations, you will need a modern Verilator installation.
