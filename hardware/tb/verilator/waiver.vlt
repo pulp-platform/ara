@@ -4,6 +4,13 @@
 
 `verilator_config
 
+// Hierarchical verilation
+hier_block -module "lane"
+￼
+￼// Hierarchical modules will be renamed by Verilator. Disable the DECLFILENAME
+￼// check for those right away
+￼lint_off -rule DECLFILENAME -file "*" -match "*lane*"
+
 // Ignore duplicate modules, since this is handled by Bender
 lint_off -rule MODDUP
 
