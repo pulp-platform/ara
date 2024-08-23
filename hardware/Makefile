@@ -190,6 +190,7 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -GNrLanes=$(nr_lanes)                                                         \
   -GVLEN=$(vlen)                                                                \
   -O3                                                                           \
+  --hierarchical \
   -Wno-fatal                                                                    \
   -Wno-PINCONNECTEMPTY                                                          \
   -Wno-BLKANDNBLK                                                               \

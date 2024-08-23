@@ -18,8 +18,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport          = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport          = FixedPointEnable,
-    parameter  type                   pe_req_t              = logic,
-    parameter  type                   pe_resp_t             = logic,
+    // To please Verilator
+    parameter  int           unsigned pe_req_t_bits         = 0,
+    parameter  int           unsigned pe_resp_t_bits        = 0,
     // Dependant parameters. DO NOT CHANGE!
     // VRF Parameters
     localparam int           unsigned VLENB           = VLEN / 8,
@@ -48,11 +49,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic     [4:0]                                 fflags_ex_o,
     output logic                                           fflags_ex_valid_o,
     // Interface with the sequencer
-    input  `STRUCT_PORT(pe_req_t)                          pe_req_i,
+    input  `STRUCT_PORT_BITS(pe_req_t_bits)                pe_req_i,
     input  logic                                           pe_req_valid_i,
     input  logic     [NrVInsn-1:0]                         pe_vinsn_running_i,
     output logic                                           pe_req_ready_o,
-    output `STRUCT_PORT(pe_resp_t)                         pe_resp_o,
+    output `STRUCT_PORT_BITS(pe_resp_t_bits)               pe_resp_o,
     output logic                                           alu_vinsn_done_o,
     output logic                                           mfpu_vinsn_done_o,
     input  logic                [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table_i,
@@ -103,6 +104,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   `include "common_cells/registers.svh"
+  `include "ara/ara_typedef.svh"
 
   ///////////////////
   //  Definitions  //
