@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Refactor addrgen module
  - Memory size is now constant with NrLanes
  - Enable hierarchical verilation
+ - Bump AXI and common cells to solve verilation warnings
 
 ## 3.0.0 - 2023-09-08
 
