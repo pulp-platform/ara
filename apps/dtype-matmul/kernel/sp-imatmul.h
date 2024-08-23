@@ -24,6 +24,10 @@
 #include <stdint.h>
 #include <string.h>
 
+// Help calculate performance
+// How many parallel elements in an ELEN-wide FPU data bus?
+#define DTYPE_FACTOR 2
+
 extern int64_t event_trigger;
 
 void sp_imatmul(int32_t *c, const int32_t *a, const int32_t *b,

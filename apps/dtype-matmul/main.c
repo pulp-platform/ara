@@ -28,16 +28,14 @@
 #include "printf.h"
 #endif
 
-// Define the different data types as an enum
-typedef enum {
-  FLOAT64,
-  FLOAT32,
-  FLOAT16,
-  INT64,
-  INT32,
-  INT16,
-  INT8,
-} DataType;
+// Define the different data types
+#define FLOAT64 1
+#define FLOAT32 2
+#define FLOAT16 3
+#define INT64 4
+#define INT32 5
+#define INT16 6
+#define INT8 7
 
 // Map DTYPE to the actual data type
 #ifndef DTYPE
@@ -125,7 +123,7 @@ int main() {
   // Metrics
   int runtime = get_timer();
   float performance = 2.0 * M * N * P / runtime;
-  float utilization = 100 * performance / (2.0 * NR_LANES);
+  float utilization = 100 * performance / (2.0 * NR_LANES * DTYPE_FACTOR);
 
   printf("The execution took %d cycles.\n", runtime);
   printf("The performance is %f FLOP/cycle (%f%% utilization).\n", performance,

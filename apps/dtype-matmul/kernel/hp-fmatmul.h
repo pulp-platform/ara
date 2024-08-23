@@ -26,6 +26,10 @@
 
 #define THRESHOLD 0.001
 
+// Help calculate performance
+// How many parallel elements in an ELEN-wide FPU data bus?
+#define DTYPE_FACTOR 4
+
 extern int64_t event_trigger;
 
 void hp_fmatmul(_Float16 *c, const _Float16 *a, const _Float16 *b,
