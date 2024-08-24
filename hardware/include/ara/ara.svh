@@ -19,11 +19,7 @@
   // Structs in ports of hierarchical modules are not supported in Verilator
   // --> Flatten them for Verilator
   `define STRUCT_PORT_BITS(bits) \
-  `ifndef VERILATOR              \
-    struct_t                     \
-  `else                          \
     logic[bits-1:0]              \
-  `endif
 
   // Create a flattened vector of a struct. Make sure the first dimension is
   // the dimension into the vector of struct types and not the struct itself.

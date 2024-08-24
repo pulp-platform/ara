@@ -213,6 +213,12 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       mfpu_ready;
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
 
+  // Additional signals to please Verilator's hierarchical verilation
+  pe_req_t  pe_req;
+  pe_resp_t pe_resp;
+  assign pe_req    = pe_req_i;
+  assign pe_resp_o = pe_resp;
+
   lane_sequencer #(
     .NrLanes              (NrLanes              ),
     .pe_req_t             (pe_req_t             ),
@@ -224,11 +230,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .rst_ni                 (rst_ni               ),
     .lane_id_i              (lane_id_i            ),
     // Interface with the main sequencer
-    .pe_req_i               (pe_req_i             ),
+    .pe_req_i               (pe_req               ),
     .pe_req_valid_i         (pe_req_valid_i       ),
     .pe_vinsn_running_i     (pe_vinsn_running_i   ),
     .pe_req_ready_o         (pe_req_ready_o       ),
-    .pe_resp_o              (pe_resp_o            ),
+    .pe_resp_o              (pe_resp              ),
     // Interface with the operand requesters
     .operand_request_o      (operand_request      ),
     .operand_request_valid_o(operand_request_valid),
