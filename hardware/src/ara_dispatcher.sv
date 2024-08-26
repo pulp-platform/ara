@@ -579,23 +579,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op        = ara_pkg::VMADC;
 
                     // Check whether we can access vs1 and vs2
-                    unique case (ara_req_d.emul)
-                      LMUL_2:
-                        if (((insn.varith_type.rs1 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) ||
-                            ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001)))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if (((insn.varith_type.rs1 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) ||
-                            ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if (((insn.varith_type.rs1 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) ||
-                            ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)))
-                          illegal_insn = 1'b1;
-                      default:
-                        if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
-                            (insn.varith_type.rs2 == insn.varith_type.rd)) illegal_insn = 1'b1;
-                    endcase
+                    if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
+                        (insn.varith_type.rs2 == insn.varith_type.rd)) illegal_insn = 1'b1;
                   end
                   6'b010010: begin
                     ara_req_d.op = ara_pkg::VSBC;
@@ -608,23 +593,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op        = ara_pkg::VMSBC;
 
                     // Check whether we can access vs1 and vs2
-                    unique case (ara_req_d.emul)
-                      LMUL_2:
-                        if (((insn.varith_type.rs1 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) ||
-                            ((insn.varith_type.rs2 & 5'b00001) == ( insn.varith_type.rd & 5'b00001)))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if (((insn.varith_type.rs1 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) ||
-                            ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if (((insn.varith_type.rs1 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) ||
-                            ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)))
-                          illegal_insn = 1'b1;
-                      default:
-                        if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
-                            (insn.varith_type.rs2 == insn.varith_type.rd)) illegal_insn = 1'b1;
-                    endcase
+                    if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
+                        (insn.varith_type.rs2 == insn.varith_type.rd)) illegal_insn = 1'b1;
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMSEQ;
@@ -811,18 +781,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op        = ara_pkg::VMADC;
 
                     // Check whether we can access vs1 and vs2
-                    unique case (ara_req_d.emul)
-                      LMUL_2:
-                        if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))
-                          illegal_insn = 1'b1;
-                      default: if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
-                    endcase
+                    if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
                   end
                   6'b010010: begin
                     ara_req_d.op = ara_pkg::VSBC;
@@ -837,18 +796,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op        = ara_pkg::VMSBC;
 
                     // Check whether we can access vs1 and vs2
-                    unique case (ara_req_d.emul)
-                      LMUL_2:
-                        if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))
-                          illegal_insn = 1'b1;
-                      default: if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
-                    endcase
+                    if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMSEQ;
@@ -1007,18 +955,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op        = ara_pkg::VMADC;
 
                     // Check whether we can access vs1 and vs2
-                    unique case (ara_req_d.emul)
-                      LMUL_2:
-                        if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))
-                          illegal_insn = 1'b1;
-                      default: if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
-                    endcase
+                    if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMSEQ;
