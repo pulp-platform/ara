@@ -458,6 +458,9 @@ module ara import ara_pkg::*; #(
   if (ara_pkg::VLEN == 0)
     $error("[ara] The vector length must be greater than zero.");
 
+  if (ara_pkg::VLENB < 8 * NrLanes)
+    $error("[ara] Every vector register with LMUL1 should have at least 8 Byte/lane.");
+
   if (ara_pkg::VLEN < ELEN)
     $error(
       "[ara] The vector length must be greater or equal than the maximum size of a single vector element"
