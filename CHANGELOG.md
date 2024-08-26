@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Start int reductions only if ALU result queue is empty
  - Fix `acc_dispatcher` CVA6 bug for instructions with side effects
  - Fix NaN/subnormal floating-point handling in opqueues
+ - Stall vfdiv/vfsqrt instructions following/preceding other fp instructions
 
 ### Added
 
