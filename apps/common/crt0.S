@@ -59,7 +59,6 @@ reset_vector:
     li      x18, 0
     li      x19, 0
     li      x20, 0
-    li      x10, 0
     li      x21, 0
     li      x22, 0
     li      x23, 0
