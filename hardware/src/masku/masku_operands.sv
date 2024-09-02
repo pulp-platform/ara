@@ -17,7 +17,8 @@
 //
 
 module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int unsigned NrLanes = 0
+    parameter int unsigned NrLanes  = 0,
+    parameter     type     pe_req_t = logic
   ) (
     input logic clk_i,
     input logic rst_ni,

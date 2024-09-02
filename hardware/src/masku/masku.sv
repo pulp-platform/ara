@@ -115,7 +115,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Performs all shuffling and deshuffling of mask operands (including masks for mask instructions)
   // Furthermore, it buffers certain operands that would create long critical paths
   masku_operands #(
-    .NrLanes ( NrLanes )
+    .NrLanes  ( NrLanes  ),
+    .pe_req_t ( pe_req_t )
   ) i_masku_operands (
     .clk_i                         (                       clk_i ),
     .rst_ni                        (                      rst_ni ),
