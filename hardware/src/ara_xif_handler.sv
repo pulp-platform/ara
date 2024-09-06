@@ -7,41 +7,41 @@
 // Handler to take care of the XIF signals
 
 module ara_xif_handler #(
-	parameter int 		unsigned NrLanes 		= 0,
-	parameter int 		unsigned HARTID_WIDTH 	= ariane_pkg::NR_RGPR_PORTS,
-	parameter int 		unsigned ID_WIDTH 		= ariane_pkg::TRANS_ID_BITS,
-	parameter type 		readregflags_t 			= logic,
-    parameter type 		writeregflags_t 		= logic,
-    parameter type 		x_req_t 				= core_v_xif_pkg::x_req_t,
-    parameter type 		x_resp_t 				= core_v_xif_pkg::x_resp_t,
-    parameter type 		x_issue_req_t 			= core_v_xif_pkg::x_issue_req_t,
-    parameter type 		x_issue_resp_t 			= core_v_xif_pkg::x_issue_resp_t,
-    parameter type 		x_result_t 				= core_v_xif_pkg::x_result_t,
-    parameter type 		x_acc_resp_t 			= core_v_xif_pkg::x_acc_resp_t,
-    parameter type 		csr_sync_t 				= logic,
-    parameter type 		instr_pack_t 			= logic
-	) (
-	// Clock and Reset
-	input logic 				clk_i,
-	input logic 				rst_ni,
-	// XIF
-	input  x_req_t            	core_v_xif_req_i,
-    output x_resp_t           	core_v_xif_resp_o,
+    parameter int       unsigned NrLanes        = 0,
+    parameter int       unsigned HARTID_WIDTH   = ariane_pkg::NR_RGPR_PORTS,
+    parameter int       unsigned ID_WIDTH       = ariane_pkg::TRANS_ID_BITS,
+    parameter type      readregflags_t          = logic,
+    parameter type      writeregflags_t         = logic,
+    parameter type      x_req_t                 = logic,
+    parameter type      x_resp_t                = logic,
+    parameter type      x_issue_req_t           = logic,
+    parameter type      x_issue_resp_t          = logic,
+    parameter type      x_result_t              = logic,
+    parameter type      x_acc_resp_t            = logic,
+    parameter type      csr_sync_t              = logic,
+    parameter type      instr_pack_t            = logic
+    ) (
+    // Clock and Reset
+    input logic                 clk_i,
+    input logic                 rst_ni,
+    // XIF
+    input  x_req_t              core_v_xif_req_i,
+    output x_resp_t             core_v_xif_resp_o,
     // <-> Ara Dispatcher
-    output instr_pack_t 		instruction_o,
-    output logic 				instruction_valid_o,
-    input  logic 				instruction_ready_i,
-    input  csr_sync_t 			csr_sync_i,
-    input  x_resp_t 			core_v_xif_resp_i,
+    output instr_pack_t         instruction_o,
+    output logic                instruction_valid_o,
+    input  logic                instruction_ready_i,
+    input  csr_sync_t           csr_sync_i,
+    input  x_resp_t             core_v_xif_resp_i,
     // Temp
-    input  logic 				ara_idle,
+    input  logic                ara_idle,
     input  logic [NrLanes-1:0]  vxsat_flag,
     input  logic      [NrLanes-1:0][4:0] fflags_ex,
     input  logic      [NrLanes-1:0]      fflags_ex_valid,
-    input  logic 	load_complete,
-    input  logic 	store_complete,
-    input  logic   	store_pending
-	);
+    input  logic    load_complete,
+    input  logic    store_complete,
+    input  logic    store_pending
+    );
 
   logic                         csr_stall;
   logic                         csr_block;

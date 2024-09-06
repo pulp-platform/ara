@@ -16,7 +16,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
-
+    // X-Interface
     parameter type instr_pack_t = riscv::instruction_t,
     parameter type x_req_t = core_v_xif_pkg::x_req_t,
     parameter type x_resp_t = core_v_xif_pkg::x_resp_t,

@@ -127,7 +127,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; #(
     if (!rst_ni) begin
       perf_cnt_q  <= '0;
       was_reset   <= 1'b1;
-	end else begin
+    end else begin
       perf_cnt_q  <= perf_cnt_d;
     end
   end
@@ -209,7 +209,7 @@ endmodule
     acc_req_o.req_valid = 1'b0;
 
     // Flush the answer
-	acc_req_o.resp_ready = 1'b1;
+    acc_req_o.resp_ready = 1'b1;
 
     acc_req_o     = '0;
     acc_req_o.frm = fpnew_pkg::RNE;
@@ -252,9 +252,9 @@ endmodule
     $display("Start counting...");
     // Loop until the last instruction is dispatched and until ara is idle again
     while (i_system.acc_req_valid || !i_system.i_ara.ara_idle) begin
-	  perf_cnt_d = perf_cnt_q + 1;
+      perf_cnt_d = perf_cnt_q + 1;
       @(negedge clk_i);
-	end
+    end
     $display("Stop counting.");
     perf_cnt_d = perf_cnt_q;
     $display("[cycles]: %d", int'(perf_cnt_q));
@@ -265,7 +265,7 @@ endmodule
   always_ff @(posedge clk_i, negedge rst_ni) begin : p_perf_cnt_ideal
     if (!rst_ni) begin
       perf_cnt_q <= '0;
-	end else begin
+    end else begin
       perf_cnt_q <= perf_cnt_d;
     end
   end

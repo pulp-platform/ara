@@ -16,6 +16,15 @@ module ara import ara_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    // X-Interface
+    parameter type                    readregflags_t  = logic,
+    parameter type                    writeregflags_t = logic,
+    parameter type                    x_req_t         = logic,
+    parameter type                    x_resp_t        = logic,
+    parameter type                    x_issue_req_t   = logic,
+    parameter type                    x_issue_resp_t  = logic,
+    parameter type                    x_result_t      = logic,
+    parameter type                    x_acc_resp_t    = logic,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
@@ -32,15 +41,7 @@ module ara import ara_pkg::*; #(
     localparam int           unsigned NrPEs        = NrLanes + 4,
 
     parameter int            unsigned HARTID_WIDTH = ariane_pkg::NR_RGPR_PORTS,
-    parameter int            unsigned ID_WIDTH     = ariane_pkg::TRANS_ID_BITS,
-    parameter type readregflags_t = logic,
-    parameter type writeregflags_t = logic,
-    parameter type x_req_t = core_v_xif_pkg::x_req_t,
-    parameter type x_resp_t = core_v_xif_pkg::x_resp_t,
-    parameter type x_issue_req_t = core_v_xif_pkg::x_issue_req_t,
-    parameter type x_issue_resp_t = core_v_xif_pkg::x_issue_resp_t,
-    parameter type x_result_t = core_v_xif_pkg::x_result_t,
-    parameter type x_acc_resp_t = core_v_xif_pkg::x_acc_resp_t
+    parameter int            unsigned ID_WIDTH     = ariane_pkg::TRANS_ID_BITS
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -73,7 +74,6 @@ module ara import ara_pkg::*; #(
   localparam int unsigned DataWidth = $bits(elen_t);
   localparam int unsigned StrbWidth = DataWidth / 8;
   typedef logic [StrbWidth-1:0] strb_t;
-
 
   //////////////////
   //  Dispatcher  //
@@ -132,13 +132,13 @@ module ara import ara_pkg::*; #(
   logic                         instruction_ready;
 
   ara_dispatcher #(
-    .NrLanes(NrLanes),
+    .NrLanes     (NrLanes     ),
     .instr_pack_t(instr_pack_t),
-    .x_req_t (x_req_t),
-    .x_resp_t (x_resp_t),
-    .x_result_t  (x_result_t),
+    .x_req_t     (x_req_t     ),
+    .x_resp_t    (x_resp_t    ),
+    .x_result_t  (x_result_t  ),
     .x_acc_resp_t(x_acc_resp_t),
-    .csr_sync_t (csr_sync_t)
+    .csr_sync_t  (csr_sync_t  )
   ) i_dispatcher (
     .clk_i              (clk_i           ),
     .rst_ni             (rst_ni          ),
@@ -214,7 +214,7 @@ module ara import ara_pkg::*; #(
   //  Sequencer  //
   /////////////////
 
-  // Interface with the PEs   
+  // Interface with the PEs
   pe_req_t                         pe_req;
   logic                            pe_req_valid;
   logic              [NrPEs-1:0]   pe_req_ready;
