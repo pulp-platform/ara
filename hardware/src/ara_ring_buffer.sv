@@ -62,10 +62,8 @@ module ara_ring_buffer #(
     assign full_o   = (usage_q == DEPTH[$clog2(DEPTH):0]);
     assign empty_o  = (usage_q == '0);
 
-
-    assign valid_o = (mem_q[head_q].rs_valid != '0 || mem_d[head_q].rs_valid != '0) && !(head_q == commit_q && head_q == commit_d) && !(empty_o); // (mem_q[head_q].rs_valid == mem_q[head_q].register_read)
-    // (mem_q[head_q].rs_valid != '0 && mem_d[head_q].rs_valid != '0) &&
-
+    // The entry is valid only if it has been committed already (now or in the previous cycles)
+    assign valid_o = (|mem_q[head_q].rs_valid == 1'b1) && (head_q != commit_q || commit_i) && !empty_o;
 
     // Read and write logic
     always_comb begin
@@ -113,7 +111,7 @@ module ara_ring_buffer #(
         end
 
         // Read
-        if (valid_o && ~empty_o && ready_i) begin
+        if (valid_o && !empty_o && ready_i) begin
             // Pop the head by one
             head_d = head_q + 1'b1;
             // Decrease usage
@@ -131,7 +129,7 @@ module ara_ring_buffer #(
         end
 
         // Assign output
-        data_o      = mem_d[head_q];
+        data_o = mem_q[head_q];
     end
 
 
