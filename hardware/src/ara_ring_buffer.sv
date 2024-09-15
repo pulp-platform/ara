@@ -63,7 +63,7 @@ module ara_ring_buffer #(
     assign empty_o  = (usage_q == '0);
 
     // The entry is valid only if it has been committed already (now or in the previous cycles)
-    assign valid_o = (|mem_q[head_q].rs_valid == 1'b1) && (head_q != commit_q || commit_i) && !empty_o;
+    assign valid_o = (|mem_q[head_q].rs_valid == 1'b1) && (head_q != commit_q) && !empty_o;
 
     // Read and write logic
     always_comb begin
