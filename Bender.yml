@@ -10,7 +10,7 @@ package:
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.39.1                               }
   common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1                               }
-  ariane:             { git: "https://github.com/pulp-platform/cva6.git",               rev: 5388ad77554385215116809d1d7ced9e8f0ec5b2 } # mp/xif
+  ariane:             { git: "https://github.com/pulp-platform/cva6.git",               rev: 9a8849113373c6014330554429af45fcf52e95b6 } # mp/xif
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13                               }
   apb:                { git: "https://github.com/pulp-platform/apb.git",                version: 0.2.4                                }
 
