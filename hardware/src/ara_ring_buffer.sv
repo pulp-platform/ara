@@ -39,7 +39,8 @@ module ara_ring_buffer #(
         input readregflags_t rs_valid_i,
         input fpnew_pkg::roundmode_e frm_i,
         // Instruction information
-        output dtype data_o
+        output dtype data_o,
+        output logic keep_spec_csr_insn_o
     );
     // Clock gating control
     logic gate_clock;
@@ -56,6 +57,13 @@ module ara_ring_buffer #(
     logic [ADDR_DEPTH:0] usage;
     logic [ADDR_DEPTH-1:0] usage_cap;
 
+    // Does the buffer contain any instruction that modifies one of the speculative CSRs?
+    always_comb begin
+      keep_spec_csr_insn_o = '0;
+      for (int unsigned i = 0; i < DEPTH; i++) begin
+        keep_spec_csr_insn_o |= mem_q[i].is_spec_csr;
+      end
+    end
 
     // assign full_o    = (tail_q+1'b1 == head_q) ? 1'b1 : 1'b0;
     // assign empty_o   = (tail_q == head_q) ? 1'b1 : 1'b0;
@@ -110,8 +118,8 @@ module ara_ring_buffer #(
             commit_d = id_mem_q[commit_id_i] + 1'b1;
         end
 
-        // Read
-        if (valid_o && !empty_o && ready_i) begin
+        // Read - valid_o implies a non-empty buffer
+        if (valid_o && ready_i) begin
             // Pop the head by one
             head_d = head_q + 1'b1;
             // Decrease usage

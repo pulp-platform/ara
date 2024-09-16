@@ -112,6 +112,8 @@ module ara import ara_pkg::*; #(
     fpnew_pkg::roundmode_e frm;
     // result information
     writeregflags_t is_writeback;
+    // does the insn modify a spec CSR?
+    logic is_spec_csr;
   } instr_pack_t;
 
   typedef struct packed {

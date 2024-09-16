@@ -308,9 +308,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     instruction_ready_o  = 1'b0;
     core_v_xif_resp_o.result_valid = 1'b0;
 
-    x_result       = '{
-      id      : instruction_i.id,
-      default       : '0
+    x_result = '{
+      id : instruction_i.id,
+      rd : instruction_i.instr[11:7],
+      we : instruction_i.is_writeback,
+      default   : '0
     };
 
     acc_resp       = '{
