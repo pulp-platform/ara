@@ -160,6 +160,9 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
   // If the vslideup offset is greater than vl_q, the vslideup has no effects
   logic null_vslideup;
 
+  // Invalid mem op that can be a scalar floating point mem op
+  logic mem_op_invalid;
+
   // NP2 Slide support
   logic is_stride_np2;
 
@@ -203,6 +206,8 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
     rs_lmul_cnt_d       = '0;
     rs_lmul_cnt_limit_d = '0;
     rs_mask_request_d   = 1'b0;
+
+    mem_op_invalid = 1'b0;
 
     illegal_insn = 1'b0;
 
@@ -2274,6 +2279,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   is_rs2   = insn.vmem_type.mop == 2'b10; // Strided operation
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
+                mem_op_invalid = 1'b1;
                 illegal_insn = 1'b1;
               end
             endcase
@@ -2355,7 +2361,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
             endcase
 
             // Vector whole register loads overwrite all the other decoding information.
-            if (ara_req_d.op == VLE && insn.vmem_type.rs2 == 5'b01000) begin
+            if (ara_req_d.op == VLE && insn.vmem_type.rs2 == 5'b01000 && !mem_op_invalid) begin
               // The LMUL value is kept in the instruction itself
               illegal_insn     = 1'b0;
               ara_req_valid_d  = 1'b1;
@@ -2453,6 +2459,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
                   is_rs2   = insn.vmem_type.mop == 2'b10; // Strided operation
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.
+                mem_op_invalid = 1'b1;
                 illegal_insn = 1'b1;
               end
             endcase
@@ -2530,7 +2537,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
             // Vector whole register stores are encoded as stores of length VLENB, length
             // multiplier LMUL_1 and element width EW8. They overwrite all this decoding.
-            if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000) begin
+            if (ara_req_d.op == VSE && insn.vmem_type.rs2 == 5'b01000 && !mem_op_invalid) begin
               illegal_insn     = 1'b0;
               ara_req_valid_d  = 1'b1;
 
