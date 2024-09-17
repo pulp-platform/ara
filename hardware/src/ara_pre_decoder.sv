@@ -182,7 +182,7 @@ module ara_pre_decoder import ara_pkg::*; import rvv_pkg::*; #(
 
   logic inv_accept;
 
-  assign cvxif_issue_resp_o.accept           = ~insn_error;
+  assign cvxif_issue_resp_o.accept           = is_decoding & ~insn_error;
   assign cvxif_issue_resp_o.writeback        = (is_rd || is_fd);
   assign cvxif_issue_resp_o.register_read[0] = (is_rs1 || is_fs1);
   assign cvxif_issue_resp_o.register_read[1] = (is_rs2 || is_fs2);
