@@ -10,6 +10,7 @@ module ara import ara_pkg::*; #(
     // RVV Parameters
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     parameter  int           unsigned VLEN         = 0,                          // VLEN [bit]
+    parameter  int           unsigned OSSupport    = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
@@ -487,6 +488,36 @@ module ara import ara_pkg::*; #(
   logic vldu_mask_ready;
   logic vstu_mask_ready;
 
+  // Optional OS support
+  logic acc_mmu_misaligned_ex, acc_mmu_req, acc_mmu_is_store, acc_mmu_dtlb_hit, acc_mmu_valid, acc_mmu_en;
+  logic [riscv::VLEN-1:0] acc_mmu_vaddr;
+  logic [riscv::PLEN-1:0] acc_mmu_paddr;
+  logic [riscv::PPNW-1:0] acc_mmu_dtlb_ppn;
+  ariane_pkg::exception_t acc_mmu_exception;
+  if (OSSupport) begin
+    assign acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex = acc_mmu_misaligned_ex;
+    assign acc_resp_o.acc_mmu_req.acc_mmu_req           = acc_mmu_req;
+    assign acc_resp_o.acc_mmu_req.acc_mmu_vaddr         = acc_mmu_vaddr;
+    assign acc_resp_o.acc_mmu_req.acc_mmu_is_store      = acc_mmu_is_store;
+    assign acc_mmu_en        = acc_req_i.acc_mmu_en;
+    assign acc_mmu_dtlb_hit  = acc_req_i.acc_mmu_resp.acc_mmu_dtlb_hit;
+    assign acc_mmu_dtlb_ppn  = acc_req_i.acc_mmu_resp.acc_mmu_dtlb_ppn;
+    assign acc_mmu_valid     = acc_req_i.acc_mmu_resp.acc_mmu_valid;
+    assign acc_mmu_paddr     = acc_req_i.acc_mmu_resp.acc_mmu_paddr;
+    assign acc_mmu_exception = acc_req_i.acc_mmu_resp.acc_mmu_exception;
+  end else begin
+    assign acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex = '0;
+    assign acc_resp_o.acc_mmu_req.acc_mmu_req           = '0;
+    assign acc_resp_o.acc_mmu_req.acc_mmu_vaddr         = '0;
+    assign acc_resp_o.acc_mmu_req.acc_mmu_is_store      = '0;
+    assign acc_mmu_en        = '0;
+    assign acc_mmu_dtlb_hit  = '0;
+    assign acc_mmu_dtlb_ppn  = '0;
+    assign acc_mmu_valid     = '0;
+    assign acc_mmu_paddr     = '0;
+    assign acc_mmu_exception = '0;
+  end
+
   vlsu #(
     .NrLanes     (NrLanes     ),
     .VLEN        (VLEN        ),
@@ -541,15 +572,15 @@ module ara import ara_pkg::*; #(
     // CSR input
     .en_ld_st_translation_i     (acc_req_i.acc_mmu_en                                  ),
     // Interface with CVA6's sv39 MMU
-    .mmu_misaligned_ex_o        (acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex          ),
-    .mmu_req_o                  (acc_resp_o.acc_mmu_req.acc_mmu_req                    ),
-    .mmu_vaddr_o                (acc_resp_o.acc_mmu_req.acc_mmu_vaddr                  ),
-    .mmu_is_store_o             (acc_resp_o.acc_mmu_req.acc_mmu_is_store               ),
-    .mmu_dtlb_hit_i             (acc_req_i.acc_mmu_resp.acc_mmu_dtlb_hit               ),
-    .mmu_dtlb_ppn_i             (acc_req_i.acc_mmu_resp.acc_mmu_dtlb_ppn               ),
-    .mmu_valid_i                (acc_req_i.acc_mmu_resp.acc_mmu_valid                  ),
-    .mmu_paddr_i                (acc_req_i.acc_mmu_resp.acc_mmu_paddr                  ),
-    .mmu_exception_i            (acc_req_i.acc_mmu_resp.acc_mmu_exception              ),
+    .mmu_misaligned_ex_o        (acc_mmu_misaligned_ex                                 ),
+    .mmu_req_o                  (acc_mmu_req                                           ),
+    .mmu_vaddr_o                (acc_mmu_vaddr                                         ),
+    .mmu_is_store_o             (acc_mmu_is_store                                      ),
+    .mmu_dtlb_hit_i             (acc_mmu_dtlb_hit                                      ),
+    .mmu_dtlb_ppn_i             (acc_mmu_dtlb_ppn                                      ),
+    .mmu_valid_i                (acc_mmu_valid                                         ),
+    .mmu_paddr_i                (acc_mmu_paddr                                         ),
+    .mmu_exception_i            (acc_mmu_exception                                     ),
     // Load unit
     .ldu_result_req_o           (ldu_result_req                                        ),
     .ldu_result_addr_o          (ldu_result_addr                                       ),
