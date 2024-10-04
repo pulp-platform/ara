@@ -20,7 +20,7 @@ VIVADO ?= 'vitis-2020.2 vivado'
 # default configuration for Cheshire + Ara is 2_lanes
 ARA_CONFIGURATION         ?= 2_lanes
 include $(ARA_ROOT)/config/$(ARA_CONFIGURATION).mk
-BOARD                     := vcu128
+BOARD                     ?= vcu128
 VLOG_ARGS                 ?= -suppress 2583 -suppress 13314
 COMMON_CUSTOM_TARGETS     := -t cv64a6_imafdcv_sv39 -t cva6 --define ARA --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen)
 CUSTOM_SIM_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t sim -t test -t rtl --vlog-arg="$(VLOG_ARGS)"
@@ -40,7 +40,7 @@ apply-patches:
 
 update_xilinx_src:
 	cd $(BACKREF_CHS_ROOT) && \
-	bender script vivado $(CUSTOM_XIL_BENDER_TARGETS) > $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.vcu128.tcl
+	bender script vivado $(CUSTOM_XIL_BENDER_TARGETS) > $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.$(BOARD).tcl
 
 update_vsim_src:
 	cd $(BACKREF_CHS_ROOT) && \
@@ -48,5 +48,5 @@ update_vsim_src:
 	echo 'vlog "$(realpath $(BACKREF_CHS_ROOT))/target/sim/src/elfloader.cpp" -ccflags "-std=c++11"' >> $(BACKREF_CHS_SIM_SCRIPTS)/compile.cheshire_soc.tcl
 
 clean:
-	rm $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.vcu128.tcl
-	rm $(MAKEFILE_DIR)/add_sources.vcu128.tcl
+	rm $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.$(BOARD).tcl
+	rm $(MAKEFILE_DIR)/add_sources.$(BOARD).tcl
