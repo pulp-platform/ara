@@ -40,8 +40,8 @@ CXX    = g++
 endif
 
 # We need a recent LLVM to compile Verilator
-CLANG_CC  ?= clang
-CLANG_CXX ?= clang++
+CLANG_CC  ?= clang-14
+CLANG_CXX ?= clang++-14
 ifneq (${CLANG_PATH},)
 	CLANG_CXXFLAGS := "-nostdinc++ -isystem $(CLANG_PATH)/include/c++/v1"
 	CLANG_LDFLAGS  := "-L $(CLANG_PATH)/lib -Wl,-rpath,$(CLANG_PATH)/lib -lc++ -nostdlib++"
