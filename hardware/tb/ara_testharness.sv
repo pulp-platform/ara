@@ -10,6 +10,7 @@
 module ara_testharness #(
     // Ara-specific parameters
     parameter int unsigned NrLanes      = 0,
+    parameter int unsigned VLEN         = 0,
     // AXI Parameters
     parameter int unsigned AxiUserWidth = 1,
     parameter int unsigned AxiIdWidth   = 5,
