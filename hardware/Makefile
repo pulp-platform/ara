@@ -188,6 +188,7 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
+  -GVLEN=$(vlen)                                                                \
   -O3                                                                           \
   -Wno-fatal                                                                    \
   -Wno-PINCONNECTEMPTY                                                          \

@@ -7,7 +7,8 @@
 // Description: Top level testbench module for Verilator.
 
 module ara_tb_verilator #(
-    parameter int unsigned NrLanes = 0
+    parameter int unsigned NrLanes = 0,
+    parameter int unsigned VLEN    = 0
   )(
     input  logic        clk_i,
     input  logic        rst_ni,
@@ -27,6 +28,7 @@ module ara_tb_verilator #(
 
   ara_testharness #(
     .NrLanes     (NrLanes         ),
+    .VLEN        (VLEN            ),
     .AxiAddrWidth(AxiAddrWidth    ),
     .AxiDataWidth(AxiWideDataWidth)
   ) dut (

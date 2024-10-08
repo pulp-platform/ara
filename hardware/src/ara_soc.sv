@@ -512,6 +512,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 `ifndef TARGET_GATESIM
   ara_system #(
     .NrLanes           (NrLanes              ),
+    .VLEN              (VLEN                 ),
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
