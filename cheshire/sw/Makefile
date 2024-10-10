@@ -24,6 +24,9 @@ CHS_SW_FLAGS ?= $(shell grep "^CHS_SW_FLAGS\s\+?=\s\+" -- $(CHS_SW)/sw.mk | sed 
 # Tweak the compilation to include Cheshire-related headers and files
 CHS_SW_FLAGS += -DCHESHIRE -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
 
+# Vars and rules to make the Linux image
+include cva6-sdk.mk
+
 .PHONY: chs-sw-all copy_vector_sw copy-vector-deps
 
 # Forward build command to the main Cheshire makefile and attach the correct -march
