@@ -17,3 +17,6 @@
 	path = toolchain/riscv-llvm
 	url = https://github.com/llvm/llvm-project.git
 	ignore = dirty
+[submodule "cheshire/sw/cva6-sdk"]
+	path = cheshire/sw/cva6-sdk
+	url = git@github.com:moimfeld/cva6-sdk.git
