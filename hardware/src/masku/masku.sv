@@ -321,23 +321,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
-  // Population count for vcpop.m instruction
-  popcount #(
-    .INPUT_WIDTH (DataWidth*NrLanes)
-  ) i_popcount (
-    .data_i    (vcpop_operand),
-    .popcount_o(popcount     )
-  );
+  // vpopc substitute
+  assign popcount = vcpop_operand[$clog2(DataWidth*NrLanes):0];
 
-  // Trailing zero counter
-  lzc #(
-    .WIDTH(DataWidth*NrLanes),
-    .MODE (0)
-  ) i_clz (
-    .in_i    (vcpop_operand),
-    .cnt_o   (vfirst_count ),
-    .empty_o (vfirst_empty )
-  );
+  // vfirst substitute
+  assign vfirst_count = vcpop_operand[$clog2(DataWidth*NrLanes)-1:0];
+  assign vfirst_empty = vcpop_operand[0];
 
   always_comb begin: p_mask_alu
     alu_result          = '0;
