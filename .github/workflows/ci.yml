@@ -28,14 +28,14 @@ jobs:
   tc-llvm:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/riscv-llvm | cut -d' ' -f1
         echo "tc-llvm-hash=`git submodule status toolchain/riscv-llvm | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache the LLVM toolchain
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-llvm-cache
       env:
         cache-name: cache-llvm
@@ -67,14 +67,14 @@ jobs:
   tc-gcc:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1
         echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache the GCC toolchain
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-gcc-cache
       env:
         cache-name: cache-gcc
@@ -102,14 +102,14 @@ jobs:
   tc-isa-sim:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1
         echo "tc-isa-sim-hash=`git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache Spike
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-isa-sim-cache
       env:
         cache-name: cache-spike
@@ -137,14 +137,14 @@ jobs:
   tc-verilator:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/verilator | cut -d' ' -f1
         echo "tc-verilator-hash=`git submodule status toolchain/verilator | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache Verilator
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-verilator-cache
       env:
         cache-name: cache-verilator
@@ -182,7 +182,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: tc-llvm
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
@@ -214,7 +214,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-llvm", "tc-gcc", "tc-isa-sim"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Download Spike
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
@@ -253,7 +253,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-verilator", "tc-isa-sim"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Download Spike
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
@@ -304,7 +304,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Spike artifacts
       uses: actions/download-artifact@v4
       with:
@@ -337,7 +337,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-riscv-tests"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Spike artifacts
       uses: actions/download-artifact@v4
       with:
@@ -362,7 +362,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: ["tc-isa-sim", "compile-riscv-tests"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Spike artifacts
       uses: actions/download-artifact@v4
       with:
@@ -400,7 +400,7 @@ jobs:
   check-license:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
@@ -413,7 +413,7 @@ jobs:
     runs-on: ubuntu-20.04
     needs: ['tc-llvm']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
@@ -438,7 +438,7 @@ jobs:
   check-trailing-whitespaces:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Determine base commit
@@ -471,7 +471,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
@@ -519,13 +519,13 @@ jobs:
     runs-on: ubuntu-20.04
     needs: benchmark
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
     - name: Install Python requirements
       run: pip install -r python-requirements.txt
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get [f]dotproduct results (2 lanes)
       uses: actions/download-artifact@v4
       with:
@@ -676,7 +676,7 @@ jobs:
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Delete artifacts
         uses: geekyeggo/delete-artifact@v5
         with:
@@ -696,7 +696,7 @@ jobs:
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Delete artifacts
         uses: geekyeggo/delete-artifact@v5
         with:
