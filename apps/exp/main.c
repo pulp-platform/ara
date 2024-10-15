@@ -23,10 +23,13 @@
 #include "runtime.h"
 #include "util.h"
 
-#ifndef SPIKE
-#include "printf.h"
-#else
+#ifdef SPIKE
+#include "util.h"
 #include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
 #endif
 
 extern size_t N_f64;

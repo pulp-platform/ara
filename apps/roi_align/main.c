@@ -14,10 +14,13 @@
 
 #include "kernel/roi_align.h"
 
-#ifndef SPIKE
-#include "printf.h"
-#else
+#ifdef SPIKE
+#include "util.h"
 #include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
 #endif
 
 // Execute only the central kernel with fake data

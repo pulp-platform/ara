@@ -44,7 +44,18 @@ RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv
 RISCV_ABI     ?= lp64d
 RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf
 
-# Use LLVM
+# Use LLVM for bare-metal RVV and GCC for Linux RVV
+ifeq ($(LINUX),1)
+RISCV_PREFIX  ?= $(ARA_DIR)/cheshire/sw/cva6-sdk/buildroot/output/host/bin/riscv64-buildroot-linux-gnu-
+RISCV_CC      ?= $(RISCV_PREFIX)gcc
+RISCV_CXX     ?= $(RISCV_PREFIX)g++
+RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump
+RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
+RISCV_AS      ?= $(RISCV_PREFIX)as
+RISCV_AR      ?= $(RISCV_PREFIX)ar
+RISCV_LD      ?= $(RISCV_PREFIX)ld.lld
+RISCV_STRIP   ?= $(RISCV_PREFIX)strip
+else
 RISCV_PREFIX  ?= $(LLVM_INSTALL_DIR)/bin/
 RISCV_CC      ?= $(RISCV_PREFIX)clang
 RISCV_CXX     ?= $(RISCV_PREFIX)clang++
@@ -54,6 +65,7 @@ RISCV_AS      ?= $(RISCV_PREFIX)llvm-as
 RISCV_AR      ?= $(RISCV_PREFIX)llvm-ar
 RISCV_LD      ?= $(RISCV_PREFIX)ld.lld
 RISCV_STRIP   ?= $(RISCV_PREFIX)llvm-strip
+endif
 
 # Use gcc to compile scalar riscv-tests
 RISCV_CC_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-gcc
@@ -75,6 +87,9 @@ PYTHON ?= python3
 
 # Defines
 ENV_DEFINES ?=
+ifeq ($(LINUX),1)
+ENV_DEFINES += -DARA_LINUX=1
+endif
 ifeq ($(vcd_dump),1)
 ENV_DEFINES += -DVCD_DUMP=1
 endif
@@ -88,27 +103,38 @@ RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argum
 LLVM_FLAGS     ?= -march=rv64gcv_zfh_zvfh0p1 -menable-experimental-extensions -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
 LLVM_V_FLAGS   ?= -fno-vectorize -mllvm -scalable-vectorization=off -mllvm -riscv-v-vector-bits-min=0 -Xclang -target-feature -Xclang +no-optimized-zero-stride-load
 RISCV_FLAGS    ?= $(LLVM_FLAGS) $(LLVM_V_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
+ifeq ($(LINUX),1)
+RISCV_CCFLAGS  ?= -march=rv64gcv -mabi=$(RISCV_ABI) -I$(CURDIR)/common -O3 $(DEFINES)
+RISCV_LDFLAGS  ?=
+else
 RISCV_CCFLAGS  ?= $(RISCV_FLAGS) -ffunction-sections -fdata-sections
+RISCV_LDFLAGS  ?= -static -nostartfiles -lm -Wl,--gc-sections -T$(CURDIR)/common/link.ld
+endif
 RISCV_CCFLAGS_SPIKE  ?= $(RISCV_FLAGS) $(SPIKE_CCFLAGS) -ffunction-sections -fdata-sections
 RISCV_CXXFLAGS ?= $(RISCV_FLAGS) -ffunction-sections -fdata-sections
-RISCV_LDFLAGS  ?= -static -nostartfiles -lm -Wl,--gc-sections
 RISCV_LDFLAGS_SPIKE  ?= $(RISCV_LDFLAGS) $(SPIKE_LDFLAGS) -Wl,--gc-sections
 
 # GCC Flags
 RISCV_FLAGS_GCC    ?= -mcmodel=medany -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 RISCV_CCFLAGS_GCC  ?= $(RISCV_FLAGS_GCC)
 RISCV_CXXFLAGS_GCC ?= $(RISCV_FLAGS_GCC)
-RISCV_LDFLAGS_GCC  ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS_GCC)
+RISCV_LDFLAGS_GCC  ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS_GCC) -T$(CURDIR)/common/link.ld
 
 ifeq ($(COMPILER),gcc)
 	RISCV_OBJDUMP_FLAGS ?=
 else
+ifneq ($(LINUX),1)
 	RISCV_OBJDUMP_FLAGS ?= --mattr=v
+endif
 endif
 
 # Compile two different versions of the runtime, since we cannot link code compiled with two different toolchains
 RUNTIME_GCC   ?= common/crt0-gcc.S.o common/printf-gcc.c.o common/string-gcc.c.o common/serial-gcc.c.o common/util-gcc.c.o
+ifeq ($(LINUX),1)
+RUNTIME_LLVM  ?= common/util-llvm.c.o
+else
 RUNTIME_LLVM  ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c.o common/serial-llvm.c.o common/util-llvm.c.o
+endif
 RUNTIME_SPIKE ?= $(spike_env_dir)/benchmarks/common/crt.S.o.spike $(spike_env_dir)/benchmarks/common/syscalls.c.o.spike common/util.c.o.spike
 
 .INTERMEDIATE: $(RUNTIME_GCC) $(RUNTIME_LLVM)

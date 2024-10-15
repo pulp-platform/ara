@@ -18,16 +18,21 @@
 //         Samuel Riedel, ETH Zurich
 //         Matteo Perotti, ETH Zurich
 
-#include <stdio.h>
 #include <string.h>
 
 #include "kernel/fmatmul.h"
 #include "runtime.h"
 #include "util.h"
 
-#ifndef SPIKE
+#ifdef SPIKE
+#include "util.h"
+#include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
 #include "printf.h"
 #endif
+
 
 // Define Matrix dimensions:
 // C = AB with A=[MxN], B=[NxP], C=[MxP]
