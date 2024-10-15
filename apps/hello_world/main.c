@@ -19,11 +19,13 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef SPIKE
-#include "printf.h"
-#else
+#ifdef SPIKE
 #include "util.h"
 #include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
 #endif
 
 int main() {
