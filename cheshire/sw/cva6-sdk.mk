@@ -6,19 +6,65 @@
 #
 # Build an RVV-ready Linux image
 
+# CVA6-SDK subpath
+CVA6_SDK_ROOT = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/cva6-sdk
+
 # Linux should be RVV-ready?
 RVV_LINUX := 1
 # Suffix for host toolchain (to build buildroot toolchain)
-TOOLCHAIN_SUFFIX :=
+# For IIS users: HOST_TOOLCHAIN_SUFFIX=-11.2.0
+HOST_TOOLCHAIN_SUFFIX ?=
+# Buildroot toolchain
+TARGET_OS_TOOLCHAIN := $(CVA6_SDK_ROOT)/buildroot/output/host/bin/riscv64-buildroot-linux-gnu-gcc
+# Github submodule update tokens
+CVA6_SDK_UPDATED := $(ARA_ROOT)/cheshire/sw/.cva6-sdk.updated
 
-.PHONY: cva6-sdk linux_img
+.PHONY: %-linux linux-img
 
-cva6-sdk:
-	git submodule update --init --recursive -- $(ARA_SW)/$@
+################
+## Build deps ##
+################
 
-linux_img: cva6-sdk
-	echo "Your gcc version is: $(gcc -dumpfullversion). This build worked with gcc and g++ version 11.2.0"
-	make -C $(ARA_SW)/cva6-sdk images RVV=$(RVV_LINUX) \
-	HOSTCC=gcc$(TOOLCHAIN_SUFFIX) \
-	HOSTCXX=g++$(TOOLCHAIN_SUFFIX) \
-	HOSTCPP=cpp$(TOOLCHAIN_SUFFIX)
+.PRECIOUS: $(CVA6_SDK_UPDATED)
+$(CVA6_SDK_UPDATED):
+	git submodule update --init --recursive -- $(CVA6_SDK_ROOT)
+	touch $@
+
+$(TARGET_OS_TOOLCHAIN): $(CVA6_SDK_UPDATED)
+	@echo "Building the RISC-V CVA6-SDK Linux TOOLCHAIN"
+	@echo "Your gcc version is: $$(gcc -dumpfullversion). This build worked with gcc and g++ version 11.2.0. Please adjust this if needed."
+	make -C $(CVA6_SDK_ROOT) $@ \
+	HOSTCC=gcc$(HOST_TOOLCHAIN_SUFFIX) \
+	HOSTCXX=g++$(HOST_TOOLCHAIN_SUFFIX) \
+	HOSTCPP=cpp$(HOST_TOOLCHAIN_SUFFIX) \
+	RVV=$(RVV_LINUX)
+	touch $@
+
+########################
+## Build RVV Software ##
+########################
+
+$(ARA_APPS)/bin/%-linux: $(shell find $(ARA_APPS)/$* -name "*.c" -o -name "*.S") $(TARGET_OS_TOOLCHAIN)
+	make -C $(ARA_APPS) bin/$*-linux LINUX=1
+
+.PRECIOUS: $(CVA6_SDK_ROOT)/rootfs/%
+$(CVA6_SDK_ROOT)/rootfs/%: $(ARA_APPS)/bin/%-linux
+	cp $< $@
+
+%-linux: $(CVA6_SDK_ROOT)/rootfs/%
+	@echo "$@ built and copied."
+
+#####################
+## Build Linux IMG ##
+#####################
+
+$(CVA6_SDK_ROOT)/install64/vmlinux: $(CVA6_SDK_UPDATED) $(TARGET_OS_TOOLCHAIN) $(TARGET_KERNELS)
+	make -C $(ARA_SW)/cva6-sdk images RVV=$(RVV_LINUX)
+
+# Softlink the linux image and create a bootable Cheshire image
+linux-img: $(CVA6_SDK_ROOT)/install64/vmlinux
+	if [ -d "$(CHS_SW)/deps/cva6-sdk/install64" ]; then \
+		echo "$(CHS_SW)/deps/cva6-sdk/install64 already exists, creating a backup..."; \
+		mv $(CHS_SW)/deps/cva6-sdk/install64 $(CHS_SW)/deps/cva6-sdk/install64.bak_$(shell date +%Y%m%d_%H%M%S); \
+	fi
+	cd $(CHS_SW)/deps/cva6-sdk && ln -s $(CVA6_SDK_ROOT)/install64
