@@ -17,12 +17,18 @@
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "kernel/vfredsum.h"
-#include "printf.h"
 #include "runtime.h"
+
+#ifdef SPIKE
+#include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
+#endif
 
 // Size of the largest possible vector register in Bytes (LMUL == 8)
 #define MAX_BYTE_LMUL8 VLEN

@@ -20,9 +20,16 @@
 #include <string.h>
 
 #include "kernel/log.h"
-#include "printf.h"
 #include "runtime.h"
 #include "util.h"
+
+#ifdef SPIKE
+#include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
+#endif
 
 #define THRESHOLD 1
 
