@@ -24,19 +24,25 @@ BOARD                     := vcu128
 VLOG_ARGS                 ?= -suppress 2583 -suppress 13314
 COMMON_CUSTOM_TARGETS     := -t cv64a6_imafdcv_sv39 -t cva6 --define ARA --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen)
 CUSTOM_SIM_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t sim -t test -t rtl --vlog-arg="$(VLOG_ARGS)"
-CUSTOM_XIL_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t fpga -t $(BOARD) 
+CUSTOM_XIL_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t fpga -t $(BOARD)
 
-.PHONY: ara-chs-xilinx-$(BOARD) ara-chs-flash-$(BOARD) apply-patches update_xilinx_src clean
+# Define XILINX FPGA URL and PATH for programming
+CHS_XILINX_HWS_URL  ?=
+CHS_XILINX_HWS_PATH ?=
+
+.PHONY: ara-chs-xilinx-$(BOARD) ara-chs-flash-$(BOARD) ara-chs-xilinx-program-$(BOARD) update_xilinx_src update_vsim_src clean
 
 ara-chs-xilinx-$(BOARD): update_xilinx_src
 	make -C $(BACKREF_CHS_ROOT) chs-xilinx-$(BOARD)
 
-ara-chs-flash-$(BOARD):
-	make -C $(BACKREF_CHS_ROOT) chs-xilinx-flash-$(BOARD) VIVADO=$(VIVADO)
+ara-chs-image-$(BOARD):
+	make -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/sw/boot/linux.$(BOARD).gpt.bin -B
 
-apply-patches:
-	cd $(BACKREF_CHS_ROOT) && \
-	git apply $(ARA_ROOT)/cheshire/patches/device_tree.patch
+ara-chs-xilinx-flash-$(BOARD):
+	make -C $(BACKREF_CHS_ROOT) chs-xilinx-flash-$(BOARD) VIVADO=$(VIVADO) CHS_XILINX_HWS_URL=$(CHS_XILINX_HWS_URL) CHS_XILINX_HWS_PATH_$(BOARD)=$(CHS_XILINX_HWS_PATH)
+
+ara-chs-xilinx-program-$(BOARD):
+	make -C $(BACKREF_CHS_ROOT) chs-xilinx-program-$(BOARD) VIVADO=$(VIVADO) CHS_XILINX_HWS_URL=$(CHS_XILINX_HWS_URL) CHS_XILINX_HWS_PATH_$(BOARD)=$(CHS_XILINX_HWS_PATH)
 
 update_xilinx_src:
 	cd $(BACKREF_CHS_ROOT) && \
