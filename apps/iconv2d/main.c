@@ -23,7 +23,13 @@
 #include "iconv2d.h"
 #include "runtime.h"
 
-#ifndef SPIKE
+#include "util.h"
+
+#ifdef SPIKE
+#include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
 #include "printf.h"
 #endif
 

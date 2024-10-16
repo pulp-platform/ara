@@ -10,7 +10,7 @@ package:
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.39.1                               }
   common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1                               }
-  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: f9ebe5006fefe97fc1d2a8b1515fa2fd321fec6d } # mp/pulp-v1-araOS
+  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: 5086bff7a039f02a2d9604bca7b1b3e9d961713e } # mp/pulp-v1-araOS
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13                               }
   apb:                { git: "https://github.com/pulp-platform/apb.git",                version: 0.2.4                                }
 

@@ -211,6 +211,12 @@ Currently, the following kernels support automatic VCD dumping: `fmatmul`, `fcon
 
 We also provide Synopsys Spyglass linting scripts in the hardware/spyglass. Run make lint in the hardware folder, with a specific MemPool configuration, to run the tests associated with the lint_rtl target.
 
+## FPGA implementation and Linux flow
+
+Ara supports Cheshire's FPGA flow and can be currently implemented on VCU128 and VCU118 in bare-metal and with Linux. The tested configuration is with 2 lanes.
+
+For information about the FPGA bare-metal and Linux flows, please refer to `cheshire/README.md`.
+
 ## Publications
 
 If you want to use Ara, you can cite us:
