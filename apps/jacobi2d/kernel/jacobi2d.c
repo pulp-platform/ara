@@ -104,6 +104,8 @@ void j2d_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B,
   }
 }
 
+// Not compatible with Linux compiler
+#ifndef ARA_LINUX
 void j2d_kernel_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
   vfloat64m1_t xU;
   vfloat64m1_t xUtmp;
@@ -143,6 +145,7 @@ void j2d_kernel_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
     }
   }
 }
+#endif
 
 // Optimized version of the jacobi2d kernel
 void j2d_kernel_adhoc_warm(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
