@@ -45,7 +45,7 @@ $(TARGET_OS_TOOLCHAIN): $(CVA6_SDK_UPDATED)
 ########################
 
 $(ARA_APPS)/bin/%-linux: $(shell find $(ARA_APPS)/$* -name "*.c" -o -name "*.S") $(TARGET_OS_TOOLCHAIN)
-	make -C $(ARA_APPS) bin/$*-linux LINUX=1
+	make -C $(ARA_APPS) bin/$*-linux LINUX=1 config=${ARA_CONFIGURATION}
 
 .PRECIOUS: $(CVA6_SDK_ROOT)/rootfs/%
 $(CVA6_SDK_ROOT)/rootfs/%: $(ARA_APPS)/bin/%-linux
