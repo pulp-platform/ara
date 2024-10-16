@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix `acc_dispatcher` CVA6 bug for instructions with side effects
  - Fix NaN/subnormal floating-point handling in opqueues
  - Stall vfdiv/vfsqrt instructions following/preceding other fp instructions
+ - Fix vector slicing in the operand requesters
 
 ### Added
 
@@ -34,6 +35,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add virtual->physical address translation for Ara by sharing CVA6 MMU
  - Add Ara VLSU support for MMU exceptions
  - Add multi-precision conv3d
+ - Add Cheshire bare-metal FPGA flow for vcu128 and vcu118
+ - Add cva6-sdk submodule
+ - Add Cheshire Linux FPGA flow for vcu128 and vcu118
 
 ### Changed
 
@@ -56,6 +60,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Memory size is now constant with NrLanes
  - Enable hierarchical verilation
  - Bump AXI and common cells to solve verilation warnings
+ - Update all Github Actions for CI
+ - Update READMEs with FPGA implementation instructions
 
 ## 3.0.0 - 2023-09-08
 
