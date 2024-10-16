@@ -47,6 +47,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for vrgather/vcompress
  - Add parametrized support for 8-alt, 8, 16-alt floating-point
  - Add lavaMD `app`, benchmark, and performance plot
+ - Add Cheshire bare-metal FPGA flow for vcu128 and vcu118
+ - Add cva6-sdk submodule
+ - Add Cheshire Linux FPGA flow for vcu128 and vcu118
 
 ### Changed
 
@@ -81,6 +84,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - The MASKU always receives balanced payloads from the lanes
  - Remove FPU support for opqueues that do not need it
  - Pre-calculate timing-critical addresses before addrgen stage
+ - Update all GitHub Actions for CI
+ - Update READMEs with FPGA implementation instructions
 
 ## 3.0.0 - 2023-09-08
 
