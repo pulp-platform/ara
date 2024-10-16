@@ -16,6 +16,8 @@ APPS   := $(patsubst $(ARA_APPS)/%/main.c,%,$(shell find $(ARA_APPS) -name "main
 SW_C   := $(wildcard $(ARA_SW)/src/*.c)
 DEPS_H := $(wildcard $(ARA_SW)/include/*.h)
 
+# Hardware configuration for the Ara RVV kernels
+# Can be chosen in [2|4|8|16]_lanes
 ARA_CONFIGURATION ?= 2_lanes
 include $(ARA_ROOT)/config/$(ARA_CONFIGURATION).mk
 
