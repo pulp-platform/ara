@@ -74,13 +74,12 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   logic vinsn_issue_valid;
 
   for (genvar l = 0; l < NrLanes; l++) begin
-    stream_register #(
+    spill_register_flushable #(
       .T(strb_t)
     ) i_vldu_mask_register (
       .clk_i     (clk_i           ),
       .rst_ni    (rst_ni          ),
-      .clr_i     (1'b0            ),
-      .testmode_i(1'b0            ),
+      .flush_i   (1'b0            ),
       .data_o    (mask_q[l]       ),
       .valid_o   (mask_valid_q[l] ),
       .ready_i   (mask_ready_d    ),
