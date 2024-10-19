@@ -23,10 +23,12 @@
 #include "runtime.h"
 #include "util.h"
 
-#ifndef SPIKE
-#include "printf.h"
-#else
+#ifdef SPIKE
 #include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
 #endif
 
 #define M_ROW 1024

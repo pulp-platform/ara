@@ -80,7 +80,11 @@ WITH ACCESS OR USE OF THE SOFTWARE.
 #include "runtime.h"
 #include "util.h"
 
-#ifndef SPIKE
+#ifdef SPIKE
+#include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
 #include "printf.h"
 #endif
 

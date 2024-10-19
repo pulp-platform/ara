@@ -20,9 +20,17 @@
 #include <string.h>
 
 #include "kernel/cos.h"
-#include "printf.h"
 #include "runtime.h"
+
 #include "util.h"
+
+#ifdef SPIKE
+#include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
+#endif
 
 extern size_t N_f64;
 extern double angles_f64[] __attribute__((aligned(4 * NR_LANES)));

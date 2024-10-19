@@ -19,7 +19,15 @@
 #ifndef _DROPOUT_H_
 #define _DROPOUT_H_
 
+#include "util.h"
+
+#ifdef SPIKE
 #include <stdio.h>
+#elif defined ARA_LINUX
+#include <stdio.h>
+#else
+#include "printf.h"
+#endif
 
 #include <riscv_vector.h>
 
@@ -28,10 +36,6 @@
 #undef INTRINSICS
 
 #include "runtime.h"
-
-#ifndef SPIKE
-#include "printf.h"
-#endif
 
 void dropout_gold(const unsigned int n, const float *i, const float scale,
                   const uint8_t *sel_ptr, float *o);
