@@ -67,4 +67,4 @@ linux-img: $(CVA6_SDK_ROOT)/install64/vmlinux
 		echo "$(CHS_SW)/deps/cva6-sdk/install64 already exists, creating a backup..."; \
 		mv $(CHS_SW)/deps/cva6-sdk/install64 $(CHS_SW)/deps/cva6-sdk/install64.bak_$(shell date +%Y%m%d_%H%M%S); \
 	fi
-	cd $(CHS_SW)/deps/cva6-sdk && ln -s $(CVA6_SDK_ROOT)/install64
+	cp -r $(CVA6_SDK_ROOT)/install64 $(CHS_SW)/deps/cva6-sdk/
