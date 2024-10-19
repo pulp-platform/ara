@@ -76,7 +76,6 @@ Note: this script requires `bender`. Also, some Cheshire targets may require an 
 
 ```bash
 export CHS_ROOT=$(pwd)/cheshire
-export ARA_ROOT=$(bender -d ${CHS_ROOT} path ara)
 
 # Cheshire commit
 # FILL ME
@@ -104,6 +103,7 @@ git checkout ${CHS_HASH}
 # Checkout Ara
 echo 'Checkout hardware deps'
 bender checkout
+export ARA_ROOT=$(bender -d ${CHS_ROOT} path ara)
 # Compile RVV kernels
 echo 'Install the Linux compiler and compile the LINUX RVV kernels'
 make -C ${ARA_ROOT}/cheshire/sw ${RVV_KERNELS} HOST_TOOLCHAIN_SUFFIX=${HOST_TOOLCHAIN_SUFFIX}
