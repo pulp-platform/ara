@@ -15,6 +15,8 @@ module ara import ara_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    // Support for segment memory operations
+    parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
@@ -89,7 +91,8 @@ module ara import ara_pkg::*; #(
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
 
   ara_dispatcher #(
-    .NrLanes(NrLanes)
+    .NrLanes(NrLanes),
+    .SegSupport(SegSupport)
   ) i_dispatcher (
     .clk_i             (clk_i           ),
     .rst_ni            (rst_ni          ),

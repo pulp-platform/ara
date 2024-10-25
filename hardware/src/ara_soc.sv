@@ -13,6 +13,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
     parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
+    // Support for segment memory operations
+    parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // AXI Interface
@@ -469,6 +471,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .NrLanes           (NrLanes              ),
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
+    .SegSupport        (SegSupport           ),
     .FixPtSupport      (FixPtSupport         ),
     .ArianeCfg         (ArianeAraConfig      ),
     .AxiAddrWidth      (AxiAddrWidth         ),

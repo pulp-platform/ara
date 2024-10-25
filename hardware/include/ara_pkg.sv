@@ -38,6 +38,12 @@ package ara_pkg;
     FixedPointEnable  = 1'b1
   } fixpt_support_e;
 
+  // Support for segment memory operations
+  typedef enum logic {
+    SegSupportDisable = 1'b0,
+    SegSupportEnable  = 1'b1
+  } seg_support_e;
+
   // FP support outside of the FPU (external)
   // vfrec7, vfrsqrt7, round-toward-odd
   typedef enum logic {
@@ -301,6 +307,9 @@ package ara_pkg;
 
     // Effective length multiplier
     rvv_pkg::vlmul_e emul;
+
+    // Number of segments in segment mem op
+    logic [2:0] nf;
 
     // Rounding-Mode for FP operations
     fpnew_pkg::roundmode_e fp_rm;
