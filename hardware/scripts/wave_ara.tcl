@@ -8,6 +8,7 @@ add wave -noupdate -group Ara -group core /ara_tb/dut/i_ara_soc/i_system/i_ara/*
 
 add wave -noupdate -group Ara -group dispatcher /ara_tb/dut/i_ara_soc/i_system/i_ara/i_dispatcher/*
 add wave -noupdate -group Ara -group dispatcher -group segment_sequencer /ara_tb/dut/i_ara_soc/i_system/i_ara/i_dispatcher/i_segment_sequencer/*
+add wave -noupdate -group Ara -group dispatcher -group segment_sequencer /ara_tb/dut/i_ara_soc/i_system/i_ara/i_dispatcher/i_segment_sequencer/gen_segment_support/*
 add wave -noupdate -group Ara -group sequencer /ara_tb/dut/i_ara_soc/i_system/i_ara/i_sequencer/*
 
 # Add waves from all the lanes
