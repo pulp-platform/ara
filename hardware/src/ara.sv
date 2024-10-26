@@ -17,6 +17,8 @@ module ara import ara_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    // Support for segment memory operations
+    parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
@@ -124,6 +126,9 @@ module ara import ara_pkg::*; #(
     // Effective length multiplier
     rvv_pkg::vlmul_e emul;
 
+    // Number of segments in segment mem op
+    logic [2:0] nf;
+
     // Rounding-Mode for FP operations
     fpnew_pkg::roundmode_e fp_rm;
     // Widen FP immediate (re-encoding)
@@ -176,6 +181,7 @@ module ara import ara_pkg::*; #(
   ara_dispatcher #(
     .NrLanes   (NrLanes   ),
     .VLEN      (VLEN      ),
+    .SegSupport(SegSupport),
     .ara_req_t (ara_req_t ),
     .ara_resp_t(ara_resp_t)
   ) i_dispatcher (

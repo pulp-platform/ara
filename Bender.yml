@@ -27,6 +27,8 @@ sources:
     - hardware/include/ara_pkg.sv
 
     # Sources
+    # Level 0
+    - hardware/src/segment_sequencer.sv
     # Level 1
     - hardware/src/ctrl_registers.sv
     - hardware/src/cva6_accel_first_pass_decoder.sv

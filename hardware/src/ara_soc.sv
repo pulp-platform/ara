@@ -17,6 +17,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    // Support for segment memory operations
+    parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
@@ -519,6 +521,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
+    .SegSupport        (SegSupport           ),
     .CVA6Cfg           (CVA6AraConfig        ),
     .AxiAddrWidth      (AxiAddrWidth         ),
     .AxiIdWidth        (AxiCoreIdWidth       ),
