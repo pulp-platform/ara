@@ -16,6 +16,8 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     parameter fpext_support_e                   FPExtSupport       = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter fixpt_support_e                   FixPtSupport       = FixedPointEnable,
+    // Support for segment memory operations
+    parameter seg_support_e                     SegSupport         = SegSupportEnable,
     // Ariane configuration
     parameter config_pkg::cva6_cfg_t            CVA6Cfg            = cva6_config_pkg::cva6_cfg,
     // AXI Interface
@@ -214,6 +216,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .FPUSupport  (FPUSupport      ),
     .FPExtSupport(FPExtSupport    ),
     .FixPtSupport(FixPtSupport    ),
+    .SegSupport  (SegSupport      ),
     .AxiDataWidth(AxiWideDataWidth),
     .AxiAddrWidth(AxiAddrWidth    ),
     .axi_ar_t    (ara_axi_ar_t    ),
