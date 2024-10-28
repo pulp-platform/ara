@@ -116,8 +116,12 @@ make -C ${ARA_ROOT}/cheshire ara-chs-image BOARD=${BOARD}
 # Generate the bitstream
 echo 'Generate the bitstream'
 make -C ${ARA_ROOT}/cheshire ara-chs-xilinx BOARD=${BOARD}
-# Flash the SD with Linux
+# Flash the SD with Linux (for boards with micro-SD support i.e vcu118)
 echo 'Flash the SD with Linux'
+sudo dd if=sw/boot/linux.<board>.gpt.bin of=/dev/<sdcard>
+sudo sgdisk -e /dev/<sdcard>
+# Flash the on-board storage with Linux
+echo 'Flash the SPI Flash with Linux'
 make -C ${ARA_ROOT}/cheshire ara-chs-xilinx-flash BOARD=${BOARD} CHS_XILINX_HWS_URL=${CHS_XILINX_HWS_URL} CHS_XILINX_HWS_PATH=${CHS_XILINX_HWS_PATH}
 # Program the bitstream
 echo 'Program the bitstream'
