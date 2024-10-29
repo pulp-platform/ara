@@ -72,6 +72,16 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   localparam unsigned DataWidth = $bits(elen_t);
   localparam unsigned DataWidthB = DataWidth / 8;
 
+  localparam unsigned Log2NrLanes = $clog2(NrLanes);
+  localparam unsigned Log2LaneWordWidthB = $clog2(DataWidthB/1);
+  localparam unsigned Log2LaneWordWidthH = $clog2(DataWidthB/2);
+  localparam unsigned Log2LaneWordWidthS = $clog2(DataWidthB/4);
+  localparam unsigned Log2LaneWordWidthD = $clog2(DataWidthB/8);
+  localparam unsigned Log2VRFWordWidthB = Log2NrLanes + Log2LaneWordWidthB;
+  localparam unsigned Log2VRFWordWidthH = Log2NrLanes + Log2LaneWordWidthH;
+  localparam unsigned Log2VRFWordWidthS = Log2NrLanes + Log2LaneWordWidthS;
+  localparam unsigned Log2VRFWordWidthD = Log2NrLanes + Log2LaneWordWidthD;
+
   // Ara reports misaligned exceptions on its own
   assign mmu_misaligned_ex_o  = '0;
 
@@ -153,8 +163,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
   // Pointer to point to the correct
   logic [$clog2(NrLanes)-1:0] word_lane_ptr_d, word_lane_ptr_q;
-  logic [$clog2($bits(elen_t)/8)-1:0] elm_ptr_d, elm_ptr_q;
-  logic [$clog2($bits(elen_t)/8)-1:0] last_elm_subw_d, last_elm_subw_q;
+  logic [$clog2(DataWidthB)-1:0] elm_ptr_d, elm_ptr_q;
+  logic [$clog2(DataWidthB)-1:0] last_elm_subw_d, last_elm_subw_q;
   vlen_t                              idx_op_cnt_d, idx_op_cnt_q;
 
   // Spill reg signals
@@ -263,12 +273,26 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
               // Load element pointers
               case (pe_req_i.eew_vs2)
-                EW8:  last_elm_subw_d = 7;
-                EW16: last_elm_subw_d = 3;
-                EW32: last_elm_subw_d = 1;
-                EW64: last_elm_subw_d = 0;
-                default:
+                EW8: begin
+                  last_elm_subw_d = 7;
+                  word_lane_ptr_d = pe_req_i.vstart[Log2VRFWordWidthB-1:Log2LaneWordWidthB];
+                  elm_ptr_d       = pe_req_i.vstart[Log2LaneWordWidthB-1:0];
+                end
+                EW16: begin
+                  last_elm_subw_d = 3;
+                  word_lane_ptr_d = pe_req_i.vstart[Log2VRFWordWidthH-1:Log2LaneWordWidthH];
+                  elm_ptr_d       = pe_req_i.vstart[Log2LaneWordWidthH-1:0];
+                end
+                EW32: begin
+                  last_elm_subw_d = 1;
+                  word_lane_ptr_d = pe_req_i.vstart[Log2VRFWordWidthS-1:Log2LaneWordWidthS];
+                  elm_ptr_d       = pe_req_i.vstart[Log2LaneWordWidthS-1:0];
+                end
+                default: begin // EW64
                   last_elm_subw_d = 0;
+                  word_lane_ptr_d = pe_req_i.vstart[Log2VRFWordWidthD-1:0];
+                  elm_ptr_d       = 0;
+                end
               endcase
 
               // Load element counter
@@ -413,7 +437,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             // Consumed one element
             idx_op_cnt_d = idx_op_cnt_q - 1;
             // Have we finished a full NrLanes*64b word?
-            // TODO: check for the need of vstart logic here
             if (elm_ptr_q == last_elm_subw_q) begin
               // Bump lane pointer
               elm_ptr_d       = '0;
