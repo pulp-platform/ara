@@ -11,6 +11,7 @@ module ara_soc_wrap (
 );
 
   localparam int unsigned NrLanes      = `NR_LANES;
+  localparam int unsigned VLEN         = `VLEN;
   localparam int unsigned AxiAddrWidth = 64;
   localparam int unsigned AxiDataWidth = 64 * NrLanes / 2;
   localparam int unsigned AxiUserWidth = 1;
@@ -20,6 +21,7 @@ module ara_soc_wrap (
 
   ara_soc #(
     .NrLanes     (NrLanes      ),
+    .VLEN        (VLEN         ),
     .AxiAddrWidth(AxiAddrWidth ),
     .AxiDataWidth(AxiDataWidth ),
     .AxiIdWidth  (AxiIdWidth   ),
