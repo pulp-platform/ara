@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: SHL-0.51
 //
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
-// Description: break down segmented memory operations into scalar
+// Description: break down segment memory operations into scalar
 // memory operations. This is extremely bad in terms of IPC, but
 // it has low-impact on the physical implementation.
 
@@ -20,7 +20,7 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      is_segment_mem_op_i,
     input  logic      illegal_insn_i,
     input  logic      is_vload_i,
-    output logic      segment_micro_op_on_o,
+    output logic      seg_mem_op_end_o,
     input  logic      load_complete_i,
     output logic      load_complete_o,
     input  logic      store_complete_i,
@@ -102,9 +102,6 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     // Next vstart count
     assign next_vstart_cnt = vstart_cnt_q + 1;
 
-    // Signal if the micro op seq is on
-    assign segment_micro_op_on_o = state_q != IDLE;
-
     always_comb begin
       state_d = state_q;
 
@@ -121,6 +118,8 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
       ara_resp_valid_d = ara_resp_valid_q;
       is_vload_d       = is_vload_q;
       nf_d             = nf_q;
+
+      seg_mem_op_end_o = 1'b0;
 
       // Don't count up by default
       new_seg_mem_op = 1'b0;
@@ -203,6 +202,7 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
         end
         SEGMENT_MICRO_OPS_END: begin
           ara_resp_o       = ara_resp_q;
+          seg_mem_op_end_o = 1'b1;
           ara_resp_valid_o = 1'b1;
           load_complete_o  = is_vload_q;
           store_complete_o = ~is_vload_q;
@@ -228,7 +228,7 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
     end
   end else begin : gen_no_segment_support
     // No segment micro-ops here
-    assign segment_micro_op_on_o = 1'b0;
+    assign seg_mem_op_end_o = 1'b0;
     // Pass through if segment support is disabled
     assign load_complete_o  = load_complete_i;
     assign store_complete_o = store_complete_i;

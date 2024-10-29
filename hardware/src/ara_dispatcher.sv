@@ -166,38 +166,42 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic [4:0] vs_buffer_d, vs_buffer_q;
   // Keep track of the registers to be reshuffled |vs1|vs2|vd|
   logic [2:0] reshuffle_req_d, reshuffle_req_q;
+  // Segment memory operations end or ongoing?
+  logic seg_mem_op_end, pending_seg_mem_op_d, pending_seg_mem_op_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q             <= NORMAL_OPERATION;
-      state_qq            <= NORMAL_OPERATION;
-      eew_q               <= '{default: rvv_pkg::EW8};
-      eew_valid_q         <= '0;
-      eew_old_buffer_q    <= rvv_pkg::EW8;
-      eew_new_buffer_q    <= rvv_pkg::EW8;
-      vs_buffer_q         <= '0;
-      reshuffle_req_q     <= '0;
-      rs_lmul_cnt_q       <= '0;
-      rs_lmul_cnt_limit_q <= '0;
-      rs_mask_request_q   <= 1'b0;
-      reshuffle_eew_vs1_q <= rvv_pkg::EW8;
-      reshuffle_eew_vs2_q <= rvv_pkg::EW8;
-      reshuffle_eew_vd_q  <= rvv_pkg::EW8;
+      state_q              <= NORMAL_OPERATION;
+      state_qq             <= NORMAL_OPERATION;
+      eew_q                <= '{default: rvv_pkg::EW8};
+      eew_valid_q          <= '0;
+      eew_old_buffer_q     <= rvv_pkg::EW8;
+      eew_new_buffer_q     <= rvv_pkg::EW8;
+      vs_buffer_q          <= '0;
+      reshuffle_req_q      <= '0;
+      rs_lmul_cnt_q        <= '0;
+      rs_lmul_cnt_limit_q  <= '0;
+      rs_mask_request_q    <= 1'b0;
+      reshuffle_eew_vs1_q  <= rvv_pkg::EW8;
+      reshuffle_eew_vs2_q  <= rvv_pkg::EW8;
+      reshuffle_eew_vd_q   <= rvv_pkg::EW8;
+      pending_seg_mem_op_q <= 1'b0;
     end else begin
-      state_q             <= state_d;
-      state_qq            <= state_q;
-      eew_q               <= eew_d;
-      eew_valid_q         <= eew_valid_d;
-      eew_old_buffer_q    <= eew_old_buffer_d;
-      eew_new_buffer_q    <= eew_new_buffer_d;
-      vs_buffer_q         <= vs_buffer_d;
-      reshuffle_req_q     <= reshuffle_req_d;
-      rs_lmul_cnt_q       <= rs_lmul_cnt_d;
-      rs_lmul_cnt_limit_q <= rs_lmul_cnt_limit_d;
-      rs_mask_request_q   <= rs_mask_request_d;
-      reshuffle_eew_vs1_q <= reshuffle_eew_vs1_d;
-      reshuffle_eew_vs2_q <= reshuffle_eew_vs2_d;
-      reshuffle_eew_vd_q  <= reshuffle_eew_vd_d;
+      state_q              <= state_d;
+      state_qq             <= state_q;
+      eew_q                <= eew_d;
+      eew_valid_q          <= eew_valid_d;
+      eew_old_buffer_q     <= eew_old_buffer_d;
+      eew_new_buffer_q     <= eew_new_buffer_d;
+      vs_buffer_q          <= vs_buffer_d;
+      reshuffle_req_q      <= reshuffle_req_d;
+      rs_lmul_cnt_q        <= rs_lmul_cnt_d;
+      rs_lmul_cnt_limit_q  <= rs_lmul_cnt_limit_d;
+      rs_mask_request_q    <= rs_mask_request_d;
+      reshuffle_eew_vs1_q  <= reshuffle_eew_vs1_d;
+      reshuffle_eew_vs2_q  <= reshuffle_eew_vs2_d;
+      reshuffle_eew_vd_q   <= reshuffle_eew_vd_d;
+      pending_seg_mem_op_q <= pending_seg_mem_op_d;
     end
   end
 
@@ -254,8 +258,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // This is a low-impact and low-performance implementation
   logic is_segment_mem_op;
   logic illegal_insn;
-  // Is the seg sequencer operating?
-  logic segment_micro_op_on;
 
   // The handshake signals are just passed-through if the insn is non-segment
   ara_resp_t ara_resp;
@@ -272,7 +274,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     .is_segment_mem_op_i(is_segment_mem_op),
     .illegal_insn_i(illegal_insn),
     .is_vload_i(is_vload),
-    .segment_micro_op_on_o(segment_micro_op_on),
+    .seg_mem_op_end_o(seg_mem_op_end),
     .load_complete_i(load_complete_i),
     .load_complete_o(load_complete),
     .store_complete_i(store_complete_i),
@@ -312,6 +314,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     reshuffle_eew_vs1_d = reshuffle_eew_vs1_q;
     reshuffle_eew_vs2_d = reshuffle_eew_vs2_q;
     reshuffle_eew_vd_d  = reshuffle_eew_vd_q;
+
+    pending_seg_mem_op_d = pending_seg_mem_op_q;
 
     rs_lmul_cnt_d       = '0;
     rs_lmul_cnt_limit_d = '0;
@@ -2689,11 +2693,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
             // Check for segment loads
             if (ara_req.nf != 3'b000) begin
-              // This is a segment load instruction
-              is_segment_mem_op = 1'b1;
-              // Wait for idle not to mess with load/store_complete_i
-              // since the segment sequencer filters these signals
-              if (!segment_micro_op_on) state_d = WAIT_IDLE;
+              if (pending_seg_mem_op_q) begin
+                // This is a segment store instruction
+                is_segment_mem_op = 1'b1;
+                // Remove pending segment mem op when over
+                if (seg_mem_op_end) pending_seg_mem_op_d = 1'b0;
+              end else begin
+                // Wait for idle not to mess with load/store_complete_i
+                // since the segment sequencer filters these signals
+                ara_req_valid = 1'b0;
+                pending_seg_mem_op_d = 1'b1;
+                state_d = WAIT_IDLE;
+              end
               // Check that EMUL * NFIELDS <= 8
               if (!ara_req.emul[2]) begin
                 // emul >= 1
@@ -2912,11 +2923,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
             // Check for segment stores
             if (ara_req.nf != 3'b000) begin
-              // This is a segment store instruction
-              is_segment_mem_op = 1'b1;
-              // Wait for idle not to mess with load/store_complete_i
-              // since the segment sequencer filters these signals
-              if (!segment_micro_op_on) state_d = WAIT_IDLE;
+              if (pending_seg_mem_op_q) begin
+                // This is a segment store instruction
+                is_segment_mem_op = 1'b1;
+                // Remove pending segment mem op when over
+                if (seg_mem_op_end) pending_seg_mem_op_d = 1'b0;
+              end else begin
+                // Wait for idle not to mess with load/store_complete_i
+                // since the segment sequencer filters these signals
+                ara_req_valid = 1'b0;
+                pending_seg_mem_op_d = 1'b1;
+                state_d = WAIT_IDLE;
+              end
               // Check that EMUL * NFIELDS <= 8
               if (!ara_req.emul[2]) begin
                 // emul >= 1
