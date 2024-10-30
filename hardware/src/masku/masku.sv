@@ -154,28 +154,28 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   //
   // Description: Parameters W_CPOP and W_VFIRST enable time multiplexing of vcpop.m and vfirst.m instruction.
   //
-  // Legal range W_CPOP:   {64, 128, ... , DataWidth*NrLanes} // DataWidth = 64
-  // Legal range W_VFIRST: {64, 128, ... , DataWidth*NrLanes} // DataWidth = 64
+  // Legal range W_CPOP:   {16, 32, 64, 128, ... , DataWidth*NrLanes} // DataWidth = 64
+  // Legal range W_VFIRST: {16, 32, 64, 128, ... , DataWidth*NrLanes} // DataWidth = 64
   //
   // Execution time example for vcpop.m (similar for vfirst.m):
   // W_CPOP = 64; VLEN = 1024; vl = 1024
   // t_vcpop.m = VLEN/W_CPOP = 8 [Cycles]
-  localparam int W_CPOP   = 64;
-  localparam int W_VFIRST = 64;
+  localparam int W_CPOP   = 16;
+  localparam int W_VFIRST = 16;
   // derived parameters
   localparam int MAX_W_CPOP_VFIRST = (W_CPOP > W_VFIRST) ? W_CPOP : W_VFIRST;
   localparam int N_SLICES_CPOP   = NrLanes * DataWidth / W_CPOP;
   localparam int N_SLICES_VFIRST = NrLanes * DataWidth / W_VFIRST;
   // Check if parameters are within range
-  if (((W_CPOP & (W_CPOP - 1)) != 0) || (W_CPOP < 64)) begin
+  if (((W_CPOP & (W_CPOP - 1)) != 0) || (W_CPOP < 8)) begin
     $fatal(1, "Parameter W_CPOP must be power of 2.");
-  end else if (((W_VFIRST & (W_VFIRST - 1)) != 0) || (W_VFIRST < 64)) begin
+  end else if (((W_VFIRST & (W_VFIRST - 1)) != 0) || (W_VFIRST < 8)) begin
     $fatal(1, "Parameter W_VFIRST must be power of 2.");
   end
 
   // VFIRST and VCPOP Signals
   logic  [NrLanes*ELEN-1:0]              vcpop_operand;
-  logic  [$clog2(W_VFIRST):0]            popcount;
+  logic  [$clog2(W_CPOP):0]              popcount;
   logic  [$clog2(VLEN):0]                popcount_d, popcount_q;
   logic  [$clog2(W_VFIRST)-1:0]          vfirst_count;
   logic  [$clog2(VLEN)-1:0]              vfirst_count_d, vfirst_count_q;
