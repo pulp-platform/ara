@@ -109,7 +109,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   pe_req_t vinsn_issue;
 
   logic  [NrLanes*ELEN-1:0] bit_enable_mask;
-  logic  [NrLanes*ELEN-1:0] bit_enable_shuffle;
   logic  [NrLanes*ELEN-1:0] alu_result_compressed;
 
   // Performs all shuffling and deshuffling of mask operands (including masks for mask instructions)
@@ -149,7 +148,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .masku_operand_m_seq_valid_o   (  ),
     .masku_operand_m_seq_ready_i   (  ),
     .bit_enable_mask_o             (             bit_enable_mask ),
-    .shuffled_vl_bit_mask_o        (          bit_enable_shuffle ),
     .alu_result_compressed_o       (       alu_result_compressed )
   );
 
@@ -453,8 +451,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Evaluate the instruction
       unique case (vinsn_issue.op) inside
-        [VMANDNOT:VMXNOR]: alu_result = (masku_operand_alu) | (~bit_enable_shuffle);
-        [VMFEQ:VMSGTU], [VMSGT:VMSBC]:  alu_result = (alu_result_compressed & bit_enable_mask) | (~bit_enable_shuffle);
+        [VMANDNOT:VMXNOR]: alu_result = masku_operand_alu;
+        [VMFEQ:VMSGTU], [VMSGT:VMSBC]: alu_result = alu_result_compressed & bit_enable_mask;
         [VMSBF:VMSIF] : begin
             if (&masku_operand_vs2_seq_valid && (&masku_operand_m_valid || vinsn_issue.vm)) begin
               for (int i = 0; i < NrLanes * DataWidth; i++) begin

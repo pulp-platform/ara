@@ -54,7 +54,6 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     output logic  [     NrLanes-1:0] masku_operand_m_seq_valid_o,
     input  logic  [     NrLanes-1:0] masku_operand_m_seq_ready_i,
     output logic  [NrLanes*ELEN-1:0] bit_enable_mask_o,       // Bit mask for mask unit instructions (shuffled like mask register)
-    output logic  [NrLanes*ELEN-1:0] shuffled_vl_bit_mask_o,  // vl mask for mask unit instructions (first vl bits are 1, others 0)  (shuffled like mask register)
     output logic  [NrLanes*ELEN-1:0] alu_result_compressed_o  // ALU/FPU results compressed (from sew to 1-bit) (shuffled, in mask format)
   );
 
@@ -180,9 +179,6 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
       end
     end
   end
-
-  assign shuffled_vl_bit_mask_o = shuffled_vl_bit_mask;
-
 
   // -------------------------------------------
   // Compress ALU/FPU results into a mask vector
