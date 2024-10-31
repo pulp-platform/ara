@@ -2692,9 +2692,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             endcase
 
             // Check for segment loads
-            if (ara_req.nf != 3'b000) begin
+            if (ara_req.nf != 3'b000 && insn.vmem_type.rs2 != 5'b01000) begin
               if (pending_seg_mem_op_q) begin
-                // This is a segment store instruction
+                // This is a segment load instruction
                 is_segment_mem_op = 1'b1;
                 // Remove pending segment mem op when over
                 if (seg_mem_op_end) pending_seg_mem_op_d = 1'b0;
@@ -2922,7 +2922,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             endcase
 
             // Check for segment stores
-            if (ara_req.nf != 3'b000) begin
+            if (ara_req.nf != 3'b000 && insn.vmem_type.rs2 != 5'b01000) begin
               if (pending_seg_mem_op_q) begin
                 // This is a segment store instruction
                 is_segment_mem_op = 1'b1;
