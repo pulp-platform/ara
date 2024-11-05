@@ -868,6 +868,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // Don't compress classify result
     localparam int unsigned TrueSIMDClass  = 1;
     localparam int unsigned EnableSIMDMask = 1;
+    localparam fpnew_pkg::divsqrt_unit_t DivSqrtSel = fpnew_pkg::PULP;
 
     operation_e fp_op;
     logic fp_opmod;
@@ -1083,6 +1084,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     fpnew_top #(
       .Features      (FPUFeatures      ),
       .Implementation(FPUImplementation),
+      .DivSqrtSel    (DivSqrtSel       ),
       .TagType       (strb_t           ),
       .TrueSIMDClass (TrueSIMDClass    ),
       .EnableSIMDMask(EnableSIMDMask   )

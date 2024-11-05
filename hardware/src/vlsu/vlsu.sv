@@ -9,11 +9,14 @@
 // and coherence with Ariane's own load/store unit.
 
 module vlsu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes   = 0,
-    parameter  int  unsigned VLEN      = 0,
-    parameter  type          vaddr_t   = logic,  // Type used to address vector register file elements
-    parameter  type          pe_req_t  = logic,
-    parameter  type          pe_resp_t = logic,
+    parameter  int  unsigned NrLanes     = 0,
+    parameter  int  unsigned VLEN        = 0,
+    parameter  type          vaddr_t     = logic,  // Type used to address vector register file elements
+    parameter  type          pe_req_t    = logic,
+    parameter  type          pe_resp_t   = logic,
+    // CVA6 configuration
+    parameter  config_pkg::cva6_cfg_t CVA6Cfg = cva6_config_pkg::cva6_cfg,
+    parameter  type          exception_t = logic,
     // AXI Interface parameters
     parameter  int  unsigned AxiDataWidth = 0,
     parameter  int  unsigned AxiAddrWidth = 0,
@@ -46,7 +49,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic      [1:0]         pe_req_ready_o,         // Load (0) and Store (1) units
     output pe_resp_t  [1:0]         pe_resp_o,              // Load (0) and Store (1) units
     output logic                    addrgen_ack_o,
-    output ariane_pkg::exception_t  addrgen_exception_o,
+    output exception_t              addrgen_exception_o,
     output vlen_t                   addrgen_exception_vstart_o,
     output logic                    addrgen_fof_exception_o,
     output logic                    lsu_current_burst_exception_o,
@@ -75,16 +78,16 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
     output  logic                          mmu_misaligned_ex_o,
     output  logic                          mmu_req_o,        // request address translation
-    output  logic [riscv::VLEN-1:0]        mmu_vaddr_o,      // virtual address out
+    output  logic [CVA6Cfg.VLEN-1:0]       mmu_vaddr_o,      // virtual address out
     output  logic                          mmu_is_store_o,   // the translation is requested by a store
     // if we need to walk the page table we can't grant in the same cycle
     // Cycle 0
     input logic                            mmu_dtlb_hit_i,   // sent in the same cycle as the request if translation hits in the DTLB
-    input logic [riscv::PPNW-1:0]          mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
+    input logic [CVA6Cfg.PPNW-1:0]         mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
     // Cycle 1
     input logic                            mmu_valid_i,      // translation is valid
-    input logic [riscv::PLEN-1:0]          mmu_paddr_i,      // translated address
-    input ariane_pkg::exception_t          mmu_exception_i,  // address translation threw an exception
+    input logic [CVA6Cfg.PLEN-1:0]         mmu_paddr_i,      // translated address
+    input exception_t                      mmu_exception_i,  // address translation threw an exception
 
     // Results
     output logic      [NrLanes-1:0] ldu_result_req_o,
@@ -157,7 +160,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_ar_t    (axi_ar_t    ),
     .axi_aw_t    (axi_aw_t    ),
     .pe_req_t    (pe_req_t    ),
-    .pe_resp_t   (pe_resp_t   )
+    .pe_resp_t   (pe_resp_t   ),
+    .CVA6Cfg     (CVA6Cfg     ),
+    .exception_t (exception_t )
   ) i_addrgen (
     .clk_i                      (clk_i                      ),
     .rst_ni                     (rst_ni                     ),
