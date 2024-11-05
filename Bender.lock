@@ -30,7 +30,7 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   cva6:
-    revision: feb5f72b5cafb840388ea85b155dfb4013c1926f
+    revision: 4415e7142810ff4b7351935ac1f73986a32b99ac
     version: null
     source:
       Git: https://github.com/pulp-platform/cva6.git
@@ -40,7 +40,7 @@ packages:
     - fpnew
     - tech_cells_generic
   fpnew:
-    revision: f231041c610f270ffc03cbdac38739ddb6426572
+    revision: de4f932e6d00951c092d38567da07e66a0f5865e
     version: null
     source:
       Git: https://github.com/pulp-platform/cvfpu.git
