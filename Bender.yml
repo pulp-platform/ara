@@ -10,7 +10,7 @@ package:
 dependencies:
   axi:                { git: "https://github.com/pulp-platform/axi.git",                version: 0.39.1                               }
   common_cells:       { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.22.1                               }
-  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: 5dfb8935db1bef2e7238b3025baf2d20b473784d } # paulsc/v2-chs
+  cva6:               { git: "https://github.com/pulp-platform/cva6.git",               rev: 4b4a335dd1e51fec8291102fffe53b79447af1e2 } # mp/pulp-v2
   tech_cells_generic: { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.13                               }
   apb:                { git: "https://github.com/pulp-platform/apb.git",                version: 0.2.4                                }
 
@@ -68,6 +68,7 @@ sources:
     - target: ara_test
       files:
         # Level 1
+        - hardware/deps/cva6/corev_apu/tb/common/mock_uart.sv
         - hardware/tb/ara_testharness.sv
         # Level 2
         - hardware/tb/ara_tb.sv
