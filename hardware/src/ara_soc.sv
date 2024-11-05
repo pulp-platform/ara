@@ -444,14 +444,13 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 
   assign hart_id = '0;
 
-  localparam config_pkg::cva6_cfg_t CVA6AraConfig = '{
+  localparam config_pkg::cva6_user_cfg_t CVA6AraConfig = '{
     NrCommitPorts         : 2,
     AxiAddrWidth          : AxiAddrWidth,
     AxiDataWidth          : AxiNarrowDataWidth,
     AxiIdWidth            : AxiIdWidth,
     AxiUserWidth          : 1,
     NrLoadBufEntries      : 2,
-    FpuEn                 : 1,
     XF16                  : FPUSupport[0],
     XF16ALT               : 0,
     XF8                   : 0,
@@ -464,20 +463,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     RVZCB                 : 0,
     XFVec                 : 0,
     CvxifEn               : 0,
-    ZiCondExtEn           : 0,
     RVSCLIC               : 0,
     RVF                   : FPUSupport[1],
     RVD                   : FPUSupport[2],
-    FpPresent             : 1,
-    NSX                   : 0,
-    FLen                  : 64,
-    RVFVec                : 0,
-    XF16Vec               : 0,
-    XF16ALTVec            : 0,
-    XF8Vec                : 0,
-    NrRgprPorts           : 0,
-    NrWbPorts             : 0,
-    EnableAccelerator     : 1,
     RVS                   : 1,
     RVU                   : 1,
     HaltAddress           : 64'h800,
@@ -507,7 +495,6 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     CachedRegionLength   : {DRAMLength},
     MaxOutstandingStores  : 7,
     DebugEn               : 1,
-    NonIdemPotenceEn      : 1,
     AxiBurstWriteEn       : 0
   };
 
@@ -519,7 +506,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
-    .CVA6Cfg           (CVA6AraConfig        ),
+    .CVA6Cfg           (build_config_pkg::build_config(CVA6AraConfig)),
     .AxiAddrWidth      (AxiAddrWidth         ),
     .AxiIdWidth        (AxiCoreIdWidth       ),
     .AxiNarrowDataWidth(AxiNarrowDataWidth   ),
