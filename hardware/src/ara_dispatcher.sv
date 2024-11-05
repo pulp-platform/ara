@@ -9,10 +9,15 @@
 // response or an error message.
 
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
-    parameter int           unsigned NrLanes      = 0,
-    parameter int           unsigned VLEN         = 0,
-    parameter type                   ara_req_t    = logic,
-    parameter type                   ara_resp_t   = logic,
+    parameter int           unsigned NrLanes            = 0,
+    parameter int           unsigned VLEN               = 0,
+    parameter type                   ara_req_t          = logic,
+    parameter type                   ara_resp_t         = logic,
+    parameter type                   accelerator_req_t  = logic,
+    parameter type                   accelerator_resp_t = logic,
+    // CVA6 configuration
+    parameter config_pkg::cva6_cfg_t CVA6Cfg      = cva6_config_pkg::cva6_cfg,
+    localparam type                  xlen_t       = logic [CVA6Cfg.XLEN-1:0],
     // Support for floating-point data types
     parameter fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
@@ -71,15 +76,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   `FF(csr_vxsat_q, csr_vxsat_d, '0)
   `FF(csr_vxrm_q, csr_vxrm_d, '0)
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
-  function automatic riscv::xlen_t xlen_vtype(vtype_t vtype);
-    xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vsew,
+  function automatic xlen_t xlen_vtype(vtype_t vtype);
+    xlen_vtype = {vtype.vill, {CVA6Cfg.XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vsew,
       vtype.vlmul[2:0]};
   endfunction: xlen_vtype
 
   // Converts between the XLEN-bit vtype CSR and its internal representation
-  function automatic vtype_t vtype_xlen(riscv::xlen_t xlen);
+  function automatic vtype_t vtype_xlen(xlen_t xlen);
     vtype_xlen = '{
-      vill  : xlen[riscv::XLEN-1],
+      vill  : xlen[CVA6Cfg.XLEN-1],
       vma   : xlen[7],
       vta   : xlen[6],
       vsew  : vew_e'(xlen[5:3]),
@@ -492,11 +497,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Update vtype
                 if (insn.vsetvli_type.func1 == 1'b0) begin // vsetvli
-                  csr_vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetvli_type.zimm11));
+                  csr_vtype_d = vtype_xlen(xlen_t'(insn.vsetvli_type.zimm11));
                 end else if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
-                  csr_vtype_d = vtype_xlen(riscv::xlen_t'(insn.vsetivli_type.zimm10));
+                  csr_vtype_d = vtype_xlen(xlen_t'(insn.vsetivli_type.zimm10));
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
-                  csr_vtype_d = vtype_xlen(riscv::xlen_t'(acc_req_i.rs2[7:0]));
+                  csr_vtype_d = vtype_xlen(xlen_t'(acc_req_i.rs2[7:0]));
                 end else
                   illegal_insn = 1'b1;
 
