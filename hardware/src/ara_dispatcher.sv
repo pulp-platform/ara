@@ -77,14 +77,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   `FF(csr_vxrm_q, csr_vxrm_d, '0)
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
   function automatic xlen_t xlen_vtype(vtype_t vtype);
-    xlen_vtype = {vtype.vill, {riscv::XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vsew,
+    xlen_vtype = {vtype.vill, {CVA6Cfg.XLEN-9{1'b0}}, vtype.vma, vtype.vta, vtype.vsew,
       vtype.vlmul[2:0]};
   endfunction: xlen_vtype
 
   // Converts between the XLEN-bit vtype CSR and its internal representation
   function automatic vtype_t vtype_xlen(xlen_t xlen);
     vtype_xlen = '{
-      vill  : xlen[riscv::XLEN-1],
+      vill  : xlen[CVA6Cfg.XLEN-1],
       vma   : xlen[7],
       vta   : xlen[6],
       vsew  : vew_e'(xlen[5:3]),

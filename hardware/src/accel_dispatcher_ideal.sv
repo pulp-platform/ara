@@ -159,7 +159,7 @@ endmodule
 
     typedef struct packed {
       riscv::instruction_t insn;
-      riscv::xlen_t rs1;
+      xlen_t rs1;
     } fifo_payload_t;
     fifo_payload_t payload;
 

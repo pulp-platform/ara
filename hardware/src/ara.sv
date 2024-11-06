@@ -236,6 +236,7 @@ module ara import ara_pkg::*; #(
   ara_dispatcher #(
     .NrLanes          (NrLanes            ),
     .VLEN             (VLEN               ),
+    .CVA6Cfg          (CVA6Cfg            ),
     .ara_req_t        (ara_req_t          ),
     .ara_resp_t       (ara_resp_t         ),
     .accelerator_req_t(accelerator_req_t  ),
