@@ -718,15 +718,23 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
       AXI_ADDRGEN_REQUESTING : begin : axi_addrgen_state_AXI_ADDRGEN_REQUESTING
         automatic logic axi_ax_ready = (axi_addrgen_q.is_load && axi_ar_ready_i) || (!axi_addrgen_q.is_load && axi_aw_ready_i);
-        automatic logic [11:0] num_bytes;
+        automatic logic [12:0] num_bytes; // Cannot consume more than 4 KiB
         automatic vlen_t remaining_bytes;
 
         // Pre-calculate the next_2page_msb. This should not require much energy if the addr
         // has zeroes in the upper positions.
         next_2page_msb_d = aligned_next_start_addr_q[AxiAddrWidth-1:12] + 1;
 
-        // Pre-calculate the bytes used in a unit-strided access and the remaining bytes to ask
-        num_bytes = aligned_next_start_addr_q[11:0] - axi_addrgen_q.addr[11:0];
+        // Pre-calculate the bytes used in a unit-strided access and the remaining bytes to ask.
+        // The proper way to do so would be aligned_end_addr_q[11:0] + 1 - axi_addrgen_q.addr[11:0].
+        // Avoid explicit computation of aligned_next_start_addr + 1 with a trick that works if
+        // aligned_next_start_addr <= 12'hFFF.
+        if (aligned_end_addr_q[11:0] != 12'hFFF) begin
+          num_bytes = aligned_next_start_addr_q[11:0] - axi_addrgen_q.addr[11:0];
+        end else begin
+        // Special case: aligned_next_start_addr > 12'hFFF.
+          num_bytes = 13'h1000 - axi_addrgen_q.addr[11:0];
+        end
         remaining_bytes = axi_addrgen_q.len - num_bytes;
         if (axi_addrgen_q.len < num_bytes) begin
           remaining_bytes = 0;
