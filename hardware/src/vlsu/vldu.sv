@@ -514,7 +514,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_queue_d.commit_cnt != '0)
         commit_cnt_bytes_d = (
                                vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl
-                                - vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vstart
+                                - vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vstart
                               ) << unsigned'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew);
     end : vinsn_done
 
