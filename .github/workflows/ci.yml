@@ -28,14 +28,14 @@ jobs:
   tc-llvm:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/riscv-llvm | cut -d' ' -f1
         echo "tc-llvm-hash=`git submodule status toolchain/riscv-llvm | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache the LLVM toolchain
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-llvm-cache
       env:
         cache-name: cache-llvm
@@ -59,7 +59,7 @@ jobs:
     - name: Tar LLVM
       run: tar -cvf tc-llvm.tar install/riscv-llvm
     - name: Upload LLVM
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tc-llvm
         path: tc-llvm.tar
@@ -67,14 +67,14 @@ jobs:
   tc-gcc:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1
         echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache the GCC toolchain
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-gcc-cache
       env:
         cache-name: cache-gcc
@@ -94,7 +94,7 @@ jobs:
     - name: Tar GCC
       run: tar -cvf tc-gcc.tar install/riscv-gcc
     - name: Upload GCC
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tc-gcc
         path: tc-gcc.tar
@@ -102,14 +102,14 @@ jobs:
   tc-isa-sim:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1
         echo "tc-isa-sim-hash=`git submodule status toolchain/riscv-isa-sim | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache Spike
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-isa-sim-cache
       env:
         cache-name: cache-spike
@@ -129,7 +129,7 @@ jobs:
     - name: Tar Spike
       run: tar -cvf tc-isa-sim.tar install/riscv-isa-sim
     - name: Upload Spike
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tc-isa-sim
         path: tc-isa-sim.tar
@@ -137,14 +137,14 @@ jobs:
   tc-verilator:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
       run: |
         git submodule status toolchain/verilator | cut -d' ' -f1
         echo "tc-verilator-hash=`git submodule status toolchain/verilator | cut -d' ' -f1`" >> $GITHUB_ENV
     - name: Cache Verilator
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: tc-verilator-cache
       env:
         cache-name: cache-verilator
@@ -165,7 +165,7 @@ jobs:
     - name: Tar Verilator
       run: tar -cvf tc-verilator.tar install/verilator
     - name: Upload Verilator
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tc-verilator
         path: tc-verilator.tar
@@ -182,7 +182,7 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: tc-llvm
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
@@ -193,7 +193,7 @@ jobs:
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
     - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-llvm
     - name: Untar LLVM
@@ -201,7 +201,7 @@ jobs:
     - name: Compile applications
       run: config=${{ matrix.ara_config }} make -C apps
     - name: Upload applications
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
@@ -214,25 +214,25 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-llvm", "tc-gcc", "tc-isa-sim"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Download Spike
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
     - name: Get Spike artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
     - name: Get LLVM toolchain artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-llvm
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
     - name: Get GCC toolchain artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-gcc
     - name: Untar GCC
@@ -240,7 +240,7 @@ jobs:
     - name: Compile applications
       run: config=${{ matrix.ara_config }} make -C apps riscv_tests
     - name: Upload applications
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compile-riscv-tests-${{ matrix.ara_config }}
         path: apps/bin
@@ -253,19 +253,19 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["tc-verilator", "tc-isa-sim"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Download Spike
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
     - name: Get Spike artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
     - name: Get Verilator artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-verilator
     - name: Untar Verilator
@@ -286,7 +286,7 @@ jobs:
     - name: Tar Verilated model of Ara
       run: tar -cvf ara.tar hardware/build/verilator hardware/bender
     - name: Upload Ara Verilated model
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compile-ara-${{ matrix.ara_config }}
         path: ara.tar
@@ -304,21 +304,21 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Spike artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get applications
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
@@ -337,21 +337,21 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-riscv-tests"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Spike artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
       run: tar xvf ara.tar
     - name: Get RISC-V tests
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compile-riscv-tests-${{ matrix.ara_config }}
         path: apps/bin
@@ -362,21 +362,21 @@ jobs:
     runs-on: ubuntu-20.04
     needs: ["tc-isa-sim", "compile-riscv-tests"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get Spike artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
     - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-llvm
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
     - name: Download the GCC toolchain
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-gcc
     - name: Untar GCC
@@ -386,7 +386,7 @@ jobs:
         make -C apps/riscv-tests/isa clean
         make -C apps riscv_tests_spike
     - name: Upload dumps
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: riscv-tests-spike
         path: |
@@ -400,7 +400,7 @@ jobs:
   check-license:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
@@ -413,14 +413,14 @@ jobs:
     runs-on: ubuntu-20.04
     needs: ['tc-llvm']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
     - name: Install Python requirements
       run: pip install -r python-requirements.txt
     - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-llvm
     - name: Untar LLVM
@@ -438,7 +438,7 @@ jobs:
   check-trailing-whitespaces:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Determine base commit
@@ -471,26 +471,26 @@ jobs:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
     - name: Install Python requirements
       run: pip install -r python-requirements.txt
     - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-llvm
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
     - name: Get Spike artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compile-ara-${{ matrix.ara_config }}
     - name: Untar Verilated model of Ara
@@ -505,12 +505,12 @@ jobs:
       run: |
         tar -cvf benchmarks-${{ matrix.ara_config }}.tar *.benchmark
     - name: Upload [f]dotproduct runtime results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dotproducts-${{ matrix.ara_config }}
         path: dotproducts-${{ matrix.ara_config }}.tar
     - name: Upload runtime results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-${{ matrix.ara_config }}
         path: benchmarks-${{ matrix.ara_config }}.tar
@@ -519,43 +519,43 @@ jobs:
     runs-on: ubuntu-20.04
     needs: benchmark
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: 3.6
     - name: Install Python requirements
       run: pip install -r python-requirements.txt
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Get [f]dotproduct results (2 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dotproducts-2_lanes
     - name: Get [f]dotproduct results (4 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dotproducts-4_lanes
     - name: Get [f]dotproduct results (8 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dotproducts-8_lanes
     - name: Get [f]dotproduct results (16 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dotproducts-16_lanes
     - name: Get benchmark results (2 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: benchmark-2_lanes
     - name: Get benchmark results (4 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: benchmark-4_lanes
     - name: Get benchmark results (8 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: benchmark-8_lanes
     - name: Get benchmark results (16 lanes)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: benchmark-16_lanes
     - name: Untar the [f]dotproduct results
@@ -587,77 +587,77 @@ jobs:
     - name: Plot the rooflines
       run: gnuplot -c scripts/benchmark.gnuplot
     - name: Upload the imatmul roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: imatmul_roofline
         path: imatmul.png
     - name: Upload the fmatmul roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fmatmul_roofline
         path: fmatmul.png
     - name: Upload the iconv2d roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: iconv2d_roofline
         path: iconv2d.png
     - name: Upload the fconv2d roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fconv2d_roofline
         path: fconv2d.png
     - name: Upload the fconv3d roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fconv3d_roofline
         path: fconv3d.png
     - name: Upload the jacobi2d roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: jacobi2d_roofline
         path: jacobi2d.png
     - name: Upload the dropout roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dropout_roofline
         path: dropout.png
     - name: Upload the fft roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fft_roofline
         path: fft.png
     - name: Upload the dwt roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dwt_roofline
         path: dwt.png
     - name: Upload the exp roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: exp_roofline
         path: exp.png
     - name: Upload the softmax roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: softmax_roofline
         path: softmax.png
     - name: Upload the fdotproduct roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: fdotproduct_plots
         path: fdotproduct.tar
     - name: Upload the dotproduct roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dotproduct_plots
         path: dotproduct.tar
     - name: Upload the pathfinder roofline
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pathfinder_roofline
         path: pathfinder.png
     - name: Upload the roi_align roofline
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: roi_align_roofline
         path: roi_align.png
@@ -671,9 +671,9 @@ jobs:
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Delete artifacts
-        uses: geekyeggo/delete-artifact@v2
+        uses: geekyeggo/delete-artifact@v5
         with:
           name: |
             tc-llvm
@@ -691,9 +691,9 @@ jobs:
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Delete artifacts
-        uses: geekyeggo/delete-artifact@v2
+        uses: geekyeggo/delete-artifact@v5
         with:
           name: |
             compile-ara-${{ matrix.ara_config }}
