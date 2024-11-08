@@ -97,6 +97,40 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     );
   end: gen_regs
 
+  ////////////////
+  //  MASK cut  //
+  ////////////////
+
+  strb_t [NrLanes-1:0] mask_q;
+  logic  [NrLanes-1:0] mask_valid_d, mask_valid_q;
+  logic                mask_ready_d;
+  logic  [NrLanes-1:0] mask_ready_q;
+  // Insn queue related signal
+  pe_req_t vinsn_issue_d, vinsn_issue_q;
+  logic  vinsn_issue_valid;
+
+  for (genvar l = 0; l < NrLanes; l++) begin
+    spill_register_flushable #(
+      .T(strb_t)
+    ) i_vstu_mask_register (
+      .clk_i     (clk_i           ),
+      .rst_ni    (rst_ni          ),
+      .flush_i   (1'b0            ),
+      .data_o    (mask_q[l]       ),
+      .valid_o   (mask_valid_q[l] ),
+      .ready_i   (mask_ready_d    ),
+      .data_i    (mask_i[l]       ),
+      .valid_i   (mask_valid_d[l] ),
+      .ready_o   (mask_ready_q[l] )
+    );
+
+    // Sample only SLDU mask valid
+    assign mask_valid_d[l] = mask_valid_i[l] & ~vinsn_issue_q.vm & vinsn_issue_valid;
+  end
+
+  // Don't upset the masku with a spurious ready
+  assign mask_ready_o = mask_ready_q[0] & mask_valid_i[0] & ~vinsn_issue_q.vm & vinsn_issue_valid;
+
   ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
@@ -137,8 +171,6 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   assign store_pending_o   = !vinsn_queue_empty;
 
   // Do we have a vector instruction ready to be issued?
-  pe_req_t vinsn_issue_d, vinsn_issue_q;
-  logic    vinsn_issue_valid;
   assign vinsn_issue_d     = vinsn_queue_d.vinsn[vinsn_queue_d.issue_pnt];
   assign vinsn_issue_valid = (vinsn_queue_q.issue_cnt != '0);
 
@@ -239,7 +271,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     axi_w_valid_o           = 1'b0;
     axi_b_ready_o           = 1'b0;
     stu_operand_ready       = 1'b0;
-    mask_ready_o            = 1'b0;
+    mask_ready_d            = 1'b0;
     store_complete_o        = 1'b0;
     vrf_word_start_byte     = '0;
 
@@ -292,12 +324,12 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       valid_bytes = (issue_cnt_bytes_q < (NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
       valid_bytes = (valid_bytes       < axi_valid_bytes       ) ? valid_bytes       : axi_valid_bytes;
 
-      // TODO: apply the same vstart logic also to mask_valid_i
+      // TODO: apply the same vstart logic also to mask_valid_q
       // For now, assume (vstart % NrLanes == 0)
-      mask_valid = mask_valid_i;
+      mask_valid = mask_valid_q;
 
       // Wait for all expected operands from the lanes
-      if (&stu_operand_valid && (vinsn_issue_q.vm || (|mask_valid_i))) begin : operands_ready
+      if (&stu_operand_valid && (vinsn_issue_q.vm || (|mask_valid_q))) begin : operands_ready
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
         vrf_cnt_d = vrf_cnt_q + valid_bytes;
 
@@ -321,7 +353,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
               // Copy data
               axi_w_o.data[8*axi_byte +: 8] = stu_operand[vrf_lane][8*vrf_offset +: 8];
-              axi_w_o.strb[axi_byte]        = vinsn_issue_q.vm || mask_i[vrf_lane][vrf_offset];
+              axi_w_o.strb[axi_byte]        = vinsn_issue_q.vm || mask_q[vrf_lane][vrf_offset];
             end
           end
         end : stu_operand_to_axi_w
@@ -349,7 +381,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           // Acknowledge the operands with the lanes
           stu_operand_ready = '1;
           // Acknowledge the mask operand
-          mask_ready_o      = !vinsn_issue_q.vm;
+          mask_ready_d      = !vinsn_issue_q.vm;
           // Account for the results that were issued
           if (first_lane_payload_q) begin
             vrf_eff_write_bytes = first_payload_byte_q;

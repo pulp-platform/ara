@@ -12,7 +12,7 @@ void TEST_CASE1() {
   VLOAD_8(v2, 0xCD, 0xEF);
   VLOAD_8(v3, 0x84, 0x21);
   asm volatile("vmnand.mm v1, v2, v3");
-  VSET(2, e8, m1);
+  VSET(16, e8, m1);
   VCMP_U8(1, v1, 0x7B, 0xDE);
 }
 
@@ -21,7 +21,7 @@ void TEST_CASE2() {
   VLOAD_8(v2, 0xCD, 0xEF);
   VLOAD_8(v3, 0xFF, 0xFF);
   asm volatile("vmnand.mm v1, v2, v3");
-  VSET(2, e8, m1);
+  VSET(16, e8, m1);
   VCMP_U8(2, v1, 0x32, 0x10);
 }
 
@@ -30,7 +30,7 @@ void TEST_CASE3() {
   VLOAD_8(v2, 0xCD, 0xEF);
   VLOAD_8(v3, 0x00, 0x00);
   asm volatile("vmnand.mm v1, v2, v3");
-  VSET(2, e8, m1);
+  VSET(16, e8, m1);
   VCMP_U8(3, v1, 0xFF, 0xFF);
 }
 
@@ -39,7 +39,7 @@ void TEST_CASE4() {
   VLOAD_8(v2, 0xCD, 0xEF);
   VLOAD_8(v3, 0x0F, 0xF0);
   asm volatile("vmnand.mm v1, v2, v3");
-  VSET(2, e8, m1);
+  VSET(16, e8, m1);
   VCMP_U8(4, v1, 0xF2, 0x1F);
 }
 
@@ -48,10 +48,10 @@ void TEST_CASE5() {
   VLOAD_8(v1, 0xFF, 0xFF);
   VLOAD_8(v2, 0xCD, 0xEF);
   VLOAD_8(v3, 0x84, 0x21);
-  VSET(13, e8, m1);
+  VSET(16, e8, m1);
   asm volatile("vmnand.mm v1, v2, v3");
-  VSET(2, e8, m1);
-  VCMP_U8(5, v1, 0x7B, 0xFE);
+  VSET(16, e8, m1);
+  VCMP_U8(5, v1, 0x7B, 0xDE);
 }
 
 int main(void) {

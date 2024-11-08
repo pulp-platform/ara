@@ -588,7 +588,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req_d.op        = ara_pkg::VMADC;
-                    ara_req_d.use_vd_op = 1'b1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req_d.emul)
@@ -618,7 +617,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010011: begin
                     ara_req_d.op        = ara_pkg::VMSBC;
-                    ara_req_d.use_vd_op = 1'b1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req_d.emul)
@@ -641,27 +639,21 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMSEQ;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011001: begin
                     ara_req_d.op        = ara_pkg::VMSNE;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011010: begin
                     ara_req_d.op        = ara_pkg::VMSLTU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011011: begin
                     ara_req_d.op        = ara_pkg::VMSLT;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011100: begin
                     ara_req_d.op        = ara_pkg::VMSLEU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011101: begin
                     ara_req_d.op        = ara_pkg::VMSLE;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b010111: begin
                     ara_req_d.op      = ara_pkg::VMERGE;
@@ -828,7 +820,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req_d.op        = ara_pkg::VMADC;
-                    ara_req_d.use_vd_op = 1'b1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req_d.emul)
@@ -855,7 +846,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010011: begin
                     ara_req_d.op        = ara_pkg::VMSBC;
-                    ara_req_d.use_vd_op = 1'b1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req_d.emul)
@@ -873,35 +863,27 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMSEQ;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011001: begin
                     ara_req_d.op        = ara_pkg::VMSNE;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011010: begin
                     ara_req_d.op        = ara_pkg::VMSLTU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011011: begin
                     ara_req_d.op        = ara_pkg::VMSLT;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011100: begin
                     ara_req_d.op        = ara_pkg::VMSLEU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011101: begin
                     ara_req_d.op        = ara_pkg::VMSLE;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011110: begin
                     ara_req_d.op        = ara_pkg::VMSGTU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011111: begin
                     ara_req_d.op        = ara_pkg::VMSGT;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b010111: begin
                     ara_req_d.op      = ara_pkg::VMERGE;
@@ -1034,7 +1016,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req_d.op        = ara_pkg::VMADC;
-                    ara_req_d.use_vd_op = 1'b1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req_d.emul)
@@ -1052,27 +1033,21 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b011000: begin
                     ara_req_d.op        = ara_pkg::VMSEQ;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011001: begin
                     ara_req_d.op        = ara_pkg::VMSNE;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011100: begin
                     ara_req_d.op        = ara_pkg::VMSLEU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011101: begin
                     ara_req_d.op        = ara_pkg::VMSLE;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011110: begin
                     ara_req_d.op        = ara_pkg::VMSGTU;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b011111: begin
                     ara_req_d.op        = ara_pkg::VMSGT;
-                    ara_req_d.use_vd_op = 1'b1;
                   end
                   6'b010111: begin
                     ara_req_d.op      = ara_pkg::VMERGE;
@@ -1322,7 +1297,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011001: begin
                     ara_req_d.op         = ara_pkg::VMAND;
@@ -1330,7 +1304,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011010: begin
                     ara_req_d.op         = ara_pkg::VMOR;
@@ -1338,7 +1311,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011011: begin
                     ara_req_d.op         = ara_pkg::VMXOR;
@@ -1346,7 +1318,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011100: begin
                     ara_req_d.op         = ara_pkg::VMORNOT;
@@ -1354,7 +1325,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011101: begin
                     ara_req_d.op         = ara_pkg::VMNAND;
@@ -1362,7 +1332,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011110: begin
                     ara_req_d.op         = ara_pkg::VMNOR;
@@ -1370,7 +1339,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b011111: begin
                     ara_req_d.op         = ara_pkg::VMXNOR;
@@ -1378,7 +1346,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.eew_vs2    = EW8;
                     ara_req_d.eew_vd_op  = EW8;
                     ara_req_d.vtype.vsew = EW8;
-                    ara_req_d.use_vd_op  = 1'b1;
                   end
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
