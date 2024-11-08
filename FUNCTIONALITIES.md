@@ -15,6 +15,14 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector strided stores: `vsse<eew>`
 - Vector indexed loads: `vluxei<eew>`, `vloxei<eew>`
 - Vector indexed stores: `vsuxei<eew>`, `vsoxei<eew>`
+- Vector unit-strided segment loads: `vlseg<nf>e<eew>.v`
+- Vector unit-strided segment stores: `vsseg<nf>e<eew>.v`
+- Vector non-unit-strided segment loads: `vlsseg<nf>e<eew>.v`
+- Vector non-unit-strided segment stores: `vssseg<nf>e<eew>.v`
+- Vector indexed segment loads: `vluxseg<nf>ei<eew>.v`, `vloxseg<nf>ei<eew>.v`
+- Vector indexed segment stores: `vsuxseg<nf>ei<eew>.v`, `vsoxseg<nf>ei<eew>.v`
+- Vector whole-register loads: `vl<nf>re<eew>.v`
+- Vector whole-register stores: `vs<nf>r.v`
 
 ## Vector Integer Arithmetic Instructions
 
