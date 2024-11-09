@@ -180,13 +180,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   assign mask_operand_gnt = mask_operand_ready && result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
 
-  stream_register #(
+  spill_register #(
     .T(elen_t)
   ) i_mask_operand_register (
     .clk_i     (clk_i                                                                                        ),
     .rst_ni    (rst_ni                                                                                       ),
-    .clr_i     (1'b0                                                                                         ),
-    .testmode_i(1'b0                                                                                         ),
     .data_o    (mask_operand_o                                                                               ),
     .valid_o   (mask_operand_valid_o                                                                         ),
     .ready_i   (mask_operand_ready_i                                                                         ),
