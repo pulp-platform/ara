@@ -663,45 +663,48 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Mask Operands  //
     /////////////////////
 
+    // Start copying the new data into the queue even if they are not valid
+    if (!mask_queue_full) begin
+      // Copy data from the mask operands into the mask queue
+      for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
+        // Map vrf_seq_byte to the corresponding byte in the VRF word.
+        automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
+
+        // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
+        // NOTE: This does not work if the number of lanes is not a power of two.
+        // If that is needed, the following two lines must be changed accordingly.
+        automatic int vrf_lane   = vrf_byte >> $clog2(StrbWidth);
+        automatic int vrf_offset = vrf_byte[idx_width(StrbWidth)-1:0];
+
+        // The VRF pointer can be broken into a byte offset, and a bit offset
+        automatic int vrf_pnt_byte_offset = mask_pnt_q >> $clog2(StrbWidth);
+        automatic int vrf_pnt_bit_offset  = mask_pnt_q[idx_width(StrbWidth)-1:0];
+
+        // A single bit from the mask operands can be used several times, depending on the eew.
+        automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
+        automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
+        // Shuffle this source byte
+        automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
+        // Account for the bit offset
+        automatic int mask_bit = (mask_byte << $clog2(StrbWidth)) +
+          mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
+
+        // At which lane, and what is the bit offset in that lane, of the mask operand from
+        // mask_seq_bit?
+        automatic int mask_lane   = mask_bit >> idx_width(DataWidth);
+        automatic int mask_offset = mask_bit[idx_width(DataWidth)-1:0];
+
+        // Copy the mask operand
+        mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] =
+          masku_operand_m[mask_lane][mask_offset];
+      end
+    end
+
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid && !(vd_scalar(vinsn_issue.op))) begin
       // Is there place in the mask queue to write the mask operands?
       // Did we receive the mask bits on the MaskM channel?
       if (!vinsn_issue.vm && !mask_queue_full && &masku_operand_m_valid && !(vinsn_issue.op inside {VMSBF, VMSOF, VMSIF})) begin
-        // Copy data from the mask operands into the mask queue
-        for (int vrf_seq_byte = 0; vrf_seq_byte < NrLanes*StrbWidth; vrf_seq_byte++) begin
-          // Map vrf_seq_byte to the corresponding byte in the VRF word.
-          automatic int vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue.vtype.vsew);
-
-          // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
-          // NOTE: This does not work if the number of lanes is not a power of two.
-          // If that is needed, the following two lines must be changed accordingly.
-          automatic int vrf_lane   = vrf_byte >> $clog2(StrbWidth);
-          automatic int vrf_offset = vrf_byte[idx_width(StrbWidth)-1:0];
-
-          // The VRF pointer can be broken into a byte offset, and a bit offset
-          automatic int vrf_pnt_byte_offset = mask_pnt_q >> $clog2(StrbWidth);
-          automatic int vrf_pnt_bit_offset  = mask_pnt_q[idx_width(StrbWidth)-1:0];
-
-          // A single bit from the mask operands can be used several times, depending on the eew.
-          automatic int mask_seq_bit  = vrf_seq_byte >> int'(vinsn_issue.vtype.vsew);
-          automatic int mask_seq_byte = (mask_seq_bit >> $clog2(StrbWidth)) + vrf_pnt_byte_offset;
-          // Shuffle this source byte
-          automatic int mask_byte     = shuffle_index(mask_seq_byte, NrLanes, vinsn_issue.eew_vmask);
-          // Account for the bit offset
-          automatic int mask_bit = (mask_byte << $clog2(StrbWidth)) +
-            mask_seq_bit[idx_width(StrbWidth)-1:0] + vrf_pnt_bit_offset;
-
-          // At which lane, and what is the bit offset in that lane, of the mask operand from
-          // mask_seq_bit?
-          automatic int mask_lane   = mask_bit >> idx_width(DataWidth);
-          automatic int mask_offset = mask_bit[idx_width(DataWidth)-1:0];
-
-          // Copy the mask operand
-          mask_queue_d[mask_queue_write_pnt_q][vrf_lane][vrf_offset] =
-            masku_operand_m[mask_lane][mask_offset];
-        end
-
         // Account for the used operands
         mask_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
 
@@ -749,7 +752,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         vcpop_slice_cnt_d = vcpop_slice_cnt_q + 1'b1;
 
         // request new operand (by completing ready-valid handshake) once all slices have been processed
-        vcpop_vfirst_vs2_ready = 1'b0;
         if (((vcpop_slice_cnt_q == N_SLICES_CPOP - 1) && vinsn_issue.op == VCPOP) ||
             ((vcpop_slice_cnt_q == N_SLICES_VFIRST-1) && vinsn_issue.op == VFIRST)) begin
           vcpop_slice_cnt_d       = '0;
