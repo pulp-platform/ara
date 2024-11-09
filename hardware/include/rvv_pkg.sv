@@ -161,4 +161,11 @@ package rvv_pkg;
   // The mask register is always vreg[0]
   localparam VMASK = 5'b00000;
 
+  /////////////////////////
+  //  VLEN restrictions  //
+  /////////////////////////
+
+  // RISC-V Maximum VLEN == 64Ki
+  localparam int unsigned RISCV_MAX_VLEN = 1 << 16;
+
 endpackage : rvv_pkg

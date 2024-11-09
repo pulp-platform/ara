@@ -69,7 +69,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
   `FF(csr_vstart_q, csr_vstart_d, '0)
   `FF(csr_vl_q, csr_vl_d, '0)
-  `FF(csr_vtype_q, csr_vtype_d, '{vill: 1'b1, default: '0})
+  `FF(csr_vtype_q, csr_vtype_d, '{vill: 1'b1, vsew: EW8, vlmul: LMUL_1, default: '0})
   `FF(csr_vxsat_q, csr_vxsat_d, '0)
   `FF(csr_vxrm_q, csr_vxrm_d, '0)
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
@@ -337,6 +337,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     null_vslideup = 1'b0;
 
+    vfmvfs_result = ara_resp_i.resp;
+
     is_decoding     = 1'b0;
     in_lane_op      = 1'b0;
 
@@ -551,7 +553,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     (csr_vtype_d.vlmul == LMUL_RSVD) ||                    // reserved value
                     // LMUL >= SEW/ELEN
                     (signed'($clog2(ELENB)) + signed'(csr_vtype_d.vlmul) < signed'(csr_vtype_d.vsew))) begin
-                  csr_vtype_d = '{vill: 1'b1, default: '0};
+                  csr_vtype_d = '{vill: 1'b1, vsew: EW8, vlmul: LMUL_1, default: '0};
                   csr_vl_d    = '0;
                 end
 
@@ -684,22 +686,52 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
                   end
                   6'b011000: begin
-                    ara_req.op        = ara_pkg::VMSEQ;
+                    ara_req.op         = ara_pkg::VMSEQ;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011001: begin
                     ara_req.op        = ara_pkg::VMSNE;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011010: begin
                     ara_req.op        = ara_pkg::VMSLTU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011011: begin
                     ara_req.op        = ara_pkg::VMSLT;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011100: begin
                     ara_req.op        = ara_pkg::VMSLEU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011101: begin
                     ara_req.op        = ara_pkg::VMSLE;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -908,28 +940,68 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
                   end
                   6'b011000: begin
-                    ara_req.op        = ara_pkg::VMSEQ;
+                    ara_req.op         = ara_pkg::VMSEQ;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011001: begin
                     ara_req.op        = ara_pkg::VMSNE;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011010: begin
                     ara_req.op        = ara_pkg::VMSLTU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011011: begin
                     ara_req.op        = ara_pkg::VMSLT;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011100: begin
                     ara_req.op        = ara_pkg::VMSLEU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011101: begin
                     ara_req.op        = ara_pkg::VMSLE;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011110: begin
                     ara_req.op        = ara_pkg::VMSGTU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011111: begin
                     ara_req.op        = ara_pkg::VMSGT;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -1078,22 +1150,52 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
                   end
                   6'b011000: begin
-                    ara_req.op        = ara_pkg::VMSEQ;
+                    ara_req.op         = ara_pkg::VMSEQ;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011001: begin
                     ara_req.op        = ara_pkg::VMSNE;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011100: begin
                     ara_req.op        = ara_pkg::VMSLEU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011101: begin
                     ara_req.op        = ara_pkg::VMSLE;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011110: begin
                     ara_req.op        = ara_pkg::VMSGTU;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011111: begin
                     ara_req.op        = ara_pkg::VMSGT;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req.eew_vs2    = csr_vtype_q.vsew;
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -1282,11 +1384,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b10000: begin
                         ara_req.op      = ara_pkg::VCPOP;
-                        ara_req.use_vs1 = 1'b0;
+                        ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
                       5'b10001: begin
                         ara_req.op      = ara_pkg::VFIRST;
-                        ara_req.use_vs1 = 1'b0;
+                        ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
                       default :;
                     endcase
@@ -1320,14 +1422,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     end
                   end
                   6'b010100: begin
-                    ara_req.use_vd_op = 1'b1;
-                    ara_req.use_vs1   = 1'b0;
+                    // VMSBF, -OF, -IF, require bit-level masking
+                    // vd is fetched for correct mask undisturbed
+                    ara_req.use_vs1    = 1'b0;
+                    ara_req.use_vd_op  = 1'b1;
+                    ara_req.eew_vs2    = eew_q[ara_req.vs2]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     case (insn.varith_type.rs1)
-                      5'b00001: ara_req.op = ara_pkg::VMSBF;
-                      5'b00010: ara_req.op = ara_pkg::VMSOF;
-                      5'b00011: ara_req.op = ara_pkg::VMSIF;
-                      5'b10000: ara_req.op = ara_pkg::VIOTA;
-                      5'b10001: ara_req.op = ara_pkg::VID;
+                      5'b00001: begin
+                        ara_req.op = ara_pkg::VMSBF;
+                        // This is a mask-to-mask operation, vsew does not have any meaning
+                        // So, avoid reshuffling
+                        ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      end
+                      5'b00010: begin
+                        ara_req.op = ara_pkg::VMSOF;
+                        // This is a mask-to-mask operation, vsew does not have any meaning
+                        // So, avoid reshuffling
+                        ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      end
+                      5'b00011: begin
+                        ara_req.op = ara_pkg::VMSIF;
+                        // This is a mask-to-mask operation, vsew does not have any meaning
+                        // So, avoid reshuffling
+                        ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      end
+                      5'b10000: begin
+                        ara_req.op = ara_pkg::VIOTA;
+                        ara_req.use_vd_op  = 1'b0;
+                      end
+                      5'b10001: begin
+                        ara_req.op = ara_pkg::VID;
+                        ara_req.use_vd_op  = 1'b0;
+                        ara_req.use_vs2 = 1'b0;
+                      end
                     endcase
                   end
                   6'b001000: ara_req.op = ara_pkg::VAADDU;
@@ -1335,63 +1463,61 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001010: ara_req.op = ara_pkg::VASUBU;
                   6'b001011: ara_req.op = ara_pkg::VASUB;
                   6'b011000: begin
-                    ara_req.op        = ara_pkg::VMANDNOT;
-                    // Prefer mask operation on EW8 encoding
-                    // In mask operations, vs1, vs2, vd should
-                    // have the same encoding.
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.op         = ara_pkg::VMANDNOT;
+                    // The source operands should have the same byte encoding
+                    // Minimize reshuffling on mask operations
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011001: begin
                     ara_req.op         = ara_pkg::VMAND;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011010: begin
                     ara_req.op         = ara_pkg::VMOR;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011011: begin
                     ara_req.op         = ara_pkg::VMXOR;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011100: begin
                     ara_req.op         = ara_pkg::VMORNOT;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011101: begin
                     ara_req.op         = ara_pkg::VMNAND;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011110: begin
                     ara_req.op         = ara_pkg::VMNOR;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b011111: begin
                     ara_req.op         = ara_pkg::VMXNOR;
-                    ara_req.eew_vs1    = EW8;
-                    ara_req.eew_vs2    = EW8;
-                    ara_req.eew_vd_op  = EW8;
-                    ara_req.vtype.vsew = EW8;
+                    ara_req.eew_vs1    = eew_q[ara_req.vs1];
+                    ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
+                    ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
@@ -1985,10 +2111,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req_valid       = 1'b0;
                       end
                     end
-                    6'b011000: ara_req.op = ara_pkg::VMFEQ;
-                    6'b011001: ara_req.op = ara_pkg::VMFLE;
-                    6'b011011: ara_req.op = ara_pkg::VMFLT;
-                    6'b011100: ara_req.op = ara_pkg::VMFNE;
+                    6'b011000: begin
+                      ara_req.op = ara_pkg::VMFEQ;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011001: begin
+                      ara_req.op = ara_pkg::VMFLE;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011011: begin
+                      ara_req.op = ara_pkg::VMFLT;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011100: begin
+                      ara_req.op = ara_pkg::VMFNE;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
                     6'b010010: begin // VFUNARY0
                       // These instructions do not use vs1
                       ara_req.use_vs1    = 1'b0;
@@ -2284,20 +2438,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
                   unique case (FPUSupport)
-                    FPUSupportHalfSingleDouble: if (int'(ara_req.vtype.vsew) < int'(EW16) ||
-                          int'(ara_req.vtype.vsew) > int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
+                    FPUSupportHalfSingleDouble: if (int'(csr_vtype_q.vsew) < int'(EW16) ||
+                          int'(csr_vtype_q.vsew) > int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
                           illegal_insn = 1'b1;
-                    FPUSupportHalfSingle: if (int'(ara_req.vtype.vsew) < int'(EW16) ||
-                          int'(ara_req.vtype.vsew) > int'(EW32) || int'(ara_req.eew_vs2) > int'(EW32))
+                    FPUSupportHalfSingle: if (int'(csr_vtype_q.vsew) < int'(EW16) ||
+                          int'(csr_vtype_q.vsew) > int'(EW32) || int'(ara_req.eew_vs2) > int'(EW32))
                           illegal_insn = 1'b1;
-                    FPUSupportSingleDouble: if (int'(ara_req.vtype.vsew) < int'(EW32) ||
-                          int'(ara_req.vtype.vsew) > int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
+                    FPUSupportSingleDouble: if (int'(csr_vtype_q.vsew) < int'(EW32) ||
+                          int'(csr_vtype_q.vsew) > int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
                           illegal_insn = 1'b1;
-                    FPUSupportHalf: if (int'(ara_req.vtype.vsew) != int'(EW16) || int'(ara_req.eew_vs2) > int'(EW16))
+                    FPUSupportHalf: if (int'(csr_vtype_q.vsew) != int'(EW16) || int'(ara_req.eew_vs2) > int'(EW16))
                           illegal_insn = 1'b1;
-                    FPUSupportSingle: if (int'(ara_req.vtype.vsew) != int'(EW32) || int'(ara_req.eew_vs2) > int'(EW32))
+                    FPUSupportSingle: if (int'(csr_vtype_q.vsew) != int'(EW32) || int'(ara_req.eew_vs2) > int'(EW32))
                         illegal_insn = 1'b1;
-                    FPUSupportDouble: if (int'(ara_req.vtype.vsew) != int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
+                    FPUSupportDouble: if (int'(csr_vtype_q.vsew) != int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
                         illegal_insn = 1'b1;
                     default: illegal_insn = 1'b1; // Unsupported configuration
                   endcase
@@ -2365,12 +2519,54 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       skip_lmul_checks  = 1'b1;
                     end
                     6'b010111: ara_req.op = ara_pkg::VMERGE;
-                    6'b011000: ara_req.op = ara_pkg::VMFEQ;
-                    6'b011001: ara_req.op = ara_pkg::VMFLE;
-                    6'b011011: ara_req.op = ara_pkg::VMFLT;
-                    6'b011100: ara_req.op = ara_pkg::VMFNE;
-                    6'b011101: ara_req.op = ara_pkg::VMFGT;
-                    6'b011111: ara_req.op = ara_pkg::VMFGE;
+                    6'b011000: begin
+                      ara_req.op = ara_pkg::VMFEQ;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011001: begin
+                      ara_req.op = ara_pkg::VMFLE;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011011: begin
+                      ara_req.op = ara_pkg::VMFLT;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011100: begin
+                      ara_req.op = ara_pkg::VMFNE;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011101: begin
+                      ara_req.op = ara_pkg::VMFGT;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
+                    6'b011111: begin
+                      ara_req.op = ara_pkg::VMFGE;
+                      ara_req.use_vd_op  = 1'b1;
+                      ara_req.eew_vs1    = csr_vtype_q.vsew;
+                      ara_req.eew_vs2    = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op  = eew_q[ara_req.vd];
+                      ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    end
                     6'b100100: ara_req.op = ara_pkg::VFMUL;
                     6'b100000: ara_req.op = ara_pkg::VFDIV;
                     6'b100001: ara_req.op = ara_pkg::VFRDIV;
@@ -2527,16 +2723,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
                   unique case (FPUSupport)
-                    FPUSupportHalfSingleDouble: if (int'(ara_req.vtype.vsew) < int'(EW16) ||
-                          int'(ara_req.vtype.vsew) > int'(EW64)) illegal_insn = 1'b1;
-                    FPUSupportHalfSingle: if (int'(ara_req.vtype.vsew) < int'(EW16) ||
-                          int'(ara_req.vtype.vsew) > int'(EW32)) illegal_insn = 1'b1;
-                    FPUSupportSingleDouble: if (int'(ara_req.vtype.vsew) < int'(EW32) ||
-                          int'(ara_req.vtype.vsew) > int'(EW64)) illegal_insn = 1'b1;
-                    FPUSupportHalf: if (int'(ara_req.vtype.vsew) != int'(EW16)) illegal_insn = 1'b1;
-                    FPUSupportSingle: if (int'(ara_req.vtype.vsew) != int'(EW32))
+                    FPUSupportHalfSingleDouble: if (int'(csr_vtype_q.vsew) < int'(EW16) ||
+                          int'(csr_vtype_q.vsew) > int'(EW64)) illegal_insn = 1'b1;
+                    FPUSupportHalfSingle: if (int'(csr_vtype_q.vsew) < int'(EW16) ||
+                          int'(csr_vtype_q.vsew) > int'(EW32)) illegal_insn = 1'b1;
+                    FPUSupportSingleDouble: if (int'(csr_vtype_q.vsew) < int'(EW32) ||
+                          int'(csr_vtype_q.vsew) > int'(EW64)) illegal_insn = 1'b1;
+                    FPUSupportHalf: if (int'(csr_vtype_q.vsew) != int'(EW16)) illegal_insn = 1'b1;
+                    FPUSupportSingle: if (int'(csr_vtype_q.vsew) != int'(EW32))
                         illegal_insn = 1'b1;
-                    FPUSupportDouble: if (int'(ara_req.vtype.vsew) != int'(EW64))
+                    FPUSupportDouble: if (int'(csr_vtype_q.vsew) != int'(EW64))
                         illegal_insn = 1'b1;
                     default: illegal_insn = 1'b1; // Unsupported configuration
                   endcase
