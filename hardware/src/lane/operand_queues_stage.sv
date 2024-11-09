@@ -57,7 +57,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (ValuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
-    .FPUSupport         (FPUSupport           ),
+    .FPUSupport         (FPUSupportNone       ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -86,7 +86,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (ValuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
-    .FPUSupport         (FPUSupport           ),
+    .FPUSupport         (FPUSupportNone       ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -204,7 +204,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (VstuInsnQueueDepth + MaskuInsnQueueDepth),
     .DataBufDepth       (2                                       ),
-    .FPUSupport         (FPUSupport                              ),
+    .FPUSupport         (FPUSupportNone                          ),
     .NrLanes            (NrLanes                                 ),
     .VLEN               (VLEN                                    ),
     .operand_queue_cmd_t(operand_queue_cmd_t                     )
@@ -248,7 +248,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (VlduInsnQueueDepth   ),
     .DataBufDepth       (2                    ),
-    .FPUSupport         (FPUSupport           ),
+    .FPUSupport         (FPUSupportNone       ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .operand_queue_cmd_t(operand_queue_cmd_t  )
@@ -276,7 +276,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (MaskuInsnQueueDepth  ),
     .DataBufDepth       (1                    ),
-    .FPUSupport         (FPUSupport           ),
+    .FPUSupport         (FPUSupportNone       ),
     .SupportIntExt2     (1'b1                 ),
     .SupportIntExt4     (1'b1                 ),
     .SupportIntExt8     (1'b1                 ),
@@ -303,6 +303,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (MaskuInsnQueueDepth  ),
     .DataBufDepth       (1                    ),
+    .FPUSupport         (FPUSupportNone       ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .operand_queue_cmd_t(operand_queue_cmd_t  )
