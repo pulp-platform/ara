@@ -209,6 +209,17 @@ int test_case;
     asm volatile("vsetvl zero, %[vl], %[vtype]" :: [vl] "r" (vl), [vtype] "r" (vtype));           \
   } while(0)
 
+#define VCLEAR_AT_ONE(register)                                                                   \
+  do {                                                                                            \
+    MEMORY_BARRIER;                                                                               \
+    uint64_t vtype; uint64_t vl; uint64_t vlmax;                                                  \
+    asm volatile("csrr %[vtype], vtype" : [vtype] "=r" (vtype));                                  \
+    asm volatile("csrr %[vl], vl" : [vl] "=r" (vl));                                              \
+    asm volatile("vsetvl %[vlmax], zero, %[vtype]" : [vlmax] "=r" (vlmax) : [vtype] "r" (vtype)); \
+    asm volatile("vmv.v.i "#register", -1");                                                       \
+    asm volatile("vsetvl zero, %[vl], %[vtype]" :: [vl] "r" (vl), [vtype] "r" (vtype));           \
+  } while(0)
+
 // Macro to initialize a vector with progressive values from a counter
 #define INIT_MEM_CNT(vec_name, size) \
   counter = 0;                          \
