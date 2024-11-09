@@ -132,11 +132,8 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VMXOR   : res = operand_a_i ^ operand_b_i;
         VMXNOR  : res = ~(operand_a_i ^ operand_b_i);
 
-        // vmsbf, vmsof, vmsif and viota operand generation
-        VMSBF, VMSOF, VMSIF, VIOTA : res = opb;
-
-	      // Vector count population and find first set bit instructions
-        VCPOP, VFIRST : res = operand_b_i;
+        // Mask operands pass-through
+        VCPOP, VFIRST, VMSBF, VMSOF, VMSIF, VIOTA: res = operand_b_i;
 
         // Arithmetic instructions
         VSADDU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
