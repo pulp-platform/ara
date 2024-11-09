@@ -291,7 +291,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       automatic elen_t vl_byte;
       automatic elen_t vstart_byte;
       automatic elen_t vector_body_len_byte;
-      automatic elen_t vector_body_len_packets;
+      automatic elen_t vector_body_len_elements;
 
       // Bank we are currently requesting
       automatic int bank = requester_metadata_q.addr[idx_width(NrBanks)-1:0];
@@ -324,13 +324,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   ? 0
                   : operand_request_i[requester_index].vstart << operand_request_i[requester_index].vtype.vsew;
       vector_body_len_byte = vl_byte - vstart_byte + (vstart_byte % 8);
-      vector_body_len_packets = vector_body_len_byte >> operand_request_i[requester_index].eew;
-      if (vector_body_len_packets << operand_request_i[requester_index].eew < vector_body_len_byte)
-        vector_body_len_packets += 1;
+      vector_body_len_elements = vector_body_len_byte >> operand_request_i[requester_index].eew;
+      if (vector_body_len_elements << operand_request_i[requester_index].eew < vector_body_len_byte)
+        vector_body_len_elements += 1;
 
       // Final computed length
       effective_vector_body_length = (operand_request_i[requester_index].scale_vl)
-                                   ? vector_body_len_packets
+                                   ? vector_body_len_elements
                                    : vector_body_length;
 
       // Address of the vstart element of the vector in the VRF
@@ -401,7 +401,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
           end : waw_counters_update
 
           if (operand_queue_ready_i[requester_index]) begin
-            automatic vlen_t num_bytes;
+            automatic vlen_t num_elements;
 
             // Operand request
             lane_operand_req_transposed[requester_index][bank] = !stall;
@@ -417,12 +417,12 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               requester_metadata_d.addr = requester_metadata_q.addr + 1'b1;
 
               // We read less than 64 bits worth of elements
-              num_bytes = ( 1 << ( unsigned'(EW64) - unsigned'(requester_metadata_q.vew) ) );
-              if (requester_metadata_q.len < num_bytes) begin
+              num_elements = ( 1 << ( unsigned'(EW64) - unsigned'(requester_metadata_q.vew) ) );
+              if (requester_metadata_q.len < num_elements) begin
                 requester_metadata_d.len    = 0;
               end
               else begin
-                requester_metadata_d.len = requester_metadata_q.len - num_bytes;
+                requester_metadata_d.len = requester_metadata_q.len - num_elements;
               end
             end : op_req_grant
 
