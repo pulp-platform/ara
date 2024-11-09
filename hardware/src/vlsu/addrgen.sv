@@ -92,8 +92,13 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   import axi_pkg::CACHE_MODIFIABLE;
 
   // Check if the address is aligned to a particular width
+  // Max element width: 8 bytes
   function automatic logic is_addr_error(axi_addr_t addr, logic [1:0] vew);
-    is_addr_error = |(addr & (elen_t'(1 << vew) - 1));
+    // log2(MAX_ELEMENT_WIDTH_BYTE)
+    localparam LOG2_MAX_SEW_BYTE = 3;
+    typedef logic [LOG2_MAX_SEW_BYTE:0] max_sew_byte_t;
+
+    is_addr_error = |(max_sew_byte_t'(addr[LOG2_MAX_SEW_BYTE-1:0]) & (max_sew_byte_t'(1 << vew) - 1));
   endfunction // is_addr_error
 
   ////////////////////
@@ -332,7 +337,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         };
 
         // Ara does not support misaligned AXI requests
-        if (is_addr_error(pe_req_q.scalar_op, pe_req_q.vtype.vsew)) begin
+        if (is_addr_error(pe_req_q.scalar_op, pe_req_q.vtype.vsew[1:0])) begin
           state_d         = IDLE;
           addrgen_ack_o   = 1'b1;
           addrgen_exception_o.valid = 1'b1;
@@ -926,7 +931,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   // Check if the virtual address generates an exception
                   // NOTE: we can do this even before address translation, since the
                   //       page offset (2^12) is the same for both physical and virtual addresses
-                  if (is_addr_error(idx_final_vaddr_q, axi_addrgen_q.vew)) begin : eew_misaligned_error
+                  if (is_addr_error(idx_final_vaddr_q, axi_addrgen_q.vew[1:0])) begin : eew_misaligned_error
                     // Generate an error
                     idx_op_error_d          = 1'b1;
                     // Forward next vstart info to the dispatcher
