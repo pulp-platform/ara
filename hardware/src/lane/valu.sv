@@ -175,22 +175,25 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   //  Mask operands  //
   /////////////////////
 
+  logic mask_operand_valid;
   logic mask_operand_ready;
   logic mask_operand_gnt;
 
-  assign mask_operand_gnt = mask_operand_ready && result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q];
+  assign mask_operand_valid = result_queue_q[result_queue_read_pnt_q].mask
+                            & result_queue_valid_q[result_queue_read_pnt_q];
+  assign mask_operand_gnt = mask_operand_valid & mask_operand_ready;
 
   spill_register #(
     .T(elen_t)
   ) i_mask_operand_register (
-    .clk_i     (clk_i                                                                                        ),
-    .rst_ni    (rst_ni                                                                                       ),
-    .data_o    (mask_operand_o                                                                               ),
-    .valid_o   (mask_operand_valid_o                                                                         ),
-    .ready_i   (mask_operand_ready_i                                                                         ),
-    .data_i    (result_queue_q[result_queue_read_pnt_q].wdata                                                ),
-    .valid_i   (result_queue_q[result_queue_read_pnt_q].mask && result_queue_valid_q[result_queue_read_pnt_q]),
-    .ready_o   (mask_operand_ready                                                                           )
+    .clk_i     (clk_i                                         ),
+    .rst_ni    (rst_ni                                        ),
+    .data_o    (mask_operand_o                                ),
+    .valid_o   (mask_operand_valid_o                          ),
+    .ready_i   (mask_operand_ready_i                          ),
+    .data_i    (result_queue_q[result_queue_read_pnt_q].wdata ),
+    .valid_i   (mask_operand_valid                            ),
+    .ready_o   (mask_operand_ready                            )
   );
 
   //////////////////////
@@ -739,7 +742,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     if (|result_queue_valid_q)
       vxsat_flag_o = |(alu_vxsat_q & result_queue_q[result_queue_read_pnt_q].be);
 
-    // Received a grant from the VRF.
+    // Received a grant from the VRF or MASKU.
     // Deactivate the request.
     if (alu_result_gnt_i || mask_operand_gnt) begin
       result_queue_valid_d[result_queue_read_pnt_q] = 1'b0;
@@ -802,7 +805,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     //////////////////////////////
 
     if (!vinsn_queue_full && vfu_operation_valid_i &&
-      (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VMXNOR]})) begin
+      (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VMSBC],[VMANDNOT:VMXNOR]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
       // Do not wait for masks if, during a reduction, this lane is just a pass-through
       // The only valid instructions here with vl == '0 are reductions
