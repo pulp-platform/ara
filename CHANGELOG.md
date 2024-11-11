@@ -94,6 +94,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Update READMEs with FPGA implementation instructions
  - Optimize `addrgen` timing for OS-on operation
  - Enable OS by default
+ - Bump CVA6 to pulp-v2
+ - Re-parametrize the design with pulp-v2 parameters
+ - Bump AXI version from 0.39.4 (broken) to 0.39.5
+ - Bump default simulator to QuestaSim 2021.3
 
 ## 3.0.0 - 2023-09-08
 
