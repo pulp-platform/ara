@@ -67,6 +67,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Refactor MASKU
  - Remove bit-support for tail elements
  - Adapt mask tests to this behavior
+ - Bump CVA6 to pulp-v2
+ - Re-parametrize the design with pulp-v2 parameters
 
 ## 3.0.0 - 2023-09-08
 
