@@ -175,14 +175,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   if (ViotaParallelism > NrLanes || ViotaParallelism % 2 != 0) begin
     $fatal(1, "Parameter ViotaParallelism cannot be higher than NrLanes and should be a power of 2.");
   end
-  // VIOTA/VID counters
-  logic [idx_width(NrLanes*ELEN/ViotaParallelism)-1:0] viota_in_cnt_q;
-  logic [idx_width(NrLanes*ELEN/8/ViotaParallelism)-1:0] viota_out_cnt_ew8_q;
-  logic [idx_width(NrLanes*ELEN/16/ViotaParallelism)-1:0] viota_out_cnt_ew16_q;
-  logic [idx_width(NrLanes*ELEN/32/ViotaParallelism)-1:0] viota_out_cnt_ew32_q;
-  logic [idx_width(NrLanes*ELEN/64/ViotaParallelism)-1:0] viota_out_cnt_ew64_q;
   // VLENMAX can be 64Ki elements at most - 16 bit per adder are enough
   logic [15:0] viota_res [ViotaParallelism];
+  logic [idx_width(NrLanes*ELEN)-1:0] viota_input_vector;
 
   // Local Parameter W_CPOP and W_VFIRST
   //
@@ -510,13 +505,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   always_comb begin: p_mask_alu
-    alu_result          = '0;
-    not_found_one_d     = pe_req_ready_o ? 1'b1 : not_found_one_q;
-    alu_result_vm       = '0;
-    alu_result_vm_m     = '0;
-    alu_result_vm_shuf  = '0;
+    alu_result              = '0;
+    not_found_one_d         = pe_req_ready_o ? 1'b1 : not_found_one_q;
+    alu_result_vm           = '0;
+    alu_result_vm_m         = '0;
+    alu_result_vm_shuf      = '0;
     masku_operand_alu_seq_m = '0;
-    vcpop_operand       = '0;
+    vcpop_operand           = '0;
 
     if (vinsn_issue_valid) begin
       // Evaluate the instruction
@@ -525,8 +520,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 		// This operation is never masked
         [VMANDNOT:VMXNOR]: alu_result_vm_m = masku_operand_alu_seq;
         // Comparisons: mask out the masked out bits of this pre-computed slice
+        [VMFEQ:VMSGT]: alu_result = alu_result_compressed & masku_operand_m;
 		// Add/sub-with-carry/borrow: the masks are all 1 since these operations are NOT masked
-        [VMFEQ:VMSBC]: alu_result = alu_result_compressed & bit_enable_mask;
+        [VMADC:VMSBC]: alu_result = alu_result_compressed;
         // VMSBF, VMSOF, VMSIF: compute a slice of the output and mask out the masked out bits
         [VMSBF:VMSIF] : begin
           masku_operand_alu_seq_m = masku_operand_alu_seq & masku_operand_m_seq;
@@ -563,8 +559,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // VIOTA, VID: compute a slice of the output and mask out the masked elements
 		// VID re-uses the VIOTA datapath
         VIOTA, VID: begin
+          viota_input_vector = vinsn_issue.op == VID ? '1 : masku_operand_alu_seq;
+
           // Mask the input vector
-          masku_operand_alu_seq_m = masku_operand_alu_seq & masku_operand_m_seq;
+          masku_operand_alu_seq_m = viota_input_vector & masku_operand_m_seq;
 
           // Compute output results on `ViotaParallelism 16-bit adders
           viota_res[0] = viota_acc_q;
@@ -578,7 +576,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           // This datapath should be relativeley simple:
           // `ViotaParallelism bytes connected, in line, to output byte chunks
           // Multiple limited-width counters should help the synthesizer reduce wiring
-          logic [NrLanes*ELEN/ViotaParallelism-1:0] viota_out_cnt_q;
 		  unique case (vinsn_issue.vtype.vsew)
             EW8: for (int i = 0; i < ViotaParallelism; i++)
               alu_result_vm_m[out_valid_cnt_q[NrLanes*ELEN/8/ViotaParallelism-1:0]  * ViotaParallelism * 8  + i*8  +: 8]  = viota_res[i][7:0];
@@ -592,7 +589,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         // VCPOP, VFIRST: mask the current slice and feed the popc or lzc unit
         [VCPOP:VFIRST] : begin
-          vcpop_operand = (!vinsn_issue.vm) ? masku_operand_vd_seq & bit_enable_mask : masku_operand_vd_seq;
+          vcpop_operand = (!vinsn_issue.vm) ? masku_operand_vd_seq & masku_operand_m_seq : masku_operand_vd_seq;
         end
         default:;
       endcase
@@ -730,7 +727,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_issue_valid && !(vd_scalar(vinsn_issue.op))) begin
         // Is there place in the mask queue to write the mask operands?
         // Did we receive the mask bits on the MaskM channel?
-        if (!vinsn_issue.vm && &masku_operand_m_valid && !(vinsn_issue.op inside {[VMSBF:VMSIF]})) begin
+        if (!vinsn_issue.vm && &masku_operand_m_valid && !(vinsn_issue.op inside {[VMFEQ,VMSIF]})) begin
           // Account for the used operands
           mask_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
 
@@ -923,7 +920,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_write_pnt_d = '0;
       end
 
-      vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.vtype.vsew));
+      vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.eew_vs2));
     end
 
     // The scalar result has been sent to and acknowledged by the dispatcher
@@ -1070,19 +1067,19 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         unique case (pe_req_i.op)
           {[VMFEQ:VMXNOR]}: begin
             // Mask to mask - encoded
-            delta_elm_d = ;
+            delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
-            in_ready_threshold_d   = ;
-            in_m_ready_threshold_d = ;
-            out_valid_threshold_d  = ;
+            in_ready_threshold_d   = 1;
+            in_m_ready_threshold_d = ELEN >> (EW64 - pe_req_i.eew_vs2[1:0]);
+            out_valid_threshold_d  = ELEN >> (EW64 - pe_req_i.eew_vs2[1:0]);
           end
           {[VMADC:VMSBC]}: begin
             // Mask to mask - encoded
-            delta_elm_d = ;
+            delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
-            in_ready_threshold_d   = ;
-            in_m_ready_threshold_d = ;
-            out_valid_threshold_d  = ;
+            in_ready_threshold_d   = 1;
+            in_m_ready_threshold_d = ELEN >> (EW64 - pe_req_i.eew_vs2[1:0]);
+            out_valid_threshold_d  = ELEN >> (EW64 - pe_req_i.eew_vs2[1:0]);
           end
           {[VMANDNOT:VMXNOR]}: begin
             // Mask to mask
@@ -1106,7 +1103,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
             in_ready_threshold_d   = NrLanes*ELEN/ViotaParallelism;
             in_m_ready_threshold_d = NrLanes*ELEN/ViotaParallelism;
-            out_valid_threshold_d  = (NrLanes*ELEN/ViotaParallelism) >> pe_req_i.vtype.vsew;
+            out_valid_threshold_d  = (NrLanes*ELEN/ViotaParallelism) >> (EW64 - pe_req_i.vtype.vsew[1:0]);
           end
           default: begin // {[VCPOP:VFIRST]}
             // Mask to scalar
