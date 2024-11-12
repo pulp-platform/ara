@@ -1236,11 +1236,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b10000: begin
                         ara_req_d.op      = ara_pkg::VCPOP;
-                        ara_req_d.use_vs1 = 1'b0;
+                        ara_req_d.eew_vs2 = eew_q[ara_req_d.vs2];
                       end
                       5'b10001: begin
                         ara_req_d.op      = ara_pkg::VFIRST;
-                        ara_req_d.use_vs1 = 1'b0;
+                        ara_req_d.eew_vs2 = eew_q[ara_req_d.vs2];
                       end
                       default :;
                     endcase
@@ -1274,8 +1274,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     end
                   end
                   6'b010100: begin
+                    // VMSBF, -OF, -IF, require bit-level masking
+                    // vd is fetched for correct mask undisturbed
                     ara_req_d.use_vd_op = 1'b1;
-                    ara_req_d.use_vs1   = 1'b0;
                     case (insn.varith_type.rs1)
                       5'b00001: ara_req_d.op = ara_pkg::VMSBF;
                       5'b00010: ara_req_d.op = ara_pkg::VMSOF;
@@ -1289,63 +1290,62 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001010: ara_req_d.op = ara_pkg::VASUBU;
                   6'b001011: ara_req_d.op = ara_pkg::VASUB;
                   6'b011000: begin
-                    ara_req_d.op        = ara_pkg::VMANDNOT;
-                    // Prefer mask operation on EW8 encoding
-                    // In mask operations, vs1, vs2, vd should
-                    // have the same encoding.
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.op         = ara_pkg::VMANDNOT;
+                    // The source operands should have the same byte encoding
+                    // Minimize reshuffling on mask operations
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011001: begin
                     ara_req_d.op         = ara_pkg::VMAND;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011010: begin
                     ara_req_d.op         = ara_pkg::VMOR;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011011: begin
                     ara_req_d.op         = ara_pkg::VMXOR;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011100: begin
                     ara_req_d.op         = ara_pkg::VMORNOT;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011101: begin
                     ara_req_d.op         = ara_pkg::VMNAND;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011110: begin
                     ara_req_d.op         = ara_pkg::VMNOR;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b011111: begin
                     ara_req_d.op         = ara_pkg::VMXNOR;
-                    ara_req_d.eew_vs1    = EW8;
-                    ara_req_d.eew_vs2    = EW8;
-                    ara_req_d.eew_vd_op  = EW8;
-                    ara_req_d.vtype.vsew = EW8;
+                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
