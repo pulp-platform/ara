@@ -5,7 +5,7 @@
 // Mask Unit Operands Module
 //
 // Author: Moritz Imfeld <moimfeld@student.ethz.ch>
-n//
+//
 //
 // Description:
 //  Module takes operands coming from the lanes and then unpacks and prepares them
@@ -120,7 +120,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   spill_register #(
-    .T       ( elen_t [NrLanes-1:0] ),
+    .T       ( elen_t [NrLanes-1:0] )
   ) i_spill_register_vd (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
@@ -133,7 +133,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   spill_register #(
-    .T       ( elen_t [NrLanes-1:0] ),
+    .T       ( elen_t [NrLanes-1:0] )
   ) i_spill_register_m (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
