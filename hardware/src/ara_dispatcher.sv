@@ -1276,7 +1276,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010100: begin
                     // VMSBF, -OF, -IF, require bit-level masking
                     // vd is fetched for correct mask undisturbed
-                    ara_req_d.use_vd_op = 1'b1;
+                    ara_req_d.use_vs1    = 1'b0;
+                    ara_req_d.use_vd_op  = 1'b1;
+                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs2]; // Force reshuffle
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd]; // Force reshuffle
+                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                     case (insn.varith_type.rs1)
                       5'b00001: ara_req_d.op = ara_pkg::VMSBF;
                       5'b00010: ara_req_d.op = ara_pkg::VMSOF;
@@ -1344,7 +1348,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.op         = ara_pkg::VMXNOR;
                     ara_req_d.eew_vs1    = eew_q[ara_req_d.vs1];
                     ara_req_d.eew_vs2    = eew_q[ara_req_d.vs1]; // Force reshuffle
-                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
                     ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
                   6'b010010: begin // VXUNARY0

@@ -219,7 +219,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   // Compress ALU/FPU results into a mask vector
   // -------------------------------------------
   always_comb begin
-    alu_result_compressed_o = '0;
+    alu_result_compressed_o = '1;
     for (int b = 0; b < ELENB * NrLanes; b++) begin
       if ((b % (1 << vinsn_issue_i.vtype.vsew)) == '0) begin
         automatic int src_byte        = shuffle_index(b, NrLanes, vinsn_issue_i.vtype.vsew);
