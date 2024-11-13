@@ -508,7 +508,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   ////////////////
 
   elen_t [NrLanes-1:0] alu_result;
-  logic [NrLanes*DataWidth-1:0] alu_result_mask;
+  logic [NrLanes*DataWidth-1:0] alu_result_mask, alu_result_mask_viota, alu_result_mask_shuf;
+
+  logic masku_alu_en;
 
   // assign operand slices to be processed by popcount and lzc
   assign vcpop_slice  = vcpop_operand[(in_ready_cnt_q[idx_width(N_SLICES_CPOP)-1:0] * VcpopParallelism) +: VcpopParallelism];
@@ -543,10 +545,20 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     alu_result_vmsof_vm = '1;
     alu_result_vm       = '1;
 
+    alu_result_mask_shuf  = '0;
+    alu_result_mask_viota = '0;
+
     vcpop_operand           = '0;
 
-    // ALU result mask
-    alu_result_mask = masku_operand_m | {NrLanes*DataWidth{vinsn_issue.vm}};
+    // Enable the MASKU ALU
+    masku_alu_en = 1'b0;
+    // Is there an instruction ready to be issued?
+    if (vinsn_issue_valid && vinsn_issue.op inside {[VMFEQ:VMXNOR]})
+      // Compute one slice if we can write and the necessary inputs are valid
+      if (!result_queue_full && (&masku_operand_alu_valid || vinsn_issue.op == VID)
+                             && (&masku_operand_vd_valid  || !vinsn_issue.use_vd_op)
+                             && (&masku_operand_m_valid   || vinsn_issue.vm))
+        masku_alu_en = 1'b1;
 
     // Create a bit-masked ALU sequential vector
     masku_operand_alu_seq_m = masku_operand_alu_seq
@@ -577,7 +589,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           for (int i = 1; i < VmsxfParallelism; i++) begin
             vmsxf_buffer[i] = ~((masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism + i]) | vmsxf_buffer[i-1]);
           end
-          found_one_d = in_ready_cnt_en ? |(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism]) | found_one_q : found_one_q;
+          found_one_d = masku_alu_en ? |(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism]) | found_one_q : found_one_q;
 
           alu_result_vmsif_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsxf_buffer;
           alu_result_vmsbf_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = {~found_one_d, vmsxf_buffer[VmsxfParallelism-1:1]};
@@ -610,7 +622,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Save last result in the accumulator for next slice upon processing
-          viota_acc_d = in_ready_cnt_en ? viota_res[ViotaParallelism-1] : viota_acc_q;
+          viota_acc_d = masku_alu_en ? viota_res[ViotaParallelism-1] : viota_acc_q;
 
           // This datapath should be relativeley simple:
           // `ViotaParallelism bytes connected, in line, to output byte chunks
@@ -631,23 +643,23 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           endcase
 
           // The result mask should be created here since the output is a non-mask vector
-          alu_result_mask = '0;
+          alu_result_mask_viota = '0;
           // Output mask to only write the portions of Vd we are interested in
 		  unique case (vinsn_issue.vtype.vsew)
             EW8: for (int i = 0; i < ViotaParallelism; i++) begin
-              alu_result_mask[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0]  * ViotaParallelism * 8  + i*8  +: 8]  =
+              alu_result_mask_viota[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0]  * ViotaParallelism * 8  + i*8  +: 8]  =
                 {8{vinsn_issue.vm  | masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
             EW16: for (int i = 0; i < ViotaParallelism; i++) begin
-              alu_result_mask[out_valid_cnt_q[idx_width(NrLanes*DataWidth/16/ViotaParallelism)-1:0] * ViotaParallelism * 16 + i*16 +: 16] =
+              alu_result_mask_viota[out_valid_cnt_q[idx_width(NrLanes*DataWidth/16/ViotaParallelism)-1:0] * ViotaParallelism * 16 + i*16 +: 16] =
                 {16{vinsn_issue.vm | masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
             EW32: for (int i = 0; i < ViotaParallelism; i++) begin
-              alu_result_mask[out_valid_cnt_q[idx_width(NrLanes*DataWidth/32/ViotaParallelism)-1:0] * ViotaParallelism * 32 + i*32 +: 32] =
+              alu_result_mask_viota[out_valid_cnt_q[idx_width(NrLanes*DataWidth/32/ViotaParallelism)-1:0] * ViotaParallelism * 32 + i*32 +: 32] =
                 {32{vinsn_issue.vm | masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
             default: for (int i = 0; i < ViotaParallelism; i++) begin // EW64
-              alu_result_mask[out_valid_cnt_q[idx_width(NrLanes*DataWidth/64/ViotaParallelism)-1:0] * ViotaParallelism * 64 + i*64 +: 64] =
+              alu_result_mask_viota[out_valid_cnt_q[idx_width(NrLanes*DataWidth/64/ViotaParallelism)-1:0] * ViotaParallelism * 64 + i*64 +: 64] =
                 {64{vinsn_issue.vm | masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
           endcase
@@ -664,7 +676,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte                = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
       alu_result_vm_shuf[8*shuffle_byte +: 8]   = alu_result_vm_m[8*b +: 8];
+      alu_result_mask_shuf[8*shuffle_byte +: 8] = alu_result_mask_viota[8*b +: 8];
     end
+
+    alu_result_mask = vinsn_issue.op inside {[VIOTA:VID]} ? alu_result_mask_shuf : masku_operand_m | {NrLanes*DataWidth{vinsn_issue.vm}};;
 
     // alu_result propagation mux
     if (vinsn_issue.op inside {[VMSBF:VID]})
