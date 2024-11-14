@@ -180,7 +180,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic [NrLanes-1:0] additional_elm; // There can be an additional element for some lanes
   // BE signals for VIOTA
   logic [NrLanes*DataWidth/8-1:0] be_viota_seq_d, be_viota_seq_q, be_viota_shuf;
-  logic masku_alu_be_clr;
 
   // Local Parameter VcpopParallelism and VfirstParallelism
   //
@@ -520,8 +519,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   elen_t [NrLanes-1:0] alu_result;
 
-  logic masku_alu_en, masku_alu_clr;
-
   // assign operand slices to be processed by popcount and lzc
   assign vcpop_slice  = vcpop_operand[(in_ready_cnt_q[idx_width(N_SLICES_CPOP)-1:0] * VcpopParallelism) +: VcpopParallelism];
   assign vfirst_slice = vcpop_operand[(in_ready_cnt_q[idx_width(N_SLICES_VFIRST)-1:0] * VfirstParallelism) +: VfirstParallelism];
@@ -544,7 +541,24 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .empty_o (vfirst_empty )
   );
 
-  always_comb begin: p_mask_alu
+  // Vector instructions currently running
+  logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
+
+  // Interface with the main sequencer
+  pe_resp_t pe_resp;
+
+  // Effective MASKU stride in case of VSLIDEUP
+  // MASKU receives chunks of 64 * NrLanes mask bits from the lanes
+  // VSLIDEUP only needs the bits whose index >= than its stride
+  // So, the operand requester does not send vl mask bits to MASKU
+  // and trims all the unused 64 * NrLanes mask bits chunks
+  // Therefore, the stride needs to be trimmed, too
+  elen_t trimmed_stride;
+
+  // Information about which is the target FU of the request
+  assign masku_operand_fu = (vinsn_issue.op inside {[VMFEQ:VMFGE]}) ? MaskFUMFpu : MaskFUAlu;
+
+  always_comb begin
     // Tail-agnostic bus
     alu_result          = '0;
     alu_result_vm       = '0;
@@ -557,27 +571,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     vcpop_operand = '0;
 
-    // MASKU ALU control
-    masku_alu_en     = 1'b0;
-    masku_alu_clr    = 1'b0;
-    masku_alu_be_clr = 1'b0;
-
     // The result mask should be created here since the output is a non-mask vector
     be_viota_seq_d = be_viota_seq_q;
-
-    // Is there an instruction ready to be issued?
-    if (vinsn_issue_valid && vinsn_issue.op inside {[VMFEQ:VMXNOR]})
-      // Compute one slice if we can write and the necessary inputs are valid
-      if (!result_queue_full && (&masku_operand_alu_valid || vinsn_issue.op == VID)
-                             && (&masku_operand_vd_valid  || !vinsn_issue.use_vd_op)
-                             && (&masku_operand_m_valid   || vinsn_issue.vm))
-        masku_alu_en = 1'b1;
-
-    // Have we finished insn execution?
-    if (vinsn_issue_valid && issue_cnt_d == '0) masku_alu_clr = 1'b1;
-
-    // Have we written the result queue?
-    if (vinsn_issue_valid && out_vrf_word_valid) masku_alu_be_clr = 1'b1;
 
     // Create a bit-masked ALU sequential vector
     masku_operand_alu_seq_m = masku_operand_alu_seq
@@ -608,7 +603,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           for (int i = 1; i < VmsxfParallelism; i++) begin
             vmsxf_buffer[i] = ~((masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism + i]) | vmsxf_buffer[i-1]);
           end
-          found_one_d = masku_alu_en ? |(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism]) | found_one_q : found_one_q;
 
           alu_result_vmsif_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsxf_buffer;
           alu_result_vmsbf_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = {~found_one_d, vmsxf_buffer[VmsxfParallelism-1:1]};
@@ -623,9 +617,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
           // Mask the result
           alu_result_vm_m = (!vinsn_issue.vm) ? alu_result_vm & masku_operand_m_seq : alu_result_vm;
-
-          // Clean-up state upon instruction end
-          if (masku_alu_clr) found_one_d = '0;
         end
         // VIOTA, VID: compute a slice of the output and mask out the masked elements
 		// VID re-uses the VIOTA datapath
@@ -642,9 +633,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           for (int i = 0; i < ViotaParallelism - 1; i++) begin
             viota_res[i+1] = viota_res[i] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + i];
           end
-
-          // Save last result in the accumulator for next slice upon processing
-          viota_acc_d = masku_alu_en ? viota_res[ViotaParallelism-1] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + ViotaParallelism - 1] : viota_acc_q;
 
           // This datapath should be relativeley simple:
           // `ViotaParallelism bytes connected, in line, to output byte chunks
@@ -683,14 +671,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 {8{vinsn_issue.vm}} | {8{masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
           endcase
-
-          // Clean-up state upon instruction end
-          if (masku_alu_clr) begin
-            viota_acc_d    = '0;
-            be_viota_seq_d = '0;
-          end
-
-          if (masku_alu_be_clr) be_viota_seq_d = '0;
         end
         // VCPOP, VFIRST: mask the current slice and feed the popc or lzc unit
         [VCPOP:VFIRST] : begin
@@ -716,30 +696,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_issue.op inside {[VMSBF:VID]})
       alu_result = alu_result_vm_shuf;
 
-  end: p_mask_alu
-
   /////////////////
   //  Mask unit  //
   /////////////////
 
-  // Vector instructions currently running
-  logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
-
-  // Interface with the main sequencer
-  pe_resp_t pe_resp;
-
-  // Effective MASKU stride in case of VSLIDEUP
-  // MASKU receives chunks of 64 * NrLanes mask bits from the lanes
-  // VSLIDEUP only needs the bits whose index >= than its stride
-  // So, the operand requester does not send vl mask bits to MASKU
-  // and trims all the unused 64 * NrLanes mask bits chunks
-  // Therefore, the stride needs to be trimmed, too
-  elen_t trimmed_stride;
-
-  // Information about which is the target FU of the request
-  assign masku_operand_fu = (vinsn_issue.op inside {[VMFEQ:VMFGE]}) ? MaskFUMFpu : MaskFUAlu;
-
-  always_comb begin: p_masku
     // Maintain state
     vinsn_queue_d    = vinsn_queue_q;
     read_cnt_d       = read_cnt_q;
@@ -994,6 +954,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         popcount_d = popcount_q + popcount;
         vfirst_count_d = vfirst_count_q + vfirst_count;
 
+        // Bump MASKU ALU state
+        found_one_d = |(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism]) | found_one_q;
+        viota_acc_d = viota_res[ViotaParallelism-1] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + ViotaParallelism - 1];
+
         // Increment the input, input-mask, and output slice counters
         in_ready_cnt_en   = 1'b1;
         in_m_ready_cnt_en = 1'b1;
@@ -1040,6 +1004,13 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           // Assert valid scalar output
           out_scalar_valid = vd_scalar(vinsn_issue.op);
         end
+
+        // Have we finished insn execution? Clear MASKU ALU state
+        if (issue_cnt_d == '0) begin
+          viota_acc_d    = '0;
+          be_viota_seq_d = '0;
+          found_one_d    = '0;
+        end
       end
     end
 
@@ -1058,6 +1029,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       if (result_queue_write_pnt_q == ResultQueueDepth-1) begin
         result_queue_write_pnt_d = '0;
       end
+
+      // Clear MASKU ALU state
+      be_viota_seq_d = '0;
 
       // Account for the written results
       // VIOTA and VID do not write bits!
@@ -1296,7 +1270,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       vinsn_queue_d.issue_cnt += 1;
       vinsn_queue_d.commit_cnt += 1;
     end
-  end: p_masku
+  end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin

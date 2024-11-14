@@ -265,7 +265,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       vfu_operation_d.vl = pe_req.vl / NrLanes;
       // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
       // Also, if the ALU/VMFPU should pre-process data for the MASKU, force a balanced payload
-      if (lane_id_i < pe_req.vl[idx_width(NrLanes)-1:0] || pe_req.op inside {[VMFEQ:VMXNOR]})
+      if (lane_id_i < pe_req.vl[idx_width(NrLanes)-1:0] || (|pe_req.vl[idx_width(NrLanes)-1:0] && pe_req.op inside {[VMFEQ:VMXNOR]}))
         vfu_operation_d.vl += 1;
 
       // Calculate the start element for Lane[i]. This will be forwarded to both opqueues
@@ -757,8 +757,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Request a balanced load from every lane despite it being active or not.
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
-            if ((operand_request[MaskM].vl * NrLanes) != pe_req.vl)
-              operand_request[MaskM].vl += 1;
+            if ((operand_request[MaskB].vl * NrLanes) != pe_req.vl)
+              operand_request[MaskB].vl += 1;
           end else begin // Mask logical, VMSBF, VMSIF, VMSOF, VCPOP, VFIRST
             // Mask layout
             operand_request[MaskB].eew = EW64;
@@ -766,8 +766,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Request a balanced load from every lane despite it being active or not.
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
-            if ((operand_request[MaskM].vl * NrLanes * ELEN) != pe_req.vl)
-              operand_request[MaskM].vl += 1;
+            if ((operand_request[MaskB].vl * NrLanes * ELEN) != pe_req.vl)
+              operand_request[MaskB].vl += 1;
           end
           operand_request_push[MaskB] = pe_req.use_vd_op;
 

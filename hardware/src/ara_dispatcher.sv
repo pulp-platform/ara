@@ -67,7 +67,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
   `FF(csr_vstart_q, csr_vstart_d, '0)
   `FF(csr_vl_q, csr_vl_d, '0)
-  `FF(csr_vtype_q, csr_vtype_d, '{vill: 1'b1, default: '0})
+  `FF(csr_vtype_q, csr_vtype_d, '{vill: 1'b1, vsew: EW8, vlmul: LMUL_1, default: '0})
   `FF(csr_vxsat_q, csr_vxsat_d, '0)
   `FF(csr_vxrm_q, csr_vxrm_d, '0)
   // Converts between the internal representation of `vtype_t` and the full XLEN-bit CSR.
@@ -505,7 +505,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     (csr_vtype_d.vlmul == LMUL_RSVD) ||                    // reserved value
                     // LMUL >= SEW/ELEN
                     (signed'($clog2(ELENB)) + signed'(csr_vtype_d.vlmul) < signed'(csr_vtype_d.vsew))) begin
-                  csr_vtype_d = '{vill: 1'b1, default: '0};
+                  csr_vtype_d = '{vill: 1'b1, vsew: EW8, vlmul: LMUL_1, default: '0};
                   csr_vl_d    = '0;
                 end
 
@@ -1279,12 +1279,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req_d.use_vs1    = 1'b0;
                     ara_req_d.use_vd_op  = 1'b1;
                     ara_req_d.eew_vs2    = eew_q[ara_req_d.vs2]; // Force reshuffle
-                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd]; // Force reshuffle
-                    ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
+                    ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
                     case (insn.varith_type.rs1)
-                      5'b00001: ara_req_d.op = ara_pkg::VMSBF;
-                      5'b00010: ara_req_d.op = ara_pkg::VMSOF;
-                      5'b00011: ara_req_d.op = ara_pkg::VMSIF;
+                      5'b00001: begin
+                        ara_req_d.op = ara_pkg::VMSBF;
+                        // This is a mask-to-mask operation, vsew does not have any meaning
+                        // So, avoid reshuffling
+                        ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
+                      end
+                      5'b00010: begin
+                        ara_req_d.op = ara_pkg::VMSOF;
+                        // This is a mask-to-mask operation, vsew does not have any meaning
+                        // So, avoid reshuffling
+                        ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
+                      end
+                      5'b00011: begin
+                        ara_req_d.op = ara_pkg::VMSIF;
+                        // This is a mask-to-mask operation, vsew does not have any meaning
+                        // So, avoid reshuffling
+                        ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
+                      end
                       5'b10000: ara_req_d.op = ara_pkg::VIOTA;
                       5'b10001: ara_req_d.op = ara_pkg::VID;
                     endcase
