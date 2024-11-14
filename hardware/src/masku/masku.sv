@@ -65,6 +65,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t read_cnt_d, read_cnt_q;
   // Remaining elements of the current instruction in the issue phase
   vlen_t issue_cnt_d, issue_cnt_q;
+  // Remaining elements of the current instruction to be validated in the result queue
+  vlen_t processing_cnt_d, processing_cnt_q;
   // Remaining elements of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
@@ -100,8 +102,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // Mask deshuffled
   logic  [NrLanes*DataWidth-1:0] masku_operand_m_seq;
-  logic  [NrLanes-1:0] masku_operand_m_seq_valid;
-  logic  [NrLanes-1:0] masku_operand_m_seq_ready;
 
   // Insn-queue related signal
   pe_req_t vinsn_issue;
@@ -132,19 +132,19 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .masku_operand_alu_ready_i     (     masku_operand_alu_ready ),
     .masku_operand_alu_seq_o       (       masku_operand_alu_seq ),
     .masku_operand_alu_seq_valid_o (                             ),
-    .masku_operand_alu_seq_ready_i (                             ),
-    .masku_operand_vd_o            (           masku_operand_vd  ),
-    .masku_operand_vd_valid_o      (     masku_operand_vd_valid  ),
-    .masku_operand_vd_ready_i      (     masku_operand_vd_ready  ),
-    .masku_operand_vd_seq_o        (       masku_operand_vd_seq  ),
-    .masku_operand_vd_seq_valid_o  ( masku_operand_vd_seq_valid  ),
-    .masku_operand_vd_seq_ready_i  ( masku_operand_vd_seq_ready  ),
+    .masku_operand_alu_seq_ready_i (                          '0 ),
+    .masku_operand_vd_o            (            masku_operand_vd ),
+    .masku_operand_vd_valid_o      (      masku_operand_vd_valid ),
+    .masku_operand_vd_ready_i      (      masku_operand_vd_ready ),
+    .masku_operand_vd_seq_o        (        masku_operand_vd_seq ),
+    .masku_operand_vd_seq_valid_o  (  masku_operand_vd_seq_valid ),
+    .masku_operand_vd_seq_ready_i  (  masku_operand_vd_seq_ready ),
     .masku_operand_m_o             (             masku_operand_m ),
     .masku_operand_m_valid_o       (       masku_operand_m_valid ),
     .masku_operand_m_ready_i       (       masku_operand_m_ready ),
     .masku_operand_m_seq_o         (         masku_operand_m_seq ),
     .masku_operand_m_seq_valid_o   (                             ),
-    .masku_operand_m_seq_ready_i   (                             ),
+    .masku_operand_m_seq_ready_i   (                          '0 ),
     .bit_enable_mask_o             (             bit_enable_mask ),
     .alu_result_compressed_o       (       alu_result_compressed )
   );
@@ -174,6 +174,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // VLENMAX can be 64Ki elements at most - 16 bit per adder are enough
   logic [ViotaParallelism-1:0] [idx_width(RISCV_MAX_VLEN)-1:0] viota_res;
   logic [idx_width(RISCV_MAX_VLEN)-1:0] viota_acc_d, viota_acc_q;
+  // Ancillary signal to tweak the VRF byte-enable, accounting for an unbalanced write,
+  // i.e., when the number of elements does not perfectly divide NrLanes
+  logic [3:0] elm_per_lane; // From 0 to 8 elements per lane
+  logic [NrLanes-1:0] additional_elm; // There can be an additional element for some lanes
 
   // Local Parameter VcpopParallelism and VfirstParallelism
   //
@@ -508,9 +512,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   ////////////////
 
   elen_t [NrLanes-1:0] alu_result;
-  logic [NrLanes*DataWidth-1:0] alu_result_mask, alu_result_mask_viota, alu_result_mask_shuf;
+  logic [NrLanes*DataWidth-1:0] alu_result_mask, alu_result_mask_viota, alu_result_mask_shuf, alu_result_flat;
 
-  logic masku_alu_en;
+  // Flatten alu result to ease simulation
+  always_comb for (int l = 0; l < NrLanes; l++) alu_result_flat[l * DataWidth +: DataWidth] = alu_result[l];
+
+  logic masku_alu_en, masku_alu_clr;
 
   // assign operand slices to be processed by popcount and lzc
   assign vcpop_slice  = vcpop_operand[(in_ready_cnt_q[idx_width(N_SLICES_CPOP)-1:0] * VcpopParallelism) +: VcpopParallelism];
@@ -550,8 +557,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     vcpop_operand           = '0;
 
-    // Enable the MASKU ALU
-    masku_alu_en = 1'b0;
+    // MASKU ALU control
+    masku_alu_en  = 1'b0;
+    masku_alu_clr = 1'b0;
+
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid && vinsn_issue.op inside {[VMFEQ:VMXNOR]})
       // Compute one slice if we can write and the necessary inputs are valid
@@ -559,6 +568,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                              && (&masku_operand_vd_valid  || !vinsn_issue.use_vd_op)
                              && (&masku_operand_m_valid   || vinsn_issue.vm))
         masku_alu_en = 1'b1;
+
+    // Have we finished insn execution?
+    if (vinsn_issue_valid && issue_cnt_d == '0) masku_alu_clr = 1'b1;
 
     // Create a bit-masked ALU sequential vector
     masku_operand_alu_seq_m = masku_operand_alu_seq
@@ -604,6 +616,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
           // Mask the result
           alu_result_vm_m = (!vinsn_issue.vm) ? alu_result_vm & masku_operand_m_seq : alu_result_vm;
+
+          // Clean-up state upon instruction end
+          if (masku_alu_clr) found_one_d = '0;
         end
         // VIOTA, VID: compute a slice of the output and mask out the masked elements
 		// VID re-uses the VIOTA datapath
@@ -622,7 +637,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Save last result in the accumulator for next slice upon processing
-          viota_acc_d = masku_alu_en ? viota_res[ViotaParallelism-1] : viota_acc_q;
+          viota_acc_d = masku_alu_en ? viota_res[ViotaParallelism-1] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + ViotaParallelism - 1] : viota_acc_q;
 
           // This datapath should be relativeley simple:
           // `ViotaParallelism bytes connected, in line, to output byte chunks
@@ -663,6 +678,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                 {64{vinsn_issue.vm | masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
           endcase
+
+          // Clean-up state upon instruction end
+          if (masku_alu_clr) viota_acc_d = '0;
         end
         // VCPOP, VFIRST: mask the current slice and feed the popc or lzc unit
         [VCPOP:VFIRST] : begin
@@ -708,22 +726,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Therefore, the stride needs to be trimmed, too
   elen_t trimmed_stride;
 
-  // Control signals for better code-readability (this signals goes high if a result is valid and can be pushed to the result_queue)
-  logic vreg_wb_valid;
-
   // Information about which is the target FU of the request
   assign masku_operand_fu = (vinsn_issue.op inside {[VMFEQ:VMFGE]}) ? MaskFUMFpu : MaskFUAlu;
 
-  // Byte enable for the result queue
-  logic [NrLanes*ELENB-1:0] result_queue_be_seq;
-  logic [NrLanes*ELENB-1:0] result_queue_be;
-
   always_comb begin: p_masku
     // Maintain state
-    vinsn_queue_d  = vinsn_queue_q;
-    read_cnt_d     = read_cnt_q;
-    issue_cnt_d    = issue_cnt_q;
-    commit_cnt_d   = commit_cnt_q;
+    vinsn_queue_d    = vinsn_queue_q;
+    read_cnt_d       = read_cnt_q;
+    issue_cnt_d      = issue_cnt_q;
+    processing_cnt_d = processing_cnt_q;
+    commit_cnt_d     = commit_cnt_q;
 
     mask_pnt_d     = mask_pnt_q;
     vrf_pnt_d      = vrf_pnt_q;
@@ -781,9 +793,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Maintain state
     delta_elm_d = delta_elm_q;
-    in_ready_threshold_d   = '0;
-    in_m_ready_threshold_d = '0;
-    out_valid_threshold_d  = '0;
+    in_ready_threshold_d   = in_ready_threshold_q;
+    in_m_ready_threshold_d = in_m_ready_threshold_q;
+    out_valid_threshold_d  = out_valid_threshold_q;
 
     in_ready_cnt_clr   = 1'b0;
     in_m_ready_cnt_clr = 1'b0;
@@ -834,7 +846,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_issue_valid && !(vd_scalar(vinsn_issue.op))) begin
         // Is there place in the mask queue to write the mask operands?
         // Did we receive the mask bits on the MaskM channel?
-        if (!vinsn_issue.vm && &masku_operand_m_valid && !(vinsn_issue.op inside {[VMFEQ:VMSIF]})) begin
+        if (!vinsn_issue.vm && &masku_operand_m_valid && !(vinsn_issue.op inside {[VMFEQ:VMXNOR]})) begin
           // Account for the used operands
           mask_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
 
@@ -890,10 +902,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Is this operand going to the lanes?
     mask_valid_lane_o = vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit};
 
-    if (vd_scalar(vinsn_issue.op)) begin
-      mask_valid_o = (vinsn_issue.vm) ? '0 : '1;
-    end
-
     // All lanes accepted the VRF request
     if (!(|mask_queue_valid_d[mask_queue_read_pnt_q])) begin
       // There is something waiting to be written
@@ -931,13 +939,20 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // different input and output data widths, meaning that the input ready and the final output valid
     // are not always synchronized.
 
+    // How many elements {VIOTA|VID} are writing to each lane
+    elm_per_lane = processing_cnt_q / NrLanes;
+    if ((processing_cnt_q / NrLanes) > 4'b1000)
+      elm_per_lane = 4'b1000;
+    for (int l = 0; l < NrLanes; l++) additional_elm[l] = processing_cnt_q[idx_width(NrLanes)-1:0] > l;
+
     // Default operand queue assignment
     for (int unsigned lane = 0; lane < NrLanes; lane++) begin
       result_queue_d[result_queue_write_pnt_q][lane] = '{
         wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata, // Retain the last-cycle's data
 		// VIOTA, VID generate a non-mask vector and should comply with undisturbed policy
-        be   : vinsn_issue.op inside {[VIOTA:VID]} ? be(issue_cnt_q[idx_width(NrLanes)-1:0], vinsn_issue.vtype.vsew) : '1,
-        addr : vaddr(vinsn_issue.vd, NrLanes, VLEN) + iteration_cnt_q * ELENB,
+        // This means that we can use the byte-enable signal
+        be   : vinsn_issue.op inside {[VIOTA:VID]} ? be(elm_per_lane + additional_elm[lane], vinsn_issue.vtype.vsew) : '1,
+        addr : vaddr(vinsn_issue.vd, NrLanes, VLEN) + iteration_cnt_q,
         id   : vinsn_issue.id
       };
     end
@@ -953,10 +968,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
           result_queue_background_data[lane * DataWidth +: DataWidth] = (out_valid_cnt_q != '0)
                                         ? result_queue_q[result_queue_write_pnt_q][lane].wdata
-                                        : masku_operand_vd_seq[lane * DataWidth +: DataWidth];
+                                        : masku_operand_vd[lane];
         end
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
-          result_queue_d[result_queue_write_pnt_q][lane].wdata = (result_queue_background_data | alu_result_mask) & alu_result;
+          result_queue_d[result_queue_write_pnt_q][lane].wdata = (result_queue_background_data[lane * DataWidth +: DataWidth] | alu_result_mask[lane * DataWidth +: DataWidth]) & alu_result_flat[lane * DataWidth +: DataWidth];
         end
         // Write the scalar accumulator
         popcount_d = popcount_q + popcount;
@@ -1015,7 +1030,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Write results  //
     /////////////////////
 
-    // Write VRF words to lanes
+    // Write VRF words to the result queue
     if (out_vrf_word_valid) begin
       // Write to the lanes
       result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
@@ -1027,6 +1042,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_write_pnt_d = '0;
       end
 
+      // Account for the written results
+      // VIOTA and VID do not write bits!
+      processing_cnt_d = vinsn_issue.op inside {[VIOTA:VID]} ? processing_cnt_q - ((NrLanes * DataWidth / 8) >> vinsn_issue.vtype.vsew) : processing_cnt_q - NrLanes * DataWidth;
+
       vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.eew_vs2));
     end
 
@@ -1036,8 +1055,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       result_scalar_valid_d = '1;
 
       // The instruction is over
-      issue_cnt_d  = '0;
-      commit_cnt_d = '0;
+      issue_cnt_d       = '0;
+      processing_cnt_d  = '0;
+      commit_cnt_d      = '0;
     end
 
     // Finished issuing results
@@ -1088,10 +1108,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         result_queue_d[result_queue_read_pnt_q] = '0;
 
         // Decrement the counter of remaining vector elements waiting to be written
-        if (!(vinsn_issue.op inside {VSE})) begin
-          commit_cnt_d = commit_cnt_q - NrLanes * DataWidth;
-          if (commit_cnt_q < (NrLanes * DataWidth))
-            commit_cnt_d = '0;
+        if (!(vinsn_commit.op inside {VSE})) begin
+          if (vinsn_commit.op inside {[VIOTA:VID]}) begin
+            commit_cnt_d = commit_cnt_q - ((NrLanes * DataWidth / 8) >> unsigned'(vinsn_commit.vtype.vsew));
+            if (commit_cnt_q < ((NrLanes * DataWidth / 8) >> unsigned'(vinsn_commit.vtype.vsew)))
+              commit_cnt_d = '0;
+          end else begin
+            commit_cnt_d = commit_cnt_q - NrLanes * DataWidth;
+            if (commit_cnt_q < (NrLanes * DataWidth))
+              commit_cnt_d = '0;
+          end
         end
       end
     end
@@ -1149,12 +1175,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0) begin
-        issue_cnt_d = pe_req_i.vl;
-        read_cnt_d  = pe_req_i.vl;
+        issue_cnt_d      = pe_req_i.vl;
+        processing_cnt_d = pe_req_i.vl;
+        read_cnt_d       = pe_req_i.vl;
 
         // Trim skipped words
         if (pe_req_i.op == VSLIDEUP) begin
-          issue_cnt_d -= vlen_t'(trimmed_stride);
+          issue_cnt_d      -= vlen_t'(trimmed_stride);
+          processing_cnt_d -= vlen_t'(trimmed_stride);
           case (pe_req_i.vtype.vsew)
             EW8:  begin
               read_cnt_d -= (vlen_t'(trimmed_stride) >> $clog2(NrLanes << 3)) << $clog2(NrLanes << 3);
@@ -1214,9 +1242,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             // Mask to non-mask
             delta_elm_d = ViotaParallelism;
 
-            in_ready_threshold_d   = NrLanes*DataWidth/ViotaParallelism;
-            in_m_ready_threshold_d = NrLanes*DataWidth/ViotaParallelism;
-            out_valid_threshold_d  = (NrLanes*DataWidth/ViotaParallelism) >> (EW64 - pe_req_i.vtype.vsew[1:0]);
+            in_ready_threshold_d   = NrLanes*DataWidth/ViotaParallelism-1;
+            in_m_ready_threshold_d = NrLanes*DataWidth/ViotaParallelism-1;
+            out_valid_threshold_d  = ((NrLanes*DataWidth/8/ViotaParallelism) >> pe_req_i.vtype.vsew[1:0])-1;
           end
           VCPOP: begin
             // Mask to scalar
@@ -1255,35 +1283,41 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      vinsn_running_q      <= '0;
-      read_cnt_q           <= '0;
-      issue_cnt_q          <= '0;
-      commit_cnt_q         <= '0;
-      vrf_pnt_q            <= '0;
-      mask_pnt_q           <= '0;
-      pe_resp_o            <= '0;
-      result_final_gnt_q   <= '0;
-      popcount_q           <= '0;
-      vfirst_count_q       <= '0;
-      delta_elm_q          <= '0;
-      in_ready_threshold_q <= '0;
-      viota_acc_q          <= '0;
-      found_one_q          <= '0;
+      vinsn_running_q        <= '0;
+      read_cnt_q             <= '0;
+      issue_cnt_q            <= '0;
+      processing_cnt_q       <= '0;
+      commit_cnt_q           <= '0;
+      vrf_pnt_q              <= '0;
+      mask_pnt_q             <= '0;
+      pe_resp_o              <= '0;
+      result_final_gnt_q     <= '0;
+      popcount_q             <= '0;
+      vfirst_count_q         <= '0;
+      delta_elm_q            <= '0;
+      in_ready_threshold_q   <= '0;
+      in_m_ready_threshold_q <= '0;
+      out_valid_threshold_q  <= '0;
+      viota_acc_q            <= '0;
+      found_one_q            <= '0;
     end else begin
-      vinsn_running_q      <= vinsn_running_d;
-      read_cnt_q           <= read_cnt_d;
-      issue_cnt_q          <= issue_cnt_d;
-      commit_cnt_q         <= commit_cnt_d;
-      vrf_pnt_q            <= vrf_pnt_d;
-      mask_pnt_q           <= mask_pnt_d;
-      pe_resp_o            <= pe_resp;
-      result_final_gnt_q   <= result_final_gnt_d;
-      popcount_q           <= popcount_d;
-      vfirst_count_q       <= vfirst_count_d;
-      delta_elm_q          <= delta_elm_d;
-      in_ready_threshold_q <= in_ready_threshold_d;
-      viota_acc_q          <= viota_acc_d;
-      found_one_q          <= found_one_d;
+      vinsn_running_q        <= vinsn_running_d;
+      read_cnt_q             <= read_cnt_d;
+      issue_cnt_q            <= issue_cnt_d;
+      processing_cnt_q       <= processing_cnt_d;
+      commit_cnt_q           <= commit_cnt_d;
+      vrf_pnt_q              <= vrf_pnt_d;
+      mask_pnt_q             <= mask_pnt_d;
+      pe_resp_o              <= pe_resp;
+      result_final_gnt_q     <= result_final_gnt_d;
+      popcount_q             <= popcount_d;
+      vfirst_count_q         <= vfirst_count_d;
+      delta_elm_q            <= delta_elm_d;
+      in_ready_threshold_q   <= in_ready_threshold_d;
+      in_m_ready_threshold_q <= in_m_ready_threshold_d;
+      out_valid_threshold_q  <= out_valid_threshold_d;
+      viota_acc_q            <= viota_acc_d;
+      found_one_q            <= found_one_d;
     end
   end
 
