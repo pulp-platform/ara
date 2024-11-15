@@ -218,7 +218,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic load_zero_vl, store_zero_vl;
   // Do not checks vregs validity against current LMUL
   logic skip_lmul_checks;
-  logic skip_vs1_lmul_checks;
   // Are we decoding?
   logic is_decoding;
   // Is this an in-lane operation?
@@ -289,7 +288,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     store_zero_vl = 1'b0;
 
     skip_lmul_checks     = 1'b0;
-    skip_vs1_lmul_checks = 1'b0;
 
     null_vslideup = 1'b0;
 
@@ -1374,7 +1372,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
                     ara_req_d.use_vs1    = 1'b0;
-                    skip_vs1_lmul_checks = 1'b1;
                     // They are always encoded as ADDs with zero.
                     ara_req_d.op            = ara_pkg::VADD;
                     ara_req_d.use_scalar_op = 1'b1;
@@ -1602,21 +1599,21 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // destination register.
                 if (!skip_lmul_checks) begin
                   unique case (ara_req_d.emul)
-                    LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                    LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                    LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vd;
                     default:;
                   endcase
                   unique case (lmul_vs2)
-                    LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                    LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                    LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
                     default:;
                   endcase
                   unique case (lmul_vs1)
-                    LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vs1;
+                    LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vs1;
+                    LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vs1;
                     default:;
                   endcase
                 end
@@ -1844,15 +1841,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // destination register.
                 if (!skip_lmul_checks) begin
                   unique case (ara_req_d.emul)
-                    LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                    LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                    LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vd;
                     default:;
                   endcase
                   unique case (lmul_vs2)
-                    LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                    LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                    LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                    LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
                     default:;
                   endcase
                 end
@@ -1970,7 +1967,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     6'b010010: begin // VFUNARY0
                       // These instructions do not use vs1
                       ara_req_d.use_vs1    = 1'b0;
-                      skip_vs1_lmul_checks = 1'b1;
 
                       case (insn.varith_type.rs1)
                         5'b00000: ara_req_d.op = VFCVTXUF;
@@ -2077,7 +2073,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     6'b010011: begin // VFUNARY1
                     // These instructions do not use vs1
                     ara_req_d.use_vs1    = 1'b0;
-                    skip_vs1_lmul_checks = 1'b1;
 
                     unique case (insn.varith_type.rs1)
                       5'b00000: ara_req_d.op = ara_pkg::VFSQRT;
@@ -2235,28 +2230,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // destination register.
                   if (!skip_lmul_checks) begin
                     unique case (ara_req_d.emul)
-                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vd;
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
                     unique case (lmul_vs2)
-                      LMUL_2   : if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_4   : if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_8   : if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                      LMUL_2   : if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                      LMUL_4   : if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                      LMUL_8   : if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
-                    if (!skip_vs1_lmul_checks) begin
-                      unique case (lmul_vs1)
-                        LMUL_2   : if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                        LMUL_4   : if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                        LMUL_8   : if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
-                        LMUL_RSVD: illegal_insn = 1'b1;
-                        default:;
-                      endcase
-                    end
+                    unique case (lmul_vs1)
+                      LMUL_2   : if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vs1;
+                      LMUL_4   : if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vs1;
+                      LMUL_8   : if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vs1;
+                      LMUL_RSVD: illegal_insn = 1'b1;
+                      default:;
+                    endcase
                   end
 
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
@@ -2487,16 +2480,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // destination register.
                   if (!skip_lmul_checks) begin
                     unique case (ara_req_d.emul)
-                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vd;
+                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vd;
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
                     unique case (lmul_vs2)
-                      LMUL_2   : if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_4   : if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                      LMUL_8   : if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                      LMUL_2   : if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                      LMUL_4   : if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
+                      LMUL_8   : if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = ara_req_d.use_vs2;
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
