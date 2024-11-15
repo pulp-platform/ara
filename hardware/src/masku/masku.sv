@@ -211,12 +211,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [$clog2(VfirstParallelism)-1:0]          vfirst_count;
   logic  [$clog2(VLEN)-1:0]              vfirst_count_d, vfirst_count_q;
   logic                                  vfirst_empty;
-  logic  [NrLanes-1:0]                   vcpop_vfirst_vd_ready;
   // counter to keep track of how many slices of the vcpop_operand have been processed
   logic [VcpopParallelism-1:0]                    vcpop_slice;
   logic [VfirstParallelism-1:0]                  vfirst_slice;
-  // keep track if first 1 mask element was found
-  logic vfirst_found;
 
   // vmsbf, vmsif, vmsof, viota, vid, vcpop, vfirst variables
   logic  [NrLanes*DataWidth-1:0] masku_operand_alu_seq_m;
@@ -609,11 +606,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
           alu_result_vmsbf_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsbf_buffer;
           alu_result_vmsif_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = {vmsbf_buffer[VmsxfParallelism-2:0], ~found_one_q};
-          alu_result_vmsof_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsbf_buffer | ~{vmsbf_buffer[VmsxfParallelism-2:0], ~found_one};
+          alu_result_vmsof_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = ~vmsbf_buffer & {vmsbf_buffer[VmsxfParallelism-2:0], ~found_one_q};
 
           unique case (vinsn_issue.op)
-            VMSIF: alu_result_vm = alu_result_vmsif_vm;
             VMSBF: alu_result_vm = alu_result_vmsbf_vm;
+            VMSIF: alu_result_vm = alu_result_vmsif_vm;
             // VMSOF
             default: alu_result_vm = alu_result_vmsof_vm;
           endcase
