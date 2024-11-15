@@ -158,10 +158,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   //
   localparam integer unsigned VmsxfParallelism = NrLanes < 4 ? 2 : NrLanes/2;
   // Ancillary signals
-  logic [VmsxfParallelism-1:0] vmsxf_buffer;
-  logic [idx_width(NrLanes*DataWidth)-1:0] alu_result_vmsif_vm;
-  logic [idx_width(NrLanes*DataWidth)-1:0] alu_result_vmsbf_vm;
-  logic [idx_width(NrLanes*DataWidth)-1:0] alu_result_vmsof_vm;
+  logic [VmsxfParallelism-1:0] vmsbf_buffer;
+  logic [NrLanes*DataWidth-1:0] alu_result_vmsif_vm;
+  logic [NrLanes*DataWidth-1:0] alu_result_vmsbf_vm;
+  logic [NrLanes*DataWidth-1:0] alu_result_vmsof_vm;
 
   // Local Parameter VIOTA, VID
   //
@@ -173,7 +173,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   end
   // VLENMAX can be 64Ki elements at most - 16 bit per adder are enough
   logic [ViotaParallelism-1:0] [idx_width(RISCV_MAX_VLEN)-1:0] viota_res;
-  logic [idx_width(RISCV_MAX_VLEN)-1:0] viota_acc_d, viota_acc_q;
+  logic [idx_width(RISCV_MAX_VLEN)-1:0] viota_acc, viota_acc_d, viota_acc_q;
   // Ancillary signal to tweak the VRF byte-enable, accounting for an unbalanced write,
   // i.e., when the number of elements does not perfectly divide NrLanes
   logic [3:0] elm_per_lane; // From 0 to 8 elements per lane
@@ -221,8 +221,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // vmsbf, vmsif, vmsof, viota, vid, vcpop, vfirst variables
   logic  [NrLanes*DataWidth-1:0] masku_operand_alu_seq_m;
   logic  [NrLanes*DataWidth-1:0] alu_result_vm, alu_result_vm_m, alu_result_vm_shuf;
-  logic                          found_one_d, found_one_q;
-  logic  [          NrLanes-1:0] vmsif_vmsof_vmsbf_vd_ready;
+  logic                          found_one, found_one_d, found_one_q;
 
   // How many elements we are processing per cycle
   logic [idx_width(NrLanes*DataWidth)-1:0] delta_elm_d, delta_elm_q;
@@ -579,9 +578,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                             & (masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}});
 
     // VMSBF, VMSIF, VMSOF default assignments
+    found_one           = found_one_q;
     found_one_d         = found_one_q;
-    vmsxf_buffer        = '0;
+    vmsbf_buffer        = '0;
     // VIOTA default assignments
+    viota_acc   = viota_acc_q;
     viota_acc_d = viota_acc_q;
     for (int i = 0; i < ViotaParallelism; i++) viota_res[i] = '0;
 
@@ -599,14 +600,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         [VMADC:VMSBC]: alu_result = alu_result_compressed;
         // VMSBF, VMSOF, VMSIF: compute a slice of the output and mask out the masked out bits
         [VMSBF:VMSIF] : begin
-          vmsxf_buffer[0] = ~((masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism]) | found_one_q);
+          vmsbf_buffer[0] = ~(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism] | found_one_q);
           for (int i = 1; i < VmsxfParallelism; i++) begin
-            vmsxf_buffer[i] = ~((masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism + i]) | vmsxf_buffer[i-1]);
+            vmsbf_buffer[i] = ~((masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism + i]) | ~vmsbf_buffer[i-1]);
           end
+          // Have we found a 1 in the current slice?
+          found_one = |(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism]) | found_one_q;
 
-          alu_result_vmsif_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsxf_buffer;
-          alu_result_vmsbf_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = {~found_one_d, vmsxf_buffer[VmsxfParallelism-1:1]};
-          alu_result_vmsof_vm[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsxf_buffer | ~{~found_one_d, vmsxf_buffer[VmsxfParallelism-1:1]};
+          alu_result_vmsbf_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsbf_buffer;
+          alu_result_vmsif_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = {vmsbf_buffer[VmsxfParallelism-2:0], ~found_one_q};
+          alu_result_vmsof_vm[out_valid_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism] = vmsbf_buffer | ~{vmsbf_buffer[VmsxfParallelism-2:0], ~found_one};
 
           unique case (vinsn_issue.op)
             VMSIF: alu_result_vm = alu_result_vmsif_vm;
@@ -633,6 +636,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           for (int i = 0; i < ViotaParallelism - 1; i++) begin
             viota_res[i+1] = viota_res[i] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + i];
           end
+          viota_acc = viota_res[ViotaParallelism-1] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + ViotaParallelism - 1];
 
           // This datapath should be relativeley simple:
           // `ViotaParallelism bytes connected, in line, to output byte chunks
@@ -928,7 +932,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // Prepare result queue mask; VIOTA,VID use the BE instead
     for (int lane = 0; lane < NrLanes; lane++)
-      result_queue_mask[lane] = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m[lane];
+      result_queue_mask[lane] = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m[lane] | {DataWidth{vinsn_issue.vm}};
 
     // Is there an instruction ready to be issued?
     if (vinsn_issue_valid && vinsn_issue.op inside {[VMFEQ:VMXNOR]}) begin
@@ -938,25 +942,25 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
                              && (&masku_operand_m_valid   || vinsn_issue.vm)) begin
 
         // Write the result queue on the background data - either vd or the previous result
+        // The mask vector writes at 1 (tail-agnostic ok value) both the background body
+        // elements that will be written by the MASKU ALU and the tail elements.
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
           result_queue_background_data[lane] = (out_valid_cnt_q != '0)
                                              ? result_queue_q[result_queue_write_pnt_q][lane].wdata
-                                             : vinsn_issue.op inside {[VIOTA:VID]} ? '1 : masku_operand_vd[lane];
+                                             : vinsn_issue.op inside {[VIOTA:VID]} ? '1 : masku_operand_vd[lane] | result_queue_mask[lane];
         end
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
-          // The mask vector writes at 1 (tail-agnostic ok value) both the background body
-          // elements that will be written by the MASKU ALU and the tail elements.
-          // The alu_result has all the bits at 0 except for the portion of bits to write.
+          // The alu_result has all the bits at 1 except for the portion of bits to write.
           // The masking is already applied in the MASKU ALU.
-          result_queue_d[result_queue_write_pnt_q][lane].wdata = (result_queue_background_data[lane] | result_queue_mask[lane]) & alu_result[lane];
+          result_queue_d[result_queue_write_pnt_q][lane].wdata = result_queue_background_data[lane] & alu_result[lane];
         end
         // Write the scalar accumulator
         popcount_d = popcount_q + popcount;
         vfirst_count_d = vfirst_count_q + vfirst_count;
 
         // Bump MASKU ALU state
-        found_one_d = |(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism +: VmsxfParallelism]) | found_one_q;
-        viota_acc_d = viota_res[ViotaParallelism-1] + masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + ViotaParallelism - 1];
+        found_one_d = found_one;
+        viota_acc_d = viota_acc;
 
         // Increment the input, input-mask, and output slice counters
         in_ready_cnt_en   = 1'b1;
@@ -1202,32 +1206,32 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
             in_ready_threshold_d   = 1;
-            in_m_ready_threshold_d = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]);
-            out_valid_threshold_d  = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]);
+            in_m_ready_threshold_d = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
+            out_valid_threshold_d  = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
           end
           [VMADC:VMSBC]: begin
             // Mask to mask - encoded
             delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
             in_ready_threshold_d   = 1;
-            in_m_ready_threshold_d = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]);
-            out_valid_threshold_d  = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]);
+            in_m_ready_threshold_d = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
+            out_valid_threshold_d  = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
           end
           [VMANDNOT:VMXNOR]: begin
             // Mask to mask
             delta_elm_d = VmLogicalParallelism;
 
-            in_ready_threshold_d   = NrLanes*DataWidth/VmLogicalParallelism;
-            in_m_ready_threshold_d = NrLanes*DataWidth/VmLogicalParallelism;
-            out_valid_threshold_d  = NrLanes*DataWidth/VmLogicalParallelism;
+            in_ready_threshold_d   = NrLanes*DataWidth/VmLogicalParallelism-1;
+            in_m_ready_threshold_d = NrLanes*DataWidth/VmLogicalParallelism-1;
+            out_valid_threshold_d  = NrLanes*DataWidth/VmLogicalParallelism-1;
           end
           [VMSBF:VMSIF]: begin
             // Mask to mask
             delta_elm_d = VmsxfParallelism;
 
-            in_ready_threshold_d   = NrLanes*DataWidth/VmsxfParallelism;
-            in_m_ready_threshold_d = NrLanes*DataWidth/VmsxfParallelism;
-            out_valid_threshold_d  = NrLanes*DataWidth/VmsxfParallelism;
+            in_ready_threshold_d   = NrLanes*DataWidth/VmsxfParallelism-1;
+            in_m_ready_threshold_d = NrLanes*DataWidth/VmsxfParallelism-1;
+            out_valid_threshold_d  = NrLanes*DataWidth/VmsxfParallelism-1;
           end
           [VIOTA:VID]: begin
             // Mask to non-mask
@@ -1241,16 +1245,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             // Mask to scalar
             delta_elm_d = VcpopParallelism;
 
-            in_ready_threshold_d   = NrLanes*DataWidth/VcpopParallelism;
-            in_m_ready_threshold_d = NrLanes*DataWidth/VcpopParallelism;
+            in_ready_threshold_d   = NrLanes*DataWidth/VcpopParallelism-1;
+            in_m_ready_threshold_d = NrLanes*DataWidth/VcpopParallelism-1;
             out_valid_threshold_d  = '0;
           end
           default: begin // VFIRST
             // Mask to scalar
             delta_elm_d = VfirstParallelism;
 
-            in_ready_threshold_d   = NrLanes*DataWidth/VfirstParallelism;
-            in_m_ready_threshold_d = NrLanes*DataWidth/VfirstParallelism;
+            in_ready_threshold_d   = NrLanes*DataWidth/VfirstParallelism-1;
+            in_m_ready_threshold_d = NrLanes*DataWidth/VfirstParallelism-1;
             out_valid_threshold_d  = '0;
           end
         endcase
