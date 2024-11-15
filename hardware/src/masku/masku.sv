@@ -560,14 +560,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   always_comb begin
     // Tail-agnostic bus
-    alu_result          = '0;
-    alu_result_vm       = '0;
-    alu_result_vm_m     = '0;
-    alu_result_vm_shuf  = '0;
-    alu_result_vmsif_vm = '0;
-    alu_result_vmsbf_vm = '0;
-    alu_result_vmsof_vm = '0;
-    alu_result_vm       = '0;
+    alu_result          = '1;
+    alu_result_vm       = '1;
+    alu_result_vm_m     = '1;
+    alu_result_vm_shuf  = '1;
+    alu_result_vmsif_vm = '1;
+    alu_result_vmsbf_vm = '1;
+    alu_result_vmsof_vm = '1;
+    alu_result_vm       = '1;
 
     vcpop_operand = '0;
 
@@ -624,9 +624,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           // Mask the input vector
           // VID uses the same datapath of VIOTA, but with implicit input vector at '1
           masku_operand_alu_seq_m = (vinsn_issue.op == VID)
-                                  ? masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}}
+                                  ? '1 // VID mask does NOT modify the count
                                   : masku_operand_alu_seq
-                                    & (masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}});
+                                    & (masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}}); // VIOTA mask DOES modify the count
 
           // Compute output results on `ViotaParallelism 16-bit adders
           viota_res[0] = viota_acc_q;
@@ -656,19 +656,19 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 		  unique case (vinsn_issue.vtype.vsew)
             EW8: for (int i = 0; i < ViotaParallelism; i++) begin
               be_viota_seq_d[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism * 1 + 1*i +: 1] =
-                {1{vinsn_issue.vm}} | {1{masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
+                {1{vinsn_issue.vm}} | {1{masku_operand_m_seq[in_m_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
             EW16: for (int i = 0; i < ViotaParallelism; i++) begin
               be_viota_seq_d[out_valid_cnt_q[idx_width(NrLanes*DataWidth/16/ViotaParallelism)-1:0] * ViotaParallelism * 2 + 2*i +: 2] =
-                {2{vinsn_issue.vm}} | {2{masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
+                {2{vinsn_issue.vm}} | {2{masku_operand_m_seq[in_m_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
             EW32: for (int i = 0; i < ViotaParallelism; i++) begin
               be_viota_seq_d[out_valid_cnt_q[idx_width(NrLanes*DataWidth/32/ViotaParallelism)-1:0] * ViotaParallelism * 4 + 4*i +: 4] =
-                {4{vinsn_issue.vm}} | {4{masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
+                {4{vinsn_issue.vm}} | {4{masku_operand_m_seq[in_m_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
             default: for (int i = 0; i < ViotaParallelism; i++) begin // EW64
               be_viota_seq_d[out_valid_cnt_q[idx_width(NrLanes*DataWidth/64/ViotaParallelism)-1:0] * ViotaParallelism * 8 + 8*i +: 8] =
-                {8{vinsn_issue.vm}} | {8{masku_operand_m_seq[out_valid_cnt_q[idx_width(NrLanes*DataWidth/8/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
+                {8{vinsn_issue.vm}} | {8{masku_operand_m_seq[in_m_ready_cnt_q[idx_width(NrLanes*DataWidth/ViotaParallelism)-1:0] * ViotaParallelism + i]}};
             end
           endcase
         end
@@ -689,7 +689,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Shuffle the VIOTA,VID BE
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte  = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
-      be_viota_shuf[shuffle_byte] = be_viota_seq_q[b];
+      be_viota_shuf[shuffle_byte] = be_viota_seq_d[b];
     end
 
     // alu_result propagation mux
@@ -920,7 +920,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         wdata: result_queue_q[result_queue_write_pnt_q][lane].wdata, // Retain the last-cycle's data
 		// VIOTA, VID generate a non-mask vector and should comply with undisturbed policy
         // This means that we can use the byte-enable signal
-        be   : vinsn_issue.op inside {[VIOTA:VID]} ? be(elm_per_lane + additional_elm[lane], vinsn_issue.vtype.vsew) | be_viota_shuf : '1,
+        be   : vinsn_issue.op inside {[VIOTA:VID]} ? be(elm_per_lane + additional_elm[lane], vinsn_issue.vtype.vsew) & be_viota_shuf[lane*StrbWidth +: StrbWidth] : '1,
         addr : vaddr(vinsn_issue.vd, NrLanes, VLEN) + iteration_cnt_q,
         id   : vinsn_issue.id
       };
@@ -941,7 +941,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
           result_queue_background_data[lane] = (out_valid_cnt_q != '0)
                                              ? result_queue_q[result_queue_write_pnt_q][lane].wdata
-                                             : masku_operand_vd[lane];
+                                             : vinsn_issue.op inside {[VIOTA:VID]} ? '1 : masku_operand_vd[lane];
         end
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
           // The mask vector writes at 1 (tail-agnostic ok value) both the background body
@@ -1007,8 +1007,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
         // Have we finished insn execution? Clear MASKU ALU state
         if (issue_cnt_d == '0) begin
+          be_viota_seq_d = '1; // Default: write
           viota_acc_d    = '0;
-          be_viota_seq_d = '0;
           found_one_d    = '0;
         end
       end
@@ -1291,7 +1291,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       out_valid_threshold_q  <= '0;
       viota_acc_q            <= '0;
       found_one_q            <= '0;
-      be_viota_seq_q         <= '0;
+      be_viota_seq_q         <= '1; // Default: write
     end else begin
       vinsn_running_q        <= vinsn_running_d;
       read_cnt_q             <= read_cnt_d;

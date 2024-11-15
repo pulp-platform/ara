@@ -445,10 +445,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     prevent_commit = 1'b0;
 
     // How many elements are we processing this cycle?
-    element_cnt_buf_issue = (unsigned'(EW64) - unsigned'(vinsn_issue_q.vtype.vsew));
+    element_cnt_buf_issue = 1 << (unsigned'(EW64) - unsigned'(vinsn_issue_q.vtype.vsew));
     element_cnt_issue = vinsn_issue_q.op inside {[VMSBF:VMXNOR]} ? ELEN : {2'b0, element_cnt_buf_issue};
 
-    element_cnt_buf_commit = (unsigned'(EW64) - unsigned'(vinsn_commit.vtype.vsew));
+    element_cnt_buf_commit = 1 << (unsigned'(EW64) - unsigned'(vinsn_commit.vtype.vsew));
     element_cnt_commit = vinsn_commit.op inside {[VMSBF:VMXNOR]} ? ELEN : {2'b0, element_cnt_buf_commit};
 
     ////////////////////////////////////////
