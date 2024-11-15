@@ -221,8 +221,8 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   always_comb begin
     alu_result_compressed_o = '1;
     for (int b = 0; b < ELENB * NrLanes; b++) begin
-      if ((b % (1 << vinsn_issue_i.vtype.vsew)) == '0) begin
-        automatic int src_byte        = shuffle_index(b, NrLanes, vinsn_issue_i.vtype.vsew);
+      if ((b % (1 << vinsn_issue_i.eew_vs2)) == '0) begin
+        automatic int src_byte        = shuffle_index(b, NrLanes, vinsn_issue_i.eew_vs2);
         automatic int src_byte_lane   = src_byte[idx_width(ELENB) +: idx_width(NrLanes)];
         automatic int src_byte_offset = src_byte[idx_width(ELENB)-1:0];
 
