@@ -1299,9 +1299,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         // So, avoid reshuffling
                         ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                       end
-                      5'b10000: ara_req_d.op = ara_pkg::VIOTA;
+                      5'b10000: begin
+                        ara_req_d.op = ara_pkg::VIOTA;
+                        ara_req_d.use_vd_op  = 1'b0;
+                      end
                       5'b10001: begin
                         ara_req_d.op = ara_pkg::VID;
+                        ara_req_d.use_vd_op  = 1'b0;
                         ara_req_d.use_vs2 = 1'b0;
                       end
                     endcase
