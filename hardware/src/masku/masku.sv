@@ -959,6 +959,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Bump MASKU ALU state
         found_one_d = found_one;
         viota_acc_d = viota_acc;
+        vrf_pnt_d   = vrf_pnt_q + delta_elm_q;
 
         // Increment the input, input-mask, and output slice counters
         in_ready_cnt_en   = 1'b1;
@@ -1038,8 +1039,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Account for the written results
       // VIOTA and VID do not write bits!
       processing_cnt_d = vinsn_issue.op inside {[VIOTA:VID]} ? processing_cnt_q - ((NrLanes * DataWidth / 8) >> vinsn_issue.vtype.vsew) : processing_cnt_q - NrLanes * DataWidth;
-
-      vrf_pnt_d = vrf_pnt_q + (NrLanes << (int'(EW64) - vinsn_issue.eew_vs2));
     end
 
     // The scalar result has been sent to and acknowledged by the dispatcher
@@ -1119,6 +1118,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     if (vinsn_commit_valid && commit_cnt_d == '0) begin
       // Clear the iteration counter
       out_valid_cnt_clr = 1'b1;
+
+      // Clear the vrf pointer for comparisons
+      vrf_pnt_d = '0;
 
       // Clear the iteration counter
       iteration_cnt_clr = 1'b1;
@@ -1204,16 +1206,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
             in_ready_threshold_d   = 1;
-            in_m_ready_threshold_d = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
-            out_valid_threshold_d  = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
+            in_m_ready_threshold_d = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
+            out_valid_threshold_d  = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
           end
           [VMADC:VMSBC]: begin
             // Mask to mask - encoded
             delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
             in_ready_threshold_d   = 1;
-            in_m_ready_threshold_d = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
-            out_valid_threshold_d  = DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0])-1;
+            in_m_ready_threshold_d = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
+            out_valid_threshold_d  = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
           end
           [VMANDNOT:VMXNOR]: begin
             // Mask to mask
