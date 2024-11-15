@@ -676,7 +676,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         // VCPOP, VFIRST: mask the current slice and feed the popc or lzc unit
         [VCPOP:VFIRST] : begin
-          vcpop_operand = (!vinsn_issue.vm) ? masku_operand_vd_seq & masku_operand_m_seq : masku_operand_vd_seq;
+          vcpop_operand = (!vinsn_issue.vm) ? masku_operand_alu_seq & masku_operand_m_seq : masku_operand_alu_seq;
         end
         default:;
       endcase
@@ -1123,7 +1123,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Clear the iteration counter
       iteration_cnt_clr = 1'b1;
 
-      if(&result_final_gnt_d) begin
+      if(&result_final_gnt_d || vd_scalar(vinsn_commit.op)) begin
         // Mark the vector instruction as being done
         pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
