@@ -21,9 +21,9 @@ void TEST_CASE1(void) {
                    : [A] "r"(scalar), "r"(OUP));
   XCMP(1, OUP[0], 2);
 
-  VSET(16, e32, m1);
-  VLOAD_32(v8, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F);
-  VLOAD_32(v0, 0xffffffffffffffff, 0xfffffffffffffff7, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xefffffffffffffff);
+  VSET(32, e32, m1);
+  VLOAD_32(v8, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  VLOAD_32(v0, 0xffffffffffffffff, 0xfffffffffffffff7, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, 0xefffffffffffffff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   VSET(1024, e8, m8);
   asm volatile("vpopc.m %[A], v8, v0.t \n"
                    "sw %[A], (%1) \n"
