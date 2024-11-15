@@ -1205,7 +1205,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             // Mask to mask - encoded
             delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
-            in_ready_threshold_d   = 1;
+            in_ready_threshold_d   = 0;
             in_m_ready_threshold_d = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
             out_valid_threshold_d  = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
           end
@@ -1213,7 +1213,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             // Mask to mask - encoded
             delta_elm_d = NrLanes << (EW64 - pe_req_i.eew_vs2[1:0]);
 
-            in_ready_threshold_d   = 1;
+            in_ready_threshold_d   = 0;
             in_m_ready_threshold_d = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
             out_valid_threshold_d  = (DataWidth >> (EW64 - pe_req_i.eew_vs2[1:0]))-1;
           end

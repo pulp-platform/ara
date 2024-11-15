@@ -637,8 +637,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b011000: begin
                     ara_req_d.op         = ara_pkg::VMSEQ;
-                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs2];
-                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs2];
+                    ara_req_d.use_vd_op  = 1'b1;
+                    ara_req_d.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req_d.eew_vs2    = csr_vtype_q.vsew;
                     ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
                     ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
@@ -864,9 +865,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
                   end
                   6'b011000: begin
-                    ara_req_d.op        = ara_pkg::VMSEQ;
-                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs2];
-                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs2];
+                    ara_req_d.op         = ara_pkg::VMSEQ;
+                    ara_req_d.use_vd_op  = 1'b1;
+                    ara_req_d.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req_d.eew_vs2    = csr_vtype_q.vsew;
                     ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
                     ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
@@ -1038,9 +1040,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
                   end
                   6'b011000: begin
-                    ara_req_d.op        = ara_pkg::VMSEQ;
-                    ara_req_d.eew_vs1    = eew_q[ara_req_d.vs2];
-                    ara_req_d.eew_vs2    = eew_q[ara_req_d.vs2];
+                    ara_req_d.op         = ara_pkg::VMSEQ;
+                    ara_req_d.use_vd_op  = 1'b1;
+                    ara_req_d.eew_vs1    = csr_vtype_q.vsew;
+                    ara_req_d.eew_vs2    = csr_vtype_q.vsew;
                     ara_req_d.eew_vd_op  = eew_q[ara_req_d.vd];
                     ara_req_d.vtype.vsew = eew_q[ara_req_d.vd];
                   end
