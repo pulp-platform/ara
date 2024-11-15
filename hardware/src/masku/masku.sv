@@ -221,7 +221,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic                          found_one, found_one_d, found_one_q;
 
   // How many elements we are processing per cycle
-  logic [idx_width(NrLanes*DataWidth)-1:0] delta_elm_d, delta_elm_q;
+  logic [idx_width(NrLanes*DataWidth):0] delta_elm_d, delta_elm_q;
 
   // MASKU Alu: is a VRF word result or a scalar result fully valid?
   logic out_vrf_word_valid, out_scalar_valid;
@@ -589,6 +589,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Mask logical: pass through the result already computed in the ALU
 		// This operation is never masked
 		// This operation always writes to multiple of VRF words, and it does not need vd
+		// This operation can overwrite the destination register without constraints on tail elements
         [VMANDNOT:VMXNOR]: alu_result_vm_m = masku_operand_alu_seq;
         // Comparisons: mask out the masked out bits of this pre-computed slice
         [VMFEQ:VMSGT]: alu_result = alu_result_compressed
@@ -694,7 +695,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // alu_result propagation mux
-    if (vinsn_issue.op inside {[VMSBF:VID]})
+    if (vinsn_issue.op inside {[VMSBF:VMXNOR]})
       alu_result = alu_result_vm_shuf;
 
   /////////////////
