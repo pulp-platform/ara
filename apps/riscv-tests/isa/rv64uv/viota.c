@@ -10,7 +10,7 @@
 void TEST_CASE1() {
   VSET(1, e8, m1);
   VLOAD_8(v1, 0b10001001);
-  VSET(16, e8, m1);
+  VSET(8, e8, m1);
   asm volatile("viota.m v2, v1");
   VCMP_U8(1, v2, 0, 1, 1, 1, 2, 2, 2, 2);
 
