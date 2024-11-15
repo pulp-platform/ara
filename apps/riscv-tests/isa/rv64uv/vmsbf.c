@@ -52,7 +52,7 @@ void TEST_CASE3() {
 
   VSET(16, e64, m2);
   VLOAD_64(v4, 0, 0, 0, 0, 0, 1, 0, 0, 1685, 0, 0, 1, 0, 0, 0, 0);
-  VSET(1024, e64, m2);
+  VSET(1024, e8, m2);
   asm volatile("vmsbf.m v2, v4");
   VSET(32, e32, m2);
   VCMP_U32(7, v2, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -112,9 +112,9 @@ void TEST_CASE4() {
   VLOAD_8(v3, 8, 0, 0, 0, 0, 0, 0, 0);
   VLOAD_8(v0, 5, 0, 0, 0, 0, 0, 0, 0);
   VCLEAR(v2);
-  VSET(2, e8, m1);
+  VSET(16, e8, m1);
   asm volatile("vmsbf.m v2, v3, v0.t");
-  VCMP_U8(14, v2, 1, 0);
+  VCMP_U8(14, v2, 5, 0);
 }
 
 void TEST_CASE5() {
