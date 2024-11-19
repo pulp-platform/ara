@@ -107,7 +107,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   pe_req_t vinsn_issue;
 
   logic  [NrLanes*DataWidth-1:0] bit_enable_mask;
-  logic  [NrLanes*DataWidth-1:0] alu_result_compressed;
+  logic  [NrLanes*DataWidth-1:0] alu_result_compressed_seq;
 
   // Performs all shuffling and deshuffling of mask operands (including masks for mask instructions)
   // Furthermore, it buffers certain operands that would create long critical paths
@@ -146,7 +146,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .masku_operand_m_seq_valid_o   (                             ),
     .masku_operand_m_seq_ready_i   (                          '0 ),
     .bit_enable_mask_o             (             bit_enable_mask ),
-    .alu_result_compressed_o       (       alu_result_compressed )
+    .alu_result_compressed_seq_o   (   alu_result_compressed_seq )
   );
 
   // Local Parameter for mask logical instructions
@@ -592,10 +592,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 		// This operation can overwrite the destination register without constraints on tail elements
         [VMANDNOT:VMXNOR]: alu_result_vm_m = masku_operand_alu_seq;
         // Comparisons: mask out the masked out bits of this pre-computed slice
-        [VMFEQ:VMSGT]: alu_result = alu_result_compressed
-                                  & (masku_operand_m | {NrLanes*DataWidth{vinsn_issue.vm}});
+        [VMFEQ:VMSGT]: alu_result_vm_m = alu_result_compressed_seq
+                                  | ~(masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}});
 		// Add/sub-with-carry/borrow: the masks are all 1 since these operations are NOT masked
-        [VMADC:VMSBC]: alu_result = alu_result_compressed;
+        [VMADC:VMSBC]: alu_result_vm_m = alu_result_compressed_seq;
         // VMSBF, VMSOF, VMSIF: compute a slice of the output and mask out the masked out bits
         [VMSBF:VMSIF] : begin
           vmsbf_buffer[0] = ~(masku_operand_alu_seq_m[in_ready_cnt_q[idx_width(NrLanes*DataWidth/VmsxfParallelism)-1:0] * VmsxfParallelism] | found_one_q);
@@ -617,7 +617,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           endcase
 
           // Mask the result
-          alu_result_vm_m = (!vinsn_issue.vm) ? alu_result_vm & masku_operand_m_seq : alu_result_vm;
+          alu_result_vm_m = (!vinsn_issue.vm) ? alu_result_vm | ~masku_operand_m_seq : alu_result_vm;
         end
         // VIOTA, VID: compute a slice of the output and mask out the masked elements
 		// VID re-uses the VIOTA datapath
@@ -682,21 +682,20 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       endcase
     end
 
-    // Shuffle result for masked instructions
+    // Shuffle the sequential result with vtype.vsew encoding
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte              = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
       alu_result_vm_shuf[8*shuffle_byte +: 8] = alu_result_vm_m[8*b +: 8];
     end
 
-    // Shuffle the VIOTA,VID BE
+    // Shuffle the VIOTA, VID byte enable signal
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte  = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
       be_viota_shuf[shuffle_byte] = be_viota_seq_d[b];
     end
 
-    // alu_result propagation mux
-    if (vinsn_issue.op inside {[VMSBF:VMXNOR]})
-      alu_result = alu_result_vm_shuf;
+    // Simplify layout handling
+    alu_result = alu_result_vm_shuf;
 
   /////////////////
   //  Mask unit  //
