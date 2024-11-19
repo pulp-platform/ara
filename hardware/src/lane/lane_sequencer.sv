@@ -760,7 +760,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // extra operand regardless of whether it is valid in this lane or not.
             if ((operand_request[MaskB].vl * NrLanes) != pe_req.vl)
               operand_request[MaskB].vl += 1;
-          end else begin // Mask logical, VMSBF, VMSIF, VMSOF, VCPOP, VFIRST
+          end else begin // Mask logical, comparisons, VMSBF, VMSIF, VMSOF
             // Mask layout
             operand_request[MaskB].eew = EW64;
             operand_request[MaskB].vl  = (pe_req.vl / NrLanes / ELEN);

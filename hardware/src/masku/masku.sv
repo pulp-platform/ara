@@ -698,13 +698,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Simplify layout handling
     alu_result = alu_result_vm_shuf;
 
-    // Prepare result queue mask; VIOTA,VID use the BE instead
-    for (int lane = 0; lane < NrLanes; lane++)
-      result_queue_mask_seq[lane] = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m_seq[lane*DataWidth +: DataWidth] | {DataWidth{vinsn_issue.vm}};
-
-    // Shuffle the background information with vtype.vsew encoding
-    for (int lane = 0; lane < NrLanes; lane++)
-      background_data_init_seq[lane*DataWidth +: DataWidth] = masku_operand_vd_seq[lane*DataWidth +: DataWidth] | result_queue_mask_seq[lane];
+    // Prepare the background data with vtype.vsew encoding
+    result_queue_mask_seq = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}};
+    background_data_init_seq = masku_operand_vd_seq | result_queue_mask_seq;
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte                     = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
       background_data_init_shuf[8*shuffle_byte +: 8] = background_data_init_seq[8*b +: 8];
@@ -953,7 +949,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
           result_queue_background_data[lane] = (out_valid_cnt_q != '0)
                                              ? result_queue_q[result_queue_write_pnt_q][lane].wdata
-                                             : vinsn_issue.op inside {[VIOTA:VID]} ? '1 : background_data_init_shuf;
+                                             : vinsn_issue.op inside {[VIOTA:VID]} ? '1 : background_data_init_shuf[lane*DataWidth +: DataWidth];
         end
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin
           // The alu_result has all the bits at 1 except for the portion of bits to write.

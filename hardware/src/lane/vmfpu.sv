@@ -1245,21 +1245,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
               (vinsn_processing_q.op == VMFNE) ?
                 ~vfpu_processed_result[16*b] :
                 vfpu_processed_result[16*b];
-            for (int b = 0; b < 4; b++) vfpu_processed_result[16*b+1] = vfpu_mask[2*b];
           end
           EW32: begin
             for (int b = 0; b < 2; b++) vfpu_processed_result[32*b] =
               (vinsn_processing_q.op == VMFNE) ?
                 ~vfpu_processed_result[32*b] :
                 vfpu_processed_result[32*b];
-            for (int b = 0; b < 2; b++) vfpu_processed_result[32*b+1] = vfpu_mask[4*b];
           end
           EW64: begin
             for (int b = 0; b < 1; b++) vfpu_processed_result[b] =
               (vinsn_processing_q.op == VMFNE) ?
                 ~vfpu_processed_result[b] :
                 vfpu_processed_result[b];
-            for (int b = 0; b < 1; b++) vfpu_processed_result[b+1] = vfpu_mask[8*b];
           end
         endcase
       end
@@ -2180,7 +2177,15 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     if (!vinsn_queue_full && vfu_operation_valid_i &&
       (vfu_operation_i.vfu == VFU_MFpu || vfu_operation_i.op inside {[VMFEQ:VMFGE]})) begin
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt]    = vfu_operation_i;
+      // Masks are handled in the MASKU directly for comparisons
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.op inside {[VMFEQ:VMFGE]}
+                                                       ? 1'b1
+                                                       : vfu_operation_i.vm;
+      // During comparisons, vd_op is for the masku, not for the VMFPU
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].use_vd_op = vfu_operation_i.op inside {[VMFEQ:VMFGE]}
+                                                              ? 1'b0
+                                                              : vfu_operation_i.use_vd_op;
 
       // Initialize counters
       if (vinsn_queue_d.issue_cnt == '0 && !prevent_commit) begin
