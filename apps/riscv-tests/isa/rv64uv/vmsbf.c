@@ -125,6 +125,14 @@ void TEST_CASE5() {
   asm volatile("vmsbf.m v2, v3, v0.t");
   VSET(2, e8, m1);
   VCMP_U8(15, v2, 3, 0);
+
+  VSET(16, e8, m1);
+  VLOAD_8(v3, 8, 0, 0, 0, 0, 0, 0, 0);
+  VLOAD_8(v0, 11, 0, 0, 0, 0, 0, 0, 0);
+  VCLEAR_AT_ONE(v2);
+  asm volatile("vmsbf.m v2, v3, v0.t");
+  VSET(2, e8, m1);
+  VCMP_U8(16, v2, 0xf7, 0xff);
 }
 
 int main(void) {
