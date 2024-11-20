@@ -45,7 +45,7 @@ void TEST_CASE2(void) {
   VLOAD_32(v2, 0xFFFFFFF7FFFFFFFF, 0x88, 0x1, 0x1F);
   volatile uint32_t scalar = 1337;
   volatile uint32_t OUP[] = {0, 0, 0, 0};
-  VSET(128, e32, m1);
+  VSET(128, e32, m2);
   asm volatile("vpopc.m %[A], v2 \n"
                "sw %[A], (%1) \n"
                :
