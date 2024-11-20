@@ -791,7 +791,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // Do not wait for masks if, during a reduction, this lane is just a pass-through
       // The only valid instructions here with vl == '0 are reductions
       // Instructions that execute in the mask unit will process the mask there directly
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.op inside {[VMSEQ:VMXNOR]}
+      // VMADC/VMSBC requires mask bits in the ALU
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.op inside {[VMSEQ:VMSGT],[VMANDNOT:VMXNOR]}
                                                        ? 1'b1
                                                        : vfu_operation_i.vm | (vfu_operation_i.vl == '0);
 

@@ -618,7 +618,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           endcase
 
           // Mask the result
-          alu_result_vm_m = (!vinsn_issue.vm) ? alu_result_vm | ~masku_operand_m_seq : alu_result_vm;
+          alu_result_vm_m = (!vinsn_issue.vm) || (vinsn_issue.op inside {[VMADC:VMSBC]}) ? alu_result_vm | ~masku_operand_m_seq : alu_result_vm;
         end
         // VIOTA, VID: compute a slice of the output and mask out the masked elements
 		// VID re-uses the VIOTA datapath
@@ -699,7 +699,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     alu_result = alu_result_vm_shuf;
 
     // Prepare the background data with vtype.vsew encoding
-    result_queue_mask_seq = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}};
+    result_queue_mask_seq = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}} | {NrLanes*DataWidth{vinsn_issue.op inside {[VMADC:VMSBC]}}};
     background_data_init_seq = masku_operand_vd_seq | result_queue_mask_seq;
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte                     = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
@@ -785,6 +785,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     //  Mask Operands  //
     /////////////////////
 
+    // Instructions that run in other units, but need mask strobes for predicated execution
+
     // Is there space in the result queue?
     if (!mask_queue_full) begin
       // Copy data from the mask operands into the mask queue
@@ -822,10 +824,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // Is there an instruction ready to be issued?
-      if (vinsn_issue_valid && !(vd_scalar(vinsn_issue.op))) begin
+      if (vinsn_issue_valid && ((vinsn_issue.vfu != VFU_MaskUnit) || (vinsn_issue.op inside {[VMADC:VMSBC]}))) begin
         // Is there place in the mask queue to write the mask operands?
         // Did we receive the mask bits on the MaskM channel?
-        if (!vinsn_issue.vm && &masku_operand_m_valid && !(vinsn_issue.op inside {[VMFEQ:VMXNOR]})) begin
+        if (!vinsn_issue.vm && &masku_operand_m_valid) begin
           // Account for the used operands
           mask_pnt_d += NrLanes * (1 << (int'(EW64) - vinsn_issue.vtype.vsew));
 
@@ -850,7 +852,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             mask_queue_valid_d[mask_queue_write_pnt_q] = (1 << read_cnt_q) - 1;
 
           // Consumed all valid bytes from the lane operands
-          if (mask_pnt_d == NrLanes*64 || read_cnt_d == '0) begin
+          if (mask_pnt_d == NrLanes*DataWidth || read_cnt_d == '0) begin
             // Request another beat
             masku_operand_m_ready = '1;
             // Reset the pointer
@@ -871,7 +873,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // The VLDU and the VSTU acknowledge all the operands at once.
       // Only accept the acknowledgement from the lanes if the current instruction is executing there.
       // Deactivate the request, but do not bump the pointers for now.
-      if ((lane_mask_ready_i[lane] && mask_valid_o[lane] && vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu, VFU_MaskUnit}) ||
+      if ((lane_mask_ready_i[lane] && mask_valid_o[lane] && (vinsn_issue.vfu inside {VFU_Alu, VFU_MFpu} || vinsn_issue.op inside {[VMADC:VMSBC]})) ||
            vldu_mask_ready_i || vstu_mask_ready_i || sldu_mask_ready_i) begin
         mask_queue_valid_d[mask_queue_read_pnt_q][lane] = 1'b0;
         mask_queue_d[mask_queue_read_pnt_q][lane]       = '0;
@@ -910,6 +912,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // MASKU ALU Control //
     ///////////////////////
 
+    // Instructions that natively run in the MASKU
+
     // The main data packets come from the lanes' ALUs.
     // Also, mask- and tail-undisturbed policies are implemented by fetching the destination register,
     // which is the default value of the result queue.
@@ -941,7 +945,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Compute one slice if we can write and the necessary inputs are valid
       if (!result_queue_full && (&masku_operand_alu_valid || vinsn_issue.op == VID)
                              && (&masku_operand_vd_valid  || !vinsn_issue.use_vd_op)
-                             && (&masku_operand_m_valid   || vinsn_issue.vm)) begin
+                             && (&masku_operand_m_valid   || vinsn_issue.vm || vinsn_issue.op inside {[VMADC:VMSBC]})) begin
 
         // Write the result queue on the background data - either vd or the previous result
         // The mask vector writes at 1 (tail-agnostic ok value) both the background body
@@ -984,7 +988,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
         end
         // Mask is always accessed at bit level
-        if ((in_m_ready_cnt_q == in_m_ready_threshold_q) || (issue_cnt_d == '0)) begin
+        // VMADC, VMSBC handle masks in the mask queue
+        if ((in_m_ready_cnt_q == in_m_ready_threshold_q) || (issue_cnt_d == '0) && !(vinsn_issue.op inside {[VMADC:VMSBC]})) begin
           in_m_ready_cnt_clr = 1'b1;
           if (!vinsn_issue.vm) begin
             masku_operand_m_ready = '1;
@@ -1057,7 +1062,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Finished issuing results
-    if (vinsn_issue_valid && issue_cnt_d == '0) begin
+    if (vinsn_issue_valid && (
+          ( (vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit) && issue_cnt_d == '0) ||
+          (!(vinsn_issue.vm || vinsn_issue.vfu == VFU_MaskUnit) && read_cnt_d  == '0))) begin
       // The instruction finished its issue phase
       vinsn_queue_d.issue_cnt -= 1;
     end
@@ -1129,7 +1136,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Clear the iteration counter
       iteration_cnt_clr = 1'b1;
 
-      if(&result_final_gnt_d || vd_scalar(vinsn_commit.op)) begin
+      if(&result_final_gnt_d || vd_scalar(vinsn_commit.op) || vinsn_commit.vfu != VFU_MaskUnit) begin
         // Mark the vector instruction as being done
         pe_resp.vinsn_done[vinsn_commit.id] = 1'b1;
 
