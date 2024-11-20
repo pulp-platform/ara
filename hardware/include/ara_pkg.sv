@@ -151,6 +151,8 @@ package ara_pkg;
     VCPOP, VFIRST,
     // Mask operations
     VMANDNOT, VMAND, VMOR, VMXOR, VMORNOT, VMNAND, VMNOR, VMXNOR,
+    // Complex permutations
+    VRGATHER, VRGATHEREI16, VCOMPRESS,
     // Scalar moves from VRF
     VMVXS, VFMVFS,
     // Slide instructions
@@ -961,10 +963,28 @@ package ara_pkg;
     logic is_exception;
   } addrgen_axi_req_t;
 
+  //////////////////////////
+  // VRGATHER / VCOMPRESS //
+  //////////////////////////
 
-    ////////////////////////
-    // VFREC7 & VFRSQRT7 //
-    ///////////////////////
+  // Buffer more elements in MaskB opqueue
+  // This should be a power of 2
+  localparam VrgatherOpQueueBufDepth = 2;
+
+  // Indices are 16-bit at most because of RISC-V V VLEN limitation at 64Kibit
+  typedef logic [$clog2(rvv_pkg::RISCV_MAX_VLEN)-1:0] max_vlen_t;
+
+  // During VRGATHER/VCOMPRESS, the MASKU asks for operands to the lanes
+  typedef struct packed {
+    max_vlen_t idx;
+    rvv_pkg::vew_e eew;
+    logic [4:0] vs;
+    logic is_last_req;
+  } vrgat_req_t;
+
+  ////////////////////////
+  // VFREC7 & VFRSQRT7 //
+  ///////////////////////
 
   localparam int unsigned LUT_BITS = 7;
 

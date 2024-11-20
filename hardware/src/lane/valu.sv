@@ -400,6 +400,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   // How many elements are issued/committed
   logic [3:0] element_cnt_buf_issue, element_cnt_buf_commit;
+  logic [1:0] issue_effective_eew, commit_effective_eew;
   logic [6:0] element_cnt_issue;
   logic [6:0] element_cnt_commit;
 
@@ -445,11 +446,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     prevent_commit = 1'b0;
 
     // How many elements are we processing this cycle?
-    element_cnt_buf_issue = 1 << (unsigned'(EW64) - unsigned'(vinsn_issue_q.vtype.vsew));
-    element_cnt_issue = vinsn_issue_q.op inside {[VMSBF:VMXNOR]} ? ELEN : {2'b0, element_cnt_buf_issue};
+    issue_effective_eew = vinsn_issue_q.op == VRGATHEREI16 ? 1 : unsigned'(vinsn_issue_q.vtype.vsew[1:0]);
+    element_cnt_buf_issue = 1 << (unsigned'(EW64) - issue_effective_eew);
+    element_cnt_issue = vinsn_issue_q.op inside {[VMSBF:VMXNOR], VCOMPRESS} ? ELEN : {2'b0, element_cnt_buf_issue};
 
-    element_cnt_buf_commit = 1 << (unsigned'(EW64) - unsigned'(vinsn_commit.vtype.vsew));
-    element_cnt_commit = vinsn_commit.op inside {[VMSBF:VMXNOR]} ? ELEN : {2'b0, element_cnt_buf_commit};
+    commit_effective_eew = vinsn_commit.op == VRGATHEREI16 ? 1 : unsigned'(vinsn_commit.vtype.vsew[1:0]);
+    element_cnt_buf_commit = 1 << (unsigned'(EW64) - commit_effective_eew);
+    element_cnt_commit = vinsn_commit.op inside {[VMSBF:VMXNOR], VCOMPRESS} ? ELEN : {2'b0, element_cnt_buf_commit};
 
     ////////////////////////////////////////
     //  Write data into the result queue  //
@@ -786,13 +789,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     //////////////////////////////
 
     if (!vinsn_queue_full && vfu_operation_valid_i &&
-      (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VMXNOR]})) begin
+      (vfu_operation_i.vfu == VFU_Alu || vfu_operation_i.op inside {[VMSEQ:VCOMPRESS]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = vfu_operation_i;
       // Do not wait for masks if, during a reduction, this lane is just a pass-through
       // The only valid instructions here with vl == '0 are reductions
       // Instructions that execute in the mask unit will process the mask there directly
       // VMADC/VMSBC requires mask bits in the ALU
-      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.op inside {[VMSEQ:VMXNOR]} && !(vfu_operation_i.op inside {[VMADC:VMSBC]})
+      vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vm = vfu_operation_i.op inside {[VMSEQ:VCOMPRESS]} && !(vfu_operation_i.op inside {[VMADC:VMSBC]})
                                                        ? 1'b1
                                                        : vfu_operation_i.vm | (vfu_operation_i.vl == '0);
 

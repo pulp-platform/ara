@@ -135,6 +135,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         // Mask operands pass-through
         VCPOP, VFIRST, VMSBF, VMSOF, VMSIF, VIOTA: res = operand_b_i;
 
+        // Mask operands pass-through
+        VRGATHER, VRGATHEREI16, VCOMPRESS: res = operand_a_i;
+
         // Arithmetic instructions
         VSADDU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
