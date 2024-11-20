@@ -14,6 +14,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     parameter  int           unsigned NrSlaves            = 1,
     parameter  int           unsigned NrLanes             = 0,
     parameter  int           unsigned VLEN                = 0,
+    parameter  bit                    IsVrgatherOpqueue   = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport          = FPUSupportHalfSingleDouble,
     // Supported conversions
@@ -37,6 +38,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Interface with the Operand Requester
     input  operand_queue_cmd_t                operand_queue_cmd_i,
     input  logic                              operand_queue_cmd_valid_i,
+    // Interface with the Lane Sequencer
+    output logic                              mask_b_cmd_pop_o,
     // Interface with the Vector Register File
     input  elen_t                             operand_i,
     input  logic                              operand_valid_i,
@@ -54,7 +57,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   //////////////////////
 
   operand_queue_cmd_t cmd;
-  logic               cmd_pop;
+  logic               cmd_pop, cmd_pop_q;
 
   fifo_v3 #(
     .DEPTH(CmdBufDepth        ),
@@ -72,6 +75,13 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     .pop_i     (cmd_pop                  ),
     .usage_o   (/* Unused */             )
   );
+
+  // If this is the MaskB opqueue, propagate the
+  // pop information for the cmd buffer
+  if (IsVrgatherOpqueue)
+    assign mask_b_cmd_pop_o = cmd_pop_q;
+  else
+    assign mask_b_cmd_pop_o = 1'b0;
 
   //////////////
   //  Buffer  //
@@ -123,8 +133,10 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_ibuf_usage_ff
     if (!rst_ni) begin
       ibuf_usage_q <= '0;
+      cmd_pop_q    <= 1'b0;
     end else begin
       ibuf_usage_q <= ibuf_usage_d;
+      cmd_pop_q    <= cmd_pop;
     end
   end
 

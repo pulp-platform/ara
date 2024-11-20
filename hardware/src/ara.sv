@@ -339,6 +339,9 @@ module ara import ara_pkg::*; #(
   strb_t     [NrLanes-1:0]                     masku_result_be;
   logic      [NrLanes-1:0]                     masku_result_gnt;
   logic      [NrLanes-1:0]                     masku_result_final_gnt;
+  logic      [NrLanes-1:0]                     masku_vrgat_req_valid;
+  logic      [NrLanes-1:0]                     masku_vrgat_req_ready;
+  vrgat_req_t                                  masku_vrgat_req;
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
@@ -410,6 +413,9 @@ module ara import ara_pkg::*; #(
       .masku_result_be_i               (masku_result_be[lane]               ),
       .masku_result_gnt_o              (masku_result_gnt[lane]              ),
       .masku_result_final_gnt_o        (masku_result_final_gnt[lane]        ),
+      .masku_vrgat_req_valid_i         (masku_vrgat_req_valid[lane]         ),
+      .masku_vrgat_req_ready_o         (masku_vrgat_req_ready[lane]         ),
+      .masku_vrgat_req_i               (masku_vrgat_req                     ),
       .mask_i                          (mask[lane]                          ),
       .mask_valid_i                    (mask_valid[lane] & mask_valid_lane  ),
       .mask_ready_o                    (lane_mask_ready[lane]               )
@@ -603,6 +609,9 @@ module ara import ara_pkg::*; #(
     .masku_result_be_o       (masku_result_be                 ),
     .masku_result_gnt_i      (masku_result_gnt                ),
     .masku_result_final_gnt_i(masku_result_final_gnt          ),
+    .masku_vrgat_req_valid_o (masku_vrgat_req_valid           ),
+    .masku_vrgat_req_ready_i (masku_vrgat_req_ready           ),
+    .masku_vrgat_req_o       (masku_vrgat_req                 ),
     // Interface with the VFUs
     .mask_o                  (mask                            ),
     .mask_valid_o            (mask_valid                      ),

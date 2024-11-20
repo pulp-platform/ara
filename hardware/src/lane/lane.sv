@@ -97,6 +97,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                          masku_result_be_i,
     output logic                                           masku_result_gnt_o,
     output logic                                           masku_result_final_gnt_o,
+    input  logic                                           masku_vrgat_req_valid_i,
+    output logic                                           masku_vrgat_req_ready_o,
+    input  vrgat_req_t                                     masku_vrgat_req_i,
     // Interface between the Mask unit and the VFUs
     input  strb_t                                          mask_i,
     input  logic                                           mask_valid_i,
@@ -214,6 +217,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                 [NrVInsn-1:0]         alu_vinsn_done;
   logic                                       mfpu_ready;
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
+  // Interface with the MaskB operand queue (VRGATHER/VCOMPRESS)
+  logic                                       mask_b_cmd_pop;
 
   // Additional signals to please Verilator's hierarchical verilation
   pe_req_t  pe_req;
@@ -243,13 +248,19 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_request_ready_i(operand_request_ready),
     .alu_vinsn_done_o       (alu_vinsn_done_o     ),
     .mfpu_vinsn_done_o      (mfpu_vinsn_done_o    ),
+    // Interface with the Operand Queue
+    .mask_b_cmd_pop_i       (mask_b_cmd_pop       ),
     // Interface with the VFUs
     .vfu_operation_o        (vfu_operation        ),
     .vfu_operation_valid_o  (vfu_operation_valid  ),
     .alu_ready_i            (alu_ready            ),
     .alu_vinsn_done_i       (alu_vinsn_done       ),
     .mfpu_ready_i           (mfpu_ready           ),
-    .mfpu_vinsn_done_i      (mfpu_vinsn_done      )
+    .mfpu_vinsn_done_i      (mfpu_vinsn_done      ),
+    // From the MASKU - for VRGATHER/VCOMPRESS
+    .masku_vrgat_req_valid_i(masku_vrgat_req_valid_i ),
+    .masku_vrgat_req_ready_o(masku_vrgat_req_ready_o ),
+    .masku_vrgat_req_i      (masku_vrgat_req_i       )
   );
 
   /////////////////////////
@@ -430,6 +441,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_queue_ready_o            (operand_queue_ready                ),
     .operand_queue_cmd_i              (operand_queue_cmd                  ),
     .operand_queue_cmd_valid_i        (operand_queue_cmd_valid            ),
+    // Interface with the Lane Sequencer
+    .mask_b_cmd_pop_o                 (mask_b_cmd_pop                     ),
     // Interface with the VFUs
     // ALU
     .alu_operand_o                    (alu_operand                        ),
