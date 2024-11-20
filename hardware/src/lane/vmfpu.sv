@@ -1388,7 +1388,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                    : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
 
     for (int i = 0; i < 2; i++) fp16[i] = '0;
-    for (int i = 0; i < 1; i++) fp32[i] = '0;
+    fp32 = '0;
 
     first_op_d              = first_op_q;
     simd_red_cnt_d          = simd_red_cnt_q;

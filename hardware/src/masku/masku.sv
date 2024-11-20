@@ -690,6 +690,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Shuffle the VIOTA, VID byte enable signal
+    be_viota_shuf = '0;
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte  = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
       be_viota_shuf[shuffle_byte] = be_viota_seq_d[b];
@@ -701,6 +702,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Prepare the background data with vtype.vsew encoding
     result_queue_mask_seq = vinsn_issue.op inside {[VIOTA:VID]} ? '0 : masku_operand_m_seq | {NrLanes*DataWidth{vinsn_issue.vm}} | {NrLanes*DataWidth{vinsn_issue.op inside {[VMADC:VMSBC]}}};
     background_data_init_seq = masku_operand_vd_seq | result_queue_mask_seq;
+    background_data_init_shuf = '0;
     for (int b = 0; b < (NrLanes*StrbWidth); b++) begin
       automatic int shuffle_byte                     = shuffle_index(b, NrLanes, vinsn_issue.vtype.vsew);
       background_data_init_shuf[8*shuffle_byte +: 8] = background_data_init_seq[8*b +: 8];
