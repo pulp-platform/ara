@@ -623,6 +623,21 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001001: ara_req.op = ara_pkg::VAND;
                   6'b001010: ara_req.op = ara_pkg::VOR;
                   6'b001011: ara_req.op = ara_pkg::VXOR;
+                  6'b001100: begin
+                    ara_req.op = ara_pkg::VRGATHER;
+                    ara_req.eew_vs2 = eew_q[ara_req.vs1];
+                    // The MASKU will ask for elements from vs2 through the MaskB opqueue
+                    // and deshuffle them with eew_vd_op encoding
+                    ara_req.eew_vd_op = eew_q[ara_req.vs2];
+                  end
+                  6'b001110: begin // VRGATHEREI16
+                    ara_req.op = ara_pkg::VRGATHEREI16;
+                    // This allows the MASKU to deshuffle vs1 correctly since it gets deshuffled with eew_vs2
+                    ara_req.eew_vs2 = eew_q[ara_req.vs1];
+                    // The MASKU will ask for elements from vs2 through the MaskB opqueue
+                    // and deshuffle them with eew_vd_op encoding
+                    ara_req.eew_vd_op = eew_q[ara_req.vs2];
+                  end
                   6'b010000: begin
                     ara_req.op = ara_pkg::VADC;
 
@@ -862,6 +877,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001001: ara_req.op = ara_pkg::VAND;
                   6'b001010: ara_req.op = ara_pkg::VOR;
                   6'b001011: ara_req.op = ara_pkg::VXOR;
+                  6'b001100: begin
+                    ara_req.op = ara_pkg::VRGATHER;
+                    // The MASKU will ask for elements from vs2 through the MaskB opqueue
+                    // and deshuffle them with eew_vd_op encoding
+                    ara_req.eew_vd_op = eew_q[ara_req.vs2];
+                  end
                   6'b001110: begin
                     ara_req.op            = ara_pkg::VSLIDEUP;
                     ara_req.stride        = acc_req_i.rs1;
@@ -1100,6 +1121,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001001: ara_req.op = ara_pkg::VAND;
                   6'b001010: ara_req.op = ara_pkg::VOR;
                   6'b001011: ara_req.op = ara_pkg::VXOR;
+                  6'b001100: begin
+                    ara_req.op = ara_pkg::VRGATHER;
+                    // The MASKU will ask for elements from vs2 through the MaskB opqueue
+                    // and deshuffle them with eew_vd_op encoding
+                    ara_req.eew_vd_op = eew_q[ara_req.vs2];
+                  end
                   6'b001110: begin
                     ara_req.op            = ara_pkg::VSLIDEUP;
                     ara_req.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
@@ -1460,6 +1487,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001001: ara_req.op = ara_pkg::VAADD;
                   6'b001010: ara_req.op = ara_pkg::VASUBU;
                   6'b001011: ara_req.op = ara_pkg::VASUB;
+                  6'b010111: begin
+                    ara_req.op = ara_pkg::VCOMPRESS;
+                    // Correctly deshuffle vs1 (it gets deshuffled with eew_vs2)
+                    ara_req.eew_vs2 = eew_q[ara_req.vs1];
+                    // The MASKU will ask for elements from vs2 through the MaskB opqueue
+                    // and deshuffle them with eew_vd_op encoding
+                    ara_req.eew_vd_op = eew_q[ara_req.vs2];
+                    // Encoding corresponding to unmasked operations are reserved
+                    if (!insn.varith_type.vm) illegal_insn = 1'b1;
+                  end
                   6'b011000: begin
                     ara_req.op         = ara_pkg::VMANDNOT;
                     // The source operands should have the same byte encoding

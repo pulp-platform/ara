@@ -31,13 +31,19 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     input  logic                 [NrOperandQueues-1:0]    operand_request_ready_i,
     output logic                                          alu_vinsn_done_o,
     output logic                                          mfpu_vinsn_done_o,
+    // Interface with the Operand Queue (MaskB - for VRGATHER)
+    input  logic                                          mask_b_cmd_pop_i,
     // Interface with the lane's VFUs
     output vfu_operation_t                                vfu_operation_o,
     output logic                                          vfu_operation_valid_o,
     input  logic                                          alu_ready_i,
     input  logic                 [NrVInsn-1:0]            alu_vinsn_done_i,
     input  logic                                          mfpu_ready_i,
-    input  logic                 [NrVInsn-1:0]            mfpu_vinsn_done_i
+    input  logic                 [NrVInsn-1:0]            mfpu_vinsn_done_i,
+    // Masku interface for vrgather/vcompress
+    input  logic                                          masku_vrgat_req_valid_i,
+    output logic                                          masku_vrgat_req_ready_o,
+    input  vrgat_req_t                                    masku_vrgat_req_i
   );
 
   ////////////////////////////
@@ -153,6 +159,68 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     end
   end
 
+  ////////////////////
+  //  VRGATHER FSM  //
+  ////////////////////
+
+  typedef enum logic {IDLE, REQUESTING} vrgat_state_e;
+  vrgat_state_e vrgat_state_d, vrgat_state_q;
+
+  vrgat_req_t masku_vrgat_req_q;
+  logic masku_vrgat_req_ready_d, masku_vrgat_req_valid_q;
+
+  logic [idx_width(VrgatherOpQueueBufDepth):0] vrgat_cmd_req_cnt_d, vrgat_cmd_req_cnt_q;
+
+  spill_register #(
+    .T       ( vrgat_req_t )
+  ) i_spill_register_vrgat_req (
+    .clk_i,
+    .rst_ni,
+    .valid_i (masku_vrgat_req_valid_i),
+    .ready_o (masku_vrgat_req_ready_o),
+    .data_i  (masku_vrgat_req_i),
+    .valid_o (masku_vrgat_req_valid_q),
+    .ready_i (masku_vrgat_req_ready_d),
+    .data_o  (masku_vrgat_req_q)
+  );
+
+  always_comb begin
+    masku_vrgat_req_ready_d = 1'b0;
+
+    vrgat_state_d = vrgat_state_q;
+
+    vrgat_cmd_req_cnt_d = vrgat_cmd_req_cnt_q;
+
+    // If MASKU request arrives, wait until the MaskB requester is free
+    // Also, lock the MaskB opqueue
+    unique case (vrgat_state_q)
+      IDLE: begin
+        if (masku_vrgat_req_valid_q && !(operand_request_valid_o[MaskB])) begin
+          vrgat_state_d = REQUESTING;
+        end
+      end
+      REQUESTING: begin
+        // Pop if the operand requester and the queue are ready to accept requests
+        masku_vrgat_req_ready_d = masku_vrgat_req_valid_q & !(operand_request_valid_o[MaskB])
+                                & (vrgat_cmd_req_cnt_q != (VrgatherOpQueueBufDepth-1));
+
+        // Increase the counter if we handshake
+        if (masku_vrgat_req_ready_d)
+          vrgat_cmd_req_cnt_d = vrgat_cmd_req_cnt_q + 1;
+        // Decrease the counter if the MaskB opqueue popped a cmd
+        if (mask_b_cmd_pop_i)
+          vrgat_cmd_req_cnt_d = vrgat_cmd_req_cnt_q - 1;
+
+        // If the MASKU is over with VRGATHER/VCOMPRESS, return to idle
+        if (masku_vrgat_req_ready_d && masku_vrgat_req_q.is_last_req) begin
+          vrgat_state_d = IDLE;
+          vrgat_cmd_req_cnt_d = '0;
+        end
+      end
+      default:;
+    endcase
+  end
+
   /////////////////////////////
   //  VFU Operation control  //
   /////////////////////////////
@@ -231,7 +299,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_valid_o[MaskM]);
         end
         VFU_None : begin
-          pe_req_ready = !(operand_request_valid_o[MaskB]);
+          // VRGATHER/VCOMPRESS use the MaskB opqueue with non-traditional request scheme
+          pe_req_ready = !(operand_request_valid_o[MaskB]) && ((vrgat_state_q == IDLE) && !masku_vrgat_req_valid_q);
         end
         default:;
       endcase
@@ -246,7 +315,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         vm             : pe_req.vm,
         vfu            : pe_req.vfu,
         use_vs1        : pe_req.use_vs1,
-        use_vs2        : pe_req.use_vs2,
+        // vrgather/vcompress request vs2 in a non-conventional way from MaskB, not ALU
+        use_vs2        : pe_req.use_vs2 && !(pe_req.op inside {[VRGATHER:VCOMPRESS]}),
         use_vd_op      : pe_req.use_vd_op,
         scalar_op      : pe_req.scalar_op,
         use_scalar_op  : pe_req.use_scalar_op,
@@ -266,7 +336,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
       vfu_operation_d.vl = pe_req.vl / NrLanes;
       // If lane_id_i < vl % NrLanes, this lane has to execute one extra micro-operation.
       // Also, if the ALU/VMFPU should pre-process data for the MASKU, force a balanced payload
-      if (lane_id_i < pe_req.vl[idx_width(NrLanes)-1:0] || (|pe_req.vl[idx_width(NrLanes)-1:0] && pe_req.op inside {[VMFEQ:VMXNOR]}))
+      if (lane_id_i < pe_req.vl[idx_width(NrLanes)-1:0] || (|pe_req.vl[idx_width(NrLanes)-1:0] && pe_req.op inside {[VMFEQ:VCOMPRESS]}))
         vfu_operation_d.vl += 1;
 
       // Calculate the start element for Lane[i]. This will be forwarded to both opqueues
@@ -341,6 +411,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
+            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
@@ -424,6 +495,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
+            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
@@ -442,6 +514,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
+            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
@@ -461,6 +534,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req_i.vl / NrLanes,
             scale_vl : pe_req_i.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req_i.vtype,
             hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
@@ -481,6 +555,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew     : pe_req.old_eew_vs1,
             conv    : pe_req.conversion_vs1,
             scale_vl: pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vl      : vfu_operation_d.vl,
             vstart  : vfu_operation_d.vstart,
@@ -502,6 +577,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
+            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
@@ -522,6 +598,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req_i.vl / NrLanes,
             scale_vl : pe_req_i.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req_i.vtype,
             hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
@@ -543,6 +620,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu: ALU_SLDU,
             is_slide : 1'b1,
             scale_vl : pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vtype    : pe_req.vtype,
             vstart   : vfu_operation_d.vstart,
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
@@ -602,6 +680,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : VMASK,
             eew     : EW64,
             is_slide: 1'b1,
+            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vm | pe_req.hazard_vd,
@@ -643,6 +722,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id      : pe_req.id,
             vs      : pe_req.vs1,
             scale_vl: pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
@@ -652,13 +732,13 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // extra operand regardless of whether it is valid in this lane or not.
 
           // Integer comparisons run on the ALU and then get reshuffled and masked in the MASKU
-          if (pe_req.op inside {[VMSEQ:VMSBC]}) begin
+          if (pe_req.op inside {[VMSEQ:VMSBC],[VRGATHER:VRGATHEREI16]}) begin
             // These source regs contain non-mask vectors.
-            operand_request[AluA].eew = pe_req.eew_vs1;
+            operand_request[AluA].eew = pe_req.op == VRGATHEREI16 ? EW16 : pe_req.vtype.vsew;
             operand_request[AluA].vl  = pe_req.vl / NrLanes;
             if ((operand_request[AluA].vl * NrLanes) != pe_req.vl)
               operand_request[AluA].vl += 1;
-          end else begin // Mask logical operations
+          end else begin // Mask logical operations or VCOMPRESS
             // These source regs contain mask vectors.
             operand_request[AluA].eew = EW64;
             operand_request[AluA].vl  = pe_req.vl / NrLanes / ELEN;
@@ -673,6 +753,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : pe_req.vs2,
             eew     : pe_req.eew_vs2,
             scale_vl: pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs2 | pe_req.hazard_vd,
@@ -695,7 +776,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             if (operand_request[AluB].vl * NrLanes * ELEN != pe_req.vl)
               operand_request[AluB].vl += 1;
           end
-          operand_request_push[AluB] = pe_req.use_vs2 && !(pe_req.op inside {[VMFEQ:VMFGE]});
+          operand_request_push[AluB] = pe_req.use_vs2 && !(pe_req.op inside {[VMFEQ:VMFGE],[VRGATHER:VCOMPRESS]});
 
           // Mask fp comparisons
           operand_request[MulFPUA] = '{
@@ -703,6 +784,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : pe_req.vs1,
             eew     : pe_req.eew_vs1,
             scale_vl: pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vl      : pe_req.vl / NrLanes,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
@@ -724,6 +806,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : pe_req.vs2,
             eew     : pe_req.eew_vs2,
             scale_vl: pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vl      : pe_req.vl / NrLanes,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
@@ -745,6 +828,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id      : pe_req.id,
             vs      : pe_req.vd,
             scale_vl: pe_req.scale_vl,
+            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vd,
@@ -779,6 +863,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs     : VMASK,
             eew    : EW64,
             vtype  : pe_req.vtype,
+            cvt_resize : pe_req.cvt_resize,
             vl     : (pe_req.vl / NrLanes / ELEN),
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm,
@@ -810,6 +895,22 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         default:;
       endcase
     end
+
+    // VRGATHER and VCOMPRESS access the opreq with ad-hoc requests
+    if (vrgat_state_q == REQUESTING) begin
+      // Here, we are sure the MaskB operand_request is free
+      operand_request[MaskB] = '{
+        vs         : masku_vrgat_req_q.vs,
+        eew        : masku_vrgat_req_q.eew,
+        scale_vl   : 1'b0,
+        cvt_resize : pe_req.cvt_resize,
+        vl         : 1,
+        vstart     : masku_vrgat_req_q.idx,
+        hazard     : '0,
+        default    : '0
+      };
+      operand_request_push[MaskB] = masku_vrgat_req_ready_d;
+    end
   end: sequencer
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_sequencer_ff
@@ -822,6 +923,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
       alu_vinsn_done_o  <= 1'b0;
       mfpu_vinsn_done_o <= 1'b0;
+
+      vrgat_state_q       <= IDLE;
+      vrgat_cmd_req_cnt_q <= '0;
     end else begin
       vinsn_done_q    <= vinsn_done_d;
       vinsn_running_q <= vinsn_running_d;
@@ -831,6 +935,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
       alu_vinsn_done_o  <= alu_vinsn_done_d;
       mfpu_vinsn_done_o <= mfpu_vinsn_done_d;
+
+      vrgat_state_q       <= vrgat_state_d;
+      vrgat_cmd_req_cnt_q <= vrgat_cmd_req_cnt_d;
     end
   end
 
