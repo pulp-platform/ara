@@ -111,11 +111,11 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   always_comb begin
-    masku_operand_vd_spill_ready = 1'b1;
-    masku_operand_m_spill_ready  = 1'b1;
+    masku_operand_vd_spill_ready = 1'b0;
+    masku_operand_m_spill_ready  = 1'b0;
     for (int lane = 0; lane < NrLanes; lane++) begin
-      masku_operand_vd_spill_ready &= masku_operand_vd_ready_i[lane] | masku_operand_vd_seq_ready_i[lane];
-      masku_operand_m_spill_ready  &= masku_operand_m_ready_i[lane]  | masku_operand_m_seq_ready_i[lane];
+      masku_operand_vd_spill_ready[lane] = masku_operand_vd_ready_i[lane] | masku_operand_vd_seq_ready_i[lane];
+      masku_operand_m_spill_ready[lane]  = masku_operand_m_ready_i[lane]  | masku_operand_m_seq_ready_i[lane];
     end
   end
 

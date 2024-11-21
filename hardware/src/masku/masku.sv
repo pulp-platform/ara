@@ -138,7 +138,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .masku_operand_vd_ready_i      (      masku_operand_vd_ready ),
     .masku_operand_vd_seq_o        (        masku_operand_vd_seq ),
     .masku_operand_vd_seq_valid_o  (  masku_operand_vd_seq_valid ),
-    .masku_operand_vd_seq_ready_i  (  masku_operand_vd_seq_ready ),
+    .masku_operand_vd_seq_ready_i  (                          '0 ),
     .masku_operand_m_o             (             masku_operand_m ),
     .masku_operand_m_valid_o       (       masku_operand_m_valid ),
     .masku_operand_m_ready_i       (       masku_operand_m_ready ),
@@ -753,7 +753,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // We are not ready, by default
     masku_operand_alu_ready    = '0;
     masku_operand_m_ready      = '0;
-    masku_operand_vd_seq_ready = '0;
     masku_operand_vd_ready     = '0;
 
     // Inform the main sequencer if we are idle
@@ -1005,7 +1004,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           out_valid_cnt_clr = 1'b1;
           // Handshake vd input
           if (vinsn_issue.use_vd_op) begin
-            masku_operand_vd_seq_ready = '1;
             masku_operand_vd_ready = '1;
           end
           // Assert valid result queue output
