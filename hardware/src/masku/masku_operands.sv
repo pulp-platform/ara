@@ -73,16 +73,16 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   vew_e                      bit_enable_shuffle_eew;
 
   elen_t [NrLanes-1:0] masku_operand_vd_d;
-  logic                masku_operand_vd_lane_valid;
-  logic                masku_operand_vd_lane_ready;
-  logic                masku_operand_vd_spill_valid;
-  logic                masku_operand_vd_spill_ready;
+  logic  [NrLanes-1:0] masku_operand_vd_lane_valid;
+  logic  [NrLanes-1:0] masku_operand_vd_lane_ready;
+  logic  [NrLanes-1:0] masku_operand_vd_spill_valid;
+  logic  [NrLanes-1:0] masku_operand_vd_spill_ready;
 
   elen_t [NrLanes-1:0] masku_operand_m_d;
-  logic                masku_operand_m_lane_valid;
-  logic                masku_operand_m_lane_ready;
-  logic                masku_operand_m_spill_valid;
-  logic                masku_operand_m_spill_ready;
+  logic  [NrLanes-1:0] masku_operand_m_lane_valid;
+  logic  [NrLanes-1:0] masku_operand_m_lane_ready;
+  logic  [NrLanes-1:0] masku_operand_m_spill_valid;
+  logic  [NrLanes-1:0] masku_operand_m_spill_ready;
 
   // Extract operands from input (input comes in "shuffled form" from the lanes)
   for (genvar lane = 0; lane < NrLanes; lane++) begin
@@ -119,46 +119,48 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
-  spill_register #(
-    .T       ( elen_t [NrLanes-1:0] )
-  ) i_spill_register_vd (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-    .valid_i (masku_operand_vd_lane_valid),
-    .ready_o (masku_operand_vd_lane_ready),
-    .data_i  (masku_operand_vd_d),
-    .valid_o (masku_operand_vd_spill_valid),
-    .ready_i (masku_operand_vd_spill_ready),
-    .data_o  (masku_operand_vd_o)
-  );
+  for (genvar lane = 0; lane < NrLanes; lane++) begin : gen_masku_operands_spill_regs
+    spill_register #(
+      .T       ( elen_t )
+    ) i_spill_register_vd (
+      .clk_i   (clk_i),
+      .rst_ni  (rst_ni),
+      .valid_i (masku_operand_vd_lane_valid[lane]),
+      .ready_o (masku_operand_vd_lane_ready[lane]),
+      .data_i  (masku_operand_vd_d[lane]),
+      .valid_o (masku_operand_vd_spill_valid[lane]),
+      .ready_i (masku_operand_vd_spill_ready[lane]),
+      .data_o  (masku_operand_vd_o[lane])
+    );
 
-  spill_register #(
-    .T       ( elen_t [NrLanes-1:0] )
-  ) i_spill_register_m (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-    .valid_i (masku_operand_m_lane_valid),
-    .ready_o (masku_operand_m_lane_ready),
-    .data_i  (masku_operand_m_d),
-    .valid_o (masku_operand_m_spill_valid),
-    .ready_i (masku_operand_m_spill_ready),
-    .data_o  (masku_operand_m_o)
-  );
+    spill_register #(
+      .T       ( elen_t )
+    ) i_spill_register_m (
+      .clk_i   (clk_i),
+      .rst_ni  (rst_ni),
+      .valid_i (masku_operand_m_lane_valid[lane]),
+      .ready_o (masku_operand_m_lane_ready[lane]),
+      .data_i  (masku_operand_m_d[lane]),
+      .valid_o (masku_operand_m_spill_valid[lane]),
+      .ready_i (masku_operand_m_spill_ready[lane]),
+      .data_o  (masku_operand_m_o[lane])
+    );
+  end
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin
-    assign masku_operand_vd_valid_o[lane]     = masku_operand_vd_spill_valid;
-    assign masku_operand_vd_seq_valid_o[lane] = masku_operand_vd_spill_valid;
+    assign masku_operand_vd_valid_o[lane]     = masku_operand_vd_spill_valid[lane];
+    assign masku_operand_vd_seq_valid_o[lane] = masku_operand_vd_spill_valid[lane];
 
-    assign masku_operand_m_valid_o[lane]     = masku_operand_m_spill_valid;
-    assign masku_operand_m_seq_valid_o[lane] = masku_operand_m_spill_valid;
+    assign masku_operand_m_valid_o[lane]     = masku_operand_m_spill_valid[lane];
+    assign masku_operand_m_seq_valid_o[lane] = masku_operand_m_spill_valid[lane];
   end
 
   always_comb begin
-    masku_operand_vd_lane_valid = 1'b1;
-    masku_operand_m_lane_valid  = 1'b1;
+    masku_operand_vd_lane_valid = 1'b0;
+    masku_operand_m_lane_valid  = 1'b0;
     for (int lane = 0; lane < NrLanes; lane++) begin
-      masku_operand_vd_lane_valid &= masku_operand_valid_i[lane][1];
-      masku_operand_m_lane_valid &= masku_operand_valid_i[lane][0];
+      masku_operand_vd_lane_valid[lane] = masku_operand_valid_i[lane][1];
+      masku_operand_m_lane_valid[lane]  = masku_operand_valid_i[lane][0];
     end
   end
 
@@ -250,9 +252,9 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
         masku_operand_ready_o[lane][2 + operand_fu] = (masku_fu_e'(operand_fu) == masku_fu_i) && masku_operand_alu_ready_i[lane];
       end
       // Acknowledge vd operands
-      masku_operand_ready_o[lane][1] = masku_operand_vd_lane_ready;
+      masku_operand_ready_o[lane][1] = masku_operand_vd_lane_ready[lane];
       // Acknowledge mask operand
-      masku_operand_ready_o[lane][0] = masku_operand_m_lane_ready;
+      masku_operand_ready_o[lane][0] = masku_operand_m_lane_ready[lane];
     end
   end
 
