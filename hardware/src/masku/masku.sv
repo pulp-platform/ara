@@ -358,7 +358,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
   // iteration count for masked instrctions
   always_comb begin
-    if (vinsn_issue_valid && (&masku_operand_alu_valid || &masku_operand_vs2_seq_valid)) begin
+    if (vinsn_issue_valid && (&masku_operand_alu_valid || &masku_operand_vs2_seq_valid) && !result_queue_full) begin
       iteration_count_d = iteration_count_q + 1'b1;
     end else begin
       iteration_count_d = iteration_count_q;
