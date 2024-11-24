@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Bump upload and delete artifact actions
  - Fix synthesis-unfriendly constructs
  - Fix vector slicing bug in operand requesters
+ - Fix the iteration_cnt_d update even when result_queue is full
 
 ### Added
 
