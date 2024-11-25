@@ -232,7 +232,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // Nothing to acknowledge
     addrgen_ack_o           = 1'b0;
     addrgen_exception_o.valid = 1'b0;
+    addrgen_exception_o.gva   = '0;
+    addrgen_exception_o.tinst = '0;
     addrgen_exception_o.tval  = '0;
+    addrgen_exception_o.tval2 = '0;
     addrgen_exception_o.cause = '0;
     addrgen_illegal_load_o  = 1'b0;
     addrgen_illegal_store_o = 1'b0;
