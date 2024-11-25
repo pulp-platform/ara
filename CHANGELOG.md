@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Bump upload and delete artifact actions
  - Fix synthesis-unfriendly constructs
  - Fix vector slicing bug in operand requesters
+ - Fix legality check for allowed registers in dispatcher
+ - Remove a couple of latches
 
 ### Added
 
@@ -38,6 +40,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add Ara VLSU support for MMU exceptions
  - Add multi-precision conv3d
  - Add support for unit-stride, non-unit-stride, indexed segment memory instructions
+ - Extend the riscv-tests MASKU-related tests
 
 ### Changed
 
@@ -68,6 +71,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Refactor MASKU
  - Remove bit-support for tail elements
  - Adapt mask tests to this behavior
+ - Refactor the MASKU
+ - The MASKU always receives balanced payloads from the lanes
+ - Remove FPU support for opqueues that do not need it
 
 ## 3.0.0 - 2023-09-08
 
