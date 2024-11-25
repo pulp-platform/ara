@@ -178,9 +178,11 @@ rv64uv_sc_tests = vaadd \
                   vse64 \
                   vle_vse_hazards \
                   vfrec7 \
-                  vfrsqrt7
+                  vfrsqrt7 \
+                  vrgather \
+                  vcompress
 
-#rv64uv_sc_tests = vcompress vlff vrgather
+#rv64uv_sc_tests = vlff
 
 rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
