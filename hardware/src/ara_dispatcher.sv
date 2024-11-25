@@ -2805,6 +2805,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end else begin
                     ara_req.vtype.vsew = csr_vtype_q.vsew;
                     ara_req.eew_vs2    = EW8;
+                    ara_req.scale_vl   = 1'b1;
                   end
               end
               4'b0101: begin
@@ -2813,6 +2814,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end else begin
                     ara_req.vtype.vsew = csr_vtype_q.vsew;
                     ara_req.eew_vs2    = EW16;
+                    ara_req.scale_vl   = 1'b1;
                   end
               end
               4'b0110: begin
@@ -2821,6 +2823,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end else begin
                     ara_req.vtype.vsew = csr_vtype_q.vsew;
                     ara_req.eew_vs2    = EW32;
+                    ara_req.scale_vl   = 1'b1;
                   end
               end
               4'b0111: begin
@@ -2829,6 +2832,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end else begin
                     ara_req.vtype.vsew = csr_vtype_q.vsew;
                     ara_req.eew_vs2    = EW64;
+                    ara_req.scale_vl   = 1'b1;
                   end
               end
               default: begin // Invalid. Element is too wide, or encoding is non-existant.

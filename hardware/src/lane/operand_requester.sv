@@ -284,14 +284,13 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Helper local variables
       automatic operand_queue_cmd_t  operand_queue_cmd_tmp;
       automatic requester_metadata_t requester_metadata_tmp;
-      automatic vlen_t               vector_body_length;
       automatic vlen_t               effective_vector_body_length;
       automatic vaddr_t              vrf_addr;
 
       automatic elen_t vl_byte;
       automatic elen_t vstart_byte;
       automatic elen_t vector_body_len_byte;
-      automatic elen_t vector_body_len_elements;
+      automatic elen_t scaled_vector_len_elements;
 
       // Bank we are currently requesting
       automatic int bank = requester_metadata_q.addr[idx_width(NrBanks)-1:0];
@@ -311,10 +310,6 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       operand_queue_cmd_o[requester_index]       = '0;
       operand_queue_cmd_valid_o[requester_index] = 1'b0;
 
-      // Prepare metadata upfront
-      // Length of vector body in elements, i.e., vl - vstart
-      vector_body_length = operand_request_i[requester_index].vl - operand_request_i[requester_index].vstart;
-
       // Count the number of packets to fetch if we need to deshuffle.
       // Slide operations use the vstart signal, which does NOT correspond to the architectural
       // vstart, only when computing the fetch address. Ara supports architectural vstart > 0
@@ -324,14 +319,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                   ? 0
                   : operand_request_i[requester_index].vstart << operand_request_i[requester_index].vtype.vsew;
       vector_body_len_byte = vl_byte - vstart_byte + (vstart_byte % 8);
-      vector_body_len_elements = vector_body_len_byte >> operand_request_i[requester_index].eew;
-      if (vector_body_len_elements << operand_request_i[requester_index].eew < vector_body_len_byte)
-        vector_body_len_elements += 1;
+      scaled_vector_len_elements = vector_body_len_byte >> operand_request_i[requester_index].eew;
+      if (scaled_vector_len_elements << operand_request_i[requester_index].eew < vector_body_len_byte)
+        scaled_vector_len_elements += 1;
 
       // Final computed length
       effective_vector_body_length = (operand_request_i[requester_index].scale_vl)
-                                   ? vector_body_len_elements
-                                   : vector_body_length;
+                                   ? scaled_vector_len_elements
+                                   : operand_request_i[requester_index].vl;
 
       // Address of the vstart element of the vector in the VRF
       // This vstart is NOT the architectural one and was modified in the lane
