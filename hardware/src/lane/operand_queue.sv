@@ -209,7 +209,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     last_packet       = 1'b0;
 
     for (int i = 0; i < 2; i++) fp16[i] = '0;
-    for (int i = 0; i < 1; i++) fp32[i] = '0;
+    fp32 = '0;
 
     // Reductions need to mask away the inactive elements
     // A temporary solution is to send a neutral value directly
