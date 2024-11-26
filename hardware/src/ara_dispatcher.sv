@@ -3272,7 +3272,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
-      if ( ara_req_valid && !acc_resp_o.exception.valid ) begin
+      if ( ara_req_valid && !acc_resp_o.exception.valid && !illegal_insn) begin
         automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
