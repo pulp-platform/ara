@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Bump upload and delete artifact actions
  - Fix synthesis-unfriendly constructs
  - Fix vector slicing bug in operand requesters
+ - Fix the mask_operand_requester access wrong address considergin vstart 
 
 ### Added
 
