@@ -342,7 +342,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
             vl     : (pe_req.vl / NrLanes / 8) >> unsigned'(pe_req.vtype.vsew),
-            vstart : vfu_operation_d.vstart,
+            vl     : (pe_req.vl / NrLanes / 8) >> int'(pe_req.vtype.vsew),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
           };
@@ -425,7 +425,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
             vl     : (pe_req.vl / NrLanes / 8) >> unsigned'(pe_req.vtype.vsew),
-            vstart : vfu_operation_d.vstart,
+             vstart : (pe_req.vstart / NrLanes / 8) >> int'(pe_req.vtype.vsew),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
           };
@@ -443,7 +443,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
             vl     : (pe_req.vl / NrLanes / 8) >> unsigned'(pe_req.vtype.vsew),
-            vstart : vfu_operation_d.vstart,
+            vstart : (pe_req.vstart / NrLanes / 8) >> int'(pe_req.vtype.vsew),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
           };
@@ -504,7 +504,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
             vl     : (pe_req.vl / NrLanes / 8) >> unsigned'(pe_req.vtype.vsew),
-            vstart : vfu_operation_d.vstart,
+            vstart : (pe_req.vstart / NrLanes / 8) >> int'(pe_req.vtype.vsew),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             default: '0
           };
@@ -754,7 +754,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             // Since this request goes outside of the lane, we might need to request an
             // extra operand regardless of whether it is valid in this lane or not.
             vl     : (pe_req.vl / NrLanes / ELEN),
-            vstart : vfu_operation_d.vstart,
+            vstart : (pe_req.vstart / NrLanes / ELEN),
             hazard : pe_req.hazard_vm,
             default: '0
           };
