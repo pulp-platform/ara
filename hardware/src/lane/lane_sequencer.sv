@@ -310,7 +310,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu  : ALU_SLDU,
             default    : '0
           };
-          operand_request_push[AluA] = pe_req.use_vs1;
+          operand_request_push[AluA] = pe_req.use_vs1 && vfu_operation_valid_d;
 
           operand_request[AluB] = '{
             id         : pe_req.id,
@@ -331,7 +331,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu  : ALU_SLDU,
             default    : '0
           };
-          operand_request_push[AluB] = pe_req.use_vs2;
+          operand_request_push[AluB] = pe_req.use_vs2 && vfu_operation_valid_d;
 
           // This vector instruction uses masks
           operand_request[MaskM] = '{
@@ -348,7 +348,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           if ((operand_request[MaskM].vl << unsigned'(pe_req.vtype.vsew)) *
               NrLanes * 8 != pe_req.vl) operand_request[MaskM].vl += 1;
-          operand_request_push[MaskM] = !pe_req.vm;
+          operand_request_push[MaskM] = !pe_req.vm && vfu_operation_valid_d;
         end
         VFU_MFpu: begin
           operand_request[MulFPUA] = '{
@@ -369,7 +369,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu  : MFPU_ADDRGEN,
             default    : '0
           };
-          operand_request_push[MulFPUA] = pe_req.use_vs1;
+          operand_request_push[MulFPUA] = pe_req.use_vs1 && vfu_operation_valid_d;
 
           operand_request[MulFPUB] = '{
             id         : pe_req.id,
@@ -391,7 +391,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu  : MFPU_ADDRGEN,
             default: '0
           };
-          operand_request_push[MulFPUB] = pe_req.swap_vs2_vd_op ?
+          operand_request_push[MulFPUB] = !vfu_operation_valid_d ? 1'b0 : pe_req.swap_vs2_vd_op ?
           pe_req.use_vd_op : pe_req.use_vs2;
 
           operand_request[MulFPUC] = '{
@@ -413,7 +413,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu  : MFPU_ADDRGEN,
             default : '0
           };
-          operand_request_push[MulFPUC] = pe_req.swap_vs2_vd_op ?
+          operand_request_push[MulFPUC] = !vfu_operation_valid_d ? 1'b0 : pe_req.swap_vs2_vd_op ?
           pe_req.use_vs2 : pe_req.use_vd_op;
 
           // This vector instruction uses masks
@@ -431,7 +431,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           if ((operand_request[MaskM].vl << unsigned'(pe_req.vtype.vsew)) *
               NrLanes * 8 != pe_req.vl) operand_request[MaskM].vl += 1;
-          operand_request_push[MaskM] = !pe_req.vm;
+          operand_request_push[MaskM] = !pe_req.vm && vfu_operation_valid_d;
         end
         VFU_LoadUnit : begin
           // This vector instruction uses masks
@@ -449,7 +449,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           if ((operand_request[MaskM].vl << unsigned'(pe_req.vtype.vsew)) *
               NrLanes * 8 != pe_req.vl) operand_request[MaskM].vl += 1;
-          operand_request_push[MaskM] = !pe_req.vm;
+          operand_request_push[MaskM] = !pe_req.vm && vfu_operation_valid_d;
 
           // Load indexed
           operand_request[SlideAddrGenA] = '{
@@ -469,7 +469,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // extra operand regardless of whether it is valid in this lane or not.
           if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
             operand_request[SlideAddrGenA].vl += 1;
-          operand_request_push[SlideAddrGenA] = pe_req_i.op == VLXE;
+          operand_request_push[SlideAddrGenA] = pe_req_i.op == VLXE && vfu_operation_valid_d;
         end
 
         VFU_StoreUnit : begin
@@ -510,7 +510,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           };
           if ((operand_request[MaskM].vl << unsigned'(pe_req.vtype.vsew)) *
               NrLanes * 8 != pe_req.vl) operand_request[MaskM].vl += 1;
-          operand_request_push[MaskM] = !pe_req.vm;
+          operand_request_push[MaskM] = !pe_req.vm && vfu_operation_valid_d;
 
           // Store indexed
           // TODO: add vstart support here
@@ -532,7 +532,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req_i.vl) begin
             operand_request[SlideAddrGenA].vl += 1;
           end
-          operand_request_push[SlideAddrGenA] = pe_req_i.op == VSXE;
+          operand_request_push[SlideAddrGenA] = pe_req_i.op == VSXE && vfu_operation_valid_d;
         end
 
         VFU_SlideUnit: begin
@@ -549,7 +549,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
             default  : '0
           };
-          operand_request_push[SlideAddrGenA] = pe_req.use_vs2;
+          operand_request_push[SlideAddrGenA] = pe_req.use_vs2 && vfu_operation_valid_d;
 
           unique case (pe_req.op)
             VSLIDEUP: begin
@@ -608,7 +608,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             hazard  : pe_req.hazard_vm | pe_req.hazard_vd,
             default : '0
           };
-          operand_request_push[MaskM] = !pe_req.vm;
+          operand_request_push[MaskM] = !pe_req.vm && vfu_operation_valid_d;
 
           case (pe_req.op)
             VSLIDEUP: begin
@@ -667,7 +667,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             if ((operand_request[AluA].vl << (unsigned'(EW64) - unsigned'(pe_req.eew_vs1))) * NrLanes !=
                 pe_req.vl) operand_request[AluA].vl += 1;
           end
-          operand_request_push[AluA] = pe_req.use_vs1 && !(pe_req.op inside {[VMFEQ:VMFGE], VCPOP, VMSIF, VMSOF, VMSBF});
+          operand_request_push[AluA] = pe_req.use_vs1 && !(pe_req.op inside {[VMFEQ:VMFGE], VCPOP, VMSIF, VMSOF, VMSBF}) && vfu_operation_valid_d;
 
           operand_request[AluB] = '{
             id      : pe_req.id,
@@ -694,7 +694,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             if ((operand_request[AluB].vl << (unsigned'(EW64) - unsigned'(pe_req.eew_vs2))) * NrLanes !=
                 pe_req.vl) operand_request[AluB].vl += 1;
           end
-          operand_request_push[AluB] = pe_req.use_vs2 && !(pe_req.op inside {[VMFEQ:VMFGE], VCPOP, VMSIF, VMSOF, VMSBF, VFIRST});
+          operand_request_push[AluB] = pe_req.use_vs2 && !(pe_req.op inside {[VMFEQ:VMFGE], VCPOP, VMSIF, VMSOF, VMSBF, VFIRST}) && vfu_operation_valid_d;
 
           operand_request[MulFPUA] = '{
             id      : pe_req.id,
@@ -710,7 +710,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // This is an operation that runs normally on the ALU, and then gets *condensed* and
           // reshuffled at the Mask Unit.
           operand_request[MulFPUA].vl = vfu_operation_d.vl;
-          operand_request_push[MulFPUA] = pe_req.use_vs1 && pe_req.op inside {[VMFEQ:VMFGE]} && !(pe_req.op inside {VCPOP, VMSIF, VMSOF, VMSBF});
+          operand_request_push[MulFPUA] = pe_req.use_vs1 && pe_req.op inside {[VMFEQ:VMFGE]} && !(pe_req.op inside {VCPOP, VMSIF, VMSOF, VMSBF}) && vfu_operation_valid_d;
 
           operand_request[MulFPUB] = '{
             id      : pe_req.id,
@@ -744,7 +744,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           if ((pe_req.vl % (NrLanes*ELEN)) != 0) begin
             operand_request[MaskB].vl += 1'b1;
           end
-          operand_request_push[MaskB] = pe_req.use_vs2 && pe_req.op inside {VCPOP, VFIRST, VMSIF, VMSOF, VMSBF};
+          operand_request_push[MaskB] = pe_req.use_vs2 && pe_req.op inside {VCPOP, VFIRST, VMSIF, VMSOF, VMSBF} && vfu_operation_valid_d;
 
           operand_request[MaskM] = '{
             id     : pe_req.id,
@@ -761,7 +761,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           if ((operand_request[MaskM].vl * NrLanes * ELEN) != pe_req.vl) begin
             operand_request[MaskM].vl += 1;
           end
-          operand_request_push[MaskM] = !pe_req.vm;
+          operand_request_push[MaskM] = !pe_req.vm && vfu_operation_valid_d;
         end
         VFU_None: begin
           operand_request[MaskB] = '{
