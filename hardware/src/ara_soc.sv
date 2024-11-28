@@ -10,12 +10,15 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // RVV Parameters
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     parameter  int           unsigned VLEN         = 0,                          // VLEN [bit]
+    parameter  int           unsigned OSSupport    = 0,                          // Support for OS
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
     parameter  fpext_support_e        FPExtSupport = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
+    // Support for segment memory operations
+    parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
@@ -514,9 +517,11 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   ara_system #(
     .NrLanes           (NrLanes              ),
     .VLEN              (VLEN                 ),
+    .OSSupport         (OSSupport            ),
     .FPUSupport        (FPUSupport           ),
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
+    .SegSupport        (SegSupport           ),
     .CVA6Cfg           (CVA6AraConfig        ),
     .AxiAddrWidth      (AxiAddrWidth         ),
     .AxiIdWidth        (AxiCoreIdWidth       ),
