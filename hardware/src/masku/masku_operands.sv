@@ -31,7 +31,6 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     // Control logic
     input masku_fu_e                        masku_fu_i,    // signal deciding from which functional unit the result should be taken from
     input pe_req_t                          vinsn_issue_i,
-    input logic [idx_width(ELEN*NrLanes):0] vrf_pnt_i,
 
     // Operands and operand handshake signals coming from lanes
     input  logic [NrLanes-1:0][NrMaskFUnits+2-1:0] masku_operand_valid_i,
@@ -57,8 +56,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     output logic  [NrLanes*ELEN-1:0] masku_operand_m_seq_o,   // Mask (deshuffled)
     output logic  [     NrLanes-1:0] masku_operand_m_seq_valid_o,
     input  logic  [     NrLanes-1:0] masku_operand_m_seq_ready_i,
-    output logic  [NrLanes*ELEN-1:0] bit_enable_mask_o,           // Bit mask for mask unit instructions (shuffled like mask register)
-    output logic  [NrLanes*ELEN-1:0] alu_result_compressed_seq_o  // ALU/FPU results compressed (from sew to 1-bit) (deshuffled, in mask format)
+    output logic  [NrLanes*ELEN-1:0] bit_enable_mask_o           // Bit mask for mask unit instructions (shuffled like mask register)
   );
 
   // Imports
@@ -220,20 +218,6 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   // -------------------------------------------
   // Compress ALU/FPU results into a mask vector
   // -------------------------------------------
-  always_comb begin
-    alu_result_compressed_seq_o = '1;
-    for (int b = 0; b < ELENB * NrLanes; b++) begin
-      if ((b % (1 << vinsn_issue_i.eew_vs2)) == '0) begin
-        automatic int src_byte        = shuffle_index(b, NrLanes, vinsn_issue_i.eew_vs2);
-        automatic int src_byte_lane   = src_byte[idx_width(ELENB) +: idx_width(NrLanes)];
-        automatic int src_byte_offset = src_byte[idx_width(ELENB)-1:0];
-
-        automatic int dest_bit_seq  = (b >> vinsn_issue_i.eew_vs2) + vrf_pnt_i;
-        automatic int dest_byte_seq = dest_bit_seq / ELENB;
-        alu_result_compressed_seq_o[ELENB * dest_byte_seq + dest_bit_seq[idx_width(ELENB)-1:0]] = masku_operand_alu_o[src_byte_lane][8 * src_byte_offset];
-      end
-    end
-  end
 
   // Control
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_unpack_masku_operands
