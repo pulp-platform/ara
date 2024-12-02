@@ -5,7 +5,6 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 ## Constant Parameters
 
 - Maximum size of a single vector element in bits: ELEN = 64
-- Striping distance, in bits: SLEN = 64
 
 ## Vector Loads and Stores
 
@@ -84,6 +83,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Integer Scalar Move instructions: `vmv.x.s`, `vmv.s.x`
 - Floating-Point Scalar Move instructions: `vfmv.f.s`, `vfmv.s.f`
 - Vector slide instructions: `vslideup`, `vslidedown`, `vslide1up`, `vfslide1up`, `vslide1down`, `vfslide1down`
+- Vector register gather instructions: `vrgather`, `vrgatherei16`, `vcompress`
 
 ## Vector fixed-point arithmetic instructions
 
