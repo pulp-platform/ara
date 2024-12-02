@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add Ara VLSU support for MMU exceptions
  - Add multi-precision conv3d
  - Add support for unit-stride, non-unit-stride, indexed segment memory instructions
+ - Add support for fault-only-first loads
 
 ### Changed
 
