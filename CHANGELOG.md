@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add multi-precision conv3d
  - Add support for unit-stride, non-unit-stride, indexed segment memory instructions
  - Extend the riscv-tests MASKU-related tests
+ - Add support for vrgather/vcompress
 
 ### Changed
 
