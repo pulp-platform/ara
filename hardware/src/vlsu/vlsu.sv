@@ -48,6 +48,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                    addrgen_ack_o,
     output ariane_pkg::exception_t  addrgen_exception_o,
     output vlen_t                   addrgen_exception_vstart_o,
+    output logic                    addrgen_fof_exception_o,
     // Interface with the lanes
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
@@ -167,6 +168,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .addrgen_ack_o              (addrgen_ack_o              ),
     .addrgen_exception_o        ( addrgen_exception_o       ),
     .addrgen_exception_vstart_o ( addrgen_exception_vstart_o),
+    .addrgen_fof_exception_o    ( addrgen_fof_exception_o   ),
     .addrgen_illegal_load_o     (addrgen_illegal_load       ),
     .addrgen_illegal_store_o    (addrgen_illegal_store      ),
     // Interface with the lanes
