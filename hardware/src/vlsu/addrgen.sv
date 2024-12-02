@@ -55,6 +55,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     output ariane_pkg::exception_t         addrgen_exception_o,
     output logic                           addrgen_ack_o,
     output vlen_t                          addrgen_exception_vstart_o,
+    output logic                           addrgen_fof_exception_o, // fault-only-first
     output logic                           addrgen_illegal_load_o,
     output logic                           addrgen_illegal_store_o,
     // Interface with the load/store units
@@ -108,6 +109,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     logic [1:0] vew; // Support only up to 64-bit
     logic is_load;
     logic is_burst; // Unit-strided instructions can be converted into AXI INCR bursts
+    logic fault_only_first; // Fault-only-first instruction
     vlen_t vstart;
   } addrgen_req_t;
   addrgen_req_t addrgen_req;
@@ -226,9 +228,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
     // Nothing to acknowledge
     addrgen_ack_o           = 1'b0;
-    addrgen_exception_o.valid = 1'b0;
-    addrgen_exception_o.tval  = '0;
-    addrgen_exception_o.cause = '0;
+    addrgen_exception_o     = '0;
     addrgen_illegal_load_o  = 1'b0;
     addrgen_illegal_store_o = 1'b0;
 
@@ -327,6 +327,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           is_load : is_load(pe_req_q.op),
           // Unit-strided loads/stores trigger incremental AXI bursts.
           is_burst: (pe_req_q.op inside {VLE, VSE}),
+          fault_only_first: pe_req_q.fault_only_first,
           vstart  : pe_req_q.vstart
         };
 
@@ -375,6 +376,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           is_load : is_load(pe_req_q.op),
           // Unit-strided loads/stores trigger incremental AXI bursts.
           is_burst: 1'b0,
+          fault_only_first: 1'b0,
           vstart  : pe_req_q.vstart
         };
         addrgen_req_valid = 1'b1;
@@ -657,6 +659,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     mmu_req_o       = 1'b0;
     mmu_vaddr_o     = '0;
     mmu_is_store_o  = 1'b0;
+
+    // No fault-only-first exception idx != 0 by default
+    addrgen_fof_exception_o = 1'b0;
 
     // For addrgen FSM
     last_translation_completed = 1'b0;
@@ -1002,7 +1007,15 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 is_load      : axi_addrgen_q.is_load,
                 is_exception : 1'b1
               };
-              axi_addrgen_queue_push = 1'b1;
+              // Don't take trap if fault-only-first and exception is on element whose idx > 0
+              axi_addrgen_queue_push = ~(axi_addrgen_q.fault_only_first
+                                       & (pe_req_q.vl != (axi_addrgen_q.len >> axi_addrgen_q.vew)));
+
+              // If fault-only-first and the idx > 0, this exception is special and does not trap
+              // Inform the dispatcher to effectively modify vl and not vstart
+              if (pe_req_q.vl != (axi_addrgen_q.len >> axi_addrgen_q.vew)) begin
+                addrgen_fof_exception_o = axi_addrgen_q.fault_only_first;
+              end
 
               // Set vstart: vl minus how many elements we have left
               // NOTE: this added complexity only comes from the fact that the beat counting

@@ -129,6 +129,9 @@ module ara import ara_pkg::*; #(
     // Number of segments in segment mem op
     logic [2:0] nf;
 
+    // Is this a fault-only-first load?
+    logic fault_only_first;
+
     // Rounding-Mode for FP operations
     fpnew_pkg::roundmode_e fp_rm;
     // Widen FP immediate (re-encoding)
@@ -151,6 +154,9 @@ module ara import ara_pkg::*; #(
 
     // Instruction triggered an exception
     ariane_pkg::exception_t exception;
+
+    // Fault-only-first exception on element whose idx > 0
+    logic fof_exception;
 
     // New value for vstart
     vlen_t exception_vstart;
@@ -223,6 +229,7 @@ module ara import ara_pkg::*; #(
   logic                            addrgen_ack;
   ariane_pkg::exception_t          addrgen_exception;
   vlen_t                           addrgen_exception_vstart;
+  logic                            addrgen_fof_exception;
   logic              [NrLanes-1:0] alu_vinsn_done;
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
@@ -277,7 +284,8 @@ module ara import ara_pkg::*; #(
     // Interface with the address generator
     .addrgen_ack_i         (addrgen_ack              ),
     .addrgen_exception_i   (addrgen_exception        ),
-    .addrgen_exception_vstart_i(addrgen_exception_vstart     )
+    .addrgen_exception_vstart_i(addrgen_exception_vstart),
+    .addrgen_fof_exception_i(addrgen_fof_exception)
   );
 
   // Scalar move support
@@ -482,6 +490,7 @@ module ara import ara_pkg::*; #(
     .addrgen_ack_o              (addrgen_ack                                           ),
     .addrgen_exception_o        (addrgen_exception                                     ),
     .addrgen_exception_vstart_o (addrgen_exception_vstart                              ),
+    .addrgen_fof_exception_o    (addrgen_fof_exception                                 ),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),

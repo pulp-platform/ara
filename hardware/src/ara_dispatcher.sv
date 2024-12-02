@@ -2628,8 +2628,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.vtype.vsew = EW8;
                   end
                   5'b10000: begin // Unit-strided, fault-only first
-                    // TODO: Not implemented
-                    illegal_insn_load     = 1'b1;
+                    ara_req.fault_only_first = 1'b1;
                   end
                   default: begin // Reserved
                     illegal_insn_load     = 1'b1;
@@ -2765,8 +2764,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               acc_resp_o.resp_valid = 1'b1;
               acc_resp_o.exception  = ara_resp.exception;
               ara_req_valid       = 1'b0;
-              // In case of exception, modify vstart
-              if ( ara_resp.exception.valid ) begin
+              // In case of exception, modify vstart or vl, depending if the insn
+              // was a fault-only-first
+              if (ara_resp.fof_exception) begin
+                csr_vl_d = ara_resp.exception_vstart;
+                // Mask exception if we had a fault-only-first with exception on
+                // idx > 0
+                acc_resp_o.exception.valid = 1'b0;
+              end else if (ara_resp.exception.valid) begin
                 csr_vstart_d = ara_resp.exception_vstart;
               end
             end

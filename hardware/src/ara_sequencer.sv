@@ -47,7 +47,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Interface with the Address Generation
     input  logic                            addrgen_ack_i,
     input  ariane_pkg::exception_t          addrgen_exception_i,
-    input  vlen_t                           addrgen_exception_vstart_i
+    input  vlen_t                           addrgen_exception_vstart_i,
+    input  logic                            addrgen_fof_exception_i
   );
 
   ///////////////////////////////////
@@ -525,6 +526,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           ara_resp_valid_o    = 1'b1;
           ara_resp_o.exception = addrgen_exception_i;
           ara_resp_o.exception_vstart = addrgen_exception_vstart_i;
+          ara_resp_o.fof_exception = addrgen_fof_exception_i;
         end
 
         // Wait for the scalar result
