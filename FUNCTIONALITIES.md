@@ -15,6 +15,7 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector strided stores: `vsse<eew>`
 - Vector indexed loads: `vluxei<eew>`, `vloxei<eew>`
 - Vector indexed stores: `vsuxei<eew>`, `vsoxei<eew>`
+- Vector unit-strided fault-only-first loads: `vle<eew>ff.v`
 - Vector unit-strided segment loads: `vlseg<nf>e<eew>.v`
 - Vector unit-strided segment stores: `vsseg<nf>e<eew>.v`
 - Vector non-unit-strided segment loads: `vlsseg<nf>e<eew>.v`
