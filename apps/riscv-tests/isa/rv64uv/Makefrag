@@ -143,6 +143,7 @@ rv64uv_sc_tests = vaadd \
                   vslide1down \
                   vfslide1down \
                   vl \
+                  vlff \
                   vlseg \
                   vlsseg \
                   vluxseg \
@@ -180,7 +181,7 @@ rv64uv_sc_tests = vaadd \
                   vfrec7 \
                   vfrsqrt7
 
-#rv64uv_sc_tests = vcompress vlff vrgather
+#rv64uv_sc_tests = vcompress vrgather
 
 rv64uv_p_tests = $(addprefix rv64uv-p-, $(rv64uv_sc_tests))
 
