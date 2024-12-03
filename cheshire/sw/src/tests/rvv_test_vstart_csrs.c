@@ -1,0 +1,83 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Vincenzo Maisto <vincenzo.maisto2@unina.it>
+
+#include "regs/cheshire.h"
+#include "dif/clint.h"
+#include "dif/uart.h"
+#include "params.h"
+#include "util.h"
+#include "encoding.h"
+#include "rvv_test.h"
+
+#include "cheshire_util.h"
+
+int main(void) {
+  cheshire_start();
+
+    // Vector configuration parameters and variables
+    uint64_t avl = RVV_TEST_AVL(64);
+    uint64_t vl;
+    vcsr_dump_t vcsr_state = {0};
+
+    RVV_TEST_CLEAN_EXCEPTION();
+
+    // Helper variables and arrays
+    // None for this test
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    // START OF TESTS
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: MSTATUS.VS read implementation
+    //////////////////////////////////////////////////////////////////
+    // Enalbe RVV
+    enable_rvv();
+    RVV_TEST_ASSERT_EXCEPTION ( 0 );
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: CSR read implementation
+    //////////////////////////////////////////////////////////////////
+    vcsr_dump ( vcsr_state );
+    RVV_TEST_ASSERT_EXCEPTION ( 0 );
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: CSR write implementation
+    //////////////////////////////////////////////////////////////////
+    vl = reset_v_state ( avl );
+    RVV_TEST_ASSERT_EXCEPTION ( 0 );
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: CSR write exception implementation
+    //////////////////////////////////////////////////////////////////
+	  asm volatile ("csrw	    vl, 0");
+    RVV_TEST_ASSERT_EXCEPTION ( 1 );
+    RVV_TEST_CLEAN_EXCEPTION ();
+
+	  asm volatile ("csrw	    vlenb, 0");
+    RVV_TEST_ASSERT_EXCEPTION ( 1 );
+    RVV_TEST_CLEAN_EXCEPTION ();
+
+	  asm volatile ("csrw	    vtype, 0");
+    RVV_TEST_ASSERT_EXCEPTION ( 1 );
+    RVV_TEST_CLEAN_EXCEPTION ();
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    // END OF TESTS
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+#if (PRINTF == 1)
+  printf("Test SUCCESS!\r\n");
+#endif
+
+  cheshire_end();
+
+  return 0;
+}

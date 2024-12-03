@@ -12,9 +12,10 @@ CHS_SW   := $(CHS_ROOT)/sw
 ARA_SW   := $(ARA_ROOT)/cheshire/sw
 ARA_APPS := $(ARA_ROOT)/apps
 
-APPS   := $(patsubst $(ARA_APPS)/%/main.c,%,$(shell find $(ARA_APPS) -name "main.c"))
-SW_C   := $(wildcard $(ARA_SW)/src/*.c)
-DEPS_H := $(wildcard $(ARA_SW)/include/*.h)
+APPS    := $(patsubst $(ARA_APPS)/%/main.c,%,$(shell find $(ARA_APPS) -name "main.c"))
+SW_C    := $(wildcard $(ARA_SW)/src/*.c)
+TESTS_C := $(wildcard $(ARA_SW)/src/tests/*.c) $(wildcard $(ARA_SW)/src/tests/body/*.body)
+DEPS_H  := $(wildcard $(ARA_SW)/include/*.h)
 
 # Hardware configuration for the Ara RVV kernels
 # Can be chosen in [2|4|8|16]_lanes
@@ -25,6 +26,8 @@ include $(ARA_ROOT)/config/$(ARA_CONFIGURATION).mk
 CHS_SW_FLAGS ?= $(shell grep "^CHS_SW_FLAGS\s\+?=\s\+" -- $(CHS_SW)/sw.mk | sed 's/^.*?= //' | sed s/rv64gc/rv64gcv/)
 # Tweak the compilation to include Cheshire-related headers and files
 CHS_SW_FLAGS += -DCHESHIRE -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
+# Include the correct definitions for the RVV tests
+CHS_SW_FLAGS += -DARA_NR_LANES=$(nr_lanes) -DEEW=$(eew) -DPRINTF=$(printf)
 
 # Vars and rules to make the Linux image
 include cva6-sdk.mk
@@ -40,5 +43,5 @@ copy-vector-deps: $(DEPS_H)
 	cp $^ $(CHS_SW)/tests
 
 # Copy the vector programs from the src folder to cheshire
-copy-vector-sw: $(SW_C)
+copy-vector-sw: $(SW_C) $(TESTS_C)
 	cp $^ $(CHS_SW)/tests
