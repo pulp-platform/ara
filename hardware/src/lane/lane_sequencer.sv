@@ -414,6 +414,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
             default: '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -495,9 +497,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default: '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -514,9 +518,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default: '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -534,10 +540,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req_i.vl / NrLanes,
             scale_vl : pe_req_i.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req_i.vtype,
             hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            cvt_resize: CVT_SAME,
             default  : '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -555,11 +561,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew     : pe_req.old_eew_vs1,
             conv    : pe_req.conversion_vs1,
             scale_vl: pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vl      : vfu_operation_d.vl,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -577,9 +584,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            cvt_resize : pe_req.cvt_resize,
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default: '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -598,10 +607,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req_i.vl / NrLanes,
             scale_vl : pe_req_i.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req_i.vtype,
             hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            cvt_resize: CVT_SAME,
             default  : '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -620,10 +629,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu: ALU_SLDU,
             is_slide : 1'b1,
             scale_vl : pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vtype    : pe_req.vtype,
             vstart   : vfu_operation_d.vstart,
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
+            cvt_resize: CVT_SAME,
             default  : '0
           };
           operand_request_push[SlideAddrGenA] = pe_req.use_vs2;
@@ -680,10 +689,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : VMASK,
             eew     : EW64,
             is_slide: 1'b1,
-            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vm | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           operand_request_push[MaskM] = !pe_req.vm;
@@ -722,10 +733,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id      : pe_req.id,
             vs      : pe_req.vs1,
             scale_vl: pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -753,10 +766,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : pe_req.vs2,
             eew     : pe_req.eew_vs2,
             scale_vl: pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs2 | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           // Since this request goes outside of the lane, we might need to request an
@@ -784,11 +799,13 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : pe_req.vs1,
             eew     : pe_req.eew_vs1,
             scale_vl: pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vl      : pe_req.vl / NrLanes,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           // This is an operation that runs normally on the VMFPU, and then gets *condensed* and
@@ -806,11 +823,13 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs      : pe_req.vs2,
             eew     : pe_req.eew_vs2,
             scale_vl: pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vl      : pe_req.vl / NrLanes,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vs2 | pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           // This is an operation that runs normally on the VMFPU, and then gets *condensed* and
@@ -828,10 +847,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id      : pe_req.id,
             vs      : pe_req.vd,
             scale_vl: pe_req.scale_vl,
-            cvt_resize : pe_req.cvt_resize,
             vtype   : pe_req.vtype,
             vstart  : vfu_operation_d.vstart,
             hazard  : pe_req.hazard_vd,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default : '0
           };
           // vl and eew depend on the real eew on which we are working on
@@ -863,10 +884,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vs     : VMASK,
             eew    : EW64,
             vtype  : pe_req.vtype,
-            cvt_resize : pe_req.cvt_resize,
             vl     : (pe_req.vl / NrLanes / ELEN),
             vstart : vfu_operation_d.vstart,
             hazard : pe_req.hazard_vm,
+            target_fu : ALU_SLDU,
+            conv      : OpQueueConversionNone,
+            cvt_resize: CVT_SAME,
             default: '0
           };
           // Request a balanced load from every lane despite it being active or not.
@@ -888,6 +911,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             vl         : vfu_operation_d.vl,
             vstart     : vfu_operation_d.vstart,
             hazard     : pe_req.hazard_vs2,
+            target_fu : ALU_SLDU,
             default    : '0
           };
           operand_request_push[MaskB] = 1'b1;
