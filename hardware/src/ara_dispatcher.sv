@@ -3260,7 +3260,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             //       E.g., CSRs vxrm and vxsat have no influence on-non fixed-point instructions, it could be read and written safely when no fixed-point operation is running.
             //       By better analyzing the spec, more of optimizations of such can be made. For the sake of simplicity, the current implementation treats CSR ops as one block.
             // Just always go to WAIT_IDLE for at least one cycle (if there is a vinsn before the CSR one, it can be that ara_idle_i is still deasserted when the CSR is here).
-            if (!state_qq != WAIT_IDLE) begin
+            if (state_qq != WAIT_IDLE) begin
               state_d = WAIT_IDLE;
               acc_resp_o.req_ready = 1'b0;
             end else begin
