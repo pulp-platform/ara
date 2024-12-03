@@ -1,0 +1,159 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Vincenzo Maisto <vincenzo.maisto2@unina.it>
+// Matteo Perotti  <mperotti@iis.ee.ethz.ch>
+
+#include "regs/cheshire.h"
+#include "dif/clint.h"
+#include "dif/uart.h"
+#include "params.h"
+#include "util.h"
+#include "encoding.h"
+#include "rvv_test.h"
+
+#include "cheshire_util.h"
+
+int main(void) {
+    cheshire_start();
+
+    // Clean the exception variable
+    RVV_TEST_CLEAN_EXCEPTION();
+
+    // Vector configuration parameters and variables
+    uint64_t avl = RVV_TEST_AVL(64);
+    uint64_t vl;
+    vcsr_dump_t vcsr_state = {0};
+
+    // Helper variables and arrays
+    _DTYPE array_load  [RVV_TEST_AVL(64)];
+    _DTYPE array_store [RVV_TEST_AVL(64)];
+    _DTYPE* address_load = array_load;
+    _DTYPE* address_store = array_store;
+    _DTYPE* address_misaligned;
+    uint8_t byte;
+    uint64_t vstart_val;
+    _DTYPE store_val, preload_val;
+
+    // Enalbe RVV
+    enable_rvv();
+    vcsr_dump ( vcsr_state );
+
+    /////////////////
+    // STUB CONFIG //
+    /////////////////
+
+    // This initialization is controlled through "defines" in the various
+    // derived tests.
+    INIT_RVV_TEST_SOC_REGFILE;
+    VIRTUAL_MEMORY(param_stub_virt_mem);
+    STUB_EX_OFF;
+    STUB_REQ_RSP_LAT(param_stub_req_rsp_lat);
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    // START OF TESTS
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: Zero and non-zero vstart loads
+    //////////////////////////////////////////////////////////////////
+    RVV_TEST_INIT( vl, avl );
+
+    // Loop over vstart values
+    for ( uint64_t vstart_val = 0; vstart_val < vl; vstart_val++ ) {
+      RVV_TEST_INIT( vl, avl )
+
+      if (param_stub_req_rsp_lat_ctrl) {
+        // Random STUB req-rsp latency (minimum value should be 1)
+        STUB_REQ_RSP_LAT((vstart_val % param_stub_req_rsp_lat) + 1);
+      }
+
+      // Init memory
+      for ( uint64_t i = 0; i < vstart_val; i++ ) {
+        address_load[i] = i;
+      }
+      for ( uint64_t i = vstart_val; i < vl; i++ ) {
+        address_load[i] = 0;
+      }
+      // Init VRF with prestart
+      _VLD(v0,address_load)
+
+      // Init memory
+      for ( uint64_t i = vstart_val; i < vl; i++ ) {
+        address_load[i] = vstart_val + vl + i;
+      }
+      // Set vstart
+      asm volatile ("csrs     vstart, %0"   :: "r"(vstart_val) );
+      // Test target: load vr group body
+      _VLD(v0,address_load)
+      // Store whole vr group
+      _VST(v0,address_store)
+
+      // Check pre-start
+      for ( uint64_t i = 0; i < vstart_val; i++ ) {
+        RVV_TEST_ASSERT ( address_store[i] == i );
+      }
+      // Check body
+      for ( uint64_t i = vstart_val; i < vl; i++ ) {
+        RVV_TEST_ASSERT ( address_store[i] == address_load[i] );
+      }
+
+      RVV_TEST_CLEANUP();
+      ret_cnt++;
+    }
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: Zero and non-zero vstart unit-stride stores
+    //////////////////////////////////////////////////////////////////
+    RVV_TEST_INIT( vl, avl );
+
+    // Loop over vstart values
+    for ( uint64_t vstart_val = 0; vstart_val < vl; vstart_val++ ) {
+      RVV_TEST_INIT( vl, avl );
+
+      if (param_stub_req_rsp_lat_ctrl) {
+        // Random STUB req-rsp latency (minimum value should be 1)
+        STUB_REQ_RSP_LAT((vstart_val % param_stub_req_rsp_lat) + 1);
+      }
+
+      store_val = vl;
+
+      // Init memory
+      for ( uint64_t i = 0; i < vl; i++ ) {
+        address_store[i] = vstart_val + i;
+      }
+      for ( uint64_t i = 0; i < vl; i++ ) {
+        address_load[i] = vstart_val + store_val + i;
+      }
+
+      _VLD(v24,address_load)
+      asm volatile ("csrs     vstart, %0"   :: "r"(vstart_val) );
+      _VST(v24,address_store)
+
+      // Check pre-start
+      for ( uint64_t i = 0; i < vstart_val; i++ ) {
+        RVV_TEST_ASSERT ( address_store[i] == vstart_val + i );
+      }
+      // Check body
+      for ( uint64_t i = vstart_val; i < vl; i++ ) {
+        RVV_TEST_ASSERT ( address_store[i] == address_load[i] );
+      }
+
+      RVV_TEST_CLEANUP();
+      ret_cnt++;
+    }
+
+    // Clean-up the SoC CSRs
+    RESET_SOC_CSR;
+
+#if (PRINTF == 1)
+    printf("Test SUCCESS!\r\n");
+#endif
+
+    cheshire_end();
+
+    return 0;
+}
