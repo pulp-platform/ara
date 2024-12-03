@@ -311,16 +311,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     for (int lane = 0; lane < NrLanes; lane++) acc_resp_o.fflags |= fflags_ex_i[lane];
 
     ara_req_d = '{
-      vl           : csr_vl_q,
-      vstart       : csr_vstart_q,
-      vtype        : csr_vtype_q,
-      emul         : csr_vtype_q.vlmul,
-      eew_vs1      : csr_vtype_q.vsew,
-      eew_vs2      : csr_vtype_q.vsew,
-      eew_vd_op    : csr_vtype_q.vsew,
-      eew_vmask    : eew_q[VMASK],
-      cvt_resize   : CVT_SAME,
-      default      : '0
+      vl             : csr_vl_q,
+      vstart         : csr_vstart_q,
+      vtype          : csr_vtype_q,
+      emul           : csr_vtype_q.vlmul,
+      eew_vs1        : csr_vtype_q.vsew,
+      old_eew_vs1    : csr_vtype_q.vsew,
+      eew_vs2        : csr_vtype_q.vsew,
+      eew_vd_op      : csr_vtype_q.vsew,
+      eew_vmask      : eew_q[VMASK],
+      cvt_resize     : CVT_SAME,
+      fp_rm          : fpnew_pkg::RNE,
+      emul           : LMUL_1,
+      op             : VADD,
+      conversion_vs1 : OpQueueConversionNone,
+      conversion_vs2 : OpQueueConversionNone,
+      default        : '0
     };
     ara_req_valid_d = 1'b0;
 
