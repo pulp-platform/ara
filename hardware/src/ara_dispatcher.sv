@@ -362,10 +362,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       vtype        : csr_vtype_q,
       emul         : csr_vtype_q.vlmul,
       eew_vs1      : csr_vtype_q.vsew,
+      old_eew_vs1  : csr_vtype_q.vsew,
       eew_vs2      : csr_vtype_q.vsew,
       eew_vd_op    : csr_vtype_q.vsew,
       eew_vmask    : eew_q[VMASK],
       cvt_resize   : CVT_SAME,
+      fp_rm          : fpnew_pkg::RNE,
+      op             : VADD,
+      conversion_vs1 : OpQueueConversionNone,
+      conversion_vs2 : OpQueueConversionNone,
       default      : '0
     };
     ara_req_valid = 1'b0;
