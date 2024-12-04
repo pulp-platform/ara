@@ -289,11 +289,18 @@ package ara_pkg;
     fp64_from_fp32 = fp64;
   endfunction
 
-  /////////////////////////////
-  //  Accelerator interface  //
-  /////////////////////////////
+  ////////////////////
+  //  CVA6 commons  //
+  ////////////////////
 
-  // See CVA6 and Ara main modules
+  // Definitions common to CVA6
+  typedef cva6_config_pkg::exception_t exception_t;
+  typedef cva6_config_pkg::accelerator_req_t accelerator_req_t;
+  typedef cva6_config_pkg::accelerator_resp_t accelerator_resp_t;
+  typedef cva6_config_pkg::acc_mmu_req_t acc_mmu_req_t;
+  typedef cva6_config_pkg::acc_mmu_resp_t acc_mmu_resp_t;
+  typedef cva6_config_pkg::cva6_to_acc_t cva6_to_acc_t;
+  typedef cva6_config_pkg::acc_to_cva6_t acc_to_cva6_t;
 
   ////////////////////
   //  PE interface  //

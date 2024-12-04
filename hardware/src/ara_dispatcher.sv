@@ -169,6 +169,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic [4:0] vs_buffer_d, vs_buffer_q;
   // Keep track of the registers to be reshuffled |vs1|vs2|vd|
   logic [2:0] reshuffle_req_d, reshuffle_req_q;
+  // Easily handle the riscv incoming instruction
+  riscv::instruction_t instr;
+  assign instr = riscv::instruction_t'(acc_req_i.insn);
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -348,7 +351,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Inject a reshuffle instruction
       RESHUFFLE: begin
         // Instruction is of one of the RVV types
-        automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+        automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
 
         // Stall the interface, wait for the backend to accept the injected uop
         acc_resp_o.req_ready  = 1'b0;
@@ -475,14 +478,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.req_ready = 1'b1;
 
         // Decode the instructions based on their opcode
-        unique case (acc_req_i.insn.itype.opcode)
+        unique case (instr.itype.opcode)
           //////////////////////////////////////
           //  Vector Arithmetic instructions  //
           //////////////////////////////////////
 
           riscv::OpcodeVec: begin
             // Instruction is of one of the RVV types
-            automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+            automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
 
             // These (mostly) always respond at the same cycle
             acc_resp_o.resp_valid = 1'b1;
@@ -2513,7 +2516,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
           riscv::OpcodeLoadFp: begin
             // Instruction is of one of the RVV types
-            automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+            automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
 
             // The instruction is a load
             is_vload = 1'b1;
@@ -2708,7 +2711,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
           riscv::OpcodeStoreFp: begin
             // Instruction is of one of the RVV types
-            automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+            automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
 
             // The instruction is a store
             is_vstore = 1'b1;
@@ -2919,10 +2922,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               acc_resp_o.resp_valid = 1'b1;
               is_config        = 1'b1;
 
-              unique case (acc_req_i.insn.itype.funct3)
+              unique case (instr.itype.funct3)
                 3'b001: begin // csrrw
                   // Decode the CSR.
-                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                  case (riscv::csr_addr_t'(instr.itype.imm))
                     // Only vstart can be written with CSR instructions.
                     riscv::CSR_VSTART: begin
                       csr_vstart_d          = acc_req_i.rs1;
@@ -2946,24 +2949,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 3'b010: begin // csrrs
                   // Decode the CSR.
-                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                  case (riscv::csr_addr_t'(instr.itype.imm))
                     riscv::CSR_VSTART: begin
                       csr_vstart_d          = csr_vstart_q | vlen_t'(acc_req_i.rs1);
                       acc_resp_o.result = csr_vstart_q;
                     end
                     riscv::CSR_VTYPE: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VL: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VLENB: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = VLENB;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VXRM: begin
@@ -2984,24 +2987,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 3'b011: begin // csrrc
                   // Decode the CSR.
-                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                  case (riscv::csr_addr_t'(instr.itype.imm))
                     riscv::CSR_VSTART: begin
                       csr_vstart_d          = csr_vstart_q & ~vlen_t'(acc_req_i.rs1);
                       acc_resp_o.result = csr_vstart_q;
                     end
                     riscv::CSR_VTYPE: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VL: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VLENB: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = VLENB;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VXSAT: begin
@@ -3022,7 +3025,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 3'b101: begin // csrrwi
                   // Decode the CSR.
-                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                  case (riscv::csr_addr_t'(instr.itype.imm))
                     // Only vstart can be written with CSR instructions.
                     riscv::CSR_VSTART: begin
                       csr_vstart_d          = vlen_t'(acc_req_i.rs1);
@@ -3047,24 +3050,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 3'b110: begin // csrrsi
                   // Decode the CSR.
-                  case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                  case (riscv::csr_addr_t'(instr.itype.imm))
                     riscv::CSR_VSTART: begin
                       csr_vstart_d          = csr_vstart_q | vlen_t'(acc_req_i.rs1);
                       acc_resp_o.result = csr_vstart_q;
                     end
                     riscv::CSR_VTYPE: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VL: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VLENB: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = VLENB;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VXSAT: begin
@@ -3088,24 +3091,24 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end
                 3'b111: begin // csrrci
                   // Decode the CSR.
-                  unique case (riscv::csr_addr_t'(acc_req_i.insn.itype.imm))
+                  unique case (riscv::csr_addr_t'(instr.itype.imm))
                     riscv::CSR_VSTART: begin
                       csr_vstart_d          = csr_vstart_q & ~vlen_t'(acc_req_i.rs1);
                       acc_resp_o.result = csr_vstart_q;
                     end
                     riscv::CSR_VTYPE: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = xlen_vtype(csr_vtype_q);
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VL: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = csr_vl_q;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VLENB: begin
                       // Only reads are allowed
-                      if (acc_req_i.insn.itype.rs1 == '0) acc_resp_o.result = VLENB;
+                      if (instr.itype.rs1 == '0) acc_resp_o.result = VLENB;
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VXSAT: begin
@@ -3129,7 +3132,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Trigger an illegal instruction
                   illegal_insn = 1'b1;
                 end
-              endcase // acc_req_i.insn.itype.funct3
+              endcase // instr.itype.funct3
             end
           end
 
@@ -3156,13 +3159,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.resp_valid      = 1'b1;
         acc_resp_o.exception.valid = 1'b1;
         acc_resp_o.exception.cause = riscv::ILLEGAL_INSTR;
-        acc_resp_o.exception.tval  = acc_req_i.insn;
+        acc_resp_o.exception.tval  = instr;
       end
 
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
       if ( ara_req_valid_d && !acc_resp_o.exception.valid ) begin
-        automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+        automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
         in_lane_op = ara_req_d.op inside {[VADD:VMERGE]} || ara_req_d.op inside {[VREDSUM:VMSBC]} ||
@@ -3205,7 +3208,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Reshuffle if at least one of the three registers needs a reshuffle
       if (|reshuffle_req_d) begin
         // Instruction is of one of the RVV types
-        automatic rvv_instruction_t insn = rvv_instruction_t'(acc_req_i.insn.instr);
+        automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
 
         // Stall the interface, and inject a reshuffling instruction
         acc_resp_o.req_ready  = 1'b0;
@@ -3287,7 +3290,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // * CSR operations are not considered vector instructions
     if ( acc_resp_o.resp_valid
           & !acc_resp_o.exception.valid
-          & (acc_req_i.insn.itype.opcode != riscv::OpcodeSystem)
+          & (instr.itype.opcode != riscv::OpcodeSystem)
         ) begin
       csr_vstart_d = '0;
     end
