@@ -385,7 +385,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
 
             // Mute the requisition if the vl is zero
-            if (operand_request_i[requester_index].vl == '0) begin : zero_vl
+            if (operand_request_i[requester_index].vl == '0 || | (operand_request_i[requester].vl == operand_request_i[requester].vstart)) begin : zero_vl
               state_d                              = IDLE;
               operand_queue_cmd_valid_o[requester_index] = 1'b0;
             end : zero_vl
