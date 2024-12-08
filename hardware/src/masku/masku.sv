@@ -617,7 +617,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     .background_data_init_o   (background_data_init    ), // Shuffled
     .masku_alu_popcount_o     (masku_alu_popcount      ),
     .masku_alu_vfirst_count_o (masku_alu_vfirst_count  ),
-    .masku_alu_vfirst_empty_o (masku_alu_vfrist_empty  )
+    .masku_alu_vfirst_empty_o (masku_alu_vfirst_empty  )
   );
 
   masku_predication_gen #(
@@ -627,6 +627,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   ) i_masku_predication_gen (
     .vinsn_issue_i     (vinsn_issue     ),
     .masku_pred_pnt_i  (masku_pred_pnt_q),
+    .masku_operand_m_i (masku_operand_m),
     .masku_pred_strb_o (masku_pred_strb )
   );
 

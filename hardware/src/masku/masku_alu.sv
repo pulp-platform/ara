@@ -84,7 +84,6 @@ module masku_alu import ara_pkg::*; import rvv_pkg::*; #(
   logic [NrLanes*DataWidth-1:0] masku_operand_alu_seq_m;
   elen_t [NrLanes-1:0]          result_queue_mask_seq;
 
-
   // assign operand slices to be processed by popcount and lzc
   assign vcpop_slice  = vcpop_operand[(in_ready_cnt_i[idx_width(N_SLICES_CPOP)-1:0] * VcpopParallelism) +: VcpopParallelism];
   assign vfirst_slice = vcpop_operand[(in_ready_cnt_i[idx_width(N_SLICES_VFIRST)-1:0] * VfirstParallelism) +: VfirstParallelism];
