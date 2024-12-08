@@ -295,9 +295,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         && !result_queue_full) begin : axi_r_beat_read
       // Bytes valid in the current R beat
       // If non-unit strided load, we do not progress within the beat
-      automatic shortint unsigned lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
+      automatic logic [idx_width(AxiDataWidth/8)-1:0] lower_byte = beat_lower_byte(axi_addrgen_req_i.addr,
         axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, axi_len_q);
-      automatic shortint unsigned upper_byte = beat_upper_byte(axi_addrgen_req_i.addr,
+      automatic logic [idx_width(AxiDataWidth/8)-1:0] upper_byte = beat_upper_byte(axi_addrgen_req_i.addr,
         axi_addrgen_req_i.size, axi_addrgen_req_i.len, BURST_INCR, AxiDataWidth/8, axi_len_q);
 
       // Is there a vector instruction ready to be issued?

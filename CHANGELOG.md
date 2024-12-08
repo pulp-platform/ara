@@ -76,6 +76,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Refactor the MASKU
  - The MASKU always receives balanced payloads from the lanes
  - Remove FPU support for opqueues that do not need it
+ - Pre-calculate timing-critical addresses before addrgen stage
 
 ## 3.0.0 - 2023-09-08
 

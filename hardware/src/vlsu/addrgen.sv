@@ -216,6 +216,10 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     WAIT_LAST_TRANSLATION
   } state_q, state_d;
 
+  axi_addr_t lookahead_addr_e_d, lookahead_addr_e_q;
+  axi_addr_t lookahead_addr_se_d, lookahead_addr_se_q;
+  vlen_t lookahead_len_d, lookahead_len_q;
+
   // TODO: Masked elements do not generate exceptions on:
   //      * EEW misalignment
   //      * page faults
@@ -223,6 +227,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // Maintain state
     state_d  = state_q;
     pe_req_d = pe_req_q;
+    lookahead_addr_e_d  = lookahead_addr_e_q;
+    lookahead_addr_se_d = lookahead_addr_se_q;
+    lookahead_len_d     = lookahead_len_q;
 
     // Running vector instructions
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
@@ -278,6 +285,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
           // Store the PE request
           pe_req_d = pe_req_i;
 
+          // Pre-calculate expensive additions / multiplications
+          // pe_req_i shouldn't be that critical at this point
+          lookahead_addr_e_d  = pe_req_i.scalar_op + (pe_req_i.vstart << unsigned'(pe_req_i.vtype.vsew));
+          lookahead_addr_se_d = pe_req_i.scalar_op + (pe_req_i.vstart * pe_req_i.stride);
+          lookahead_len_d     = (pe_req_i.vl - pe_req_i.vstart) << unsigned'(pe_req_i.vtype.vsew[1:0]);
+
           case (pe_req_i.op)
             VLXE, VSXE: begin
               state_d = ADDRGEN_IDX_OP;
@@ -320,10 +333,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
         case (pe_req_q.op)
           // Unit-stride: address = base + (vstart in elements)
-          VLE,  VSE : vaddr_start = pe_req_q.scalar_op + (pe_req_q.vstart << unsigned'(pe_req_q.vtype.vsew));
+          VLE,  VSE : vaddr_start = lookahead_addr_e_q;
           // Strided: address = base + (vstart * stride)
-          // NOTE: this multiplier might cause some timing issues
-          VLSE, VSSE: vaddr_start = pe_req_q.scalar_op + (pe_req_q.vstart * pe_req_q.stride);
+          VLSE, VSSE: vaddr_start = lookahead_addr_se_q;
           // Indexed: let the next stage take care of vstart
           VLXE, VSXE: vaddr_start = pe_req_q.scalar_op;
           default   : vaddr_start = '0;
@@ -332,7 +344,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // Start the computation already
         addrgen_req = '{
           addr    : vaddr_start,
-          len     : (pe_req_q.vl - pe_req_q.vstart) << unsigned'(pe_req_q.vtype.vsew[1:0]),
+          len     : lookahead_len_q,
           stride  : pe_req_q.stride,
           vew     : pe_req_q.vtype.vsew[1:0],
           is_load : is_load(pe_req_q.op),
@@ -381,7 +393,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // Every address can generate an exception
         addrgen_req = '{
           addr    : pe_req_q.scalar_op,
-          len     : (pe_req_q.vl - pe_req_q.vstart) << unsigned'(pe_req_q.vtype.vsew[1:0]),
+          len     : lookahead_len_q,
           stride  : pe_req_q.stride,
           vew     : pe_req_q.vtype.vsew[1:0],
           is_load : is_load(pe_req_q.op),
@@ -522,27 +534,33 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      state_q            <= IDLE;
-      pe_req_q           <= '0;
-      vinsn_running_q    <= '0;
-      word_lane_ptr_q    <= '0;
-      elm_ptr_q          <= '0;
-      idx_op_cnt_q       <= '0;
-      last_elm_subw_q    <= '0;
-      idx_op_error_q     <= '0;
+      state_q                    <= IDLE;
+      pe_req_q                   <= '0;
+      vinsn_running_q            <= '0;
+      word_lane_ptr_q            <= '0;
+      elm_ptr_q                  <= '0;
+      idx_op_cnt_q               <= '0;
+      last_elm_subw_q            <= '0;
+      idx_op_error_q             <= '0;
       addrgen_exception_vstart_o <= '0;
-      mmu_exception_q    <= '0;
+      mmu_exception_q            <= '0;
+      lookahead_addr_e_q         <= '0;
+      lookahead_addr_se_q        <= '0;
+      lookahead_len_q            <= '0;
     end else begin
-      state_q            <= state_d;
-      pe_req_q           <= pe_req_d;
-      vinsn_running_q    <= vinsn_running_d;
-      word_lane_ptr_q    <= word_lane_ptr_d;
-      elm_ptr_q          <= elm_ptr_d;
-      idx_op_cnt_q       <= idx_op_cnt_d;
-      last_elm_subw_q    <= last_elm_subw_d;
-      idx_op_error_q     <= idx_op_error_d;
+      state_q                    <= state_d;
+      pe_req_q                   <= pe_req_d;
+      vinsn_running_q            <= vinsn_running_d;
+      word_lane_ptr_q            <= word_lane_ptr_d;
+      elm_ptr_q                  <= elm_ptr_d;
+      idx_op_cnt_q               <= idx_op_cnt_d;
+      last_elm_subw_q            <= last_elm_subw_d;
+      idx_op_error_q             <= idx_op_error_d;
       addrgen_exception_vstart_o <= addrgen_exception_vstart_d;
-      mmu_exception_q    <= mmu_exception_d;
+      mmu_exception_q            <= mmu_exception_d;
+      lookahead_addr_e_q         <= lookahead_addr_e_d;
+      lookahead_addr_se_q        <= lookahead_addr_se_d;
+      lookahead_len_q            <= lookahead_len_d;
     end
   end
 
