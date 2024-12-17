@@ -209,7 +209,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
         case (sew)
           EW64:    fpu_latency = LatFCompEW64;
           EW32:    fpu_latency = LatFCompEW32;
-          default: fpu_latency = LatFCompEW16;
+          EW16:    fpu_latency = LatFCompEW16;
+          default: fpu_latency = LatFCompEW8;
         endcase
       end
     endcase
@@ -279,7 +280,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // FPU SIMD result needs to be shuffled for narrowing instructions before commit
   elen_t narrowing_shuffled_result;
   // Helper signal to shuffle the narrowed result
-  logic [3:0] narrowing_shuffle_be;
+  logic [7:0] narrowing_shuffle_be;
 
   //////////////////
   //  Multiplier  //
@@ -674,6 +675,20 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // [63:48] |   [47:32] |  [31:16] |  [15:0]
   function automatic elen_t processed_osum_operand(elen_t mfpu_operand, logic [2:0] osum_issue_cnt, vew_e ew, logic is_masked, strb_t mask, elen_t ntr_val);
     case (ew)
+      EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) begin
+        case (osum_issue_cnt)
+          4'd0: processed_osum_operand = (is_masked & ~mask[0]) ? {56'd0, ntr_val[7:0]  } : {56'd0, mfpu_operand[7:0]  };
+          4'd1: processed_osum_operand = (is_masked & ~mask[4]) ? {56'd0, ntr_val[39:32]} : {56'd0, mfpu_operand[39:32]};
+          4'd2: processed_osum_operand = (is_masked & ~mask[2]) ? {56'd0, ntr_val[23:16]} : {56'd0, mfpu_operand[23:16]};
+          4'd3: processed_osum_operand = (is_masked & ~mask[6]) ? {56'd0, ntr_val[55:48]} : {56'd0, mfpu_operand[55:48]};
+          4'd4: processed_osum_operand = (is_masked & ~mask[1]) ? {56'd0, ntr_val[15:8] } : {56'd0, mfpu_operand[15:8] };
+          4'd5: processed_osum_operand = (is_masked & ~mask[5]) ? {56'd0, ntr_val[47:40]} : {56'd0, mfpu_operand[47:40]};
+          4'd6: processed_osum_operand = (is_masked & ~mask[3]) ? {56'd0, ntr_val[31:24]} : {56'd0, mfpu_operand[31:24]};
+          4'd7: processed_osum_operand = (is_masked & ~mask[7]) ? {56'd0, ntr_val[63:56]} : {56'd0, mfpu_operand[63:56]};
+          // Default case, no meaning
+          default: processed_osum_operand = (is_masked & ~mask[7]) ? {56'd0, ntr_val[63:56]} : {56'd0, mfpu_operand[63:56]};
+        endcase
+      end
       EW16: begin
         case (osum_issue_cnt)
           4'd0: processed_osum_operand = (is_masked & ~mask[0]) ? {48'd0, ntr_val[15:0] } : {48'd0, mfpu_operand[15:0] };
@@ -727,9 +742,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   //  Floating-point conversion //
   ////////////////////////////////
 
+  logic [$clog2(fp_mantissa_bits(EW8, 0))-1:0]  fp8_m_lzc[4];  // 2 bits each
   logic [$clog2(fp_mantissa_bits(EW16, 0))-1:0] fp16_m_lzc[2]; // 4 bits each
   logic [$clog2(fp_mantissa_bits(EW32, 0))-1:0] fp32_m_lzc;    // 5 bits each
 
+  fp8_t  fp8[4];
   fp16_t fp16[2];
   fp32_t fp32;
 
@@ -740,6 +757,20 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // By knowing the number of leading zeros in the mantissa, we can properly
   // adjust the exponent and shift the binary point to achieve a normalized
   // representation of the number.
+  if ({RVVB(FPUSupport), RVVH(FPUSupport)} == 2'b11) begin
+    // sew: 8-bit
+    for (genvar i = 0; i < 4; i++) begin
+      lzc #(
+        .WIDTH(fp_mantissa_bits(EW8, 0)),
+        .MODE (1)
+      ) leading_zero_e8_i (
+        .in_i   (fp8[i].m    ),
+        .cnt_o  (fp8_m_lzc[i]),
+        .empty_o(/*Unused*/   )
+      );
+    end
+  end
+
   if ({RVVH(FPUSupport), RVVF(FPUSupport)} == 2'b11) begin
     // sew: 16-bit
     for (genvar i = 0; i < 2; i++) begin
@@ -807,8 +838,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       Width        : 64,
       EnableVectors: 1'b1,
       EnableNanBox : 1'b1,
-      FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), 1'b0, 1'b0, 1'b0},
-      IntFmtMask   : {1'b0, 1'b1, 1'b1, 1'b1}
+      FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), RVVB(FPUSupport), RVVHA(FPUSupport), RVVBA(FPUSupport)},
+      IntFmtMask   : {logic'(RVVB(FPUSupport) || RVVBA(FPUSupport)), 1'b1, 1'b1, 1'b1}
     };
 
     // Implementation (number of registers etc)
@@ -966,6 +997,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           fp_rm = RNE;
           // positive infinity
           case (vinsn_issue_q.vtype.vsew)
+            EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) ntr_val = {8{8'h78}};
             EW16: ntr_val = {4{16'h7c00}};
             EW32: ntr_val = {2{32'h7f800000}};
             default: // EW64
@@ -977,6 +1009,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           fp_rm = RTZ;
           // negative infinity
           case (vinsn_issue_q.vtype.vsew)
+            EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) ntr_val = {8{8'hf8}};
             EW16: ntr_val = {4{16'hfc00}};
             EW32: ntr_val = {2{32'hff800000}};
             default: // EW64
@@ -989,10 +1022,21 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       // vtype.vsew encodes the destination format
       // cvt_resize is reused as neutral value for reductions
       unique case (vinsn_issue_q.vtype.vsew)
+        EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) begin
+          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op)) ? FP16 : FP8;
+          fp_dst_fmt = FP8;
+          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT16 : INT8;
+        end
         EW16: begin
-          fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op)) ? FP32 : FP16;
+          fp_src_fmt = !(RVVB(FPUSupport) || RVVBA(FPUSupport))
+                     ? (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op)) ? FP32 : FP16
+                     : (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op)) ? FP8 :
+            ((vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op)) ? FP32 : FP16);
           fp_dst_fmt = FP16;
-          fp_int_fmt = (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT32 : INT16;
+          fp_int_fmt = !(RVVB(FPUSupport) || RVVBA(FPUSupport))
+                     ? (vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT32 : INT16
+                     : (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT8 :
+            ((vinsn_issue_q.cvt_resize == CVT_NARROW && !is_reduction(vinsn_issue_q.op) && fp_op == I2F) ? INT32 : INT16);
         end
         EW32: begin
           fp_src_fmt = (vinsn_issue_q.cvt_resize == CVT_WIDE && !is_reduction(vinsn_issue_q.op)) ? FP16 :
@@ -1024,7 +1068,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     fpu_mask_t vfpu_simd_mask;
     for (genvar b = 0; b < FPULanes; b++) begin: gen_vfpu_simd_mask
-      assign vfpu_simd_mask[b] = issue_be[2*b];
+      if (RVVB(FPUSupport) || RVVBA(FPUSupport))
+        assign vfpu_simd_mask[b] = issue_be[b];
+      else
+        assign vfpu_simd_mask[b] = issue_be[2*b];
     end: gen_vfpu_simd_mask
 
     fpnew_top #(
@@ -1144,7 +1191,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
       if (FPExtSupport) begin
 
-        // vfrec7
+        // vfrec7 (only supported on 16, 32, 64-bit)
         unique case (vinsn_processing_q.vtype.vsew)
           EW16: begin
             for (int h = 0; h < 4; h++) vfrec7_out_e16[h] =
@@ -1153,9 +1200,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             vfrec7_result_o = {vfrec7_out_e16[3].vf7_e16, vfrec7_out_e16[2].vf7_e16,
                                vfrec7_out_e16[1].vf7_e16, vfrec7_out_e16[0].vf7_e16};
 
-            vfrec7_ex_flag  = (vfrec7_out_e16[3].ex_flag & {5{vfpu_flag_mask[3]}})
-                            | (vfrec7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
-                            | (vfrec7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
+            vfrec7_ex_flag  = (vfrec7_out_e16[3].ex_flag & {5{vfpu_flag_mask[FPULanes*3/4]}})
+                            | (vfrec7_out_e16[2].ex_flag & {5{vfpu_flag_mask[FPULanes/2]}})
+                            | (vfrec7_out_e16[1].ex_flag & {5{vfpu_flag_mask[FPULanes/4]}})
                             | (vfrec7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW32: begin
@@ -1164,7 +1211,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
             vfrec7_result_o = {vfrec7_out_e32[1].vf7_e32, vfrec7_out_e32[0].vf7_e32};
 
-            vfrec7_ex_flag  = (vfrec7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}})
+            vfrec7_ex_flag  = (vfrec7_out_e32[1].ex_flag & {5{vfpu_flag_mask[FPULanes/2]}})
                             | (vfrec7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW64: begin
@@ -1181,7 +1228,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           end
         endcase
 
-       //vfrsqrt7
+       // vfrsqrt7 (only supported on 16, 32, 64-bit)
         unique case (vinsn_processing_q.vtype.vsew)
           EW16: begin
             for (int h = 0; h < 4; h++) vfrsqrt7_out_e16[h] =
@@ -1190,9 +1237,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             vfrsqrt7_result_o = {vfrsqrt7_out_e16[3].vf7_e16, vfrsqrt7_out_e16[2].vf7_e16,
                                  vfrsqrt7_out_e16[1].vf7_e16, vfrsqrt7_out_e16[0].vf7_e16};
 
-            vfrsqrt7_ex_flag = (vfrsqrt7_out_e16[3].ex_flag & {5{vfpu_flag_mask[3]}})
-                             | (vfrsqrt7_out_e16[2].ex_flag & {5{vfpu_flag_mask[2]}})
-                             | (vfrsqrt7_out_e16[1].ex_flag & {5{vfpu_flag_mask[1]}})
+            vfrsqrt7_ex_flag = (vfrsqrt7_out_e16[3].ex_flag & {5{vfpu_flag_mask[FPULanes*3/4]}})
+                             | (vfrsqrt7_out_e16[2].ex_flag & {5{vfpu_flag_mask[FPULanes/2]}})
+                             | (vfrsqrt7_out_e16[1].ex_flag & {5{vfpu_flag_mask[FPULanes/4]}})
                              | (vfrsqrt7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW32: begin
@@ -1201,7 +1248,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
             vfrsqrt7_result_o = {vfrsqrt7_out_e32[1].vf7_e32, vfrsqrt7_out_e32[0].vf7_e32};
 
-            vfrsqrt7_ex_flag = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[2]}})
+            vfrsqrt7_ex_flag = (vfrsqrt7_out_e32[1].ex_flag & {5{vfpu_flag_mask[FPULanes/2]}})
                              | (vfrsqrt7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW64: begin
@@ -1240,6 +1287,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       // 2) Encode the mask in the bit after each comparison result
       if (vinsn_processing_q.op inside {[VMFEQ:VMFGE]}) begin
         unique case (vinsn_processing_q.vtype.vsew)
+          EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) begin
+            for (int b = 0; b < 8; b++) vfpu_processed_result[8*b] =
+              (vinsn_processing_q.op == VMFNE) ?
+                ~vfpu_processed_result[8*b] :
+                vfpu_processed_result[8*b];
+            for (int b = 0; b < 8; b++) vfpu_processed_result[8*b+1] = vfpu_mask[1*b];
+          end
           EW16: begin
             for (int b = 0; b < 4; b++) vfpu_processed_result[16*b] =
               (vinsn_processing_q.op == VMFNE) ?
@@ -1387,6 +1441,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                    ? {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs1}
                    : {vinsn_issue_q.use_vd_op, vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
 
+    for (int i = 0; i < 4; i++) fp8[i]  = '0;
     for (int i = 0; i < 2; i++) fp16[i] = '0;
     fp32 = '0;
 
@@ -1426,6 +1481,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
         // Sign injection
         unique case (vinsn_issue_q.vtype.vsew)
+          EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) for (int b = 0; b < 8; b++) begin
+              operand_a[8*b+7] = operand_a[8*b+7] ^ fp_sign[0];
+              operand_b[8*b+7] = operand_b[8*b+7] ^ fp_sign[1];
+              operand_c[8*b+7] = operand_c[8*b+7] ^ fp_sign[2];
+            end
           EW16: for (int b = 0; b < 4; b++) begin
               operand_a[16*b+15] = operand_a[16*b+15] ^ fp_sign[0];
               operand_b[16*b+15] = operand_b[16*b+15] ^ fp_sign[1];
@@ -1533,22 +1593,33 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
         // Narrowing FPU results need to be shuffled before being saved for storing
         unique case (vinsn_processing_q.vtype.vsew)
+          EW8: if (RVVB(FPUSupport) || RVVBA(FPUSupport)) begin
+            narrowing_shuffled_result[63:56] = unit_out_result[31:24];
+            narrowing_shuffled_result[55:48] = unit_out_result[31:24];
+            narrowing_shuffled_result[47:40] = unit_out_result[23:16];
+            narrowing_shuffled_result[39:32] = unit_out_result[23:16];
+            narrowing_shuffled_result[31:24] = unit_out_result[15:8];
+            narrowing_shuffled_result[23:16] = unit_out_result[15:8];
+            narrowing_shuffled_result[15:8]  = unit_out_result[7:0];
+            narrowing_shuffled_result[7:0]   = unit_out_result[7:0];
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 8'b01010101 : 8'b10101010;
+          end
           EW16: begin
             narrowing_shuffled_result[63:48] = unit_out_result[31:16];
             narrowing_shuffled_result[47:32] = unit_out_result[31:16];
             narrowing_shuffled_result[31:16] = unit_out_result[15:0];
             narrowing_shuffled_result[15:0]  = unit_out_result[15:0];
-            narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 8'b00110011 : 8'b11001100;
           end
           EW32: begin
             narrowing_shuffled_result[63:32] = unit_out_result[31:0];
             narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
-            narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0011 : 4'b1100;
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 8'b00001111 : 8'b11110000;
           end
           default: begin
             narrowing_shuffled_result[63:32] = unit_out_result[31:0];
             narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
-            narrowing_shuffle_be             = !narrowing_select_out_q ? 4'b0101 : 4'b1010;
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 8'b00110011 : 8'b11001100;
           end
         endcase
 
@@ -1572,11 +1643,16 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
           result_queue_d[result_queue_write_pnt_q].id    = vinsn_processing_q.id;
           result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_processing_q.vd, NrLanes, VLEN) +
             ((vinsn_processing_q.vl - to_process_cnt_q) >> (int'(EW64) - vinsn_processing_q.vtype.vsew));
-          // FP narrowing instructions pack the result in two different cycles, and only some 16-bit slices are active
+          // FP narrowing instructions pack the result in two different cycles, and only some 8-bit slices are active
           if (narrowing(vinsn_processing_q.cvt_resize)) begin
-            for (int b = 0; b < 4; b++) begin
-              if (narrowing_shuffle_be[b])
-                result_queue_d[result_queue_write_pnt_q].wdata[b*16 +: 16] = narrowing_shuffled_result[b*16 +: 16];
+            if (RVVB(FPUSupport) || RVVBA(FPUSupport)) begin
+              for (int b = 0; b < 8; b++)
+                if (narrowing_shuffle_be[b])
+                  result_queue_d[result_queue_write_pnt_q].wdata[b*8 +: 8] = narrowing_shuffled_result[b*8 +: 8];
+            end else begin
+              for (int b = 0; b < 4; b++)
+                if (narrowing_shuffle_be[2*b])
+                  result_queue_d[result_queue_write_pnt_q].wdata[b*16 +: 16] = narrowing_shuffled_result[b*16 +: 16];
             end
           end else begin
             result_queue_d[result_queue_write_pnt_q].wdata = unit_out_result;
@@ -2216,17 +2292,25 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       if (FPUSupport != FPUSupportNone) begin
         if (vfu_operation_i.wide_fp_imm) begin
           unique casez ({vfu_operation_i.vtype.vsew,
+            RVVB(FPUSupport),
             RVVH(FPUSupport),
             RVVF(FPUSupport),
             RVVD(FPUSupport)})
-            {EW32, 1'b1, 1'b1, 1'b?}: begin
+            {EW16, 1'b1, 1'b1, 1'b?, 1'b?}: begin
+              for (int e = 0; e < 4; e++) begin
+                fp8[e] = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[7:0];
+                vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[16*e +: 16] =
+                  fp16_from_fp8(fp8[e], fp8_m_lzc[e]);
+              end
+            end
+            {EW32, 1'b?, 1'b1, 1'b1, 1'b?}: begin
               for (int e = 0; e < 2; e++) begin
                 fp16[e] = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[15:0];
                 vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[32*e +: 32] =
                   fp32_from_fp16(fp16[e], fp16_m_lzc[e]);
               end
             end
-            {EW64, 1'b?, 1'b1, 1'b1}: begin
+            {EW64, 1'b?, 1'b?, 1'b1, 1'b1}: begin
               fp32 = vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op[31:0];
               vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].scalar_op =
                 fp64_from_fp32(fp32, fp32_m_lzc);
