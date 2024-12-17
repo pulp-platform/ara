@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add support for fault-only-first loads
  - Extend the riscv-tests MASKU-related tests
  - Add support for vrgather/vcompress
+ - Add parametrized support for 8-alt, 8, 16-alt floating-point
 
 ### Changed
 
