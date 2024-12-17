@@ -322,7 +322,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_vmask      : eew_q[VMASK],
       cvt_resize     : CVT_SAME,
       fp_rm          : fpnew_pkg::RNE,
-      emul           : LMUL_1,
       op             : VADD,
       conversion_vs1 : OpQueueConversionNone,
       conversion_vs2 : OpQueueConversionNone,
