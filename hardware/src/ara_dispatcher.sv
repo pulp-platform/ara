@@ -3522,7 +3522,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // During a vstore, if vstart > 0, reshuffle immediately not to complicate operand fetch stage
         reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && (csr_vstart_q != '0))),
                            ara_req.use_vs2 && (ara_req.eew_vs2    != eew_q[ara_req.vs2]) && eew_valid_q[ara_req.vs2] && in_lane_op,
-                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && csr_vl_q != ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)};
+                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
         // Mask out requests if they refer to the same register!
         reshuffle_req_d &= {
           (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
