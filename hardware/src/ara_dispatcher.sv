@@ -2465,9 +2465,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     endcase
                   end
 
-                  // Ara can support 16-bit float, 32-bit float, 64-bit float.
+                  // Ara can support 8-bit float, 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
                   unique case (FPUSupport)
+                    FPUSupportAll: if (int'(csr_vtype_q.vsew) > int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
+                          illegal_insn = 1'b1;
                     FPUSupportHalfSingleDouble: if (int'(csr_vtype_q.vsew) < int'(EW16) ||
                           int'(csr_vtype_q.vsew) > int'(EW64) || int'(ara_req.eew_vs2) > int'(EW64))
                           illegal_insn = 1'b1;
@@ -2753,6 +2755,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
                   unique case (FPUSupport)
+                    FPUSupportAll: if (int'(csr_vtype_q.vsew) > int'(EW64)) illegal_insn = 1'b1;
                     FPUSupportHalfSingleDouble: if (int'(csr_vtype_q.vsew) < int'(EW16) ||
                           int'(csr_vtype_q.vsew) > int'(EW64)) illegal_insn = 1'b1;
                     FPUSupportHalfSingle: if (int'(csr_vtype_q.vsew) < int'(EW16) ||

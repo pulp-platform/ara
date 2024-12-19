@@ -454,10 +454,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     AxiUserWidth          : 1,
     NrLoadBufEntries      : 2,
     FpuEn                 : 1,
-    XF16                  : FPUSupport[0],
-    XF16ALT               : 0,
-    XF8                   : 0,
-    XF8ALT                : 1,
+    XF16                  : FPUSupport[3],
+    XF16ALT               : FPUSupport[2],
+    XF8                   : FPUSupport[1],
+    XF8ALT                : FPUSupport[0],
     RVA                   : 1,
     RVB                   : 0,
     RVV                   : 1,
@@ -468,8 +468,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     CvxifEn               : 0,
     ZiCondExtEn           : 0,
     RVSCLIC               : 0,
-    RVF                   : FPUSupport[1],
-    RVD                   : FPUSupport[2],
+    RVF                   : FPUSupport[4],
+    RVD                   : FPUSupport[5],
     FpPresent             : 1,
     NSX                   : 0,
     FLen                  : 64,
@@ -621,5 +621,17 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   if (RVVH(FPUSupport) && !CVA6AraConfig.XF16)
     $error(
       "[ara] Cannot support half-precision floating-point on Ara if CVA6 does not support it.");
+
+  if (RVVHA(FPUSupport) && !CVA6AraConfig.XF16ALT)
+    $error(
+      "[ara] Cannot support alt-half-precision floating-point on Ara if CVA6 does not support it.");
+
+  if (RVVB(FPUSupport) && !CVA6AraConfig.XF8)
+    $error(
+      "[ara] Cannot support byte-precision floating-point on Ara if CVA6 does not support it.");
+
+  if (RVVBA(FPUSupport) && !CVA6AraConfig.XF8ALT)
+    $error(
+      "[ara] Cannot support alt-byte-precision floating-point on Ara if CVA6 does not support it.");
 
 endmodule : ara_soc

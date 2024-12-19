@@ -187,6 +187,7 @@ module ara import ara_pkg::*; #(
   ara_dispatcher #(
     .NrLanes   (NrLanes   ),
     .VLEN      (VLEN      ),
+    .FPUSupport(FPUSupport),
     .SegSupport(SegSupport),
     .ara_req_t (ara_req_t ),
     .ara_resp_t(ara_resp_t)

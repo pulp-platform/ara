@@ -45,28 +45,39 @@ package ara_pkg;
     FPExtSupportEnable  = 1'b1
   } fpext_support_e;
 
-  // The three bits correspond to {RVVD, RVVF, RVVH}
-  typedef enum logic [2:0] {
-    FPUSupportNone             = 3'b000,
-    FPUSupportHalf             = 3'b001,
-    FPUSupportSingle           = 3'b010,
-    FPUSupportHalfSingle       = 3'b011,
-    FPUSupportDouble           = 3'b100,
-    FPUSupportSingleDouble     = 3'b110,
-    FPUSupportHalfSingleDouble = 3'b111
+  // The six bits correspond to {RVVD, RVVF, RVVH, RVVHA, RVVB, RVVBA}
+  typedef enum logic [5:0] {
+    FPUSupportNone             = 6'b000000,
+    FPUSupportHalf             = 6'b001000,
+    FPUSupportSingle           = 6'b010000,
+    FPUSupportHalfSingle       = 6'b011000,
+    FPUSupportDouble           = 6'b100000,
+    FPUSupportSingleDouble     = 6'b110000,
+    FPUSupportHalfSingleDouble = 6'b111000,
+    FPUSupportAll              = 6'b111111
   } fpu_support_e;
 
   function automatic logic RVVD(fpu_support_e e);
-    return e[2];
+    return e[5];
   endfunction : RVVD
 
   function automatic logic RVVF(fpu_support_e e);
-    return e[1];
+    return e[4];
   endfunction : RVVF
 
   function automatic logic RVVH(fpu_support_e e);
-    return e[0];
+    return e[3];
   endfunction : RVVH
+
+  function automatic logic RVVHA(fpu_support_e e);
+    return e[2];
+  endfunction : RVVHA
+  function automatic logic RVVB(fpu_support_e e);
+    return e[1];
+  endfunction : RVVB
+  function automatic logic RVVBA(fpu_support_e e);
+    return e[0];
+  endfunction : RVVBA
 
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
@@ -225,6 +236,24 @@ package ara_pkg;
   } resize_e;
 
   // Floating-Point structs for re-encoding during widening FP operations
+typedef struct packed {
+    logic s;
+    logic [3:0] e;
+    logic [2:0] m;
+  } fp8alt_t;
+
+  typedef struct packed {
+    logic s;
+    logic [4:0] e;
+    logic [1:0] m;
+  } fp8_t;
+
+  typedef struct packed {
+    logic s;
+    logic [7:0] e;
+    logic [6:0] m;
+  } fp16alt_t;
+
   typedef struct packed {
     logic s;
     logic [4:0] e;
@@ -253,6 +282,26 @@ package ara_pkg;
       {rvv_pkg::EW64, 1'b0}: fp_mantissa_bits = 52;
       default: fp_mantissa_bits = -1;
     endcase
+  endfunction
+
+  function automatic fp16_t fp16_from_fp8(fp8_t fp8, logic [$clog2(fp_mantissa_bits(rvv_pkg::EW8, 0)):0] fp8_m_lzc);
+    automatic fp8_t fp8_temp;
+    automatic fp16_t fp16;
+    // Wide sign
+    fp16.s = fp8.s;
+    // Wide exponent
+    // 15 - 7 = 8
+    unique case(fp8.e)
+      '0:      fp16.e = (fp8.m == '0) ? '0 : 5'd8 - {3'd0, fp8_m_lzc}; // Zero or Subnormal
+      '1:      fp16.e = '1; // NaN
+      default: fp16.e = 5'd8 + fp8.e; // Normal
+    endcase
+    // Wide mantissa
+    // If the input is NaN, output a quiet NaN mantissa.
+    // Otherwise, append trailing zeros to the mantissa.
+    fp8_temp.m = ((fp8.e == '0) && (fp8.m != '0)) ? (fp8.m << 1) << fp8_m_lzc : fp8.m;
+    fp16.m = ((fp8.e == '1) && (fp8.m != '0) ) ? {1'b1, 9'b0} : {fp8_temp.m, 8'b0};
+    fp16_from_fp8 = fp16;
   endfunction
 
   function automatic fp32_t fp32_from_fp16(fp16_t fp16, logic [$clog2(fp_mantissa_bits(rvv_pkg::EW16, 0)):0] fp16_m_lzc);
