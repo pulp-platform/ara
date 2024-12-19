@@ -19,6 +19,14 @@ module ara import ara_pkg::*; #(
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // CVA6 configuration
     parameter  config_pkg::cva6_cfg_t CVA6Cfg      = cva6_config_pkg::cva6_cfg,
+    // CVA6-related parameters
+    parameter type                    exception_t        = logic,
+    parameter type                    accelerator_req_t  = logic,
+    parameter type                    accelerator_resp_t = logic,
+    parameter type                    acc_mmu_req_t      = logic,
+    parameter type                    acc_mmu_resp_t     = logic,
+    parameter type                    cva6_to_acc_t      = logic,
+    parameter type                    acc_to_cva6_t      = logic,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 0,
     parameter  int           unsigned AxiAddrWidth = 0,
