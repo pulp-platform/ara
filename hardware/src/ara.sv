@@ -10,7 +10,7 @@ module ara import ara_pkg::*; #(
     // RVV Parameters
     parameter  int           unsigned NrLanes      = 0,                          // Number of parallel vector lanes.
     parameter  int           unsigned VLEN         = 0,                          // VLEN [bit]
-    parameter  int           unsigned OSSupport    = 0,
+    parameter  int           unsigned OSSupport    = 1,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport   = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
