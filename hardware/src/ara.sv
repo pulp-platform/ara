@@ -52,6 +52,7 @@ module ara import ara_pkg::*; #(
     input  axi_resp_t         axi_resp_i
   );
 
+  `include "common_cells/registers.svh"
   `include "ara/ara_typedef.svh"
   import cf_math_pkg::idx_width;
 
@@ -433,22 +434,24 @@ module ara import ara_pkg::*; #(
   logic vstu_mask_ready;
 
   // Optional OS support
-  logic acc_mmu_misaligned_ex, acc_mmu_req, acc_mmu_is_store, acc_mmu_dtlb_hit, acc_mmu_valid, acc_mmu_en;
+  logic acc_mmu_misaligned_ex, acc_mmu_req, acc_mmu_is_store, acc_mmu_dtlb_hit, acc_mmu_valid;
+  logic acc_mmu_en, acc_mmu_en_q;
   logic [riscv::VLEN-1:0] acc_mmu_vaddr;
   logic [riscv::PLEN-1:0] acc_mmu_paddr;
   logic [riscv::PPNW-1:0] acc_mmu_dtlb_ppn;
   ariane_pkg::exception_t acc_mmu_exception;
+
   if (OSSupport) begin
     assign acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex = acc_mmu_misaligned_ex;
     assign acc_resp_o.acc_mmu_req.acc_mmu_req           = acc_mmu_req;
     assign acc_resp_o.acc_mmu_req.acc_mmu_vaddr         = acc_mmu_vaddr;
     assign acc_resp_o.acc_mmu_req.acc_mmu_is_store      = acc_mmu_is_store;
-    assign acc_mmu_en        = acc_req_i.acc_mmu_en;
     assign acc_mmu_dtlb_hit  = acc_req_i.acc_mmu_resp.acc_mmu_dtlb_hit;
     assign acc_mmu_dtlb_ppn  = acc_req_i.acc_mmu_resp.acc_mmu_dtlb_ppn;
     assign acc_mmu_valid     = acc_req_i.acc_mmu_resp.acc_mmu_valid;
     assign acc_mmu_paddr     = acc_req_i.acc_mmu_resp.acc_mmu_paddr;
     assign acc_mmu_exception = acc_req_i.acc_mmu_resp.acc_mmu_exception;
+    assign acc_mmu_en        = acc_req_i.acc_mmu_en;
   end else begin
     assign acc_resp_o.acc_mmu_req.acc_mmu_misaligned_ex = '0;
     assign acc_resp_o.acc_mmu_req.acc_mmu_req           = '0;
@@ -461,6 +464,10 @@ module ara import ara_pkg::*; #(
     assign acc_mmu_paddr     = '0;
     assign acc_mmu_exception = '0;
   end
+
+  // Break path for acc_mmu_en. This signal can afford some additional latency
+  // since vector mem ops take multiple cycles to reach the addrgen
+  `FF(acc_mmu_en_q, acc_mmu_en, '0, clk_i, rst_ni);
 
   vlsu #(
     .NrLanes     (NrLanes     ),
@@ -515,7 +522,7 @@ module ara import ara_pkg::*; #(
     .addrgen_operand_valid_i    (sldu_addrgen_operand_valid                            ),
     .addrgen_operand_ready_o    (addrgen_operand_ready                                 ),
     // CSR input
-    .en_ld_st_translation_i     (acc_req_i.acc_mmu_en                                  ),
+    .en_ld_st_translation_i     (acc_mmu_en_q                                          ),
     // Interface with CVA6's sv39 MMU
     .mmu_misaligned_ex_o        (acc_mmu_misaligned_ex                                 ),
     .mmu_req_o                  (acc_mmu_req                                           ),
