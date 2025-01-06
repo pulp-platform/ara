@@ -86,6 +86,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Pre-calculate timing-critical addresses before addrgen stage
  - Update all GitHub Actions for CI
  - Update READMEs with FPGA implementation instructions
+ - Optimize `addrgen` timing for OS-on operation
+ - Enable OS by default
 
 ## 3.0.0 - 2023-09-08
 
