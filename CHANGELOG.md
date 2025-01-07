@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix vector slicing bug in operand requesters
  - Fix legality check for allowed registers in dispatcher
  - Remove a couple of latches
+ - Fix dispatcher state change upon vector CSR instruction
+ - Force a reshuffle when `vl == vlmax && vstart > 0`
 
 ### Added
 
