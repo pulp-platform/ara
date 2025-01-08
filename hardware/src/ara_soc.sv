@@ -458,7 +458,9 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     cfg.RVD                   = FPUSupport[5];
     cfg.XF16ALT               = FPUSupport[2];
     cfg.XF8                   = FPUSupport[1];
-//  cfg.XF8ALT                = FPUSupport[0]; // Not supported by OpenHW Group's CVFPU
+`ifdef USE_PULP_FPU
+    cfg.XF8ALT                = FPUSupport[0]; // Not supported by OpenHW Group's CVFPU
+`endif
     cfg.NrPMPEntries          = 0;
     // idempotent region
     cfg.NrNonIdempotentRules  = 2;
@@ -618,8 +620,10 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     $error(
       "[ara] Cannot support byte-precision floating-point on Ara if CVA6 does not support it.");
 
+`ifdef USE_PULP_FPU
   if (RVVBA(FPUSupport) && !CVA6AraConfig.XF8ALT)
     $error(
       "[ara] Cannot support alt-byte-precision floating-point on Ara if CVA6 does not support it.");
+`endif
 
 endmodule : ara_soc
