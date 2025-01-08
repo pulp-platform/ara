@@ -844,31 +844,47 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       Width        : 64,
       EnableVectors: 1'b1,
       EnableNanBox : 1'b1,
+`ifdef USE_PULP_FPU
       FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), RVVB(FPUSupport), RVVHA(FPUSupport), RVVBA(FPUSupport)},
+`else
+      FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), RVVB(FPUSupport), RVVHA(FPUSupport)},
+`endif
       IntFmtMask   : {logic'(RVVB(FPUSupport) || RVVBA(FPUSupport)), 1'b1, 1'b1, 1'b1}
     };
 
     // Implementation (number of registers etc)
     localparam fpu_implementation_t FPUImplementation = '{
       PipeRegs: '{
+`ifdef USE_PULP_FPU
         '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt, LatFCompEW8Alt},
+`else
+        '{LatFCompEW32, LatFCompEW64, LatFCompEW16, LatFCompEW8, LatFCompEW16Alt},
+`endif
         '{default: LatFDivSqrt},
         '{default: LatFNonComp},
-        '{default: LatFConv},
-        '{default: LatFDotp}},
+        '{default: LatFConv}
+`ifdef USE_PULP_FPU
+        , '{default: LatFDotp}
+`endif
+      },
       UnitTypes: '{
         '{default: PARALLEL}, // ADDMUL
         '{default: MERGED},   // DIVSQRT
         '{default: PARALLEL}, // NONCOMP
-        '{default: MERGED}, // CONV
-        '{default: DISABLED}}, // DOTP
+        '{default: MERGED} // CONV
+`ifdef USE_PULP_FPU
+        , '{default: DISABLED} // DOTP
+`endif
+      },
       PipeConfig: DISTRIBUTED
     };
 
     // Don't compress classify result
     localparam int unsigned TrueSIMDClass  = 1;
     localparam int unsigned EnableSIMDMask = 1;
+`ifdef USE_PULP_FPU
     localparam fpnew_pkg::divsqrt_unit_t DivSqrtSel = fpnew_pkg::PULP;
+`endif
 
     operation_e fp_op;
     logic fp_opmod;
@@ -1084,14 +1100,18 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     fpnew_top #(
       .Features      (FPUFeatures      ),
       .Implementation(FPUImplementation),
+`ifdef USE_PULP_FPU
       .DivSqrtSel    (DivSqrtSel       ),
+`endif
       .TagType       (strb_t           ),
       .TrueSIMDClass (TrueSIMDClass    ),
       .EnableSIMDMask(EnableSIMDMask   )
     ) i_fpnew_bulk (
       .clk_i         (clk_i          ),
       .rst_ni        (rst_ni         ),
+`ifdef USE_PULP_FPU
       .hart_id_i     ('0             ),
+`endif
       .flush_i       (1'b0           ),
       .rnd_mode_i    (fp_rm          ),
       .op_i          (fp_op          ),
