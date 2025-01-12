@@ -16,6 +16,9 @@ BACKREF_CHS_SIM_SCRIPTS := $(BACKREF_CHS_ROOT)/target/sim/vsim/
 # Tools
 VIVADO ?= 'vitis-2020.2 vivado'
 
+# Caution: Questasim requires this to point to the *actual* compiler install path
+CXX_PATH := $(shell which $(CXX))
+
 # Set up Bender targets and defines
 # default configuration for Cheshire + Ara is 2_lanes
 ARA_CONFIGURATION         ?= 2_lanes
@@ -51,7 +54,7 @@ update_xilinx_src:
 update_vsim_src:
 	cd $(BACKREF_CHS_ROOT) && \
 	bender script vsim $(CUSTOM_SIM_BENDER_TARGETS) > $(BACKREF_CHS_SIM_SCRIPTS)/compile.cheshire_soc.tcl
-	echo 'vlog "$(realpath $(BACKREF_CHS_ROOT))/target/sim/src/elfloader.cpp" -ccflags "-std=c++11"' >> $(BACKREF_CHS_SIM_SCRIPTS)/compile.cheshire_soc.tcl
+	echo 'vlog "$(realpath $(BACKREF_CHS_ROOT))/target/sim/src/elfloader.cpp" -ccflags "-std=c++11" -cpppath "$(CXX_PATH)"' >> $(BACKREF_CHS_SIM_SCRIPTS)/compile.cheshire_soc.tcl
 
 clean:
 	rm $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.$(BOARD).tcl
