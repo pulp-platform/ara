@@ -132,6 +132,15 @@ volatile uint32_t *rf_mmu_req_gen_lat = reg32(&__base_regs, CHESHIRE_MMU_REQ_GEN
 // RVV Tests //
 ///////////////
 
+// Helper test variables
+typedef uint64_t vcsr_dump_t [5];
+volatile uint64_t exception;
+volatile uint64_t mtval;
+volatile uint64_t mcause;
+volatile uint64_t magic_out;
+// Return counter to ease debug
+volatile uint64_t ret_cnt;
+
 #if (PRINTF == 1)
 #define FAIL { printf("FAIL. retval: \d\n", ret_cnt + 1); return ret_cnt + 1; }
 #else
@@ -162,15 +171,6 @@ volatile uint32_t *rf_mmu_req_gen_lat = reg32(&__base_regs, CHESHIRE_MMU_REQ_GEN
 #ifndef RVV_TEST_AVL
   #define RVV_TEST_AVL(EEW) (VLMAX / (EEW))
 #endif
-
-// Helper test variables
-typedef uint64_t vcsr_dump_t [5];
-uint64_t exception;
-uint64_t mtval;
-uint64_t mcause;
-uint64_t magic_out;
-// Return counter to ease debug
-uint64_t ret_cnt;
 
 void enable_rvv() {
   // Enalbe RVV by seting MSTATUS.VS
