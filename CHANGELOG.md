@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Remove a couple of latches
  - Fix dispatcher state change upon vector CSR instruction
  - Force a reshuffle when `vl == vlmax && vstart > 0`
+ - Align g++ version with cheshire's if simulating with it (for QuestaSim)
+ - Don't compile the first-pass-decoder in CVA6 (need for a specific bender target)
+ - Solve type-conversion warnings about type conversions
 
 ### Added
 
@@ -50,6 +53,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add Cheshire bare-metal FPGA flow for vcu128 and vcu118
  - Add cva6-sdk submodule
  - Add Cheshire Linux FPGA flow for vcu128 and vcu118
+ - Add RVV tests to be used with Cheshire's stub and specific debug environment.
 
 ### Changed
 

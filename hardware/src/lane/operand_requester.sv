@@ -506,6 +506,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       wen    : 1'b1,
       wdata  : alu_result_wdata_i,
       be     : alu_result_be_i,
+      opqueue: AluA,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_MFpu] = '{
@@ -513,6 +514,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       wen    : 1'b1,
       wdata  : mfpu_result_wdata_i,
       be     : mfpu_result_be_i,
+      opqueue: AluA,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_MaskUnit] = '{
@@ -520,6 +522,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       wen    : 1'b1,
       wdata  : masku_result_wdata,
       be     : masku_result_be,
+      opqueue: AluA,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_SlideUnit] = '{
@@ -527,6 +530,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       wen    : 1'b1,
       wdata  : sldu_result_wdata,
       be     : sldu_result_be,
+      opqueue: AluA,
       default: '0
     };
     operand_payload[NrOperandQueues + VFU_LoadUnit] = '{
@@ -534,6 +538,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       wen    : 1'b1,
       wdata  : ldu_result_wdata,
       be     : ldu_result_be,
+      opqueue: AluA,
       default: '0
     };
 

@@ -1,0 +1,148 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Vincenzo Maisto <vincenzo.maisto2@unina.it>
+// Matteo Perotti  <mperotti@iis.ee.ethz.ch>
+
+#include "regs/cheshire.h"
+#include "dif/clint.h"
+#include "dif/uart.h"
+#include "params.h"
+#include "util.h"
+#include "encoding.h"
+#include "rvv_test.h"
+
+#include "cheshire_util.h"
+
+// MMU req gen disabled by default
+#ifndef param_mmu_req_gen_en
+  #define param_mmu_req_gen_en  0
+  #define param_mmu_req_gen_lat 0
+#endif
+
+int main(void) {
+    cheshire_start();
+
+    // Clean the exception variable
+    RVV_TEST_CLEAN_EXCEPTION();
+
+    // This initialization is controlled through "defines" in the various
+    // derived tests.
+    INIT_RVV_TEST_SOC_REGFILE;
+    VIRTUAL_MEMORY_ON;
+    STUB_EX_ON;
+    STUB_NO_EX_LAT(0); // Always exception at every STUB request!
+    STUB_REQ_RSP_LAT(param_stub_req_rsp_lat);
+    MMU_REQ_GEN_EN(param_mmu_req_gen_en);
+    MMU_REQ_GEN_LAT(param_mmu_req_gen_lat);
+
+    // Vector configuration parameters and variables
+    uint64_t avl = RVV_TEST_AVL(64);
+    uint64_t vl, vstart_read;
+    vcsr_dump_t vcsr_state = {0};
+
+    // Helper variables and arrays
+    _DTYPE  array_load  [VLMAX];
+    _DTYPE  array_store [VLMAX];
+    _DTYPE* address_load  = array_load;
+    _DTYPE* address_store = array_store;
+
+    // Enalbe RVV
+    enable_rvv();
+    vcsr_dump ( vcsr_state );
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    // START OF TESTS
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: Exception generation: vector load
+    //////////////////////////////////////////////////////////////////
+    RVV_TEST_INIT( vl, avl );
+
+    _VLD(v0,address_load)
+    RVV_TEST_ASSERT_EXCEPTION_EXTENDED(1, address_load, CAUSE_LOAD_PAGE_FAULT)
+    RVV_TEST_CLEAN_EXCEPTION()
+
+    RVV_TEST_CLEANUP();
+
+    // //////////////////////////////////////////////////////////////////
+    // // TEST: Exception generation: vector store
+    // //////////////////////////////////////////////////////////////////
+    RVV_TEST_INIT( vl, avl );
+
+    _VST(v0, address_store)
+    RVV_TEST_ASSERT_EXCEPTION_EXTENDED(1, address_store, CAUSE_STORE_PAGE_FAULT)
+    RVV_TEST_CLEAN_EXCEPTION()
+
+    RVV_TEST_CLEANUP();
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: Exception generation and non-zero vstart: vector load
+    //////////////////////////////////////////////////////////////////
+    RVV_TEST_INIT( vl, avl );
+
+    // Loop over vstart values
+    for ( uint64_t vstart_val = 0; vstart_val < vl; vstart_val++ ) {
+      RVV_TEST_INIT( vl, avl );
+
+      if (param_stub_req_rsp_lat_ctrl) {
+        // Random STUB req-rsp latency (minimum value should be 1)
+        STUB_REQ_RSP_LAT((vstart_val % param_stub_req_rsp_lat) + 1);
+      }
+
+      asm volatile ("csrs     vstart, %0"   :: "r"(vstart_val) );
+      _VLD(v0, address_load)
+      RVV_TEST_ASSERT_EXCEPTION_EXTENDED(1, address_load + vstart_val, CAUSE_LOAD_PAGE_FAULT)
+      RVV_TEST_CLEAN_EXCEPTION()
+
+      vstart_read = -1;
+      asm volatile ("csrr  %0, vstart"  : "=r"(vstart_read) );
+      RVV_TEST_ASSERT ( vstart_read == vstart_val )
+
+      RVV_TEST_CLEANUP();
+      ret_cnt++;
+    }
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: Exception generation and non-zero vstart: vector store
+    //////////////////////////////////////////////////////////////////
+    RVV_TEST_INIT( vl, avl );
+
+    // Loop over vstart values
+    for ( uint64_t vstart_val = 0; vstart_val < vl; vstart_val++ ) {
+      RVV_TEST_INIT( vl, avl );
+
+      if (param_stub_req_rsp_lat_ctrl) {
+        // Random STUB req-rsp latency (minimum value should be 1)
+        STUB_REQ_RSP_LAT((vstart_val % param_stub_req_rsp_lat) + 1);
+      }
+
+      asm volatile ("csrs     vstart, %0"   :: "r"(vstart_val) );
+
+      _VST(v0, address_store)
+      RVV_TEST_ASSERT_EXCEPTION_EXTENDED(1, address_store + vstart_val, CAUSE_STORE_PAGE_FAULT)
+      RVV_TEST_CLEAN_EXCEPTION()
+
+      vstart_read = -1;
+      asm volatile ("csrr  %0, vstart"  : "=r"(vstart_read) );
+      RVV_TEST_ASSERT( vstart_read == vstart_val );
+
+      RVV_TEST_CLEANUP();
+      ret_cnt++;
+    }
+
+    // Clean-up the SoC CSRs
+    RESET_SOC_CSR;
+
+#if (PRINTF == 1)
+    printf("Test SUCCESS!\r\n");
+#endif
+
+    cheshire_end();
+
+    return 0;
+}
