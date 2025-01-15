@@ -663,7 +663,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   endfunction
 
   // Mute MMU request if we are receiving a valid response this cycle
-  assign mmu_req_o = mmu_req_d & ~mmu_valid_i & ~mmu_exception_i.valid;
+  assign mmu_req_o = mmu_req_d & ~mmu_valid_i;
 
   always_comb begin: axi_addrgen
     // Maintain state
