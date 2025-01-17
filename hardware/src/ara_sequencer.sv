@@ -287,6 +287,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     endcase
   endfunction : target_vfus
 
+  // Determine if the request does not need source operands from the VRF
+  function automatic logic no_src_vrf(pe_req_t pe_req);
+    no_src_vrf = ((pe_req.op == VLE || pe_req.op == VLSE) && pe_req.vm);
+  endfunction
+
   localparam int unsigned InsnQueueDepth [NrVFUs] = '{
     ValuInsnQueueDepth,
     MfpuInsnQueueDepth,
@@ -374,7 +379,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       IDLE: begin
         // Sent a request, but the operand requesters are not ready
         // Do not trap here the instructions that do not need any operands at all
-        if (pe_req_valid_o && !(&operand_requester_ready || (is_load(pe_req_o.op) && pe_req_o.vm))) begin
+        if (pe_req_valid_o && !(&operand_requester_ready || no_src_vrf(pe_req_o))) begin
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;
