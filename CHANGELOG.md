@@ -32,7 +32,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Force a reshuffle when `vl == vlmax && vstart > 0`
  - Align g++ version with cheshire's if simulating with it (for QuestaSim)
  - Don't compile the first-pass-decoder in CVA6 (need for a specific bender target)
- - Solve type-conversion warnings about type conversions
+ - Solve type-conversion warnings about type  - Indexed loads need to wait for operand requesters ready in sequencer
+ - Drop sequencer `pe_req_valid` in case of exception
+ - Reworked STU exception flush engine
 
 ### Added
 
