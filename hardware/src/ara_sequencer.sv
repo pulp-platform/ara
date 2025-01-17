@@ -523,9 +523,17 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         pe_req_d       = pe_req_o;
         pe_req_valid_d = pe_req_valid_o;
 
-        // Consume the request if acknowledged during a scalar move
-        if (pe_req_valid_o && &operand_requester_ready)
+        // Stop requesting if the operations have been completely acknowledged:
+        // 1) Scalar moves / vcpop / vfirst only need ack from the lanes
+        if (!ara_req_i.use_vd && !is_store(ara_req_i.op) && &operand_requester_ready)
           pe_req_valid_d = 1'b0;
+        // 2) Unmasked non-indexed loads only need ack from the addrgen
+        if (no_src_vrf(pe_req_o) && addrgen_ack_i)
+          pe_req_valid_d = 1'b0;
+        // 4) In case of an exception, kill the request
+        if (addrgen_exception_i.valid)
+          pe_req_valid_d = 1'b0;
+        // 3) In the other cases, we need an ack from both addrgen and lanes, so keep up the req
 
         // Wait for the address translation
         if ((is_load(pe_req_d.op) || is_store(pe_req_d.op)) && addrgen_ack_i) begin
@@ -542,8 +550,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           // Acknowledge the request
           state_d                = IDLE;
           ara_req_ready_o        = 1'b1;
-          ara_resp_o.resp        = pe_scalar_resp_i;
           ara_resp_valid_o       = 1'b1;
+          ara_resp_o.resp        = pe_scalar_resp_i;
           pe_scalar_resp_ready_o = pe_scalar_resp_valid_i & ~running_mask_insn_q;
         end
       end
