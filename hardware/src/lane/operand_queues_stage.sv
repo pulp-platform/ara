@@ -24,6 +24,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output logic               [NrOperandQueues-1:0] operand_queue_ready_o,
     input  operand_queue_cmd_t [NrOperandQueues-1:0] operand_queue_cmd_i,
     input  logic               [NrOperandQueues-1:0] operand_queue_cmd_valid_i,
+    // Support for store exception flush
+    input  logic                                     stu_ex_flush_i,
+    output logic                                     stu_ex_flush_o,
     // Interface with the Lane Sequencer
     output logic                                     mask_b_cmd_pop_o,
     // Interface with the VFUs
@@ -39,7 +42,6 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output elen_t                                    stu_operand_o,
     output logic                                     stu_operand_valid_o,
     input  logic                                     stu_operand_ready_i,
-    input  logic                                     stu_exception_flush_i,
     // Slide Unit/Address Generation unit
     output elen_t                                    sldu_addrgen_operand_o,
     output target_fu_e                               sldu_addrgen_operand_target_fu_o,
@@ -51,6 +53,11 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output logic               [1:0]                 mask_operand_valid_o,
     input  logic               [1:0]                 mask_operand_ready_i
   );
+
+  `include "common_cells/registers.svh"
+
+  // STU flush support
+  `FF(stu_ex_flush_o, stu_ex_flush_i, 1'b0, clk_i, rst_ni);
 
   ///////////
   //  ALU  //
@@ -218,7 +225,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   ) i_operand_queue_st_mask_a (
     .clk_i                    (clk_i                         ),
     .rst_ni                   (rst_ni                        ),
-    .flush_i                  (stu_exception_flush_i         ),
+    .flush_i                  (stu_ex_flush_o                ),
     .lane_id_i                (lane_id_i                     ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[StA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StA]),
@@ -263,7 +270,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   ) i_operand_queue_slide_addrgen_a (
     .clk_i                    (clk_i                                                       ),
     .rst_ni                   (rst_ni                                                      ),
-    .flush_i                  (1'b0                                                        ),
+    .flush_i                  (stu_ex_flush_o                                              ),
     .lane_id_i                (lane_id_i                                                   ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]                          ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]                    ),
@@ -321,7 +328,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   ) i_operand_queue_mask_m (
     .clk_i                    (clk_i                           ),
     .rst_ni                   (rst_ni                          ),
-    .flush_i                  (1'b0                            ),
+    .flush_i                  (stu_ex_flush_o                  ),
     .lane_id_i                (lane_id_i                       ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MaskM]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MaskM]),

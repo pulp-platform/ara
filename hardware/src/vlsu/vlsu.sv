@@ -54,12 +54,14 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t     [NrLanes-1:0] stu_operand_i,
     input  logic      [NrLanes-1:0] stu_operand_valid_i,
     output logic      [NrLanes-1:0] stu_operand_ready_o,
-    output logic                    stu_exception_flush_o,
     // Address generation operands
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  target_fu_e[NrLanes-1:0] addrgen_operand_target_fu_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                    addrgen_operand_ready_o,
+    // STU exception support
+    input  logic                    stu_ex_flush_i,
+    output logic                    stu_ex_flush_done_o,
     // Interface with the Mask unit
     input  strb_t     [NrLanes-1:0] mask_i,
     input  logic      [NrLanes-1:0] mask_valid_i,
@@ -288,7 +290,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_i          (stu_operand_i              ),
     .stu_operand_valid_i    (stu_operand_valid_i        ),
     .stu_operand_ready_o    (stu_operand_ready_o        ),
-    .stu_exception_flush_o  (stu_exception_flush_o      )
+    .stu_ex_flush_i         (stu_ex_flush_i             ),
+    .stu_ex_flush_done_o    (stu_ex_flush_done_o        )
   );
 
   //////////////////

@@ -184,6 +184,9 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]      fflags_ex_valid;
   logic      [NrLanes-1:0]      vxsat_flag;
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
+  // Flush support for store exceptions
+  logic stu_ex_flush_lane, stu_ex_flush_done;
+  logic [NrLanes-1:0] stu_ex_flush_stu;
 
   ara_dispatcher #(
     .NrLanes   (NrLanes   ),
@@ -210,6 +213,9 @@ module ara import ara_pkg::*; #(
     .alu_vxrm_o        (alu_vxrm        ),
     .fflags_ex_i       (fflags_ex       ),
     .fflags_ex_valid_i (fflags_ex_valid ),
+    // Flush support
+    .stu_ex_flush_o     (stu_ex_flush_lane),
+    .stu_ex_flush_done_i(stu_ex_flush_done),
     // Interface with the Vector Store Unit
     .core_st_pending_o (core_st_pending ),
     .load_complete_i   (load_complete   ),
@@ -306,7 +312,6 @@ module ara import ara_pkg::*; #(
   elen_t     [NrLanes-1:0]                     stu_operand;
   logic      [NrLanes-1:0]                     stu_operand_valid;
   logic      [NrLanes-1:0]                     stu_operand_ready;
-  logic                                        stu_exception_flush;
   // Slide unit/address generation operands
   elen_t     [NrLanes-1:0]                     sldu_addrgen_operand;
   target_fu_e[NrLanes-1:0]                     sldu_addrgen_operand_target_fu;
@@ -366,6 +371,9 @@ module ara import ara_pkg::*; #(
       .alu_vxrm_i                      (alu_vxrm[lane]                      ),
       .fflags_ex_o                     (fflags_ex[lane]                     ),
       .fflags_ex_valid_o               (fflags_ex_valid[lane]               ),
+      // Support for store exception flush
+      .stu_ex_flush_i                  (stu_ex_flush_lane                   ),
+      .stu_ex_flush_o                  (stu_ex_flush_stu[lane]              ),
       // Interface with the sequencer
       .pe_req_i                        (pe_req                              ),
       .pe_req_valid_i                  (pe_req_valid                        ),
@@ -395,7 +403,6 @@ module ara import ara_pkg::*; #(
       .stu_operand_o                   (stu_operand[lane]                   ),
       .stu_operand_valid_o             (stu_operand_valid[lane]             ),
       .stu_operand_ready_i             (stu_operand_ready[lane]             ),
-      .stu_exception_flush_i           (stu_exception_flush                 ),
       // Interface with the slide/address generation unit
       .sldu_addrgen_operand_o          (sldu_addrgen_operand[lane]          ),
       .sldu_addrgen_operand_target_fu_o(sldu_addrgen_operand_target_fu[lane]),
@@ -495,6 +502,9 @@ module ara import ara_pkg::*; #(
     .load_complete_o            (load_complete                                         ),
     .store_complete_o           (store_complete                                        ),
     .store_pending_o            (store_pending                                         ),
+    // STU exception support
+    .stu_ex_flush_i             (|stu_ex_flush_stu                                     ),
+    .stu_ex_flush_done_o        (stu_ex_flush_done                                     ),
     // Interface with the sequencer
     .pe_req_i                   (pe_req                                                ),
     .pe_req_valid_i             (pe_req_valid                                          ),
@@ -515,7 +525,6 @@ module ara import ara_pkg::*; #(
     .stu_operand_i              (stu_operand                                           ),
     .stu_operand_valid_i        (stu_operand_valid                                     ),
     .stu_operand_ready_o        (stu_operand_ready                                     ),
-    .stu_exception_flush_o      (stu_exception_flush                                   ),
     // Address Generation
     .addrgen_operand_i          (sldu_addrgen_operand                                  ),
     .addrgen_operand_target_fu_i(sldu_addrgen_operand_target_fu                        ),

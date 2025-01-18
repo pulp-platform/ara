@@ -27,6 +27,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  operand_request_cmd_t [NrOperandQueues-1:0] operand_request_i,
     input  logic                 [NrOperandQueues-1:0] operand_request_valid_i,
     output logic                 [NrOperandQueues-1:0] operand_request_ready_o,
+    // Support for store exception flush
+    input  logic                                       stu_ex_flush_i,
+    output logic                                       stu_ex_flush_o,
     // Interface with the VRF
     output logic                 [NrBanks-1:0]         vrf_req_o,
     output vaddr_t               [NrBanks-1:0]         vrf_addr_o,
@@ -77,9 +80,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t                                      ldu_result_wdata_i,
     input  strb_t                                      ldu_result_be_i,
     output logic                                       ldu_result_gnt_o,
-    output logic                                       ldu_result_final_gnt_o,
-    // Store Unit
-    input  logic                                       stu_exception_i
+    output logic                                       ldu_result_final_gnt_o
   );
 
   import cf_math_pkg::idx_width;
@@ -196,8 +197,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_vinsn_result_written_ff
     if (!rst_ni) begin
       vinsn_result_written_q <= '0;
+      stu_ex_flush_o <= 1'b0;
     end else begin
       vinsn_result_written_q <= vinsn_result_written_d;
+      stu_ex_flush_o <= stu_ex_flush_i;
     end
   end
 
@@ -462,7 +465,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       requester_metadata_d.hazard &= global_hazard_table_i[requester_metadata_d.id];
 
       // Kill all store-unit requests in case of exceptions
-      if (stu_exception_i && (requester_index == StA)) begin : vstu_exception_idle
+      if (stu_ex_flush_o && (requester_index == StA)) begin : vstu_exception_idle
         // Reset state
         state_d = IDLE;
         // Don't wake up the store queue (redundant, as it will be flushed anyway)
