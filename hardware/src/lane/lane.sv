@@ -48,6 +48,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  vxrm_t                                          alu_vxrm_i,
     output logic     [4:0]                                 fflags_ex_o,
     output logic                                           fflags_ex_valid_o,
+    // Support for store exception flush
+    input  logic                                           stu_ex_flush_i,
+    output logic                                           stu_ex_flush_o,
     // Interface with the sequencer
     input  `STRUCT_PORT_BITS(pe_req_t_bits)                pe_req_i,
     input  logic                                           pe_req_valid_i,
@@ -61,7 +64,6 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output elen_t                                          stu_operand_o,
     output logic                                           stu_operand_valid_o,
     input  logic                                           stu_operand_ready_i,
-    input  logic                                           stu_exception_flush_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
     output target_fu_e                                     sldu_addrgen_operand_target_fu_o,
@@ -220,6 +222,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   // Interface with the MaskB operand queue (VRGATHER/VCOMPRESS)
   logic                                       mask_b_cmd_pop;
 
+  // Support for store exception flush
+  logic stu_ex_flush_op_req_d, stu_ex_flush_op_req_q;
+  `FF(stu_ex_flush_op_req_q, stu_ex_flush_op_req_d, 1'b0, clk_i, rst_ni);
+
   // Additional signals to please Verilator's hierarchical verilation
   pe_req_t  pe_req;
   pe_resp_t pe_resp;
@@ -242,6 +248,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i     (pe_vinsn_running_i   ),
     .pe_req_ready_o         (pe_req_ready_o       ),
     .pe_resp_o              (pe_resp              ),
+    // Support for store exception flush
+    .stu_ex_flush_i         (stu_ex_flush_i       ),
+    .stu_ex_flush_o         (stu_ex_flush_op_req_d),
     // Interface with the operand requesters
     .operand_request_o      (operand_request      ),
     .operand_request_valid_o(operand_request_valid),
@@ -296,6 +305,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       mfpu_result_gnt;
   // To the slide unit (reductions)
   logic                                       sldu_result_gnt_opqueues;
+  // Support for store exception flush
+  logic                                       stu_ex_flush_op_queues_d, stu_ex_flush_op_queues_q;
+  `FF(stu_ex_flush_op_queues_q, stu_ex_flush_op_queues_d, 1'b0, clk_i, rst_ni);
 
   operand_requester #(
     .NrLanes              (NrLanes              ),
@@ -313,6 +325,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_request_i        (operand_request         ),
     .operand_request_valid_i  (operand_request_valid   ),
     .operand_request_ready_o  (operand_request_ready   ),
+    // Support for store exception flush
+    .stu_ex_flush_i           (stu_ex_flush_op_req_q   ),
+    .stu_ex_flush_o           (stu_ex_flush_op_queues_d),
     // Interface with the VRF
     .vrf_req_o                (vrf_req                 ),
     .vrf_addr_o               (vrf_addr                ),
@@ -363,9 +378,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_wdata_i       (ldu_result_wdata_i      ),
     .ldu_result_be_i          (ldu_result_be_i         ),
     .ldu_result_gnt_o         (ldu_result_gnt_o        ),
-    .ldu_result_final_gnt_o   (ldu_result_final_gnt_o  ),
-    // Store Unit
-    .stu_exception_i          ( stu_exception_flush_i  )
+    .ldu_result_final_gnt_o   (ldu_result_final_gnt_o  )
   );
 
   ////////////////////////////
@@ -414,16 +427,6 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic sldu_operand_opqueues_ready;
   logic sldu_addrgen_operand_opqueues_valid;
 
-  // Cut stu_exception path
-  logic stu_exception_flush;
-  logic [StuExLat:0] stu_exception_flush_d, stu_exception_flush_q;
-  assign stu_exception_flush_d[0] = stu_exception_flush_i;
-  assign stu_exception_flush      = StuExLat == 0 ? stu_exception_flush_i : stu_exception_flush_q[StuExLat-1];
-  for (genvar i = 0; i < StuExLat; i++) begin
-    assign stu_exception_flush_d[i+1] = stu_exception_flush_q[i];
-    `FF(stu_exception_flush_q[i], stu_exception_flush_d[i], 1'b0, clk_i, rst_ni);
-  end
-
   operand_queues_stage #(
     .NrLanes            (NrLanes            ),
     .VLEN               (VLEN               ),
@@ -441,6 +444,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_queue_ready_o            (operand_queue_ready                ),
     .operand_queue_cmd_i              (operand_queue_cmd                  ),
     .operand_queue_cmd_valid_i        (operand_queue_cmd_valid            ),
+    // Support for store exception flush
+    .stu_ex_flush_i                   (stu_ex_flush_op_queues_q           ),
+    .stu_ex_flush_o                   (stu_ex_flush_o                     ),
     // Interface with the Lane Sequencer
     .mask_b_cmd_pop_o                 (mask_b_cmd_pop                     ),
     // Interface with the VFUs
@@ -456,7 +462,6 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_o                    (stu_operand_o                      ),
     .stu_operand_valid_o              (stu_operand_valid_o                ),
     .stu_operand_ready_i              (stu_operand_ready_i                ),
-    .stu_exception_flush_i            (stu_exception_flush                ),
     // Address Generation Unit
     .sldu_addrgen_operand_o           (sldu_addrgen_operand_opqueues      ),
     .sldu_addrgen_operand_target_fu_o (sldu_addrgen_operand_target_fu_o   ),

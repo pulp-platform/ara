@@ -25,6 +25,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     input  logic                 [NrVInsn-1:0]            pe_vinsn_running_i,
     output logic                                          pe_req_ready_o,
     output pe_resp_t                                      pe_resp_o,
+    // Support for store exception flush
+    input  logic                                          stu_ex_flush_i,
+    output logic                                          stu_ex_flush_o,
     // Interface with the operand requester
     output operand_request_cmd_t [NrOperandQueues-1:0]    operand_request_o,
     output logic                 [NrOperandQueues-1:0]    operand_request_valid_o,
@@ -45,6 +48,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     output logic                                          masku_vrgat_req_ready_o,
     input  vrgat_req_t                                    masku_vrgat_req_i
   );
+
+  `include "common_cells/registers.svh"
+
+  // STU exception support
+  `FF(stu_ex_flush_o, stu_ex_flush_i, 1'b0, clk_i, rst_ni);
 
   ////////////////////////////
   //  Register the request  //
@@ -70,7 +78,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   ) i_pe_req_register (
     .clk_i     (clk_i             ),
     .rst_ni    (rst_ni            ),
-    .clr_i     (1'b0              ),
+    .clr_i     (stu_ex_flush_o    ),
     .testmode_i(1'b0              ),
     .data_i    (pe_req_i          ),
     .valid_i   (pe_req_valid_i_msk),
@@ -147,6 +155,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         operand_request_valid_d[queue] = 1'b1;
       end
     end
+
+    // Flush upon store
+    if (stu_ex_flush_o) operand_request_valid_d[StA] = 1'b0;
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_operand_request_ff

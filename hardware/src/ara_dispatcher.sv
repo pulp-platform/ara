@@ -41,6 +41,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // Interface with the lanes
     input  logic              [NrLanes-1:0][4:0] fflags_ex_i,
     input  logic              [NrLanes-1:0]      fflags_ex_valid_i,
+    // STU exception-related flush support
+    output logic                                 stu_ex_flush_o,
+    input  logic                                 stu_ex_flush_done_i,
     // Rounding mode is shared between all lanes
     input  logic              [NrLanes-1:0]      vxsat_flag_i,
     output vxrm_t             [NrLanes-1:0]      alu_vxrm_o,
@@ -141,6 +144,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   typedef enum logic [1:0] {
     NORMAL_OPERATION,
     WAIT_IDLE,
+    WAIT_IDLE_FLUSH,
     RESHUFFLE
   } state_e;
   state_e state_d, state_q, state_qq;
@@ -289,6 +293,53 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     .ara_resp_valid_o(ara_resp_valid)
   );
 
+  // STU exception flush FSM
+  // Upon exception, Ara should be flushed as soon as no operations older than the store are ongoing.
+  // For this reason, we should first wait until Ara is idle. Then, we can flush.
+  logic stu_ex_flush_start, stu_ex_flush_done, stu_ex_flush_done_q;
+  typedef enum logic [1:0] {
+    STU_FLUSH_IDLE,
+    STU_FLUSH,
+    STU_FLUSH_WAIT,
+    STU_FLUSH_DONE
+  } stu_ex_flush_fsm_e;
+  stu_ex_flush_fsm_e stu_ex_state_d, stu_ex_state_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      stu_ex_state_q <= STU_FLUSH_IDLE;
+      stu_ex_flush_done_q  <= 1'b0;
+    end else begin
+      stu_ex_state_q <= stu_ex_state_d;
+      stu_ex_flush_done_q  <= stu_ex_flush_done_i;
+    end
+  end
+
+  always_comb begin : i_stu_ex_flush_fsm
+    stu_ex_state_d = stu_ex_state_q;
+    stu_ex_flush_o = 1'b0;
+    stu_ex_flush_done = 1'b0;
+
+    case (stu_ex_state_q)
+      STU_FLUSH_IDLE: begin
+        if (stu_ex_flush_start)
+          stu_ex_state_d = STU_FLUSH;
+      end
+      STU_FLUSH: begin
+        stu_ex_flush_o = 1'b1;
+          stu_ex_state_d = STU_FLUSH_WAIT;
+      end
+      STU_FLUSH_WAIT: begin
+        if (stu_ex_flush_done_q)
+          stu_ex_state_d = STU_FLUSH_DONE;
+      end
+      STU_FLUSH_DONE: begin
+        stu_ex_flush_done = 1'b1;
+        stu_ex_state_d = STU_FLUSH_IDLE;
+      end
+    endcase
+  end
+
   ///////////////
   //  Decoder  //
   ///////////////
@@ -332,6 +383,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     store_zero_vl = 1'b0;
 
     skip_lmul_checks     = 1'b0;
+
+    stu_ex_flush_start = 1'b0;
 
     null_vslideup = 1'b0;
 
@@ -389,6 +442,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Is Ara idle?
       WAIT_IDLE: begin
         if (ara_idle_i) state_d = NORMAL_OPERATION;
+      end
+
+      // Wait for idle and then flush the stu-related pipes.
+      // This operation is not IPC critical.
+      WAIT_IDLE_FLUSH: begin
+        if ((stu_ex_state_q == STU_FLUSH_IDLE) && ara_idle_i) begin
+          // Start the flush FSM
+          stu_ex_flush_start = 1'b1;
+        end
+        // Get back to normal operation once the flush is over
+        if (stu_ex_state_q == STU_FLUSH_DONE) begin
+          state_d = NORMAL_OPERATION;
+        end
       end
 
       // Inject a reshuffle instruction
@@ -3242,10 +3308,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               acc_resp_o.exception  = ara_resp.exception;
               ara_req_valid       = 1'b0;
               // In case of exception, modify vstart and wait until the previous
-              // operations are over
+              // operations are over. Then, flush.
               if ( ara_resp.exception.valid ) begin
                 csr_vstart_d = ara_resp.exception_vstart;
-                state_d = WAIT_IDLE;
+                state_d = WAIT_IDLE_FLUSH;
               end
             end
             ara_req.eew_vs1 = ara_req.vtype.vsew; // This is the new vs1 EEW
