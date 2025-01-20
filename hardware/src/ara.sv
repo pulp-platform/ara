@@ -238,6 +238,7 @@ module ara import ara_pkg::*; #(
   ariane_pkg::exception_t          addrgen_exception;
   vlen_t                           addrgen_exception_vstart;
   logic                            addrgen_fof_exception;
+  logic                            stu_current_burst_exception;
   logic              [NrLanes-1:0] alu_vinsn_done;
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
@@ -293,7 +294,8 @@ module ara import ara_pkg::*; #(
     .addrgen_ack_i         (addrgen_ack              ),
     .addrgen_exception_i   (addrgen_exception        ),
     .addrgen_exception_vstart_i(addrgen_exception_vstart),
-    .addrgen_fof_exception_i(addrgen_fof_exception)
+    .addrgen_fof_exception_i(addrgen_fof_exception),
+    .stu_current_burst_exception_i(stu_current_burst_exception)
   );
 
   // Scalar move support
@@ -515,6 +517,7 @@ module ara import ara_pkg::*; #(
     .addrgen_exception_o        (addrgen_exception                                     ),
     .addrgen_exception_vstart_o (addrgen_exception_vstart                              ),
     .addrgen_fof_exception_o    (addrgen_fof_exception                                 ),
+    .stu_current_burst_exception_o (stu_current_burst_exception),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),

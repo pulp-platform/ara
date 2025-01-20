@@ -48,8 +48,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     input  logic                            addrgen_ack_i,
     input  ariane_pkg::exception_t          addrgen_exception_i,
     input  vlen_t                           addrgen_exception_vstart_i,
-    input  logic                            addrgen_fof_exception_i
+    input  logic                            addrgen_fof_exception_i,
+    // Interface with the store unit
+    input  logic                            stu_current_burst_exception_i
   );
+
+  `include "common_cells/registers.svh"
 
   ///////////////////////////////////
   //  Running vector instructions  //
@@ -335,6 +339,9 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // the MASKU insn to be sure that the forwarded value is the scalar one
   logic running_mask_insn_d, running_mask_insn_q;
 
+  logic stu_current_burst_exception_q;
+  `FF(stu_current_burst_exception_q, stu_current_burst_exception_i, 1'b0, clk_i, rst_ni);
+
   // pe_req_ready_i comes from all the lanes
   // It is deasserted if the current request is stuck
   // because the target operand requesters are not ready in that lane
@@ -383,6 +390,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           // Maintain output
           pe_req_d               = pe_req_o;
           pe_req_valid_d         = pe_req_valid_o;
+
+          // If we are here after a faulty store, wait until the stu signals the exception on the
+          // current burst before aborting the request.
+          if (stu_current_burst_exception_q)
+            pe_req_valid_d = 1'b0;
 
           // We are not ready
           ara_req_ready_o = 1'b0;
@@ -530,8 +542,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         // 2) Unmasked non-indexed loads only need ack from the addrgen
         if (no_src_vrf(pe_req_o) && addrgen_ack_i)
           pe_req_valid_d = 1'b0;
-        // 4) In case of an exception, kill the request
-        if (addrgen_exception_i.valid)
+        // 4) In case of an exception on this burst, kill the request.
+        //    Exceptions on this burst mean that all the valid sources have been fetched from VRF already.
+        //    Don't immediately kill when detecting the exception in the addrgen, as previous valid bursts
+        //    can still need operands to be fetched from the VRF.
+        if (stu_current_burst_exception_q)
           pe_req_valid_d = 1'b0;
         // 3) In the other cases, we need an ack from both addrgen and lanes, so keep up the req
 
