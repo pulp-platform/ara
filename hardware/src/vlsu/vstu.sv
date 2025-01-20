@@ -452,7 +452,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ////////////////////////
 
     // Clear instruction from queue and data in case of exceptions from addrgen
-    if (vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_store_i)) begin : exception
+    // Wait until we have only one instruction to commit, i.e., the previous memory operations are over and have been successful (with an ack on the b channel)
+    if (vinsn_issue_valid && (vinsn_queue_q.commit_cnt == 1) && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_store_i)) begin : exception
       // Bump issue counters and pointers of the vector instruction queue
       vinsn_queue_d.issue_cnt -= 1;
       issue_cnt_bytes_d = '0;
