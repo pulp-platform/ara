@@ -48,6 +48,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrVInsn-1:0] pe_vinsn_running_i,
     output logic                           pe_req_ready_o,
     output pe_resp_t                       pe_resp_o,
+    output logic                           stu_current_burst_exception_o,
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
@@ -238,6 +239,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // First payload from the lanes? If yes, it can be offset by vstart.
   logic first_lane_payload_d, first_lane_payload_q;
 
+  // Signal that the current burst is having an exception
+  logic stu_current_burst_exception_d;
+
   always_comb begin: p_vstu
     // NOTE: these are out here only for debug visibility, they could go in p_vldu as automatic variables
     vrf_seq_byte = '0;
@@ -274,6 +278,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     vrf_cnt_d = vrf_cnt_q;
     first_lane_payload_d = first_lane_payload_q;
 
+    stu_current_burst_exception_d = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -463,6 +468,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       // Reset AXI pointers
       axi_len_d = '0;
 
+      // Abort the main sequencer -> operand-req request
+      stu_current_burst_exception_d = 1'b1;
+
       // Mark the vector instruction as being done
       // if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done
         // Signal done to sequencer
@@ -531,6 +539,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       stu_ex_flush_q <= 1'b0;
 
       stu_ex_flush_done_o <= 1'b0;
+
+      stu_current_burst_exception_o <= 1'b0;
     end else begin
       vinsn_running_q   <= vinsn_running_d;
       issue_cnt_bytes_q <= issue_cnt_bytes_d;
@@ -548,6 +558,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       stu_ex_flush_q <= stu_ex_flush_i;
 
       stu_ex_flush_done_o <= stu_ex_flush_q;
+
+      stu_current_burst_exception_o <= stu_current_burst_exception_d;
     end
   end
 

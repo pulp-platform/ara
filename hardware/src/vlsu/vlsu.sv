@@ -49,6 +49,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output ariane_pkg::exception_t  addrgen_exception_o,
     output vlen_t                   addrgen_exception_vstart_o,
     output logic                    addrgen_fof_exception_o,
+    output logic                    stu_current_burst_exception_o,
     // Interface with the lanes
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
@@ -277,6 +278,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i     (pe_vinsn_running_i         ),
     .pe_req_ready_o         (pe_req_ready_o[OffsetStore]),
     .pe_resp_o              (pe_resp_o[OffsetStore]     ),
+    .stu_current_burst_exception_o (stu_current_burst_exception_o),
     // Interface with the address generator
     .axi_addrgen_req_i      (axi_addrgen_req            ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid      ),
