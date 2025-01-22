@@ -352,18 +352,6 @@ typedef struct packed {
     fp64_from_fp32 = fp64;
   endfunction
 
-  /////////////////////////////
-  //  Accelerator interface  //
-  /////////////////////////////
-
-  // Use Ariane's accelerator interface.
-  typedef acc_pkg::cva6_to_acc_t cva6_to_acc_t;
-  typedef acc_pkg::acc_to_cva6_t acc_to_cva6_t;
-  typedef acc_pkg::accelerator_req_t accelerator_req_t;
-  typedef acc_pkg::accelerator_resp_t accelerator_resp_t;
-  typedef acc_pkg::acc_mmu_req_t acc_mmu_req_t;
-  typedef acc_pkg::acc_mmu_resp_t acc_mmu_resp_t;
-
   ////////////////////
   //  PE interface  //
   ////////////////////
