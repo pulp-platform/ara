@@ -28,8 +28,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                 [NrOperandQueues-1:0] operand_request_valid_i,
     output logic                 [NrOperandQueues-1:0] operand_request_ready_o,
     // Support for store exception flush
-    input  logic                                       stu_ex_flush_i,
-    output logic                                       stu_ex_flush_o,
+    input  logic                                       lsu_ex_flush_i,
+    output logic                                       lsu_ex_flush_o,
     // Interface with the VRF
     output logic                 [NrBanks-1:0]         vrf_req_o,
     output vaddr_t               [NrBanks-1:0]         vrf_addr_o,
@@ -197,10 +197,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_vinsn_result_written_ff
     if (!rst_ni) begin
       vinsn_result_written_q <= '0;
-      stu_ex_flush_o <= 1'b0;
+      lsu_ex_flush_o <= 1'b0;
     end else begin
       vinsn_result_written_q <= vinsn_result_written_d;
-      stu_ex_flush_o <= stu_ex_flush_i;
+      lsu_ex_flush_o <= lsu_ex_flush_i;
     end
   end
 
@@ -464,8 +464,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Always keep the hazard bits up to date with the global hazard table
       requester_metadata_d.hazard &= global_hazard_table_i[requester_metadata_d.id];
 
-      // Kill all store-unit requests in case of exceptions
-      if (stu_ex_flush_o && (requester_index == StA)) begin : vstu_exception_idle
+      // Kill all store-unit, idx, and mem-masked requests in case of exceptions
+      if (lsu_ex_flush_o && (requester_index == StA || requester_index == SlideAddrGenA || requester_index == MaskM)) begin : vlsu_exception_idle
         // Reset state
         state_d = IDLE;
         // Don't wake up the store queue (redundant, as it will be flushed anyway)
@@ -474,7 +474,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         requester_metadata_d = '0;
         // Flush this request
         lane_operand_req_transposed[requester_index][bank] = '0;
-      end : vstu_exception_idle
+      end : vlsu_exception_idle
     end : operand_requester
 
     always_ff @(posedge clk_i or negedge rst_ni) begin

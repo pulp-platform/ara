@@ -185,8 +185,8 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]      vxsat_flag;
   vxrm_t     [NrLanes-1:0]      alu_vxrm;
   // Flush support for store exceptions
-  logic stu_ex_flush_lane, stu_ex_flush_done;
-  logic [NrLanes-1:0] stu_ex_flush_stu;
+  logic lsu_ex_flush_lane, lsu_ex_flush_done;
+  logic [NrLanes-1:0] lsu_ex_flush_stu;
 
   ara_dispatcher #(
     .NrLanes   (NrLanes   ),
@@ -214,8 +214,8 @@ module ara import ara_pkg::*; #(
     .fflags_ex_i       (fflags_ex       ),
     .fflags_ex_valid_i (fflags_ex_valid ),
     // Flush support
-    .stu_ex_flush_o     (stu_ex_flush_lane),
-    .stu_ex_flush_done_i(stu_ex_flush_done),
+    .lsu_ex_flush_o     (lsu_ex_flush_lane),
+    .lsu_ex_flush_done_i(lsu_ex_flush_done),
     // Interface with the Vector Store Unit
     .core_st_pending_o (core_st_pending ),
     .load_complete_i   (load_complete   ),
@@ -238,7 +238,7 @@ module ara import ara_pkg::*; #(
   ariane_pkg::exception_t          addrgen_exception;
   vlen_t                           addrgen_exception_vstart;
   logic                            addrgen_fof_exception;
-  logic                            stu_current_burst_exception;
+  logic                            lsu_current_burst_exception;
   logic              [NrLanes-1:0] alu_vinsn_done;
   logic              [NrLanes-1:0] mfpu_vinsn_done;
   // Interface with the operand requesters
@@ -295,7 +295,7 @@ module ara import ara_pkg::*; #(
     .addrgen_exception_i   (addrgen_exception        ),
     .addrgen_exception_vstart_i(addrgen_exception_vstart),
     .addrgen_fof_exception_i(addrgen_fof_exception),
-    .stu_current_burst_exception_i(stu_current_burst_exception)
+    .lsu_current_burst_exception_i(lsu_current_burst_exception)
   );
 
   // Scalar move support
@@ -374,8 +374,8 @@ module ara import ara_pkg::*; #(
       .fflags_ex_o                     (fflags_ex[lane]                     ),
       .fflags_ex_valid_o               (fflags_ex_valid[lane]               ),
       // Support for store exception flush
-      .stu_ex_flush_i                  (stu_ex_flush_lane                   ),
-      .stu_ex_flush_o                  (stu_ex_flush_stu[lane]              ),
+      .lsu_ex_flush_i                  (lsu_ex_flush_lane                   ),
+      .lsu_ex_flush_o                  (lsu_ex_flush_stu[lane]              ),
       // Interface with the sequencer
       .pe_req_i                        (pe_req                              ),
       .pe_req_valid_i                  (pe_req_valid                        ),
@@ -505,8 +505,8 @@ module ara import ara_pkg::*; #(
     .store_complete_o           (store_complete                                        ),
     .store_pending_o            (store_pending                                         ),
     // STU exception support
-    .stu_ex_flush_i             (|stu_ex_flush_stu                                     ),
-    .stu_ex_flush_done_o        (stu_ex_flush_done                                     ),
+    .lsu_ex_flush_i             (|lsu_ex_flush_stu                                     ),
+    .lsu_ex_flush_done_o        (lsu_ex_flush_done                                     ),
     // Interface with the sequencer
     .pe_req_i                   (pe_req                                                ),
     .pe_req_valid_i             (pe_req_valid                                          ),
@@ -517,7 +517,7 @@ module ara import ara_pkg::*; #(
     .addrgen_exception_o        (addrgen_exception                                     ),
     .addrgen_exception_vstart_o (addrgen_exception_vstart                              ),
     .addrgen_fof_exception_o    (addrgen_fof_exception                                 ),
-    .stu_current_burst_exception_o (stu_current_burst_exception),
+    .lsu_current_burst_exception_o (lsu_current_burst_exception),
     // Interface with the Mask unit
     .mask_i                     (mask                                                  ),
     .mask_valid_i               (mask_valid                                            ),
