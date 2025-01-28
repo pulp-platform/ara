@@ -49,8 +49,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic     [4:0]                                 fflags_ex_o,
     output logic                                           fflags_ex_valid_o,
     // Support for store exception flush
-    input  logic                                           stu_ex_flush_i,
-    output logic                                           stu_ex_flush_o,
+    input  logic                                           lsu_ex_flush_i,
+    output logic                                           lsu_ex_flush_o,
     // Interface with the sequencer
     input  `STRUCT_PORT_BITS(pe_req_t_bits)                pe_req_i,
     input  logic                                           pe_req_valid_i,
@@ -223,8 +223,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       mask_b_cmd_pop;
 
   // Support for store exception flush
-  logic stu_ex_flush_op_req_d, stu_ex_flush_op_req_q;
-  `FF(stu_ex_flush_op_req_q, stu_ex_flush_op_req_d, 1'b0, clk_i, rst_ni);
+  logic lsu_ex_flush_op_req_d, lsu_ex_flush_op_req_q;
+  `FF(lsu_ex_flush_op_req_q, lsu_ex_flush_op_req_d, 1'b0, clk_i, rst_ni);
 
   // Additional signals to please Verilator's hierarchical verilation
   pe_req_t  pe_req;
@@ -249,8 +249,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .pe_req_ready_o         (pe_req_ready_o       ),
     .pe_resp_o              (pe_resp              ),
     // Support for store exception flush
-    .stu_ex_flush_i         (stu_ex_flush_i       ),
-    .stu_ex_flush_o         (stu_ex_flush_op_req_d),
+    .lsu_ex_flush_i         (lsu_ex_flush_i       ),
+    .lsu_ex_flush_o         (lsu_ex_flush_op_req_d),
     // Interface with the operand requesters
     .operand_request_o      (operand_request      ),
     .operand_request_valid_o(operand_request_valid),
@@ -306,8 +306,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   // To the slide unit (reductions)
   logic                                       sldu_result_gnt_opqueues;
   // Support for store exception flush
-  logic                                       stu_ex_flush_op_queues_d, stu_ex_flush_op_queues_q;
-  `FF(stu_ex_flush_op_queues_q, stu_ex_flush_op_queues_d, 1'b0, clk_i, rst_ni);
+  logic                                       lsu_ex_flush_op_queues_d, lsu_ex_flush_op_queues_q;
+  `FF(lsu_ex_flush_op_queues_q, lsu_ex_flush_op_queues_d, 1'b0, clk_i, rst_ni);
 
   operand_requester #(
     .NrLanes              (NrLanes              ),
@@ -326,8 +326,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_request_valid_i  (operand_request_valid   ),
     .operand_request_ready_o  (operand_request_ready   ),
     // Support for store exception flush
-    .stu_ex_flush_i           (stu_ex_flush_op_req_q   ),
-    .stu_ex_flush_o           (stu_ex_flush_op_queues_d),
+    .lsu_ex_flush_i           (lsu_ex_flush_op_req_q   ),
+    .lsu_ex_flush_o           (lsu_ex_flush_op_queues_d),
     // Interface with the VRF
     .vrf_req_o                (vrf_req                 ),
     .vrf_addr_o               (vrf_addr                ),
@@ -445,8 +445,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .operand_queue_cmd_i              (operand_queue_cmd                  ),
     .operand_queue_cmd_valid_i        (operand_queue_cmd_valid            ),
     // Support for store exception flush
-    .stu_ex_flush_i                   (stu_ex_flush_op_queues_q           ),
-    .stu_ex_flush_o                   (stu_ex_flush_o                     ),
+    .lsu_ex_flush_i                   (lsu_ex_flush_op_queues_q           ),
+    .lsu_ex_flush_o                   (lsu_ex_flush_o                     ),
     // Interface with the Lane Sequencer
     .mask_b_cmd_pop_o                 (mask_b_cmd_pop                     ),
     // Interface with the VFUs

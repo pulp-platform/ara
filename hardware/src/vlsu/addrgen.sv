@@ -70,7 +70,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t            [NrLanes-1:0] addrgen_operand_i,
     input  target_fu_e       [NrLanes-1:0] addrgen_operand_target_fu_i,
     input  logic             [NrLanes-1:0] addrgen_operand_valid_i,
-    output logic                           addrgen_operand_ready_o
+    output logic                           addrgen_operand_ready_o,
+    // Indexed LSU exception support
+    input  logic                           lsu_ex_flush_i
   );
 
   localparam unsigned DataWidth = $bits(elen_t);
@@ -181,12 +183,17 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   logic      idx_vaddr_valid_d, idx_vaddr_valid_q;
   logic      idx_vaddr_ready_d, idx_vaddr_ready_q;
 
+  // Exception support
+  // This flush should be done after the backend has been flushed, too
+  logic lsu_ex_flush_q;
+
   // Break the path from the VRF to the AXI request
-  spill_register #(
+  spill_register_flushable #(
     .T(axi_addr_t)
   ) i_addrgen_idx_op_spill_reg (
     .clk_i  (clk_i           ),
     .rst_ni (rst_ni          ),
+    .flush_i(lsu_ex_flush_q  ),
     .valid_i(idx_vaddr_valid_d),
     .ready_o(idx_vaddr_ready_q),
     .data_i (idx_final_vaddr_d),
@@ -559,6 +566,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       lookahead_addr_e_q         <= '0;
       lookahead_addr_se_q        <= '0;
       lookahead_len_q            <= '0;
+      lsu_ex_flush_q             <= 1'b0;
     end else begin
       state_q                    <= state_d;
       pe_req_q                   <= pe_req_d;
@@ -573,6 +581,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       lookahead_addr_e_q         <= lookahead_addr_e_d;
       lookahead_addr_se_q        <= lookahead_addr_se_d;
       lookahead_len_q            <= lookahead_len_d;
+      lsu_ex_flush_q             <= lsu_ex_flush_i;
     end
   end
 

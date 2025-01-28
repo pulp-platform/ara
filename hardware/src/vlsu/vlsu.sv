@@ -52,7 +52,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output exception_t              addrgen_exception_o,
     output vlen_t                   addrgen_exception_vstart_o,
     output logic                    addrgen_fof_exception_o,
-    output logic                    stu_current_burst_exception_o,
+    output logic                    lsu_current_burst_exception_o,
     // Interface with the lanes
     // Store unit operands
     input  elen_t     [NrLanes-1:0] stu_operand_i,
@@ -64,8 +64,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                    addrgen_operand_ready_o,
     // STU exception support
-    input  logic                    stu_ex_flush_i,
-    output logic                    stu_ex_flush_done_o,
+    input  logic                    lsu_ex_flush_i,
+    output logic                    lsu_ex_flush_done_o,
     // Interface with the Mask unit
     input  strb_t     [NrLanes-1:0] mask_i,
     input  logic      [NrLanes-1:0] mask_valid_i,
@@ -100,10 +100,17 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic      [NrLanes-1:0] ldu_result_final_gnt_i
   );
 
+  `include "common_cells/registers.svh"
+
   logic load_complete, store_complete;
   logic addrgen_illegal_load, addrgen_illegal_store;
   assign load_complete_o  = load_complete;
   assign store_complete_o = store_complete;
+
+  logic stu_current_burst_exception, ldu_current_burst_exception;
+  assign lsu_current_burst_exception_o = stu_current_burst_exception | ldu_current_burst_exception;
+
+  `FF(lsu_ex_flush_done_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni);
 
   ///////////////////
   //  Definitions  //
@@ -189,6 +196,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_addrgen_req_valid_o    (axi_addrgen_req_valid      ),
     .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready  ),
     .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready  ),
+    .lsu_ex_flush_i             (lsu_ex_flush_i             ),
 
     // CSR input
     .en_ld_st_translation_i,
@@ -231,6 +239,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i     (pe_vinsn_running_i        ),
     .pe_req_ready_o         (pe_req_ready_o[OffsetLoad]),
     .pe_resp_o              (pe_resp_o[OffsetLoad]     ),
+    .ldu_current_burst_exception_o (ldu_current_burst_exception),
     // Interface with the address generator
     .axi_addrgen_req_i      (axi_addrgen_req           ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid     ),
@@ -247,7 +256,8 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_wdata_o     (ldu_result_wdata_o        ),
     .ldu_result_be_o        (ldu_result_be_o           ),
     .ldu_result_gnt_i       (ldu_result_gnt_i          ),
-    .ldu_result_final_gnt_i (ldu_result_final_gnt_i    )
+    .ldu_result_final_gnt_i (ldu_result_final_gnt_i    ),
+    .lsu_ex_flush_i         (lsu_ex_flush_i            )
   );
 
   /////////////////////////
@@ -283,7 +293,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .pe_vinsn_running_i     (pe_vinsn_running_i         ),
     .pe_req_ready_o         (pe_req_ready_o[OffsetStore]),
     .pe_resp_o              (pe_resp_o[OffsetStore]     ),
-    .stu_current_burst_exception_o (stu_current_burst_exception_o),
+    .stu_current_burst_exception_o (stu_current_burst_exception),
     // Interface with the address generator
     .axi_addrgen_req_i      (axi_addrgen_req            ),
     .axi_addrgen_req_valid_i(axi_addrgen_req_valid      ),
@@ -297,8 +307,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_i          (stu_operand_i              ),
     .stu_operand_valid_i    (stu_operand_valid_i        ),
     .stu_operand_ready_o    (stu_operand_ready_o        ),
-    .stu_ex_flush_i         (stu_ex_flush_i             ),
-    .stu_ex_flush_done_o    (stu_ex_flush_done_o        )
+    .lsu_ex_flush_i         (lsu_ex_flush_i             )
   );
 
   //////////////////
