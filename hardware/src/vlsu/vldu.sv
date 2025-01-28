@@ -37,6 +37,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrVInsn-1:0] pe_vinsn_running_i,
     output logic                           pe_req_ready_o,
     output pe_resp_t                       pe_resp_o,
+    output logic                           ldu_current_burst_exception_o,
     // Interface with the address generator
     input  addrgen_axi_req_t               axi_addrgen_req_i,
     input  logic                           axi_addrgen_req_valid_i,
@@ -50,6 +51,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     output strb_t            [NrLanes-1:0] ldu_result_be_o,
     input  logic             [NrLanes-1:0] ldu_result_gnt_i,
     input  logic             [NrLanes-1:0] ldu_result_final_gnt_i,
+    // LSU exception support
+    input  logic                           lsu_ex_flush_i,
+    output logic                           lsu_ex_flush_done_o,
     // Interface with the Mask unit
     input  strb_t            [NrLanes-1:0] mask_i,
     input  logic             [NrLanes-1:0] mask_valid_i,
@@ -73,13 +77,16 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   pe_req_t vinsn_issue_d, vinsn_issue_q;
   logic vinsn_issue_valid;
 
+  // Flush support
+  logic lsu_ex_flush_q;
+
   for (genvar l = 0; l < NrLanes; l++) begin
     spill_register_flushable #(
       .T(strb_t)
     ) i_vldu_mask_register (
       .clk_i     (clk_i           ),
       .rst_ni    (rst_ni          ),
-      .flush_i   (1'b0            ),
+      .flush_i   (ldu_ex_flush_q  ),
       .data_o    (mask_q[l]       ),
       .valid_o   (mask_valid_q[l] ),
       .ready_i   (mask_ready_d    ),
@@ -241,6 +248,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   logic [$clog2(8*NrLanes):0] first_payload_byte_d, first_payload_byte_q;
   logic [$clog2(8*NrLanes):0] vrf_eff_write_bytes;
 
+  // Signal that the current burst is having an exception
+  logic ldu_current_burst_exception_d;
+
   // Counter to increase the VRF write address.
   vlen_t seq_word_wr_offset_d, seq_word_wr_offset_q;
 
@@ -277,6 +287,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     axi_r_ready_o           = 1'b0;
     mask_ready_d            = 1'b0;
     load_complete_o         = 1'b0;
+
+    ldu_current_burst_exception_d = 1'b0;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -523,7 +535,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     /////////////////////////
 
     // Clear instruction queue in case of exceptions from addrgen
-    if (vinsn_issue_valid && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_load_i)) begin : exception
+    if (vinsn_issue_valid && (vinsn_queue_q.commit_cnt == 1) && ((axi_addrgen_req_valid_i && axi_addrgen_req_i.is_exception) || addrgen_illegal_load_i)) begin : exception
       // Signal done to sequencer
       pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
 
@@ -535,6 +547,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       // Reset axi state
       axi_len_d               = '0;
       axi_r_byte_pnt_d        = '0;
+
+      // Abort the main sequencer -> operand-req request
+      ldu_current_burst_exception_d = 1'b1;
 
       // Update the commit counters and pointers
       vinsn_queue_d.commit_cnt -= 1;
@@ -589,29 +604,35 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      vinsn_running_q      <= '0;
-      issue_cnt_bytes_q    <= '0;
-      commit_cnt_bytes_q   <= '0;
-      axi_len_q            <= '0;
-      axi_r_byte_pnt_q     <= '0;
-      vrf_word_byte_pnt_q  <= '0;
-      pe_resp_o            <= '0;
-      result_final_gnt_q   <= '0;
-      seq_word_wr_offset_q <= '0;
-      first_payload_byte_q <= '0;
-      vrf_word_byte_cnt_q  <= '0;
+      vinsn_running_q               <= '0;
+      issue_cnt_bytes_q             <= '0;
+      commit_cnt_bytes_q            <= '0;
+      axi_len_q                     <= '0;
+      axi_r_byte_pnt_q              <= '0;
+      vrf_word_byte_pnt_q           <= '0;
+      pe_resp_o                     <= '0;
+      result_final_gnt_q            <= '0;
+      seq_word_wr_offset_q          <= '0;
+      first_payload_byte_q          <= '0;
+      vrf_word_byte_cnt_q           <= '0;
+      lsu_ex_flush_q                <= lsu_ex_flush_i;
+      lsu_ex_flush_done_o           <= lsu_ex_flush_q;
+      ldu_current_burst_exception_o <= 1'b0;
     end else begin
-      vinsn_running_q      <= vinsn_running_d;
-      issue_cnt_bytes_q    <= issue_cnt_bytes_d;
-      commit_cnt_bytes_q   <= commit_cnt_bytes_d;
-      axi_len_q            <= axi_len_d;
-      axi_r_byte_pnt_q     <= axi_r_byte_pnt_d;
-      vrf_word_byte_pnt_q  <= vrf_word_byte_pnt_d;
-      pe_resp_o            <= pe_resp_d;
-      result_final_gnt_q   <= result_final_gnt_d;
-      seq_word_wr_offset_q <= seq_word_wr_offset_d;
-      first_payload_byte_q <= first_payload_byte_d;
-      vrf_word_byte_cnt_q  <= vrf_word_byte_cnt_d;
+      vinsn_running_q               <= vinsn_running_d;
+      issue_cnt_bytes_q             <= issue_cnt_bytes_d;
+      commit_cnt_bytes_q            <= commit_cnt_bytes_d;
+      axi_len_q                     <= axi_len_d;
+      axi_r_byte_pnt_q              <= axi_r_byte_pnt_d;
+      vrf_word_byte_pnt_q           <= vrf_word_byte_pnt_d;
+      pe_resp_o                     <= pe_resp_d;
+      result_final_gnt_q            <= result_final_gnt_d;
+      seq_word_wr_offset_q          <= seq_word_wr_offset_d;
+      first_payload_byte_q          <= first_payload_byte_d;
+      vrf_word_byte_cnt_q           <= vrf_word_byte_cnt_d;
+      lsu_ex_flush_q                <= lsu_ex_flush_i;
+      lsu_ex_flush_done_o           <= lsu_ex_flush_q;
+      ldu_current_burst_exception_o <= ldu_current_burst_exception_d;
     end
   end
 

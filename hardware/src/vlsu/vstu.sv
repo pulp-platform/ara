@@ -58,9 +58,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t            [NrLanes-1:0] stu_operand_i,
     input  logic             [NrLanes-1:0] stu_operand_valid_i,
     output logic             [NrLanes-1:0] stu_operand_ready_o,
-    // STU exception support
-    input  logic                           stu_ex_flush_i,
-    output logic                           stu_ex_flush_done_o,
+    // LSU exception support
+    input  logic                           lsu_ex_flush_i,
     // Interface with the Mask unit
     input  strb_t            [NrLanes-1:0] mask_i,
     input  logic             [NrLanes-1:0] mask_valid_i,
@@ -81,7 +80,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [NrLanes-1:0] stu_operand;
   logic  [NrLanes-1:0] stu_operand_valid;
   logic  [NrLanes-1:0] stu_operand_ready;
-  logic  stu_ex_flush_q;
+  logic  lsu_ex_flush_q;
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_regs
     fall_through_register #(
@@ -89,7 +88,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ) i_register (
       .clk_i     (clk_i                    ),
       .rst_ni    (rst_ni                   ),
-      .clr_i     (stu_ex_flush_q           ),
+      .clr_i     (lsu_ex_flush_q           ),
       .testmode_i(1'b0                     ),
       .data_i    (stu_operand_i[lane]      ),
       .valid_i   (stu_operand_valid_i[lane]),
@@ -118,7 +117,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     ) i_vstu_mask_register (
       .clk_i     (clk_i           ),
       .rst_ni    (rst_ni          ),
-      .flush_i   (stu_ex_flush_q  ),
+      .flush_i   (lsu_ex_flush_q  ),
       .data_o    (mask_q[l]       ),
       .valid_o   (mask_valid_q[l] ),
       .ready_i   (mask_ready_d    ),
@@ -473,21 +472,19 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       stu_current_burst_exception_d = 1'b1;
 
       // Mark the vector instruction as being done
-      // if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done
-        // Signal done to sequencer
-        store_complete_o = 1'b1;
+      // Signal done to sequencer
+      store_complete_o = 1'b1;
 
-        pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
+      pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
 
-        // Update the commit counters and pointers
-        vinsn_queue_d.commit_cnt -= 1;
-        if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1) begin : commit_pnt_overflow
-          vinsn_queue_d.commit_pnt = '0;
-        end : commit_pnt_overflow
-        else begin : commit_pnt_increment
-          vinsn_queue_d.commit_pnt += 1;
-        end : commit_pnt_increment
-      // end : instr_done
+      // Update the commit counters and pointers
+      vinsn_queue_d.commit_cnt -= 1;
+      if (vinsn_queue_d.commit_pnt == VInsnQueueDepth-1) begin : commit_pnt_overflow
+        vinsn_queue_d.commit_pnt = '0;
+      end : commit_pnt_overflow
+      else begin : commit_pnt_increment
+        vinsn_queue_d.commit_pnt += 1;
+      end : commit_pnt_increment
     end : exception
 
     //////////////////////////////
@@ -537,9 +534,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       vrf_cnt_q <= '0;
 
-      stu_ex_flush_q <= 1'b0;
-
-      stu_ex_flush_done_o <= 1'b0;
+      lsu_ex_flush_q <= 1'b0;
 
       stu_current_burst_exception_o <= 1'b0;
     end else begin
@@ -556,9 +551,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
       vrf_cnt_q <= vrf_cnt_d;
 
-      stu_ex_flush_q <= stu_ex_flush_i;
-
-      stu_ex_flush_done_o <= stu_ex_flush_q;
+      lsu_ex_flush_q <= lsu_ex_flush_i;
 
       stu_current_burst_exception_o <= stu_current_burst_exception_d;
     end
