@@ -1,0 +1,303 @@
+// Copyright 2023 ETH Zurich and University of Bologna.
+// Licensed under the Apache License, Version 2.0, see LICENSE for details.
+// SPDX-License-Identifier: Apache-2.0
+//
+// Matteo Perotti  <mperotti@iis.ee.ethz.ch>
+// Vincenzo Maisto <vincenzo.maisto2@unina.it>
+
+#include "regs/cheshire.h"
+#include "dif/clint.h"
+#include "dif/uart.h"
+#include "params.h"
+#include "util.h"
+#include "encoding.h"
+#include "rvv_test.h"
+
+#include "cheshire_util.h"
+
+#if (EXTENSIVE_TEST == 1)
+#define VL_LIMIT_LOW      ELMMAX + 1
+#define VL_LIMIT_HIGH     0
+#define VSTART_LIMIT_LOW  vl + 1
+#define VSTART_LIMIT_HIGH 0
+#else
+#define VL_LIMIT_LOW      3*ARA_NR_LANES + 1
+#define VL_LIMIT_HIGH     ELMMAX - (3*ARA_NR_LANES + 1)
+#define VSTART_LIMIT_LOW  2*ARA_NR_LANES + 1
+#define VSTART_LIMIT_HIGH vl - 2*ARA_NR_LANES - 1
+#endif
+
+#define INIT_NONZERO_VAL_V0 99
+#define INIT_NONZERO_VAL_V8 67
+
+// Derived parameters
+#define param_stub_ex { param_stub_ex_ctrl ? 1 : 0; }
+
+uint64_t stub_req_rsp_lat = param_stub_req_rsp_lat;
+
+_DTYPE* start_addr_vec [ELMMAX];
+
+int main(void) {
+    cheshire_start();
+
+    // Clean the exception variable
+    RVV_TEST_CLEAN_EXCEPTION();
+
+    // This initialization is controlled through "defines" in the various
+    // derived tests.
+    INIT_RVV_TEST_SOC_REGFILE;
+    VIRTUAL_MEMORY_ON;
+    STUB_EX_ON;
+
+    // Vector configuration parameters and variables
+    uint64_t avl_original = RVV_TEST_AVL(64);
+    uint64_t vl, vstart_read;
+    vcsr_dump_t vcsr_state = {0};
+
+    // Helper variables and arrays
+    _DTYPE array_load [ELMMAX];
+    _DTYPE array_load_rev [ELMMAX];
+    _DTYPE array_load_idx [ELMMAX];
+    _DTYPE array_store_0 [ELMMAX];
+    _DTYPE array_store_1 [ELMMAX];
+    _DTYPE* address_load = array_load;
+    _DTYPE* address_load_rev = array_load_rev;
+    _DTYPE* address_load_idx = array_load_idx;
+    _DTYPE* address_store_0 = array_store_0;
+    _DTYPE* address_store_1 = array_store_1;
+
+    // Enalbe RVV
+    enable_rvv();
+    vcsr_dump ( vcsr_state );
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    // START OF TESTS
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////
+    // TEST: Exception generation and non-zero vstart: vector store
+    //////////////////////////////////////////////////////////////////
+
+    // Loop through different avl, from 0 to avlmax
+    for (uint64_t avl = 1; (avl <= VL_LIMIT_LOW || avl >= VL_LIMIT_HIGH) && avl <= ELMMAX + 1; avl++) {
+      // Reset vl, vstart, reset exceptions.
+      RVV_TEST_INIT(vl, avl);
+
+      // Loop over vstart values. Also test vstart > vl.
+      for (uint64_t vstart_val = 0; (vstart_val <= VSTART_LIMIT_LOW || vstart_val >= VSTART_LIMIT_HIGH) && vstart_val < vl; vstart_val++) {
+        // Reset vl, vstart, reset exceptions.
+        RVV_TEST_INIT(vl, avl);
+
+        // Decide latency for next STUB req-rsp
+        switch (param_stub_req_rsp_lat_ctrl) {
+          // Fixed STUB req-rsp latency
+          case 0:
+            STUB_REQ_RSP_LAT(stub_req_rsp_lat);
+          break;
+          // Random STUB req-rsp latency (minimum value should be 1)
+          case 1:
+            STUB_REQ_RSP_LAT((stub_req_rsp_lat++ % MAX_LAT_P2) + 1);
+          break;
+          default:
+            cheshire_end();
+            return RET_CODE_WRONG_CASE;
+        }
+
+        // Init memory
+        for (uint64_t i = 0; i < vl; i++) {
+          address_store_0[i] = INIT_NONZERO_VAL_ST;
+          address_store_1[i] = INIT_NONZERO_VAL_ST;
+        }
+        for (uint64_t i = 0; i < vl; i++) {
+          address_load[i] = vl + vstart_val + i + MAGIC_NUM;
+        }
+        for (uint64_t i = 0; i < vl; i++) {
+          address_load_rev[vl-1-i] = vl + vstart_val + i + MAGIC_NUM;
+        }
+        for (uint64_t i = 0; i < vl; i++) {
+          // The idx vector is a byte vector
+          address_load_idx[i] = (vl-1-i) * (EEW/8);
+        }
+        // Init VRF (use v0)
+        asm volatile("vmv.v.x v0, %0" :: "r" (INIT_NONZERO_VAL_V0));
+        asm volatile("vmv.v.x v8, %0" :: "r" (INIT_NONZERO_VAL_V8));
+
+        // Get information about the next axi transfer
+        unsigned int addrgen_req = vl - vstart_val;
+        addrgen_req = vl - vstart_val;
+        for (int i = 0; i < vl; i++)
+          start_addr_vec[i] = address_load + (vl-1-i);
+
+        // Load the index vector
+        STUB_EX_OFF;
+        _VLD(v24,address_load_idx)
+        STUB_EX_ON;
+
+        // Setup STUB behavior
+        uint64_t ex_lat;
+        switch (param_stub_ex_ctrl) {
+          // No exceptions
+          case 0:
+            ex_lat = addrgen_req;
+            STUB_EX_OFF;
+          break;
+          // Always exceptions at every request
+          case 1:
+            ex_lat = 0;
+            STUB_EX_ON;
+            STUB_NO_EX_LAT(ex_lat);
+          break;
+          // Random exceptions
+          case 2:
+            // If ex_lat == axi_log->bursts, no exception for this transaction!
+            ex_lat = pseudo_rand(addrgen_req);
+            STUB_EX_ON;
+            STUB_NO_EX_LAT(ex_lat);
+          break;
+          default:
+            cheshire_end();
+            return RET_CODE_WRONG_CASE;
+        }
+
+        *rf_rvv_debug_reg = vl;
+        *rf_rvv_debug_reg = vstart_val;
+        *rf_rvv_debug_reg = ex_lat;
+        *rf_rvv_debug_reg = start_addr_vec[vstart_val + ex_lat];
+
+        // Setup vstart
+        asm volatile("csrs vstart, %0" :: "r"(vstart_val));
+
+        // Load indexed
+        _VLD_IDX(v0,v24,address_load)
+
+        // Get information about the next vstart
+        uint64_t vstart_post_ex = vstart_val + ex_lat;
+
+        *rf_rvv_debug_reg = 0x44444444;
+
+        // Check for illegal new vstart values
+        RVV_TEST_ASSERT(vstart_post_ex >= vstart_val && (vstart_post_ex < vl || (ex_lat == addrgen_req && vstart_post_ex == vl)))
+
+        *rf_rvv_debug_reg = 0x55555555;
+
+        // Check if we had an exception on this transaction
+        if (param_stub_ex_ctrl == 1 || (param_stub_ex_ctrl == 2 && ex_lat < addrgen_req)) {
+          // Check that the new vstart is correct
+          vstart_read = -1;
+          asm volatile("csrr %0, vstart" : "=r"(vstart_read));
+          ASSERT_EQ(vstart_read, vstart_post_ex)
+          *rf_rvv_debug_reg = 0x66666666;
+          // Check the exception
+          RVV_TEST_ASSERT_EXCEPTION_EXTENDED(1, start_addr_vec[vstart_val + ex_lat], CAUSE_LOAD_PAGE_FAULT)
+          RVV_TEST_CLEAN_EXCEPTION()
+
+          // Restart the instruction on another reg, or just load everything in v8 too.
+          // Then, store everything from v8
+          STUB_EX_OFF;
+          _VLD_IDX(v8, v24, address_load)
+          _VST(v8, address_store_1)
+          STUB_EX_ON;
+
+          *rf_rvv_debug_reg = 0xffffffff;
+
+          // Pre-body check v8
+          for (uint64_t i = 0; i < vstart_val; i++) {
+            ASSERT_EQ(address_store_1[i], INIT_NONZERO_VAL_V8)
+          }
+
+          *rf_rvv_debug_reg = 0xeeeeeeee;
+
+          // Body check 0
+          for (uint64_t i = vstart_val; i < vstart_post_ex; i++) {
+            *rf_rvv_debug_reg = i;
+            *rf_rvv_debug_reg = address_store_1[i];
+            *rf_rvv_debug_reg = INIT_NONZERO_VAL_V8;
+            ASSERT_EQ(address_store_1[i], INIT_NONZERO_VAL_V8)
+          }
+
+          *rf_rvv_debug_reg = 0xdddddddd;
+
+          // Body check 1
+          for (uint64_t i = vstart_post_ex; i < vl; i++) {
+            ASSERT_EQ(address_store_1[i], address_load_rev[i])
+          }
+
+          *rf_rvv_debug_reg = 0xcccccccc;
+        }
+
+        // Check that vstart was reset at zero
+        vstart_read = -1;
+
+        *rf_rvv_debug_reg = 0xbbbbbbbb;
+
+        asm volatile("csrr %0, vstart" : "=r"(vstart_read));
+        ASSERT_EQ(vstart_read, 0)
+        // Check that there was no exception
+        RVV_TEST_ASSERT_EXCEPTION(0)
+        RVV_TEST_CLEAN_EXCEPTION()
+
+        *rf_rvv_debug_reg = 0xaaaaaaaa;
+
+        // Store back the values of v0
+        STUB_EX_OFF;
+        _VST(v0, address_store_0)
+        STUB_EX_ON;
+
+        // Pre-body check v0
+        for (uint64_t i = 0; i < vstart_val; i++) {
+          ASSERT_EQ(address_store_0[i], INIT_NONZERO_VAL_V0)
+        }
+
+        *rf_rvv_debug_reg = 0x99999999;
+
+        // Body check 0
+        for (uint64_t i = vstart_val; i < vstart_post_ex; i++) {
+          ASSERT_EQ(address_store_0[i], address_load_rev[i])
+        }
+
+        *rf_rvv_debug_reg = 0x88888888;
+
+        // Body check 1
+        for (uint64_t i = vstart_post_ex; i < vl; i++) {
+          ASSERT_EQ(address_store_0[i], INIT_NONZERO_VAL_V0)
+        }
+
+        *rf_rvv_debug_reg = 0x77777777;
+
+        // Clean-up
+        RVV_TEST_CLEANUP();
+
+        // Jump from limit low to limit high if limit high is higher than low
+        if ((VSTART_LIMIT_LOW) < (VSTART_LIMIT_HIGH))
+          if (vstart_val == VSTART_LIMIT_LOW)
+            vstart_val = VSTART_LIMIT_HIGH;
+
+        ret_cnt++;
+      }
+
+      // Jump from limit low to limit high if limit high is higher than low
+      if ((VL_LIMIT_LOW) < (VL_LIMIT_HIGH))
+        if (avl == VL_LIMIT_LOW)
+          avl = VL_LIMIT_HIGH;
+    }
+
+    // Clean-up the SoC CSRs
+    RESET_SOC_CSR;
+
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+    // END OF TESTS
+    //////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////
+
+#if (PRINTF == 1)
+    printf("Test SUCCESS!\r\n");
+#endif
+
+    cheshire_end();
+
+    // If we did not return before, the test passed
+    return RET_CODE_SUCCESS;
+}

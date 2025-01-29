@@ -24,21 +24,29 @@
 #define _VSETVLI(vl,avl)          _VSETVLI_64(vl, avl)
 #define _VLD(vreg,address_load)  __VLD(vreg,64,address_load)
 #define _VST(vreg,address_store) __VST(vreg,64,address_store)
+#define _VLD_IDX(vd,vs2,address_load)  __VLD_IDX(vd,vs2,64,address_load)
+#define _VST_IDX(vs1,vs2,address_store) __VST_IDX(vs1,vs2,64,address_store)
 #elif EEW == 32
 #define _DTYPE                   __DTYPE(32)
 #define _VSETVLI(vl,avl)          _VSETVLI_32(vl, avl)
 #define _VLD(vreg,address_load)  __VLD(vreg,32,address_load)
 #define _VST(vreg,address_store) __VST(vreg,32,address_store)
+#define _VLD_IDX(vd,vs2,address_load)  __VLD_IDX(vd,vs2,32,address_load)
+#define _VST_IDX(vs1,vs2,address_store) __VST_IDX(vs1,vs2,32,address_store)
 #elif EEW == 16
 #define _DTYPE                   __DTYPE(16)
 #define _VSETVLI(vl,avl)          _VSETVLI_16(vl, avl)
 #define _VLD(vreg,address_load)  __VLD(vreg,16,address_load)
 #define _VST(vreg,address_store) __VST(vreg,16,address_store)
+#define _VLD_IDX(vd,vs2,address_load)  __VLD_IDX(vd,vs2,16,address_load)
+#define _VST_IDX(vs1,vs2,address_store) __VST_IDX(vs1,vs2,16,address_store)
 #elif EEW == 8
 #define _DTYPE                   __DTYPE(8)
 #define _VSETVLI(vl,avl)          _VSETVLI_8(vl, avl)
 #define _VLD(vreg,address_load)  __VLD(vreg,8,address_load)
 #define _VST(vreg,address_store) __VST(vreg,8,address_store)
+#define _VLD_IDX(vd,vs2,address_load)  __VLD_IDX(vd,vs2,8,address_load)
+#define _VST_IDX(vs1,vs2,address_store) __VST_IDX(vs1,vs2,8,address_store)
 #else
 #error "ERROR: No EEW was defined. Please specify one in [8,16,32,64]."
 #endif
@@ -49,6 +57,8 @@
 #define __DTYPE(eew)                  uint##eew##_t
 #define __VLD(vreg,eew,address_load)  asm volatile ("vle"#eew".v "#vreg", (%0)"  : "+&r"(address_load));
 #define __VST(vreg,eew,address_store) asm volatile ("vse"#eew".v "#vreg", (%0)"  : "+&r"(address_store));
+#define __VLD_IDX(vd,vs2,eew,address_load)  asm volatile ("vluxei"#eew".v "#vd", (%0), "#vs2 : "+&r"(address_load));
+#define __VST_IDX(vs1,vs2,eew,address_store) asm volatile ("vsuxei"#eew".v "#vs1", (%0), "#vs2 : "+&r"(address_store));
 
 ///////////////////////
 // Reshuffle helpers //
