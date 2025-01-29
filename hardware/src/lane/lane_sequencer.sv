@@ -298,12 +298,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_valid_o[MaskM]);
         end
         VFU_LoadUnit : pe_req_ready = !(operand_request_valid_o[MaskM] ||
-            (pe_req_i.op == VLXE && operand_request_valid_o[SlideAddrGenA]));
+            (pe_req.op == VLXE && operand_request_valid_o[SlideAddrGenA]));
         VFU_SlideUnit: pe_req_ready = !(operand_request_valid_o[SlideAddrGenA]);
         VFU_StoreUnit: begin
           pe_req_ready = !(operand_request_valid_o[StA] ||
             operand_request_valid_o[MaskM] ||
-            (pe_req_i.op == VSXE && operand_request_valid_o[SlideAddrGenA]));
+            (pe_req.op == VSXE && operand_request_valid_o[SlideAddrGenA]));
         end
         VFU_MaskUnit : begin
           pe_req_ready = !(operand_request_valid_o[AluA] ||
@@ -548,24 +548,24 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // Load indexed
           operand_request[SlideAddrGenA] = '{
-            id       : pe_req_i.id,
-            vs       : pe_req_i.vs2,
-            eew      : pe_req_i.eew_vs2,
-            conv     : pe_req_i.conversion_vs2,
+            id       : pe_req.id,
+            vs       : pe_req.vs2,
+            eew      : pe_req.eew_vs2,
+            conv     : pe_req.conversion_vs2,
             target_fu: MFPU_ADDRGEN,
-            vl       : pe_req_i.vl / NrLanes,
-            scale_vl : pe_req_i.scale_vl,
+            vl       : pe_req.vl / NrLanes,
+            scale_vl : pe_req.scale_vl,
             vstart   : vfu_operation_d.vstart,
-            vtype    : pe_req_i.vtype,
-            hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            vtype    : pe_req.vtype,
+            hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
             cvt_resize: CVT_SAME,
             default  : '0
           };
           // Since this request goes outside of the lane, we might need to request an
           // extra operand regardless of whether it is valid in this lane or not.
-          if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+          if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req.vl)
             operand_request[SlideAddrGenA].vl += 1;
-          operand_request_push[SlideAddrGenA] = pe_req_i.op == VLXE;
+          operand_request_push[SlideAddrGenA] = pe_req.op == VLXE;
         end
 
         VFU_StoreUnit : begin
@@ -615,24 +615,24 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // Store indexed
           // TODO: add vstart support here
           operand_request[SlideAddrGenA] = '{
-            id       : pe_req_i.id,
-            vs       : pe_req_i.vs2,
-            eew      : pe_req_i.eew_vs2,
-            conv     : pe_req_i.conversion_vs2,
+            id       : pe_req.id,
+            vs       : pe_req.vs2,
+            eew      : pe_req.eew_vs2,
+            conv     : pe_req.conversion_vs2,
             target_fu: MFPU_ADDRGEN,
-            vl       : pe_req_i.vl / NrLanes,
-            scale_vl : pe_req_i.scale_vl,
+            vl       : pe_req.vl / NrLanes,
+            scale_vl : pe_req.scale_vl,
             vstart   : vfu_operation_d.vstart,
-            vtype    : pe_req_i.vtype,
-            hazard   : pe_req_i.hazard_vs2 | pe_req_i.hazard_vd,
+            vtype    : pe_req.vtype,
+            hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
             cvt_resize: CVT_SAME,
             default  : '0
           };
           // Since this request goes outside of the lane, we might need to request an
           // extra operand regardless of whether it is valid in this lane or not.
-          if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req_i.vl)
+          if (operand_request[SlideAddrGenA].vl * NrLanes != pe_req.vl)
             operand_request[SlideAddrGenA].vl += 1;
-          operand_request_push[SlideAddrGenA] = pe_req_i.op == VSXE;
+          operand_request_push[SlideAddrGenA] = pe_req.op == VSXE;
         end
 
         VFU_SlideUnit: begin
