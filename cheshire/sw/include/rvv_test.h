@@ -182,11 +182,14 @@ volatile uint64_t ret_cnt;
   #define RVV_TEST_AVL(EEW) (VLMAX / (EEW))
 #endif
 
+#ifndef _ENABLE_RVV_
+#define _ENABLE_RVV_
 void enable_rvv() {
   // Enalbe RVV by seting MSTATUS.VS
   asm volatile (" li      t0, %0       " :: "i"(MSTATUS_VS));
   asm volatile (" csrs    mstatus, t0" );
 }
+#endif
 
 uint64_t reset_v_state ( uint64_t avl ) {
     uint64_t vl_local = 0;
