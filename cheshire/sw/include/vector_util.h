@@ -33,10 +33,13 @@ void stop_timer() { timer += get_cycle_count(); }
 // Get the value of the timer
 int64_t get_timer() { return timer; }
 
+#ifndef _ENABLE_RVV_
+#define _ENABLE_RVV_
 inline void enable_rvv() {
   asm volatile ("li t0, %0" :: "i"(MSTATUS_VS));
   asm volatile ("csrs mstatus, t0" );
 }
+#endif
 
 inline int similarity_check(double a, double b, double threshold) {
   double diff = a - b;
