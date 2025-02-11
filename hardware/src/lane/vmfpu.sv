@@ -40,6 +40,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     input  logic                         vfu_operation_valid_i,
     output logic                         mfpu_ready_o,
     output logic           [NrVInsn-1:0] mfpu_vinsn_done_o,
+    // Interface with the lane
+    output logic                         fpu_red_complete_o,
     // Interface with the operand queues
     input  elen_t          [2:0]         mfpu_operand_i,
     input  logic           [2:0]         mfpu_operand_valid_i,
@@ -608,6 +610,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   // the operation is performed between the first vector element and the scalar.
   // This signal has the highest privilage in multiple if-else loops
   logic first_op_d, first_op_q;
+
+  // Inform the lane SLDU/ADDRGEN arbiter that this reduction is over
+  logic fpu_red_complete_d;
+  `FF(fpu_red_complete_o, fpu_red_complete_d, 1'b0, clk_i, rst_ni);
 
   // Signal to indicate the state of the MFPU
   typedef enum logic [2:0] {
@@ -1401,6 +1407,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     // Short-circuit invalid elements divisions with a mask
     issue_be = '0;
+
+    fpu_red_complete_d = 1'b0;
 
     // Get latencies
     vinsn_issue_lat_d      = fpu_latency(vinsn_issue_d.vtype.vsew, vinsn_issue_d.op);
@@ -2220,6 +2228,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0)
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+
+      // Tell the SLDU/ADDRGEN arbiter that we are over with this reduction
+      if (is_reduction(vinsn_commit.op)) begin
+        fpu_red_complete_d = 1'b1;
+      end
 
       // If we are reducing now, we will change state in MFPU_WAIT state during the next cycle
       if (mfpu_state_q == NO_REDUCTION) begin

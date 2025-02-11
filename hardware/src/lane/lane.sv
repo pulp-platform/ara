@@ -66,8 +66,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                           stu_operand_ready_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
-    output target_fu_e                                     sldu_addrgen_operand_target_fu_o,
-    output logic                                           sldu_addrgen_operand_valid_o,
+    output logic                                           sldu_operand_valid_o,
+    output logic                                           addrgen_operand_valid_o,
     input  logic                                           sldu_operand_ready_i,
     input  sldu_mux_e                                      sldu_mux_sel_i,
     input  logic                                           addrgen_operand_ready_i,
@@ -423,8 +423,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic  [2:0] mfpu_operand_ready;
 
   elen_t sldu_addrgen_operand_opqueues;
+  target_fu_e sldu_addrgen_operand_target_fu;
+  logic sldu_addrgen_cmd_pop;
 
-  logic sldu_operand_opqueues_ready;
+  logic sldu_operand_opqueues_ready, sldu_addrgen_opqueue_ready;
   logic sldu_addrgen_operand_opqueues_valid;
 
   operand_queues_stage #(
@@ -449,6 +451,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .lsu_ex_flush_o                   (lsu_ex_flush_o                     ),
     // Interface with the Lane Sequencer
     .mask_b_cmd_pop_o                 (mask_b_cmd_pop                     ),
+    // Interface with the Lane
+    .sldu_addrgen_cmd_pop_o           (sldu_addrgen_cmd_pop               ),
     // Interface with the VFUs
     // ALU
     .alu_operand_o                    (alu_operand                        ),
@@ -464,10 +468,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .stu_operand_ready_i              (stu_operand_ready_i                ),
     // Address Generation Unit
     .sldu_addrgen_operand_o           (sldu_addrgen_operand_opqueues      ),
-    .sldu_addrgen_operand_target_fu_o (sldu_addrgen_operand_target_fu_o   ),
+    .sldu_addrgen_operand_target_fu_o (sldu_addrgen_operand_target_fu     ),
     .sldu_addrgen_operand_valid_o     (sldu_addrgen_operand_opqueues_valid),
-    .sldu_operand_ready_i             (sldu_operand_opqueues_ready        ),
-    .addrgen_operand_ready_i          (addrgen_operand_ready_i            ),
+    .sldu_addrgen_operand_ready_i     (sldu_addrgen_opqueue_ready         ),
     // Mask Unit
     .mask_operand_o                   (mask_operand_o[1:0]                ),
     .mask_operand_valid_o             (mask_operand_valid_o[1:0]          ),
@@ -483,6 +486,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic sldu_alu_valid, sldu_mfpu_valid;
   logic sldu_alu_req_valid_o, sldu_mfpu_req_valid_o;
   logic sldu_alu_ready, sldu_mfpu_ready;
+  logic alu_red_complete, fpu_red_complete;
 
   vector_fus_stage #(
     .NrLanes        (NrLanes        ),
@@ -509,6 +513,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .alu_vinsn_done_o     (alu_vinsn_done                         ),
     .mfpu_ready_o         (mfpu_ready                             ),
     .mfpu_vinsn_done_o    (mfpu_vinsn_done                        ),
+    // Interface with the SLDU/ADDRGEN arbiter
+    .alu_red_complete_o   (alu_red_complete                       ),
+    .fpu_red_complete_o   (fpu_red_complete                       ),
     // Interface with the operand requester
     // ALU
     .alu_result_req_o     (alu_result_req                         ),
@@ -552,35 +559,152 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_ready_o         (mask_ready                             )
   );
 
-  /********************
-   *  Slide Unit MUX  *
-   ********************/
+  /******************************
+   *  SLDU/ADDRGEN arbitration  *
+   *****************************/
 
-  // Break the in2out path
-  sldu_mux_e sldu_mux_sel_q;
+  // The SLDU and the ADDRGEN share the same data bus from the lanes.
+  // This bus is connected to ALU, FPU, and one operand queue.
+  // Arbitration is necessary due to the serialization on the unique databus.
+  // The easiest form of arbitration is to follow instruction order.
+  typedef enum logic [1:0] {
+    SLDU_SEL    = 2'd0,
+    ADDRGEN_SEL = 2'd1,
+    ALU_RED_SEL = 2'd2,
+    FPU_RED_SEL = 2'd3
+  } sldu_addrgen_sel_e;
+  typedef enum logic [1:0] {
+    MUX_OPQUEUE_SEL = 2'd0,
+    MUX_ALU_SEL     = 2'd1,
+    MUX_FPU_SEL     = 2'd2
+  } sldu_addrgen_mux_sel_e;
+  sldu_addrgen_sel_e sldu_addrgen_sel_d, sldu_addrgen_sel_q;
+  sldu_addrgen_mux_sel_e sldu_addrgen_mux_sel;
+  logic sldu_addrgen_arbiter_push, sldu_addrgen_arbiter_pop, sldu_addrgen_arbiter_empty;
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      sldu_mux_sel_q <= NO_RED;
-    end else begin
-      sldu_mux_sel_q <= sldu_mux_sel_i;
+  ara_op_e vfu_operation_op_q;
+  logic vfu_operation_valid_q;
+  logic sldu_operand_opqueues_valid, addrgen_operand_opqueues_valid;
+
+  // Selector FIFO to enforce instruction order
+  fifo_v3 #(
+    .DEPTH     (NrVInsn),
+    .dtype     (sldu_addrgen_sel_e)
+  ) i_sldu_addrgen_arbiter (
+    .clk_i,
+    .rst_ni,
+    .flush_i   (lsu_ex_flush_op_queues_q),
+    .testmode_i(1'b0),
+    .full_o    (/**/),
+    .empty_o   (sldu_addrgen_arbiter_empty),
+    .usage_o   (/**/),
+    .data_i    (sldu_addrgen_sel_d),
+    .push_i    (sldu_addrgen_arbiter_push),
+    .data_o    (sldu_addrgen_sel_q),
+    .pop_i     (sldu_addrgen_arbiter_pop)
+  );
+
+  // Break timing path
+  `FF(vfu_operation_valid_q, vfu_operation_valid, 1'b0, clk_i, rst_ni);
+  `FF(vfu_operation_op_q, vfu_operation.op, VADD, clk_i, rst_ni);
+
+  always_comb begin
+    sldu_addrgen_sel_d = SLDU_SEL;
+    sldu_addrgen_arbiter_push = 1'b0;
+    sldu_addrgen_arbiter_pop  = 1'b0;
+    sldu_addrgen_mux_sel = MUX_OPQUEUE_SEL;
+
+    // Push a new entry when a new instruction arrives
+    if (vfu_operation_valid_q) begin
+      case (vfu_operation_op_q) inside
+        VSLIDEUP, VSLIDEDOWN: begin
+          sldu_addrgen_sel_d = SLDU_SEL;
+          sldu_addrgen_arbiter_push = 1'b1;
+        end
+        VLXE, VSXE: begin
+          sldu_addrgen_sel_d = ADDRGEN_SEL;
+          sldu_addrgen_arbiter_push = 1'b1;
+        end
+        [VREDSUM:VWREDSUM]: begin
+          sldu_addrgen_sel_d = ALU_RED_SEL;
+          sldu_addrgen_arbiter_push = 1'b1;
+        end
+        [VFREDUSUM:VFWREDOSUM]: begin
+          sldu_addrgen_sel_d = FPU_RED_SEL;
+          sldu_addrgen_arbiter_push = 1'b1;
+        end
+        default:;
+      endcase
     end
+
+    // Pop an entry when the instruction completes
+    if (!sldu_addrgen_arbiter_empty) begin
+      unique case (sldu_addrgen_sel_q)
+        SLDU_SEL: begin
+          sldu_addrgen_arbiter_pop = sldu_addrgen_cmd_pop;
+        end
+        ADDRGEN_SEL: begin
+          sldu_addrgen_arbiter_pop = sldu_addrgen_cmd_pop;
+        end
+        ALU_RED_SEL: begin
+          sldu_addrgen_arbiter_pop = alu_red_complete;
+        end
+        FPU_RED_SEL: begin
+          sldu_addrgen_arbiter_pop = fpu_red_complete;
+        end
+        default:;
+      endcase
+    end
+
+    // MUX the alu, fpu, and opqueue stream
+    unique case (sldu_addrgen_sel_q)
+      ALU_RED_SEL: sldu_addrgen_mux_sel = MUX_ALU_SEL;
+      FPU_RED_SEL: sldu_addrgen_mux_sel = MUX_FPU_SEL;
+      default: sldu_addrgen_mux_sel = MUX_OPQUEUE_SEL;
+    endcase
+  end
+
+  // Stream MUX to select the transmitter
+  stream_mux #(
+    .DATA_T(elen_t),
+    .N_INP (3) // ALU, FPU, OpQueue
+  ) i_sldu_addrgen_stream_mux (
+    .inp_data_i ({mfpu_result_wdata, alu_result_wdata, sldu_addrgen_operand_opqueues}),
+    .inp_valid_i({sldu_mfpu_req_valid_o, sldu_alu_req_valid_o, sldu_operand_opqueues_valid}),
+    .inp_ready_o({sldu_mfpu_gnt, sldu_alu_gnt, sldu_operand_opqueues_ready}),
+    .inp_sel_i  (sldu_addrgen_mux_sel),
+    .oup_data_o (sldu_addrgen_operand_o),
+    .oup_valid_o(sldu_operand_valid_o),
+    .oup_ready_i(sldu_operand_ready_i)
+  );
+
+  // OpQueue-valid DEMUX
+  // Ready can come from either addrgen or sldu
+  always_comb begin
+    sldu_operand_opqueues_valid = 1'b0;
+    addrgen_operand_valid_o = 1'b0;
+    if (sldu_addrgen_sel_q == SLDU_SEL)
+      sldu_operand_opqueues_valid = sldu_addrgen_operand_opqueues_valid;
+    if (sldu_addrgen_sel_q == ADDRGEN_SEL)
+      addrgen_operand_valid_o = sldu_addrgen_operand_opqueues_valid;
+  end
+
+  // OpQueue-ready MUX
+  // Ready can come from either addrgen or sldu
+  always_comb begin
+    sldu_addrgen_opqueue_ready = 1'b0;
+    if (sldu_addrgen_sel_q == SLDU_SEL)
+      sldu_addrgen_opqueue_ready = sldu_operand_ready_i;
+    if (sldu_addrgen_sel_q == ADDRGEN_SEL)
+      sldu_addrgen_opqueue_ready = addrgen_operand_ready_i;
   end
 
   // During a reduction, the slide unit is directly connected to the functional units.
   // The selectors are controlled by the slide unit itself, which must know what it will receive next.
-  assign sldu_addrgen_operand_o       = sldu_mux_sel_q == NO_RED ? sldu_addrgen_operand_opqueues :
-                                       (sldu_mux_sel_q == ALU_RED ? alu_result_wdata : mfpu_result_wdata);
-  assign sldu_addrgen_operand_valid_o = sldu_mux_sel_q == NO_RED ? sldu_addrgen_operand_opqueues_valid :
-                                       (sldu_mux_sel_q == ALU_RED ? sldu_alu_req_valid_o : sldu_mfpu_req_valid_o);
-  assign sldu_operand_opqueues_ready  = sldu_operand_ready_i & (sldu_mux_sel_q == NO_RED);
-  assign sldu_alu_gnt                 = sldu_operand_ready_i & (sldu_mux_sel_q == ALU_RED);
-  assign sldu_mfpu_gnt                = sldu_operand_ready_i & (sldu_mux_sel_q == MFPU_RED);
-
-  assign sldu_alu_valid    = sldu_red_valid_i & (sldu_mux_sel_q == ALU_RED);
-  assign sldu_mfpu_valid   = sldu_red_valid_i & (sldu_mux_sel_q == MFPU_RED);
-  assign sldu_result_gnt_o = sldu_mux_sel_q == NO_RED ? sldu_result_gnt_opqueues :
-                            (sldu_mux_sel_q == ALU_RED ? sldu_alu_ready : sldu_mfpu_ready);
+  assign sldu_alu_valid    = sldu_red_valid_i & (sldu_addrgen_sel_q == ALU_RED_SEL);
+  assign sldu_mfpu_valid   = sldu_red_valid_i & (sldu_addrgen_sel_q == FPU_RED_SEL);
+  assign sldu_result_gnt_o = sldu_addrgen_sel_q == SLDU_SEL ? sldu_result_gnt_opqueues :
+                            (sldu_addrgen_sel_q == ALU_RED_SEL ? sldu_alu_ready : sldu_mfpu_ready);
 
   //////////////////
   //  Assertions  //

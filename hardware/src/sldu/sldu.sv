@@ -29,7 +29,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     output pe_resp_t               pe_resp_o,
     // Interface with the lanes
     input  elen_t    [NrLanes-1:0] sldu_operand_i,
-    input  target_fu_e [NrLanes-1:0] sldu_operand_target_fu_i,
     input  logic     [NrLanes-1:0] sldu_operand_valid_i,
     output logic     [NrLanes-1:0] sldu_operand_ready_o,
     output logic     [NrLanes-1:0] sldu_result_req_o,
@@ -167,7 +166,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [NrLanes-1:0] sldu_operand;
   logic  [NrLanes-1:0] sldu_operand_valid;
   logic  [NrLanes-1:0] sldu_operand_ready;
-  target_fu_e [NrLanes-1:0] sldu_operand_target_fu_d, sldu_operand_target_fu_q;
 
   // Don't handshake if the operands target the addrgen!
   // Moreover, when computing NP2 slides, loop over the same data!
@@ -188,6 +186,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   logic slide_np2_buf_valid_d, slide_np2_buf_valid_q;
 
+  // There are multiple transmitters (TX) (OpQueue, ALU, FPU, SLDU-NP2) and receivers (RX) (SLDU, ADDRGEN).
+  // Hypotheses:
+  // - When valid is asserted on the RX, data cannot change anymore until the handshake happens.
+  // - When valid is received by RX, then DATA is targeting that RX only.
+  // Data and handshakes signals are controlled upstream (TX side) so that this Hypotheses hold.
 
   for (genvar l = 0; l < NrLanes; l++) begin
     spill_register #(
@@ -207,26 +210,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                              ? sldu_operand_i[l]
                              : result_queue_q[NP2_BUFFER_PNT][l].wdata;
 
-    assign sldu_operand_valid_d[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU)
-                                   ? (np2_loop_mux_sel_q == NP2_EXT_SEL
-                                     ? sldu_operand_valid_i[l]
-                                     : slide_np2_buf_valid_q)
+    assign sldu_operand_valid_d[l] = np2_loop_mux_sel_q == NP2_EXT_SEL
+                                   ? sldu_operand_valid_i[l]
+                                   : slide_np2_buf_valid_q;
+
+    assign sldu_operand_ready_o[l] = np2_loop_mux_sel_q == NP2_EXT_SEL
+                                   ? sldu_operand_ready_q[l]
                                    : 1'b0;
-
-    assign sldu_operand_ready_o[l] = (sldu_operand_target_fu_q[l] == ALU_SLDU)
-                                   ? (np2_loop_mux_sel_q == NP2_EXT_SEL
-                                     ? sldu_operand_ready_q[l]
-                                     : 1'b0)
-                                   : 1'b0;
-  end
-
-  assign sldu_operand_target_fu_d = sldu_operand_target_fu_i;
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni)
-      sldu_operand_target_fu_q <= target_fu_e'(1'b0);
-    else
-      sldu_operand_target_fu_q <= sldu_operand_target_fu_d;
   end
 
   //////////////////////////
