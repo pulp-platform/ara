@@ -14,7 +14,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     parameter  int           unsigned NrSlaves            = 1,
     parameter  int           unsigned NrLanes             = 0,
     parameter  int           unsigned VLEN                = 0,
-    parameter  bit                    IsVrgatherOpqueue   = 0,
+    parameter  bit                    AccessCmdPop        = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport          = FPUSupportHalfSingleDouble,
     // Supported conversions
@@ -39,7 +39,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     input  operand_queue_cmd_t                operand_queue_cmd_i,
     input  logic                              operand_queue_cmd_valid_i,
     // Interface with the Lane Sequencer
-    output logic                              mask_b_cmd_pop_o,
+    output logic                              cmd_pop_o,
     // Interface with the Vector Register File
     input  elen_t                             operand_i,
     input  logic                              operand_valid_i,
@@ -78,10 +78,10 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
   // If this is the MaskB opqueue, propagate the
   // pop information for the cmd buffer
-  if (IsVrgatherOpqueue)
-    assign mask_b_cmd_pop_o = cmd_pop_q;
+  if (AccessCmdPop)
+    assign cmd_pop_o = cmd_pop_q;
   else
-    assign mask_b_cmd_pop_o = 1'b0;
+    assign cmd_pop_o = 1'b0;
 
   //////////////
   //  Buffer  //

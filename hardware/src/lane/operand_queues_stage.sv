@@ -29,6 +29,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output logic                                     lsu_ex_flush_o,
     // Interface with the Lane Sequencer
     output logic                                     mask_b_cmd_pop_o,
+    // Interface with the Lane
+    output logic                                     sldu_addrgen_cmd_pop_o,
     // Interface with the VFUs
     // ALU
     output elen_t              [1:0]                 alu_operand_o,
@@ -46,8 +48,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output elen_t                                    sldu_addrgen_operand_o,
     output target_fu_e                               sldu_addrgen_operand_target_fu_o,
     output logic                                     sldu_addrgen_operand_valid_o,
-    input  logic                                     addrgen_operand_ready_i,
-    input  logic                                     sldu_operand_ready_i,
+    input  logic                                     sldu_addrgen_operand_ready_i,
     // Mask unit
     output elen_t              [1:0]                 mask_operand_o,
     output logic               [1:0]                 mask_operand_valid_o,
@@ -82,7 +83,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                      ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[AluA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluA]),
-    .mask_b_cmd_pop_o         (/* Unused */                   ),
+    .cmd_pop_o                (/* Unused */                   ),
     .operand_i                (operand_i[AluA]                ),
     .operand_valid_i          (operand_valid_i[AluA]          ),
     .operand_issued_i         (operand_issued_i[AluA]         ),
@@ -112,7 +113,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                      ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[AluB]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[AluB]),
-    .mask_b_cmd_pop_o         (/* Unused */                   ),
+    .cmd_pop_o                (/* Unused */                   ),
     .operand_i                (operand_i[AluB]                ),
     .operand_valid_i          (operand_valid_i[AluB]          ),
     .operand_issued_i         (operand_issued_i[AluB]         ),
@@ -144,7 +145,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                         ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MulFPUA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MulFPUA]),
-    .mask_b_cmd_pop_o         (/* Unused */                      ),
+    .cmd_pop_o                (/* Unused */                      ),
     .operand_i                (operand_i[MulFPUA]                ),
     .operand_valid_i          (operand_valid_i[MulFPUA]          ),
     .operand_issued_i         (operand_issued_i[MulFPUA]         ),
@@ -172,7 +173,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                         ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MulFPUB]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MulFPUB]),
-    .mask_b_cmd_pop_o         (/* Unused */                      ),
+    .cmd_pop_o                (/* Unused */                      ),
     .operand_i                (operand_i[MulFPUB]                ),
     .operand_valid_i          (operand_valid_i[MulFPUB]          ),
     .operand_issued_i         (operand_issued_i[MulFPUB]         ),
@@ -200,7 +201,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                         ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MulFPUC]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MulFPUC]),
-    .mask_b_cmd_pop_o         (/* Unused */                      ),
+    .cmd_pop_o                (/* Unused */                      ),
     .operand_i                (operand_i[MulFPUC]                ),
     .operand_valid_i          (operand_valid_i[MulFPUC]          ),
     .operand_issued_i         (operand_issued_i[MulFPUC]         ),
@@ -229,7 +230,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                     ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[StA]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StA]),
-    .mask_b_cmd_pop_o         (/* Unused */                  ),
+    .cmd_pop_o                (/* Unused */                  ),
     .operand_i                (operand_i[StA]                ),
     .operand_valid_i          (operand_valid_i[StA]          ),
     .operand_issued_i         (operand_issued_i[StA]         ),
@@ -244,45 +245,30 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
    *  Slide Unit  *
    ****************/
 
-  // This operand queue is common to slide unit and addrgen.
-  // Since it's shared, we should be sure not to sample a
-  // spurious ready from the wrong unit, i.e., when we are
-  // feeding the addrgen, we don't want spurious readies from
-  // the slide unit. The units should be responsible for avoiding
-  // sampling wrong data, but spurious ready signals can happen in
-  // specific corner cases. Fixing this without impacting timing is
-  // hard, so we just mask the ready signals here as well to avoid
-  // bugs.
-  logic sldu_operand_ready_filtered;
-  logic addrgen_operand_ready_filtered;
-  assign sldu_operand_ready_filtered = sldu_operand_ready_i &
-    (sldu_addrgen_operand_target_fu_o == ALU_SLDU);
-  assign addrgen_operand_ready_filtered = addrgen_operand_ready_i &
-    (sldu_addrgen_operand_target_fu_o == MFPU_ADDRGEN);
-
   operand_queue #(
     .CmdBufDepth        (VlduInsnQueueDepth   ),
     .DataBufDepth       (2                    ),
+    .AccessCmdPop       (1'b1                 ),
     .FPUSupport         (FPUSupportNone       ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .operand_queue_cmd_t(operand_queue_cmd_t  )
   ) i_operand_queue_slide_addrgen_a (
-    .clk_i                    (clk_i                                                       ),
-    .rst_ni                   (rst_ni                                                      ),
-    .flush_i                  (lsu_ex_flush_o                                              ),
-    .lane_id_i                (lane_id_i                                                   ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]                          ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]                    ),
-    .mask_b_cmd_pop_o         (/* Unused */                                                ),
-    .operand_i                (operand_i[SlideAddrGenA]                                    ),
-    .operand_valid_i          (operand_valid_i[SlideAddrGenA]                              ),
-    .operand_issued_i         (operand_issued_i[SlideAddrGenA]                             ),
-    .operand_queue_ready_o    (operand_queue_ready_o[SlideAddrGenA]                        ),
-    .operand_o                (sldu_addrgen_operand_o                                      ),
-    .operand_target_fu_o      (sldu_addrgen_operand_target_fu_o                            ),
-    .operand_valid_o          (sldu_addrgen_operand_valid_o                                ),
-    .operand_ready_i          (addrgen_operand_ready_filtered | sldu_operand_ready_filtered)
+    .clk_i                    (clk_i                                   ),
+    .rst_ni                   (rst_ni                                  ),
+    .flush_i                  (lsu_ex_flush_o                          ),
+    .lane_id_i                (lane_id_i                               ),
+    .operand_queue_cmd_i      (operand_queue_cmd_i[SlideAddrGenA]      ),
+    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[SlideAddrGenA]),
+    .cmd_pop_o                (sldu_addrgen_cmd_pop_o                  ),
+    .operand_i                (operand_i[SlideAddrGenA]                ),
+    .operand_valid_i          (operand_valid_i[SlideAddrGenA]          ),
+    .operand_issued_i         (operand_issued_i[SlideAddrGenA]         ),
+    .operand_queue_ready_o    (operand_queue_ready_o[SlideAddrGenA]    ),
+    .operand_o                (sldu_addrgen_operand_o                  ),
+    .operand_target_fu_o      (sldu_addrgen_operand_target_fu_o        ),
+    .operand_valid_o          (sldu_addrgen_operand_valid_o            ),
+    .operand_ready_i          (sldu_addrgen_operand_ready_i            )
   );
 
   /////////////////
@@ -292,7 +278,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   operand_queue #(
     .CmdBufDepth        (MaskuInsnQueueDepth + VrgatherOpQueueBufDepth ),
     .DataBufDepth       (MaskuInsnQueueDepth + VrgatherOpQueueBufDepth ),
-    .IsVrgatherOpqueue  (1'b1                                          ),
+    .AccessCmdPop       (1'b1                                          ),
     .FPUSupport         (FPUSupportNone                                ),
     .SupportIntExt2     (1'b1                                          ),
     .SupportIntExt4     (1'b1                                          ),
@@ -307,7 +293,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                       ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MaskB]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MaskB]),
-    .mask_b_cmd_pop_o         (mask_b_cmd_pop_o                ),
+    .cmd_pop_o                (mask_b_cmd_pop_o                ),
     .operand_i                (operand_i[MaskB]                ),
     .operand_valid_i          (operand_valid_i[MaskB]          ),
     .operand_issued_i         (operand_issued_i[MaskB]         ),
@@ -332,7 +318,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .lane_id_i                (lane_id_i                       ),
     .operand_queue_cmd_i      (operand_queue_cmd_i[MaskM]      ),
     .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[MaskM]),
-    .mask_b_cmd_pop_o         (/* Unused */                    ),
+    .cmd_pop_o                (/* Unused */                    ),
     .operand_i                (operand_i[MaskM]                ),
     .operand_valid_i          (operand_valid_i[MaskM]          ),
     .operand_issued_i         (operand_issued_i[MaskM]         ),
