@@ -32,6 +32,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     input  logic                         vfu_operation_valid_i,
     output logic                         alu_ready_o,
     output logic           [NrVInsn-1:0] alu_vinsn_done_o,
+    // Interface with the lane
+    output logic                         alu_red_complete_o,
     // Interface with the operand queues
     input  elen_t          [1:0]         alu_operand_i,
     input  logic           [1:0]         alu_operand_valid_i,
@@ -59,6 +61,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   );
 
   import cf_math_pkg::idx_width;
+  `include "common_cells/registers.svh"
 
   /////////////
   // Lane ID //
@@ -312,6 +315,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   // the operation is performed between the first vector element and the scalar.
   logic first_op_d, first_op_q;
 
+  // The ALU has completed a reduction
+  logic alu_red_complete_d;
+  `FF(alu_red_complete_o, alu_red_complete_d, 1'b0, clk_i, rst_ni);
+
   // Signal to indicate the state of the ALU
   typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_RX, INTER_LANES_REDUCTION_TX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION} alu_state_e;
   alu_state_e alu_state_d, alu_state_q;
@@ -429,6 +436,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     red_mask                = '0;
 
     vxsat_flag_o            = '0;
+
+    alu_red_complete_d = 1'b0;
 
     // Do not issue any operations
     valu_valid  = 1'b0;
@@ -769,6 +778,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // Update the commit counter for the next instruction
       if (vinsn_queue_d.commit_cnt != '0)
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
+
+      // If this was a reduction, clean the Lane SLDU/ADDRGEN arbiter
+      if (is_reduction(vinsn_commit.op)) alu_red_complete_d = 1'b1;
 
       // Initialize counters and alu state if needed by the next instruction
       // After a reduction, the next instructions starts after the reduction commits

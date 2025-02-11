@@ -68,7 +68,6 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                           stu_axi_addrgen_req_ready_i,
     // Interface with the lanes (for scatter/gather operations)
     input  elen_t            [NrLanes-1:0] addrgen_operand_i,
-    input  target_fu_e       [NrLanes-1:0] addrgen_operand_target_fu_i,
     input  logic             [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                           addrgen_operand_ready_o,
     // Indexed LSU exception support
@@ -438,7 +437,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         // Handle handshake and data between VRF and spill register
         // We accept all the incoming data, without any checks
         // since Ara stalls on an indexed memory operation
-        if (&addrgen_operand_valid & addrgen_operand_target_fu_i[0] == MFPU_ADDRGEN) begin
+        if (&addrgen_operand_valid) begin
 
           // Valid data for the spill register
           idx_vaddr_valid_d = 1'b1;
