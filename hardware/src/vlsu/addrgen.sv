@@ -1016,7 +1016,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             end : indexed_data
 
             // Ask the MMU for an address translation if virtual memory is enabled
-            if (en_ld_st_translation_i) begin : translation_req
+            if (en_ld_st_translation_i && ((state_q != ADDRGEN_IDX_OP) || idx_vaddr_valid_q)) begin : translation_req
               // Request an address translation
               mmu_req_d           = 1'b1;
               mmu_vaddr_o         = (state_q == ADDRGEN_IDX_OP) ? idx_final_vaddr_q : axi_addrgen_q.addr;
