@@ -1304,7 +1304,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Request new input (by completing ready-valid handshake) once all slices have been processed
         // Alu input is accessed in different widths
         // VRGATHER and VCOMPRESS handle the ALU operand for the index generation before the MASKU ALU gets the operands
-        if (((in_ready_cnt_q == in_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]})) begin
+        if ((((in_ready_cnt_q == in_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]})) || (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
           in_ready_cnt_clr = 1'b1;
           if (vinsn_issue.op != VID) begin
             masku_operand_alu_ready = '1;
@@ -1312,7 +1312,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         // Mask is always accessed at bit level
         // VMADC, VMSBC handle masks in the mask queue
-        if (((in_m_ready_cnt_q == in_m_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VMADC:VMSBC]})) begin
+        if ((((in_m_ready_cnt_q == in_m_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VMADC:VMSBC]})) || (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
           in_m_ready_cnt_clr = 1'b1;
           if (!vinsn_issue.vm) begin
             masku_operand_m_ready = '1;
@@ -1586,6 +1586,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             out_valid_threshold_d  = ((NrLanes*DataWidth/8/ViotaParallelism) >> pe_req_i.vtype.vsew[1:0])-1;
           end
           VCPOP: begin
+            popcount_d = '0;
+
             // Mask to scalar
             delta_elm_d = VcpopParallelism;
 
@@ -1594,6 +1596,8 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
             out_valid_threshold_d  = '0;
           end
           VFIRST: begin
+            vfirst_count_d = '0;
+
             // Mask to scalar
             delta_elm_d = VfirstParallelism;
 
