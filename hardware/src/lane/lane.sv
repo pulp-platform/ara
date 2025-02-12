@@ -220,7 +220,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       mfpu_ready;
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
   // Interface with the MaskB operand queue (VRGATHER/VCOMPRESS)
-  logic                                       mask_b_cmd_pop;
+  logic                                       mask_b_cmd_pop_d, mask_b_cmd_pop_q;
+  `FF(mask_b_cmd_pop_q, mask_b_cmd_pop_d, 1'b0, clk_i, rst_ni);
+
 
   // Support for store exception flush
   logic lsu_ex_flush_op_req_d, lsu_ex_flush_op_req_q;
@@ -258,7 +260,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .alu_vinsn_done_o       (alu_vinsn_done_o     ),
     .mfpu_vinsn_done_o      (mfpu_vinsn_done_o    ),
     // Interface with the Operand Queue
-    .mask_b_cmd_pop_i       (mask_b_cmd_pop       ),
+    .mask_b_cmd_pop_i       (mask_b_cmd_pop_q     ),
     // Interface with the VFUs
     .vfu_operation_o        (vfu_operation        ),
     .vfu_operation_valid_o  (vfu_operation_valid  ),
@@ -450,7 +452,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .lsu_ex_flush_i                   (lsu_ex_flush_op_queues_q           ),
     .lsu_ex_flush_o                   (lsu_ex_flush_o                     ),
     // Interface with the Lane Sequencer
-    .mask_b_cmd_pop_o                 (mask_b_cmd_pop                     ),
+    .mask_b_cmd_pop_o                 (mask_b_cmd_pop_d                   ),
     // Interface with the Lane
     .sldu_addrgen_cmd_pop_o           (sldu_addrgen_cmd_pop               ),
     // Interface with the VFUs
@@ -584,7 +586,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   ara_op_e vfu_operation_op_q;
   logic vfu_operation_valid_q;
-  logic sldu_operand_opqueues_valid, addrgen_operand_opqueues_valid;
+  logic sldu_operand_opqueues_valid;
 
   // Selector FIFO to enforce instruction order
   fifo_v3 #(
