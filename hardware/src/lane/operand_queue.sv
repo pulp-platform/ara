@@ -57,7 +57,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   //////////////////////
 
   operand_queue_cmd_t cmd;
-  logic               cmd_pop, cmd_pop_q;
+  logic               cmd_pop;
 
   fifo_v3 #(
     .DEPTH(CmdBufDepth        ),
@@ -79,7 +79,7 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // If this is the MaskB opqueue, propagate the
   // pop information for the cmd buffer
   if (AccessCmdPop)
-    assign cmd_pop_o = cmd_pop_q;
+    assign cmd_pop_o = cmd_pop;
   else
     assign cmd_pop_o = 1'b0;
 
@@ -133,10 +133,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_ibuf_usage_ff
     if (!rst_ni) begin
       ibuf_usage_q <= '0;
-      cmd_pop_q    <= 1'b0;
     end else begin
       ibuf_usage_q <= ibuf_usage_d;
-      cmd_pop_q    <= cmd_pop;
     end
   end
 
