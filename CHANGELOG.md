@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Correctly flush the backend pipeline upon indexed load exceptions
  - Make addrgen wait for index address before making an MMU request
  - Fix typos in lane sequencer
+ - Fix sldu/addrgen synchronization
 
 ### Added
 
