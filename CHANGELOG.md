@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Solve type-conversion warnings about type  - Indexed loads need to wait for operand requesters ready in sequencer
  - Drop sequencer `pe_req_valid` in case of exception
  - Reworked STU exception flush engine
+ - Correctly flush the backend pipeline upon indexed load exceptions
+ - Make addrgen wait for index address before making an MMU request
+ - Fix typos in lane sequencer
 
 ### Added
 
