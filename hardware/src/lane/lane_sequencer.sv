@@ -762,7 +762,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // Integer comparisons run on the ALU and then get reshuffled and masked in the MASKU
           if (pe_req.op inside {[VMSEQ:VMSBC],[VRGATHER:VRGATHEREI16]}) begin
             // These source regs contain non-mask vectors.
-            operand_request[AluA].eew = pe_req.op == VRGATHEREI16 ? EW16 : pe_req.vtype.vsew;
+            operand_request[AluA].eew = pe_req.op == VRGATHEREI16 ? EW16 : pe_req.eew_vs1;
             operand_request[AluA].vl  = pe_req.vl / NrLanes;
             if ((operand_request[AluA].vl * NrLanes) != pe_req.vl)
               operand_request[AluA].vl += 1;
