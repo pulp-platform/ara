@@ -53,7 +53,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrLanes-1:0] ldu_result_final_gnt_i,
     // LSU exception support
     input  logic                           lsu_ex_flush_i,
-    output logic                           lsu_ex_flush_done_o,
     // Interface with the Mask unit
     input  strb_t            [NrLanes-1:0] mask_i,
     input  logic             [NrLanes-1:0] mask_valid_i,
@@ -86,7 +85,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     ) i_vldu_mask_register (
       .clk_i     (clk_i           ),
       .rst_ni    (rst_ni          ),
-      .flush_i   (ldu_ex_flush_q  ),
+      .flush_i   (lsu_ex_flush_q  ),
       .data_o    (mask_q[l]       ),
       .valid_o   (mask_valid_q[l] ),
       .ready_i   (mask_ready_d    ),
@@ -679,7 +678,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       first_payload_byte_q          <= '0;
       vrf_word_byte_cnt_q           <= '0;
       lsu_ex_flush_q                <= lsu_ex_flush_i;
-      lsu_ex_flush_done_o           <= lsu_ex_flush_q;
       ldu_current_burst_exception_o <= 1'b0;
       ldu_ex_state_q                <= IDLE;
       first_result_queue_read_q     <= 1'b0;
@@ -696,7 +694,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       first_payload_byte_q          <= first_payload_byte_d;
       vrf_word_byte_cnt_q           <= vrf_word_byte_cnt_d;
       lsu_ex_flush_q                <= lsu_ex_flush_i;
-      lsu_ex_flush_done_o           <= lsu_ex_flush_q;
       ldu_current_burst_exception_o <= ldu_current_burst_exception_d;
       ldu_ex_state_q                <= ldu_ex_state_d;
       first_result_queue_read_q     <= first_result_queue_read_d;
