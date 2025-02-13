@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Make addrgen wait for index address before making an MMU request
  - Fix typos in lane sequencer
  - Fix sldu/addrgen synchronization
+ - Reset `vfirst`/`vcpop` accumulator when a new instruction starts
+ - Fix wrong `eew` for mask comparisons in lane sequencer
 
 ### Added
 
