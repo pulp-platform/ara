@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Reset `vfirst`/`vcpop` accumulator when a new instruction starts
  - Fix wrong `eew` for mask comparisons in lane sequencer
  - Fix bug in ordered reductions
+ - Avoid spurious valids to the simd multipliers
 
 ### Added
 
