@@ -510,7 +510,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   always_comb begin
     // Only one SIMD Multiplier receives the request
     vmul_simd_in_valid                           = '0;
-    vmul_simd_in_valid[vinsn_issue_q.vtype.vsew] = vmul_in_valid;
+    vmul_simd_in_valid[vinsn_issue_q.vtype.vsew] = clkgate_en_q & vmul_in_valid;
     vmul_in_ready                                = clkgate_en_q & vmul_simd_in_ready[vinsn_issue_q.vtype.vsew];
 
     // Saturation flag
