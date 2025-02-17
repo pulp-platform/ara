@@ -17,6 +17,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     parameter type          axi_aw_t     = logic,
     parameter  type         pe_req_t     = logic,
     parameter  type         pe_resp_t    = logic,
+    // CVA6 configuration
+    parameter  config_pkg::cva6_cfg_t CVA6Cfg = cva6_config_pkg::cva6_cfg,
+    parameter  type         exception_t  = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam type         axi_addr_t   = logic [AxiAddrWidth-1:0],
     localparam type         vlen_t       = logic[$clog2(VLEN+1)-1:0]
@@ -36,23 +39,23 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     // This is everything the MMU can provide, it might be overcomplete for Ara and some signals be useless
     output logic                           mmu_misaligned_ex_o,
     output logic                           mmu_req_o,        // request address translation
-    output logic [riscv::VLEN-1:0]         mmu_vaddr_o,      // virtual address out
+    output logic [CVA6Cfg.VLEN-1:0]        mmu_vaddr_o,      // virtual address out
     output logic                           mmu_is_store_o,   // the translation is requested by a store
     // if we need to walk the page table we can't grant in the same cycle
     // Cycle 0
     input logic                            mmu_dtlb_hit_i,   // sent in the same cycle as the request if translation hits in the DTLB
-    input logic [riscv::PPNW-1:0]          mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
+    input logic [CVA6Cfg.PPNW-1:0]         mmu_dtlb_ppn_i,   // ppn (send same cycle as hit)
     // Cycle 1
     input  logic                           mmu_valid_i,      // translation is valid
-    input  logic [riscv::PLEN-1:0]         mmu_paddr_i,      // translated address
-    input  ariane_pkg::exception_t         mmu_exception_i,  // address translation threw an exception
+    input  logic [CVA6Cfg.PLEN-1:0]        mmu_paddr_i,      // translated address
+    input  exception_t                     mmu_exception_i,  // address translation threw an exception
     // Interace with the dispatcher
     input  logic                           core_st_pending_i,
     // Interface with the main sequencer
     input  pe_req_t                        pe_req_i,
     input  logic                           pe_req_valid_i,
     input  logic     [NrVInsn-1:0]         pe_vinsn_running_i,
-    output ariane_pkg::exception_t         addrgen_exception_o,
+    output exception_t                     addrgen_exception_o,
     output logic                           addrgen_ack_o,
     output vlen_t                          addrgen_exception_vstart_o,
     output logic                           addrgen_fof_exception_o, // fault-only-first
@@ -201,7 +204,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   //////////////////////////
   //  Address generation  //
   //////////////////////////
-  ariane_pkg::exception_t mmu_exception_d, mmu_exception_q;
+  exception_t mmu_exception_d, mmu_exception_q;
   logic mmu_req_d;
   logic last_translation_completed;
   logic addrgen_fof_exception_d, addrgen_fof_exception_q;
@@ -343,7 +346,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
 
       ADDRGEN: begin
         // NOTE: indexed are not covered here
-        automatic logic [riscv::VLEN-1:0] vaddr_start;
+        automatic logic [CVA6Cfg.VLEN-1:0] vaddr_start;
 
         case (pe_req_q.op)
           // Unit-stride: address = base + (vstart in elements)
@@ -668,7 +671,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
   endfunction
 
   // Mute MMU request if we are receiving a valid response this cycle
-  assign mmu_req_o = mmu_req_d & ~mmu_valid_i & ~mmu_exception_i.valid;
+  assign mmu_req_o = mmu_req_d & ~mmu_valid_i;
 
   always_comb begin: axi_addrgen
     // Maintain state
@@ -832,7 +835,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         if (axi_addrgen_queue_empty || (axi_addrgen_req_o.is_load && axi_addrgen_q.is_load) ||
              (~axi_addrgen_req_o.is_load && ~axi_addrgen_q.is_load)) begin : axi_ax_idle
           if (!axi_addrgen_queue_full && axi_ax_ready) begin : start_req
-            automatic logic [riscv::PLEN-1:0] paddr;
+            automatic logic [CVA6Cfg.PLEN-1:0] paddr;
 
             // Mux target address
             paddr = (en_ld_st_translation_i) ? mmu_paddr_i : axi_addrgen_q.addr;
@@ -953,7 +956,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
             else begin : indexed_data
               // NOTE: address translation is not yet been implemented/tested for indexed
 
-              automatic logic [riscv::PLEN-1:0] idx_final_paddr;
+              automatic logic [CVA6Cfg.PLEN-1:0] idx_final_paddr;
               //////////////////////
               //  Indexed access  //
               //////////////////////
@@ -1055,7 +1058,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 axi_addrgen_d.addr = next_addr_strided_temp;
               end : strided
               else begin : indexed // INDEXED ACCESS
-                automatic logic [riscv::PLEN-1:0] idx_final_paddr;
+                automatic logic [CVA6Cfg.PLEN-1:0] idx_final_paddr;
                 // TODO: check if idx_vaddr_valid_q is stable
                 if (idx_vaddr_valid_q) begin : if_idx_vaddr_valid_q
 
