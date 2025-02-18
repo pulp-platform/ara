@@ -677,7 +677,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       seq_word_wr_offset_q          <= '0;
       first_payload_byte_q          <= '0;
       vrf_word_byte_cnt_q           <= '0;
-      lsu_ex_flush_q                <= lsu_ex_flush_i;
+      lsu_ex_flush_q                <= 1'b0;
       ldu_current_burst_exception_o <= 1'b0;
       ldu_ex_state_q                <= IDLE;
       first_result_queue_read_q     <= 1'b0;
