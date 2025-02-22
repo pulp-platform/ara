@@ -202,6 +202,7 @@ module ara import ara_pkg::*; #(
     .CVA6Cfg           (CVA6Cfg           ),
     .NrLanes           (NrLanes           ),
     .VLEN              (VLEN              ),
+    .OSSupport         (OSSupport         ),
     .FPUSupport        (FPUSupport        ),
     .SegSupport        (SegSupport        ),
     .ara_req_t         (ara_req_t         ),

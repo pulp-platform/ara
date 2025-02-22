@@ -11,6 +11,7 @@
 module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter int           unsigned NrLanes            = 0,
     parameter int           unsigned VLEN               = 0,
+    parameter int           unsigned OSSupport          = 1,
     parameter type                   ara_req_t          = logic,
     parameter type                   ara_resp_t         = logic,
     parameter type                   accelerator_req_t  = logic,
@@ -329,24 +330,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     lsu_ex_flush_o = 1'b0;
     lsu_ex_flush_done = 1'b0;
 
-    case (lsu_ex_state_q)
-      LSU_FLUSH_IDLE: begin
-        if (lsu_ex_flush_start)
-          lsu_ex_state_d = LSU_FLUSH;
-      end
-      LSU_FLUSH: begin
-        lsu_ex_flush_o = 1'b1;
-          lsu_ex_state_d = LSU_FLUSH_WAIT;
-      end
-      LSU_FLUSH_WAIT: begin
-        if (lsu_ex_flush_done_q)
-          lsu_ex_state_d = LSU_FLUSH_DONE;
-      end
-      LSU_FLUSH_DONE: begin
-        lsu_ex_flush_done = 1'b1;
-        lsu_ex_state_d = LSU_FLUSH_IDLE;
-      end
-    endcase
+    if (OSSupport) begin
+      case (lsu_ex_state_q)
+        LSU_FLUSH_IDLE: begin
+          if (lsu_ex_flush_start)
+            lsu_ex_state_d = LSU_FLUSH;
+        end
+        LSU_FLUSH: begin
+          lsu_ex_flush_o = 1'b1;
+            lsu_ex_state_d = LSU_FLUSH_WAIT;
+        end
+        LSU_FLUSH_WAIT: begin
+          if (lsu_ex_flush_done_q)
+            lsu_ex_state_d = LSU_FLUSH_DONE;
+        end
+        LSU_FLUSH_DONE: begin
+          lsu_ex_flush_done = 1'b1;
+          lsu_ex_state_d = LSU_FLUSH_IDLE;
+        end
+      endcase
+    end
   end
 
   ///////////////
@@ -456,12 +459,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Wait for idle and then flush the stu-related pipes.
       // This operation is not IPC critical.
       WAIT_IDLE_FLUSH: begin
-        if ((lsu_ex_state_q == LSU_FLUSH_IDLE) && ara_idle_i) begin
-          // Start the flush FSM
-          lsu_ex_flush_start = 1'b1;
-        end
-        // Get back to normal operation once the flush is over
-        if (lsu_ex_state_q == LSU_FLUSH_DONE) begin
+        if (OSSupport) begin
+          if ((lsu_ex_state_q == LSU_FLUSH_IDLE) && ara_idle_i) begin
+            // Start the flush FSM
+            lsu_ex_flush_start = 1'b1;
+          end
+          // Get back to normal operation once the flush is over
+          if (lsu_ex_state_q == LSU_FLUSH_DONE) begin
+            state_d = NORMAL_OPERATION;
+          end
+        end else begin
           state_d = NORMAL_OPERATION;
         end
       end
