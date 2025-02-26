@@ -105,13 +105,13 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 
 `ifdef IDEAL_DISPATCHER
   // Perfect dispatcher to Ara
-  accel_dispatcher_ideal i_accel_dispatcher_ideal (
+  accel_dispatcher_ideal #(
+    .CVA6Cfg          (CVA6Cfg               )
+  ) i_accel_dispatcher_ideal (
     .clk_i            (clk_i                 ),
     .rst_ni           (rst_ni                ),
     .acc_req_o        (acc_req               ),
-    .acc_resp_i       (acc_resp              ),
-    .acc_resp_valid_i (acc_resp_valid        ),
-    .acc_resp_ready_o (acc_resp_ready        )
+    .acc_resp_i       (acc_resp              )
   );
 `else
   cva6 #(
