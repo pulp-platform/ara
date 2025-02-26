@@ -1633,6 +1633,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
             narrowing_shuffled_result[15:8]  = unit_out_result[7:0];
             narrowing_shuffled_result[7:0]   = unit_out_result[7:0];
             narrowing_shuffle_be             = !narrowing_select_out_q ? 8'b01010101 : 8'b10101010;
+          end else begin
+            // Default assignment
+            narrowing_shuffled_result[63:32] = unit_out_result[31:0];
+            narrowing_shuffled_result[31:0]  = unit_out_result[31:0];
+            narrowing_shuffle_be             = !narrowing_select_out_q ? 8'b00110011 : 8'b11001100;
           end
           EW16: begin
             narrowing_shuffled_result[63:48] = unit_out_result[31:16];
