@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix wrong `eew` for mask comparisons in lane sequencer
  - Fix bug in ordered reductions
  - Avoid spurious valids to the simd multipliers
+ - Fix ideal dispatcher (update the ara-cva6 interface)
 
 ### Added
 
