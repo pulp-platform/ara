@@ -10,6 +10,10 @@
 
 #include "regs/cheshire.h"
 
+#ifndef PRINTF
+#define PRINTF 1
+#endif
+
 #if (PRINTF == 1)
 #include "printf.h"
 #endif
@@ -17,6 +21,10 @@
 /////////////////
 // SEW and EEW //
 /////////////////
+
+#ifndef EEW
+#define EEW 64
+#endif
 
 // Public defines
 #if EEW == 64
@@ -82,6 +90,17 @@
 ///////////////////////
 // SoC-level regfile //
 ///////////////////////
+
+// Fake offset values if the stub is not supported
+#ifndef CHESHIRE_STUB_EX_EN_REG_OFFSET
+#define CHESHIRE_STUB_EX_EN_REG_OFFSET       0
+#define CHESHIRE_STUB_NO_EX_LAT_REG_OFFSET   0
+#define CHESHIRE_STUB_REQ_RSP_LAT_REG_OFFSET 0
+#define CHESHIRE_ARA_VIRT_MEM_EN_REG_OFFSET  0
+#define CHESHIRE_RVV_DEBUG_REG_REG_OFFSET    0
+#define CHESHIRE_MMU_REQ_GEN_EN_REG_OFFSET   0
+#define CHESHIRE_MMU_REQ_GEN_LAT_REG_OFFSET  0
+#endif
 
 #define INIT_RVV_TEST_SOC_REGFILE \
 volatile uint32_t *rf_stub_ex_en      = reg32(&__base_regs, CHESHIRE_STUB_EX_EN_REG_OFFSET);       \

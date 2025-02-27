@@ -7,7 +7,10 @@
 //              instruction, whether it reads scalar registers, and whether
 //              it writes to a destination scalar register
 
-module cva6_accel_first_pass_decoder import rvv_pkg::*; import ariane_pkg::*; (
+module cva6_accel_first_pass_decoder import rvv_pkg::*; import ariane_pkg::*; #(
+    parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty,
+    parameter type scoreboard_entry_t = logic
+  ) (
     input  logic [31:0]       instruction_i,   // instruction from IF
     input  riscv::xs_t        fs_i,            // floating point extension status
     input  riscv::xs_t        vs_i,            // vector extension status
@@ -154,7 +157,7 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; import ariane_pkg::*; (
       illegal_instr_o = (is_vfp && (fs_i == riscv::Off)) ? 1'b1 : 1'b0;
 
       // result holds the undecoded instruction
-      instruction_o.result = { {riscv::XLEN-32{1'b0}}, instruction_i[31:0] };
+      instruction_o.result = { {CVA6Cfg.XLEN-32{1'b0}}, instruction_i[31:0] };
       instruction_o.use_imm = 1'b0;
     end
   end
