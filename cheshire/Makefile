@@ -25,8 +25,8 @@ ARA_CONFIGURATION         ?= 2_lanes
 include $(ARA_ROOT)/config/$(ARA_CONFIGURATION).mk
 BOARD                     ?= vcu128
 VLOG_ARGS                 ?= -suppress 2583 -suppress 13314
-COMMON_CUSTOM_TARGETS     := -t cv64a6_imafdcv_sv39 -t cva6 -t exclude_first_pass_decoder --define ARA --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen)
-CUSTOM_SIM_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t sim -t test -t rtl --vlog-arg="$(VLOG_ARGS)"
+COMMON_CUSTOM_TARGETS     := -t cv64a6_imafdcv_sv39 -t cva6 -t rtl -t exclude_first_pass_decoder --define ARA --define NR_LANES=$(nr_lanes) --define VLEN=$(vlen)
+CUSTOM_SIM_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t sim -t test --vlog-arg="$(VLOG_ARGS)"
 CUSTOM_XIL_BENDER_TARGETS := $(COMMON_CUSTOM_TARGETS) -t fpga -t $(BOARD)
 
 # Define XILINX FPGA URL and PATH for programming
