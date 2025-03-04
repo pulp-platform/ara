@@ -112,6 +112,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Bump default simulator to QuestaSim 2021.3
  - Bump CVA6 to pulp-v2 and update parametrization
  - Bump QuestaSim version
+ - GCC is the only toolchain
+ - Bump the RVV intrinsics
 
 ## 3.0.0 - 2023-09-08
 
