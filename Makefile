@@ -59,7 +59,7 @@ all: toolchains riscv-isa-sim verilator
 toolchain-gcc: Makefile
 	mkdir -p $(GCC_INSTALL_DIR)
 	cd $(CURDIR)/toolchain/riscv-gnu-toolchain && rm -rf build && mkdir -p build && cd build && \
-	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv64gcv --with-cmodel=medlow --enable-multilib && \
+	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv64gcv --with-cmodel=medany --enable-multilib && \
 	$(MAKE) MAKEINFO=true -j4
 
 # Spike
