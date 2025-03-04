@@ -15,7 +15,8 @@
 # Author: Matheus Cavalcante, ETH Zurich
 #         Samuel Riedel, ETH Zurich
 
-SHELL = /usr/bin/env bash
+SHELL := /usr/bin/env bash
+PYTHON := python3
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 APPS_DIR := $(ROOT_DIR)
 COMMON_DIR := $(ROOT_DIR)/common
@@ -99,16 +100,16 @@ $(foreach app,$(APPS),$(eval $(call app_compile_template_ideal,$(app))))
 define app_compile_template_spike
 bin/$1.spike: $1/data.S.o.spike $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE) patch-spike-crt0
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $$(RISCV_CCFLAGS_SPIKE) -o $$@ $$(addsuffix .o.spike, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $$(RISCV_LDFLAGS_SPIKE) -DSPIKE
-	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+	$$(RISCV_CC) -Iinclude $$(CCFLAGS_SPIKE) -o $$@ $$(addsuffix .o.spike, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $$(LDFLAGS_SPIKE) -DSPIKE
+	$$(RISCV_OBJDUMP) -D $$@ > $$@.dump
 endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template_spike,$(app))))
 
 define app_compile_template
-bin/$1$(BIN_SUFFIX): $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
+bin/$1$(BIN_SUFFIX): $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS)
-	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+	$$(RISCV_CC) -Iinclude $(CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME) $$(LDFLAGS)
+	$$(RISCV_OBJDUMP) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template,$(app))))
@@ -119,20 +120,20 @@ riscv_tests: $(CVA6_BINARIES) $(ARA_BINARIES)
 define rvtest_compile_template
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
-bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_GCC) linker_script
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC_GCC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS_GCC) $$(RISCV_LDFLAGS_GCC) -o $$@ $$< $(RUNTIME_GCC)
-	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(CCFLAGS) $$(LDFLAGS) -o $$@ $$< $(RUNTIME)
+	$$(RISCV_OBJDUMP) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
 
 define rvtest_compile_template_c
 TESTS_$(1) := $(addprefix bin/, $($(addsuffix _ara_tests, $1)))
 
-bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME_LLVM) linker_script
+bin/$(1)-ara-%: $(TESTS_DIR)/$(1)/%.$(2) $(RUNTIME) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(RISCV_CCFLAGS) $$(RISCV_LDFLAGS) -o $$@ $$< $(RUNTIME_LLVM)
-	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
+	$$(RISCV_CC) -Iinclude -I$$(TESTS_DIR)/macros/scalar -I$$(TESTS_DIR)/macros/vector $$(CCFLAGS) $$(LDFLAGS) -o $$@ $$< $(RUNTIME)
+	$$(RISCV_OBJDUMP) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef
 # CVA6 tests are written in assembly
@@ -144,7 +145,7 @@ $(foreach extension, $(ARA_EXTENSIONS), $(eval $(call rvtest_compile_template_c,
 .PHONY: riscv_tests_spike
 riscv_tests_spike: patch-spike-crt0
 	# Compile the tests
-	PATH=$(GCC_INSTALL_DIR)/bin:$(LLVM_INSTALL_DIR)/bin:${PATH} ARA_DEFINES="$(DEFINES)" make -j4 -C riscv-tests/isa
+	PATH=$(GCC_INSTALL_DIR)/bin:${PATH} ARA_DEFINES="$(DEFINES)" make -j4 -C riscv-tests/isa
 	# Run the tests
 	PATH=$(ISA_SIM_INSTALL_DIR)/bin:${PATH} make -C riscv-tests/isa run
 
@@ -186,8 +187,7 @@ clean: riscv_tests_spike_clean benchmarks_clean
 	rm -vf $(addsuffix .dump,$(CVA6_BINARIES))
 	rm -vf $(addsuffix .dump,$(ARA_BINARIES))
 	rm -vf $(addsuffix /main.c.o,$(APPS))
-	rm -vf $(RUNTIME_GCC)
-	rm -vf $(RUNTIME_LLVM)
+	rm -vf $(RUNTIME)
 	rm -vf $(RUNTIME_SPIKE)
 	for app in $(APPS); do cd $(APPS_DIR)/$${app} && rm -f $$(find . -name "*.c.o*" -o -name "*.S.o*") && cd ..; done
 
