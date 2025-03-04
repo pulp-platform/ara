@@ -54,73 +54,13 @@ endif
 all: toolchains riscv-isa-sim verilator
 
 # GCC and LLVM Toolchains
-.PHONY: toolchains toolchain-gcc toolchain-llvm toolchain-llvm-main toolchain-llvm-newlib toolchain-llvm-rt
-toolchains: toolchain-gcc toolchain-llvm
-
-toolchain-llvm: toolchain-llvm-main toolchain-llvm-newlib toolchain-llvm-rt
+.PHONY: toolchain-gcc
 
 toolchain-gcc: Makefile
 	mkdir -p $(GCC_INSTALL_DIR)
-	# Apply patch on riscv-binutils
-	cd $(CURDIR)/toolchain/riscv-gnu-toolchain/riscv-binutils
 	cd $(CURDIR)/toolchain/riscv-gnu-toolchain && rm -rf build && mkdir -p build && cd build && \
 	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv64gcv --with-cmodel=medlow --enable-multilib && \
 	$(MAKE) MAKEINFO=true -j4
-
-toolchain-llvm-main: Makefile
-	mkdir -p $(LLVM_INSTALL_DIR)
-	cd $(ROOT_DIR)/toolchain/riscv-llvm && rm -rf build && mkdir -p build && cd build && \
-	$(CMAKE) -G Ninja  \
-	-DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
-	-DLLVM_ENABLE_PROJECTS="clang;lld" \
-	-DCMAKE_BUILD_TYPE=Release \
-	-DCMAKE_C_COMPILER=$(CC) \
-	-DCMAKE_CXX_COMPILER=$(CXX) \
-	-DLLVM_DEFAULT_TARGET_TRIPLE=riscv64-unknown-elf \
-	-DLLVM_TARGETS_TO_BUILD="RISCV" \
-	../llvm
-	cd $(ROOT_DIR)/toolchain/riscv-llvm && \
-	$(CMAKE) --build build --target install
-
-toolchain-llvm-newlib: Makefile toolchain-llvm
-	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
-	../configure --prefix=${LLVM_INSTALL_DIR} \
-	--target=riscv64-unknown-elf \
-	CC_FOR_TARGET="${LLVM_INSTALL_DIR}/bin/clang -march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany -Wno-error-implicit-function-declaration -Wno-error=int-conversion" \
-	AS_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-as \
-	AR_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ar \
-	LD_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ld \
-	RANLIB_FOR_TARGET=${LLVM_INSTALL_DIR}/bin/llvm-ranlib && \
-	make && \
-	make install
-
-toolchain-llvm-rt: Makefile toolchain-llvm-main toolchain-llvm-newlib
-	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && rm -rf build && mkdir -p build && cd build && \
-	$(CMAKE) $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt -G Ninja \
-	-DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
-	-DCMAKE_C_COMPILER_TARGET="riscv64-unknown-elf" \
-	-DCMAKE_ASM_COMPILER_TARGET="riscv64-unknown-elf" \
-	-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
-	-DCOMPILER_RT_BAREMETAL_BUILD=ON \
-	-DCOMPILER_RT_BUILD_BUILTINS=ON \
-	-DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
-	-DCOMPILER_RT_BUILD_MEMPROF=OFF \
-	-DCOMPILER_RT_BUILD_PROFILE=OFF \
-	-DCOMPILER_RT_BUILD_SANITIZERS=OFF \
-	-DCOMPILER_RT_BUILD_XRAY=OFF \
-	-DCMAKE_C_COMPILER_WORKS=1 \
-	-DCMAKE_CXX_COMPILER_WORKS=1 \
-	-DCMAKE_SIZEOF_VOID_P=4 \
-	-DCMAKE_C_COMPILER="$(LLVM_INSTALL_DIR)/bin/clang" \
-	-DCMAKE_C_FLAGS="-march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany" \
-	-DCMAKE_ASM_FLAGS="-march=rv64gc -mabi=lp64d -mno-relax -mcmodel=medany" \
-	-DCMAKE_AR=$(LLVM_INSTALL_DIR)/bin/llvm-ar \
-	-DCMAKE_NM=$(LLVM_INSTALL_DIR)/bin/llvm-nm \
-	-DCMAKE_RANLIB=$(LLVM_INSTALL_DIR)/bin/llvm-ranlib \
-	-DLLVM_CONFIG_PATH=$(LLVM_INSTALL_DIR)/bin/llvm-config
-	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && \
-	$(CMAKE) --build build --target install && \
-	ln -s $(LLVM_INSTALL_DIR)/lib/linux $(LLVM_INSTALL_DIR)/lib/clang/16/lib
 
 # Spike
 .PHONY: riscv-isa-sim riscv-isa-sim-mod
