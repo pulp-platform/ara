@@ -114,7 +114,7 @@ void hp_fconv3d_CHx7x7_warm(_Float16 *o, _Float16 *i, _Float16 *f, int64_t M,
 
     // Find pointers to the submatrices
     const _Float16 *i_ = i + n;
-    float *o_ = o + n;
+    _Float16 *o_ = o + n;
 
     asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_));
 
