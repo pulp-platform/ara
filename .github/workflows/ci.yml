@@ -25,45 +25,6 @@ jobs:
 #  Toolchain stage  #
 #####################
 
-  tc-llvm:
-    runs-on: ubuntu-20.04
-    steps:
-    - uses: actions/checkout@v4
-    - name: Recover the submodule commit hash
-      id: recover_hash
-      run: |
-        git submodule status toolchain/riscv-llvm | cut -d' ' -f1
-        echo "tc-llvm-hash=`git submodule status toolchain/riscv-llvm | cut -d' ' -f1`" >> $GITHUB_ENV
-    - name: Cache the LLVM toolchain
-      uses: actions/cache@v4
-      id: tc-llvm-cache
-      env:
-        cache-name: cache-llvm
-      with:
-        path: install/riscv-llvm
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
-        restore-keys:
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
-    - name: Download the LLVM toolchain
-      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/riscv-llvm
-    - name: Download Newlib
-      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/newlib
-    - name: Compile LLVM
-      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
-      run: |
-        sudo apt-get install libmpc-dev
-        sudo apt-get install -y ninja-build
-        CC=gcc CXX=g++ make toolchain-llvm
-    - name: Tar LLVM
-      run: tar -cvf tc-llvm.tar install/riscv-llvm
-    - name: Upload LLVM
-      uses: actions/upload-artifact@v4
-      with:
-        name: tc-llvm
-        path: tc-llvm.tar
-
   tc-gcc:
     runs-on: ubuntu-20.04
     steps:
@@ -180,7 +141,7 @@ jobs:
       max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
-    needs: tc-llvm
+    needs: tc-gcc
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
@@ -192,12 +153,6 @@ jobs:
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
-    - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v4
-      with:
-        name: tc-llvm
-    - name: Untar LLVM
-      run: tar xvf tc-llvm.tar
     - name: Compile applications
       run: config=${{ matrix.ara_config }} make -C apps
     - name: Upload applications
@@ -212,7 +167,7 @@ jobs:
       max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
-    needs: ["tc-llvm", "tc-gcc", "tc-isa-sim"]
+    needs: ["tc-gcc", "tc-isa-sim"]
     steps:
     - uses: actions/checkout@v4
     - name: Download Spike
@@ -225,12 +180,6 @@ jobs:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
-    - name: Get LLVM toolchain artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: tc-llvm
-    - name: Untar LLVM
-      run: tar xvf tc-llvm.tar
     - name: Get GCC toolchain artifacts
       uses: actions/download-artifact@v4
       with:
@@ -369,12 +318,6 @@ jobs:
         name: tc-isa-sim
     - name: Untar Spike
       run: tar xvf tc-isa-sim.tar
-    - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v4
-      with:
-        name: tc-llvm
-    - name: Untar LLVM
-      run: tar xvf tc-llvm.tar
     - name: Download the GCC toolchain
       uses: actions/download-artifact@v4
       with:
@@ -408,32 +351,6 @@ jobs:
       run: pip install -r python-requirements.txt
     - name: Check license
       run: python scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
-
-  check-clang-format:
-    runs-on: ubuntu-20.04
-    needs: ['tc-llvm']
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
-      with:
-        python-version: 3.6
-    - name: Install Python requirements
-      run: pip install -r python-requirements.txt
-    - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v4
-      with:
-        name: tc-llvm
-    - name: Untar LLVM
-      run: tar xvf tc-llvm.tar
-    - name: Run clang-format
-      run: |
-        for file in `find apps -type f -name "*.[c|h|cpp|hpp]" | grep -vP "apps/riscv-tests"`; do
-          ./scripts/run-clang-format.py --clang-format-executable install/riscv-llvm/bin/clang-format $file || EXIT_STATUS=$?
-        done
-        for file in `find apps/riscv-tests/isa/rv64uv -type f -name "*.[c|h|cpp|hpp]"`; do
-          ./scripts/run-clang-format.py --clang-format-executable install/riscv-llvm/bin/clang-format $file || EXIT_STATUS=$?
-        done
-        exit $EXIT_STATUS
 
   check-trailing-whitespaces:
     runs-on: ubuntu-20.04
@@ -477,12 +394,6 @@ jobs:
         python-version: 3.6
     - name: Install Python requirements
       run: pip install -r python-requirements.txt
-    - name: Download the LLVM toolchain
-      uses: actions/download-artifact@v4
-      with:
-        name: tc-llvm
-    - name: Untar LLVM
-      run: tar xvf tc-llvm.tar
     - name: Get Spike artifacts
       uses: actions/download-artifact@v4
       with:
@@ -681,7 +592,6 @@ jobs:
         uses: geekyeggo/delete-artifact@v5
         with:
           name: |
-            tc-llvm
             tc-gcc
             tc-isa-sim
             tc-verilator
