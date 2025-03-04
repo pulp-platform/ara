@@ -14,7 +14,8 @@ ARA_APPS := $(ARA_ROOT)/apps
 
 APPS    := $(patsubst $(ARA_APPS)/%/main.c,%,$(shell find $(ARA_APPS) -name "main.c"))
 SW_C    := $(wildcard $(ARA_SW)/src/*.c)
-TESTS_C := $(wildcard $(ARA_SW)/src/tests/*.c) $(wildcard $(ARA_SW)/src/tests/body/*.body)
+TESTS_C := $(wildcard $(ARA_SW)/src/tests/*.c)
+TESTS_B := $(wildcard $(ARA_SW)/src/tests/body/*.body)
 DEPS_H  := $(wildcard $(ARA_SW)/include/*.h)
 
 # Hardware configuration for the Ara RVV kernels
@@ -37,11 +38,12 @@ include cva6-sdk.mk
 # Forward build command to the main Cheshire makefile and attach the correct -march
 chs-sw-all: copy-vector-sw copy-vector-deps
 	make -C $(CHS_ROOT) $@ CHS_SW_FLAGS="$(CHS_SW_FLAGS)"
+	rm $(patsubst $(ARA_SW)/src/%, $(CHS_SW)/tests/%, $(SW_C)) $(patsubst $(ARA_SW)/src/tests/%, $(CHS_SW)/tests/%, $(TESTS_C))
 
 # Copy the dependencies from this folder to Cheshire
 copy-vector-deps: $(DEPS_H)
 	cp $^ $(CHS_SW)/tests
 
 # Copy the vector programs from the src folder to cheshire
-copy-vector-sw: $(SW_C) $(TESTS_C)
+copy-vector-sw: $(SW_C) $(TESTS_C) $(TESTS_B)
 	cp $^ $(CHS_SW)/tests
