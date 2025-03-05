@@ -239,7 +239,7 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
       for (i = 0; i < 4; ++i) {
 #endif
 
-        unsigned long int gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX);
+        unsigned long int gvl = __riscv_vsetvl_e32m1(NUMBER_PAR_PER_BOX);
 
         _MMR_f32 xr2;
         _MMR_f32 xDOT;
@@ -273,7 +273,7 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
 
         // do for the # of particles in current (home or neighbor) box
         for (j = 0; j < NUMBER_PAR_PER_BOX; j += gvl) {
-          gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX - j);
+          gvl = __riscv_vsetvl_e32m1(NUMBER_PAR_PER_BOX - j);
           // coefficients
           xrB_v = _MM_LOAD_STRIDE_f32(&rB[j].v, 16, gvl);
           xrB_x = _MM_LOAD_STRIDE_f32(&rB[j].x, 16, gvl);
@@ -322,7 +322,7 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
           // fA[i].x +=  qB[j]*fxij;
           // fA[i].y +=  qB[j]*fyij;
           // fA[i].z +=  qB[j]*fzij;
-          gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX);
+          gvl = __riscv_vsetvl_e32m1(NUMBER_PAR_PER_BOX);
           xqB = _MM_LOAD_f32(&qB[j], gvl);
           xfA_v = _MM_MACC_f32(xfA_v, xqB, xvij, gvl);
           xfA_x = _MM_MACC_f32(xfA_x, xqB, xfxij, gvl);
@@ -330,12 +330,12 @@ void kernel_vec(fp alpha, uint64_t n_boxes, box_str *box, FOUR_VECTOR *rv,
           xfA_z = _MM_MACC_f32(xfA_z, xqB, xfzij, gvl);
         }
 
-        gvl = vsetvl_e32m1(NUMBER_PAR_PER_BOX);
+        gvl = __riscv_vsetvl_e32m1(NUMBER_PAR_PER_BOX);
 
-        xfA_1_v = _MM_REDSUM_f32(xfA_1_v, xfA_v, xfA_1_v, gvl);
-        xfA_1_x = _MM_REDSUM_f32(xfA_1_x, xfA_x, xfA_1_x, gvl);
-        xfA_1_y = _MM_REDSUM_f32(xfA_1_y, xfA_y, xfA_1_y, gvl);
-        xfA_1_z = _MM_REDSUM_f32(xfA_1_z, xfA_z, xfA_1_z, gvl);
+        xfA_1_v = _MM_REDSUM_f32(xfA_v, xfA_1_v, gvl);
+        xfA_1_x = _MM_REDSUM_f32(xfA_x, xfA_1_x, gvl);
+        xfA_1_y = _MM_REDSUM_f32(xfA_y, xfA_1_y, gvl);
+        xfA_1_z = _MM_REDSUM_f32(xfA_z, xfA_1_z, gvl);
         _MM_STORE_f32(&fA[i].v, xfA_1_v, 1);
         _MM_STORE_f32(&fA[i].x, xfA_1_x, 1);
         _MM_STORE_f32(&fA[i].y, xfA_1_y, 1);

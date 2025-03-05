@@ -513,8 +513,8 @@ vfloat32m1_t cmplx_mul_re_vv(vfloat32m1_t v0_re, vfloat32m1_t v0_im,
                              size_t vl) {
   vfloat32m1_t vbuf;
 
-  vbuf = vfmul_vv_f32m1(v0_re, f1_re, vl);
-  return vfnmsac_vv_f32m1(vbuf, v0_im, f1_im, vl);
+  vbuf = __riscv_vfmul_vv_f32m1(v0_re, f1_re, vl);
+  return __riscv_vfnmsac_vv_f32m1(vbuf, v0_im, f1_im, vl);
 }
 
 vfloat32m1_t cmplx_mul_im_vv(vfloat32m1_t v0_re, vfloat32m1_t v0_im,
@@ -522,8 +522,8 @@ vfloat32m1_t cmplx_mul_im_vv(vfloat32m1_t v0_re, vfloat32m1_t v0_im,
                              size_t vl) {
   vfloat32m1_t vbuf;
 
-  vbuf = vfmul_vv_f32m1(v0_re, f1_im, vl);
-  return vfmacc_vv_f32m1(vbuf, v0_im, f1_re, vl);
+  vbuf = __riscv_vfmul_vv_f32m1(v0_re, f1_im, vl);
+  return __riscv_vfmacc_vv_f32m1(vbuf, v0_im, f1_re, vl);
 }
 
 // Ancillary function to divide real and imaginary parts
@@ -574,7 +574,7 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
   vuint32m1_t index, bindex;
 
   // Use undisturbed policy
-  vsetvl_e32m1(vl);
+  __riscv_vsetvl_e32m1(vl);
 
   ///////////////////////////////
   // LOAD samples and twiddles /
@@ -584,40 +584,40 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
   // load/store segment to divide in two registers.
   // Ara does not support these instructions now, so we will hypothesize
   // different mem locations
-  upper_wing_re = vle32_v_f32m1(samples_re, vl);
-  lower_wing_re = vle32_v_f32m1(samples_re + vl, vl);
+  upper_wing_re = __riscv_vle32_v_f32m1(samples_re, vl);
+  lower_wing_re = __riscv_vle32_v_f32m1(samples_re + vl, vl);
 
   // 1) Get the upper wing output
-  vbuf_re = vfadd_vv_f32m1(upper_wing_re, lower_wing_re, vl);
+  vbuf_re = __riscv_vfadd_vv_f32m1(upper_wing_re, lower_wing_re, vl);
 
-  upper_wing_im = vle32_v_f32m1(samples_im, vl);
-  lower_wing_im = vle32_v_f32m1(samples_im + vl, vl);
+  upper_wing_im = __riscv_vle32_v_f32m1(samples_im, vl);
+  lower_wing_im = __riscv_vle32_v_f32m1(samples_im + vl, vl);
 
   // Create the current mask level
   // vslideup_vx_f32m1(mask_vec_buf, mask_vec, vl/4, vl_mask);
   // mask_vec = vmxor_mm_b32(mask_vec, mask_vec_buf, vl);
-  mask_vec = vlm_v_b32(mask_addr_vec[0], vl);
+  mask_vec = __riscv_vlm_v_b32(mask_addr_vec[0], vl);
 
   // 1) Get the upper wing output
-  vbuf_im = vfadd_vv_f32m1(upper_wing_im, lower_wing_im, vl);
+  vbuf_im = __riscv_vfadd_vv_f32m1(upper_wing_im, lower_wing_im, vl);
 
   // Load twiddle factors
-  twiddle_re = vle32_v_f32m1(twiddles_re, vl);
+  twiddle_re = __riscv_vle32_v_f32m1(twiddles_re, vl);
 
-  mask_vec_buf = vmnot_m_b32(mask_vec, vl);
+  mask_vec_buf = __riscv_vmnot_m_b32(mask_vec, vl);
 
   // Load twiddle factors
-  twiddle_im = vle32_v_f32m1(twiddles_im, vl);
+  twiddle_im = __riscv_vle32_v_f32m1(twiddles_im, vl);
 
   ///////////////////////////
   // First butterfly stage //
   ///////////////////////////
 
   // 2) Get the lower wing output
-  lower_wing_re = vfsub_vv_f32m1(upper_wing_re, lower_wing_re, vl);
+  lower_wing_re = __riscv_vfsub_vv_f32m1(upper_wing_re, lower_wing_re, vl);
   vbuf1_re =
-      vslidedown_vx_f32m1_m(mask_vec_buf, vbuf1_re, vbuf_re, vl_slamt, vl / 2);
-  lower_wing_im = vfsub_vv_f32m1(upper_wing_im, lower_wing_im, vl);
+      __riscv_vslidedown_vx_f32m1_m(mask_vec_buf, vbuf_re, vl_slamt, vl / 2);
+  lower_wing_im = __riscv_vfsub_vv_f32m1(upper_wing_im, lower_wing_im, vl);
   // Copy labels
   upper_wing_re = vbuf_re;
   upper_wing_im = vbuf_im;
@@ -625,8 +625,8 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
   vbuf_re =
       cmplx_mul_re_vv(lower_wing_re, lower_wing_im, twiddle_re, twiddle_im, vl);
 
-  vbuf1_im = vslidedown_vx_f32m1_m(mask_vec_buf, vbuf_im, upper_wing_im,
-                                   vl_slamt, vl / 2);
+  vbuf1_im = __riscv_vslidedown_vx_f32m1_m(mask_vec_buf, upper_wing_im,
+                                           vl_slamt, vl / 2);
 
   lower_wing_im =
       cmplx_mul_im_vv(lower_wing_re, lower_wing_im, twiddle_re, twiddle_im, vl);
@@ -640,22 +640,26 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
   // Preload twiddle factors
   if (1 < log2_nfft) {
     twiddles_re += vl;
-    twiddle_re = vle32_v_f32m1(twiddles_re, vl);
+    twiddle_re = __riscv_vle32_v_f32m1(twiddles_re, vl);
   }
 
   // Permutate the numbers
   // The first permutation is easier (just halving, no masks needed)
-  upper_wing_re = vslideup_vx_f32m1(upper_wing_re, lower_wing_re, vl_slamt, vl);
-  lower_wing_re = vmerge_vvm_f32m1(mask_vec, vbuf1_re, lower_wing_re, vl);
+  upper_wing_re =
+      __riscv_vslideup_vx_f32m1(upper_wing_re, lower_wing_re, vl_slamt, vl);
+  lower_wing_re =
+      __riscv_vmerge_vvm_f32m1(vbuf1_re, lower_wing_re, mask_vec, vl);
 
   // Preload twiddle factors
   if (1 < log2_nfft) {
     twiddles_im += vl;
-    twiddle_im = vle32_v_f32m1(twiddles_im, vl);
+    twiddle_im = __riscv_vle32_v_f32m1(twiddles_im, vl);
   }
 
-  upper_wing_im = vslideup_vx_f32m1(upper_wing_im, lower_wing_im, vl_slamt, vl);
-  lower_wing_im = vmerge_vvm_f32m1(mask_vec, vbuf1_im, lower_wing_im, vl);
+  upper_wing_im =
+      __riscv_vslideup_vx_f32m1(upper_wing_im, lower_wing_im, vl_slamt, vl);
+  lower_wing_im =
+      __riscv_vmerge_vvm_f32m1(vbuf1_im, lower_wing_im, mask_vec, vl);
 
   // Butterfly until the end
   for (unsigned int i = 1; i < log2_nfft; ++i) {
@@ -673,28 +677,28 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
     vl_slamt >>= 1;
 
     if (i != log2_nfft - 1)
-      mask_vec = vlm_v_b32(mask_addr_vec[i], vl);
+      mask_vec = __riscv_vlm_v_b32(mask_addr_vec[i], vl);
 
     // 1) Get the upper wing output
-    vbuf_re = vfadd_vv_f32m1(upper_wing_re, lower_wing_re, vl);
+    vbuf_re = __riscv_vfadd_vv_f32m1(upper_wing_re, lower_wing_re, vl);
 
     if (i != log2_nfft - 1) {
       // Create the current mask level
       // vslideup_vx_f32m1(mask_vec_buf, mask_vec, 0, vl_mask);
       // mask_vec = vmxor_mm_b32(mask_vec, mask_vec_buf, vl);
-      mask_vec_buf = vmnot_m_b32(mask_vec, vl);
+      mask_vec_buf = __riscv_vmnot_m_b32(mask_vec, vl);
       vbuf1_re =
-          vslidedown_vx_f32m1_m(mask_vec_buf, vbuf1_re, vbuf_re, vl_slamt, vl);
+          __riscv_vslidedown_vx_f32m1_m(mask_vec_buf, vbuf_re, vl_slamt, vl);
     }
 
-    vbuf_im = vfadd_vv_f32m1(upper_wing_im, lower_wing_im, vl);
+    vbuf_im = __riscv_vfadd_vv_f32m1(upper_wing_im, lower_wing_im, vl);
     // 2) Get the lower wing output
-    lower_wing_re = vfsub_vv_f32m1(upper_wing_re, lower_wing_re, vl);
-    lower_wing_im = vfsub_vv_f32m1(upper_wing_im, lower_wing_im, vl);
+    lower_wing_re = __riscv_vfsub_vv_f32m1(upper_wing_re, lower_wing_re, vl);
+    lower_wing_im = __riscv_vfsub_vv_f32m1(upper_wing_im, lower_wing_im, vl);
 
     if (i != log2_nfft - 1)
       vbuf1_im =
-          vslidedown_vx_f32m1_m(mask_vec_buf, vbuf1_im, vbuf_im, vl_slamt, vl);
+          __riscv_vslidedown_vx_f32m1_m(mask_vec_buf, vbuf_im, vl_slamt, vl);
 
     // Copy labels
     upper_wing_re = vbuf_re;
@@ -704,8 +708,8 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
                               twiddle_im, vl);
 
     if (i != log2_nfft - 1) {
-      upper_wing_re =
-          vslideup_vx_f32m1_m(mask_vec, upper_wing_re, vbuf_re, vl_slamt, vl);
+      upper_wing_re = __riscv_vslideup_vx_f32m1_m(mask_vec, upper_wing_re,
+                                                  vbuf_re, vl_slamt, vl);
     }
 
     lower_wing_im = cmplx_mul_im_vv(lower_wing_re, lower_wing_im, twiddle_re,
@@ -714,7 +718,7 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
     if (i != log2_nfft - 1) {
       // Pre load twiddle factors
       twiddles_re += vl;
-      twiddle_re = vle32_v_f32m1(twiddles_re, vl);
+      twiddle_re = __riscv_vle32_v_f32m1(twiddles_re, vl);
     }
 
     lower_wing_re = vbuf_re; // Just for the label. Verify that there is no
@@ -727,22 +731,24 @@ void fft_r2dif_vec(float *samples_re, float *samples_im,
       twiddles_im += vl;
 
       // Permutate the numbers
-      upper_wing_im = vslideup_vx_f32m1_m(mask_vec, upper_wing_im,
-                                          lower_wing_im, vl_slamt, vl);
-      lower_wing_re = vmerge_vvm_f32m1(mask_vec, vbuf1_re, lower_wing_re, vl);
+      upper_wing_im = __riscv_vslideup_vx_f32m1_m(mask_vec, upper_wing_im,
+                                                  lower_wing_im, vl_slamt, vl);
+      lower_wing_re =
+          __riscv_vmerge_vvm_f32m1(vbuf1_re, lower_wing_re, mask_vec, vl);
       // Pre load twiddle factors
-      twiddle_im = vle32_v_f32m1(twiddles_im, vl);
-      lower_wing_im = vmerge_vvm_f32m1(mask_vec, vbuf1_im, lower_wing_im, vl);
+      twiddle_im = __riscv_vle32_v_f32m1(twiddles_im, vl);
+      lower_wing_im =
+          __riscv_vmerge_vvm_f32m1(vbuf1_im, lower_wing_im, mask_vec, vl);
     }
   }
 
   // Get the indexes for the final store
-  index = vle32_v_u32m1(index_ptr, vl);
-  bindex = vmul_vx_u32m1(index, sizeof(float), vl);
+  index = __riscv_vle32_v_u32m1(index_ptr, vl);
+  bindex = __riscv_vmul_vx_u32m1(index, sizeof(float), vl);
 
   // Store indexed
-  vsuxei32_v_f32m1(samples_re, bindex, upper_wing_re, vl);
-  vsuxei32_v_f32m1(samples_im, bindex, upper_wing_im, vl);
-  vsuxei32_v_f32m1(samples_re + vl, bindex, lower_wing_re, vl);
-  vsuxei32_v_f32m1(samples_im + vl, bindex, lower_wing_im, vl);
+  __riscv_vsuxei32_v_f32m1(samples_re, bindex, upper_wing_re, vl);
+  __riscv_vsuxei32_v_f32m1(samples_im, bindex, upper_wing_im, vl);
+  __riscv_vsuxei32_v_f32m1(samples_re + vl, bindex, lower_wing_re, vl);
+  __riscv_vsuxei32_v_f32m1(samples_im + vl, bindex, lower_wing_im, vl);
 }

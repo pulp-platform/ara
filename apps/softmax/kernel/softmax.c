@@ -141,25 +141,25 @@ void softmax_vec(const float *i, const float *o, uint64_t channels,
   vfloat32m1_t res_chunk_v;
 
   // Stripmine on innerSize
-  for (vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
+  for (vl = __riscv_vsetvl_e32m1(avl); avl > 0; avl -= vl) {
 
-    vl = vsetvl_e32m1(avl);
+    vl = __riscv_vsetvl_e32m1(avl);
 
     /*
       Calculate the maximum along the channel dimension
     */
 
     // Initialize the max vector
-    max_chunk_v = vle32_v_f32m1(__i, vl);
+    max_chunk_v = __riscv_vle32_v_f32m1(__i, vl);
     // Bump the pointer
     __i += innerSize;
     for (uint64_t ch = 1; ch < channels; ++ch) {
       // Load a chunk of the input vector
-      buf_chunk_v = vle32_v_f32m1(__i, vl);
+      buf_chunk_v = __riscv_vle32_v_f32m1(__i, vl);
       // Bump the channel pointer
       __i += innerSize;
       // Calculate the elm-wise maximum between the two chunks
-      max_chunk_v = vfmax_vv_f32m1(max_chunk_v, buf_chunk_v, vl);
+      max_chunk_v = __riscv_vfmax_vv_f32m1(max_chunk_v, buf_chunk_v, vl);
     }
     // Restore the channel pointer
     __i = _i;
@@ -169,18 +169,18 @@ void softmax_vec(const float *i, const float *o, uint64_t channels,
     */
 
     // Initialize accumulator
-    den_chunk_v = vfmv_v_f_f32m1(0, vl);
+    den_chunk_v = __riscv_vfmv_v_f_f32m1(0, vl);
     for (uint64_t ch = 0; ch < channels; ++ch) {
       // Fetch one chunk from channel ch
-      buf_chunk_v = vle32_v_f32m1(__i, vl);
+      buf_chunk_v = __riscv_vle32_v_f32m1(__i, vl);
       // Subtract the maximum
-      buf_chunk_v = vfsub_vv_f32m1(buf_chunk_v, max_chunk_v, vl);
+      buf_chunk_v = __riscv_vfsub_vv_f32m1(buf_chunk_v, max_chunk_v, vl);
       // Exponentiate
       buf_chunk_v = __exp_2xf32(buf_chunk_v, vl);
       // Store the numerator to memory
-      vse32_v_f32m1(__o, buf_chunk_v, vl);
+      __riscv_vse32_v_f32m1(__o, buf_chunk_v, vl);
       // Accumulate
-      den_chunk_v = vfadd_vv_f32m1(den_chunk_v, buf_chunk_v, vl);
+      den_chunk_v = __riscv_vfadd_vv_f32m1(den_chunk_v, buf_chunk_v, vl);
       // Bump channel pointers
       __i += innerSize;
       __o += innerSize;
@@ -195,11 +195,11 @@ void softmax_vec(const float *i, const float *o, uint64_t channels,
 
     for (uint64_t ch = 0; ch < channels; ++ch) {
       // Load numerator from memory
-      num_chunk_v = vle32_v_f32m1(__o, vl);
+      num_chunk_v = __riscv_vle32_v_f32m1(__o, vl);
       // Divide
-      res_chunk_v = vfdiv_vv_f32m1(num_chunk_v, den_chunk_v, vl);
+      res_chunk_v = __riscv_vfdiv_vv_f32m1(num_chunk_v, den_chunk_v, vl);
       // Store the result to memory
-      vse32_v_f32m1(__o, res_chunk_v, vl);
+      __riscv_vse32_v_f32m1(__o, res_chunk_v, vl);
       // Bump channel pointers
       __o += innerSize;
     }

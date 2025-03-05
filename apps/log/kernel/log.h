@@ -43,16 +43,15 @@ void log_2xf32_bmark(float *args, float *results, size_t len);
 inline _MMR_f64 __log_1xf64(_MMR_f64 x, unsigned long int gvl) {
 
   _MMR_i64 _x_i;
-  _MMR_u64 imm0_u;
   _MMR_i64 imm0;
   _MMR_f64 e;
   _MMR_MASK_i64 invalid_mask = _MM_VFLE_f64(x, _MM_SET_f64(0.0f, gvl), gvl);
 
   x = _MM_MAX_f64(x, _MM_CAST_f64_i64(_MM_SET_i64(0x0010000000000000, gvl)),
                   gvl); /* cut off denormalized stuff */
-  imm0_u = _MM_SRL_i64(_MM_CAST_u64_f64(x),
-                       _MM_CAST_u64_i64(_MM_SET_i64(52, gvl)), gvl);
-  imm0 = _MM_CAST_i64_u64(imm0_u);
+  imm0 = _MM_CAST_i64_u64(_MM_SRL_i64(_MM_CAST_u64_i64(_MM_CAST_i64_f64(x)),
+                                      _MM_CAST_u64_i64(_MM_SET_i64(52, gvl)),
+                                      gvl));
   /* keep only the fractional part */
   _x_i = _MM_AND_i64(_MM_CAST_i64_f64(x), _MM_SET_i64(~0x7ff0000000000000, gvl),
                      gvl);
@@ -101,7 +100,6 @@ inline _MMR_f64 __log_1xf64(_MMR_f64 x, unsigned long int gvl) {
 inline _MMR_f32 __log_2xf32(_MMR_f32 x, unsigned long int gvl) {
 
   _MMR_i32 _x_i;
-  _MMR_u32 imm0_u;
   _MMR_i32 imm0;
   _MMR_f32 e;
 
@@ -109,9 +107,9 @@ inline _MMR_f32 __log_2xf32(_MMR_f32 x, unsigned long int gvl) {
 
   x = _MM_MAX_f32(x, _MM_CAST_f32_i32(_MM_SET_i32(0x00800000, gvl)),
                   gvl); /* cut off denormalized stuff */
-  imm0_u = _MM_SRL_i32(_MM_CAST_u32_f32(x),
-                       _MM_CAST_u32_i32(_MM_SET_i32(23, gvl)), gvl);
-  imm0 = _MM_CAST_i32_u32(imm0_u);
+  imm0 = _MM_CAST_i32_u32(_MM_SRL_i32(_MM_CAST_u32_i32(_MM_CAST_i32_f32(x)),
+                                      _MM_CAST_u32_i32(_MM_SET_i32(23, gvl)),
+                                      gvl));
   /* keep only the fractional part */
   _x_i = _MM_AND_i32(_MM_CAST_i32_f32(x), _MM_SET_i32(~0x7f800000, gvl), gvl);
   _x_i = _MM_OR_i32(_x_i, _MM_CAST_i32_f32(_MM_SET_f32(0.5f, gvl)), gvl);

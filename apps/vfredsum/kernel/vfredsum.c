@@ -22,26 +22,25 @@
   DATA_TYPE vfredsum_##sew(DATA_TYPE *i, size_t avl, uint8_t is_ordered,       \
                            uint8_t is_chained) {                               \
                                                                                \
-    size_t vl = vsetvl_e##sew##m8(avl);                                        \
+    size_t vl = __riscv_vsetvl_e##sew##m8(avl);                                \
                                                                                \
     vfloat##sew##m8_t vector;                                                  \
     vfloat##sew##m1_t red, scalar;                                             \
                                                                                \
-    vector = vfmv_s_f_f##sew##m8(vector, 0, vl);                               \
-    scalar = vfmv_s_f_f##sew##m1(scalar, 0, vl);                               \
-    red = vfmv_s_f_f##sew##m1(red, 0, vl);                                     \
-    vfmv_f_s_f##sew##m1_f##sew(red);                                           \
+    vector = __riscv_vfmv_s_f_f##sew##m8(0, vl);                               \
+    scalar = __riscv_vfmv_s_f_f##sew##m1(0, vl);                               \
+    red = __riscv_vfmv_s_f_f##sew##m1(0, vl);                                  \
                                                                                \
     if (is_chained) {                                                          \
-      vector = vle##sew##_v_f##sew##m8(i, vl);                                 \
+      vector = __riscv_vle##sew##_v_f##sew##m8(i, vl);                         \
     }                                                                          \
                                                                                \
     if (is_ordered)                                                            \
-      red = vfredosum_vs_f##sew##m8_f##sew##m1(red, vector, scalar, vl);       \
+      red = __riscv_vfredosum_vs_f##sew##m8_f##sew##m1(vector, scalar, vl);    \
     else                                                                       \
-      red = vfredusum_vs_f##sew##m8_f##sew##m1(red, vector, scalar, vl);       \
+      red = __riscv_vfredusum_vs_f##sew##m8_f##sew##m1(vector, scalar, vl);    \
                                                                                \
-    return vfmv_f_s_f##sew##m1_f##sew(red);                                    \
+    return __riscv_vfmv_f_s_f##sew##m1_f##sew(red);                            \
   }
 
 vfredsum_def_gen(_Float16, 16);

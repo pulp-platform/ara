@@ -118,30 +118,30 @@ void j2d_kernel_v(uint64_t r, uint64_t c, DATA_TYPE *A, DATA_TYPE *B) {
   uint32_t size_x = c - 2;
   uint32_t size_y = r - 2;
 
-  size_t gvl = vsetvl_e64m1(size_x);
+  size_t gvl = __riscv_vsetvl_e64m1(size_x);
 
   for (uint32_t j = 1; j <= size_x; j = j + gvl) {
-    gvl = vsetvl_e64m1(size_x - j + 1);
-    xU = vle64_v_f64m1(&A[1 * c + j], gvl);
-    xUtop = vle64_v_f64m1(&A[0 * c + j], gvl);
-    xUbottom = vle64_v_f64m1(&A[2 * c + j], gvl);
+    gvl = __riscv_vsetvl_e64m1(size_x - j + 1);
+    xU = __riscv_vle64_v_f64m1(&A[1 * c + j], gvl);
+    xUtop = __riscv_vle64_v_f64m1(&A[0 * c + j], gvl);
+    xUbottom = __riscv_vle64_v_f64m1(&A[2 * c + j], gvl);
 
     for (uint32_t i = 1; i <= size_y; i++) {
       if (i != 1) {
         xUtop = xU;
         xU = xUbottom;
-        xUbottom = vle64_v_f64m1(&A[(i + 1) * c + j], gvl);
+        xUbottom = __riscv_vle64_v_f64m1(&A[(i + 1) * c + j], gvl);
       }
       izq = A[i * c + j - 1];
       der = A[i * c + j + gvl];
-      xUleft = vfslide1up_vf_f64m1(xU, izq, gvl);
-      xUright = vfslide1down_vf_f64m1(xU, der, gvl);
-      xUtmp = vfadd_vv_f64m1(xUleft, xUright, gvl);
-      xUtmp = vfadd_vv_f64m1(xUtmp, xUtop, gvl);
-      xUtmp = vfadd_vv_f64m1(xUtmp, xUbottom, gvl);
-      xUtmp = vfadd_vv_f64m1(xUtmp, xU, gvl);
-      xUtmp = vfmul_vf_f64m1(xUtmp, (float)0.2, gvl);
-      vse64_v_f64m1(&B[i * c + j], xUtmp, gvl);
+      xUleft = __riscv_vfslide1up_vf_f64m1(xU, izq, gvl);
+      xUright = __riscv_vfslide1down_vf_f64m1(xU, der, gvl);
+      xUtmp = __riscv_vfadd_vv_f64m1(xUleft, xUright, gvl);
+      xUtmp = __riscv_vfadd_vv_f64m1(xUtmp, xUtop, gvl);
+      xUtmp = __riscv_vfadd_vv_f64m1(xUtmp, xUbottom, gvl);
+      xUtmp = __riscv_vfadd_vv_f64m1(xUtmp, xU, gvl);
+      xUtmp = __riscv_vfmul_vf_f64m1(xUtmp, (float)0.2, gvl);
+      __riscv_vse64_v_f64m1(&B[i * c + j], xUtmp, gvl);
     }
   }
 }

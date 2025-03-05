@@ -29,13 +29,13 @@ git submodule sync --recursive
 
 ## Toolchain
 
-Ara requires a RISC-V LLVM toolchain capable of understanding the vector extension, version 1.0.
+Ara requires a RISC-V GCC toolchain capable of understanding the vector extension, version 1.0.
 
 To build this toolchain, run the following command in the project's root directory.
 
 ```bash
 # Build the LLVM toolchain
-make toolchain-llvm
+make toolchain-gcc
 ```
 
 Ara also requires an updated Spike ISA simulator, with support for the vector extension.

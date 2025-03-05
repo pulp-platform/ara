@@ -5,7 +5,7 @@
 
 typedef signed short v2s __attribute__((vector_size(4)));
 typedef float v2f __attribute__((vector_size(8)));
-typedef __fp16 v2sf __attribute__((vector_size(4)));
+typedef _Float16 v2sf __attribute__((vector_size(4)));
 
 void fft_r2dif_vec(float *samples_re, float *samples_im,
                    const float *twiddles_re, const float *twiddles_im,

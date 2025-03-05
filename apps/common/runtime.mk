@@ -34,41 +34,30 @@ endif
 include $(ARA_DIR)/config/$(config).mk
 
 INSTALL_DIR             ?= $(ARA_DIR)/install
-GCC_INSTALL_DIR         ?= $(INSTALL_DIR)/riscv-gcc
-LLVM_INSTALL_DIR        ?= $(INSTALL_DIR)/riscv-llvm
 ISA_SIM_INSTALL_DIR     ?= $(INSTALL_DIR)/riscv-isa-sim
 ISA_SIM_MOD_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-isa-sim-mod
 
 RISCV_XLEN    ?= 64
-RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv
+RISCV_ARCH    ?= rv$(RISCV_XLEN)gcv_zfh_zvfh
 RISCV_ABI     ?= lp64d
-RISCV_TARGET  ?= riscv$(RISCV_XLEN)-unknown-elf
 
-# Use LLVM for bare-metal RVV and GCC for Linux RVV
 ifeq ($(LINUX),1)
-RISCV_PREFIX  ?= $(ARA_DIR)/cheshire/sw/cva6-sdk/buildroot/output/host/bin/riscv64-buildroot-linux-gnu-
-RISCV_CC      ?= $(RISCV_PREFIX)gcc
-RISCV_CXX     ?= $(RISCV_PREFIX)g++
-RISCV_OBJDUMP ?= $(RISCV_PREFIX)objdump
-RISCV_OBJCOPY ?= $(RISCV_PREFIX)objcopy
-RISCV_AS      ?= $(RISCV_PREFIX)as
-RISCV_AR      ?= $(RISCV_PREFIX)ar
-RISCV_LD      ?= $(RISCV_PREFIX)ld.lld
-RISCV_STRIP   ?= $(RISCV_PREFIX)strip
+GCC_INSTALL_DIR ?= $(ARA_DIR)/cheshire/sw/cva6-sdk/buildroot/output/host
+RISCV_TARGET    ?= riscv$(RISCV_XLEN)-buildroot-linux-gnu
 else
-RISCV_PREFIX  ?= $(LLVM_INSTALL_DIR)/bin/
-RISCV_CC      ?= $(RISCV_PREFIX)clang
-RISCV_CXX     ?= $(RISCV_PREFIX)clang++
-RISCV_OBJDUMP ?= $(RISCV_PREFIX)llvm-objdump
-RISCV_OBJCOPY ?= $(RISCV_PREFIX)llvm-objcopy
-RISCV_AS      ?= $(RISCV_PREFIX)llvm-as
-RISCV_AR      ?= $(RISCV_PREFIX)llvm-ar
-RISCV_LD      ?= $(RISCV_PREFIX)ld.lld
-RISCV_STRIP   ?= $(RISCV_PREFIX)llvm-strip
+GCC_INSTALL_DIR ?= $(INSTALL_DIR)/riscv-gcc
+RISCV_TARGET    ?= riscv$(RISCV_XLEN)-unknown-elf
 endif
 
-# Use gcc to compile scalar riscv-tests
-RISCV_CC_GCC  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)-gcc
+RISCV_PREFIX  ?= $(GCC_INSTALL_DIR)/bin/$(RISCV_TARGET)
+RISCV_CC      ?= $(RISCV_PREFIX)-gcc
+RISCV_CXX     ?= $(RISCV_PREFIX)-g++
+RISCV_OBJDUMP ?= $(RISCV_PREFIX)-objdump
+RISCV_OBJCOPY ?= $(RISCV_PREFIX)-objcopy
+RISCV_AS      ?= $(RISCV_PREFIX)-as
+RISCV_AR      ?= $(RISCV_PREFIX)-ar
+RISCV_LD      ?= $(RISCV_PREFIX)-ld.lld
+RISCV_STRIP   ?= $(RISCV_PREFIX)-strip
 
 # Benchmark with spike
 spike_env_dir ?= $(ARA_DIR)/apps/riscv-tests
@@ -79,11 +68,8 @@ RISCV_SIM     ?= $(ISA_SIM_INSTALL_DIR)/bin/spike
 RISCV_SIM_MOD ?= $(ISA_SIM_MOD_INSTALL_DIR)/bin/spike
 # VLEN should be lower or equal than 4096 because of spike restrictions
 vlen_spike := $(shell vlen=$$(grep vlen $(ARA_DIR)/config/$(config).mk | cut -d" " -f3) && echo "$$(( $$vlen < 4096 ? $$vlen : 4096 ))")
-RISCV_SIM_OPT ?= --isa=rv64gcv_zfh --varch="vlen:$(vlen_spike),elen:64"
-RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh --varch="vlen:$(vlen_spike),elen:64" -d
-
-# Python
-PYTHON ?= python3
+RISCV_SIM_OPT ?= --isa=$(RISCV_ARCH) --varch="vlen:$(vlen_spike),elen:64"
+RISCV_SIM_MOD_OPT ?= --isa=$(RISCV_ARCH) --varch="vlen:$(vlen_spike),elen:64" -d
 
 # Defines
 ENV_DEFINES ?=
@@ -96,75 +82,42 @@ endif
 MAKE_DEFINES = -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
 DEFINES += $(ENV_DEFINES) $(MAKE_DEFINES)
 
-# Common flags
-RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argument # -Werror
-
-# LLVM Flags
-LLVM_FLAGS     ?= -march=rv64gcv_zfh_zvfh0p1 -menable-experimental-extensions -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
-LLVM_V_FLAGS   ?= -fno-vectorize -mllvm -scalable-vectorization=off -mllvm -riscv-v-vector-bits-min=0 -Xclang -target-feature -Xclang +no-optimized-zero-stride-load
-RISCV_FLAGS    ?= $(LLVM_FLAGS) $(LLVM_V_FLAGS) -mcmodel=medany -I$(CURDIR)/common -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
+# Flags
+RISCV_CCFLAGS  ?= -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -mcmodel=medany
+COMMON_CCFLAGS ?= -O3 -std=gnu99 -ffunction-sections -fdata-sections -ffast-math -fno-common -fno-builtin-printf -I$(CURDIR)/common $(DEFINES) $(RISCV_WARNINGS) -Wunused-variable -Wall -Wextra
+COMMON_LDFLAGS ?= -static -nostartfiles -lm -lgcc -Wl,--gc-sections
 ifeq ($(LINUX),1)
-RISCV_CCFLAGS  ?= -march=rv64gcv -mabi=$(RISCV_ABI) -I$(CURDIR)/common -O3 $(DEFINES)
-RISCV_LDFLAGS  ?=
+CCFLAGS ?= $(RISCV_CCFLAGS) -O3 -I$(CURDIR)/common $(DEFINES)
+LDFLAGS ?= $(CCFLAGS)
 else
-RISCV_CCFLAGS  ?= $(RISCV_FLAGS) -ffunction-sections -fdata-sections
-RISCV_LDFLAGS  ?= -static -nostartfiles -lm -Wl,--gc-sections -T$(CURDIR)/common/link.ld
+CCFLAGS ?= $(RISCV_CCFLAGS) $(COMMON_CCFLAGS)
+LDFLAGS ?= $(CCFLAGS) $(COMMON_LDFLAGS) -T$(CURDIR)/common/link.ld
 endif
-RISCV_CCFLAGS_SPIKE  ?= $(RISCV_FLAGS) $(SPIKE_CCFLAGS) -ffunction-sections -fdata-sections
-RISCV_CXXFLAGS ?= $(RISCV_FLAGS) -ffunction-sections -fdata-sections
-RISCV_LDFLAGS_SPIKE  ?= -static -nostartfiles -lm $(SPIKE_LDFLAGS) -Wl,--gc-sections
+CCFLAGS_SPIKE ?= $(CCFLAGS) $(SPIKE_CCFLAGS)
+LDFLAGS_SPIKE ?= $(CCFLAGS) $(COMMON_LDFLAGS)
 
-# GCC Flags
-RISCV_FLAGS_GCC    ?= -mcmodel=medany -march=$(RISCV_ARCH) -mabi=$(RISCV_ABI) -I$(CURDIR)/common -static -std=gnu99 -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
-RISCV_CCFLAGS_GCC  ?= $(RISCV_FLAGS_GCC)
-RISCV_CXXFLAGS_GCC ?= $(RISCV_FLAGS_GCC)
-RISCV_LDFLAGS_GCC  ?= -static -nostartfiles -lm -lgcc $(RISCV_FLAGS_GCC) -T$(CURDIR)/common/link.ld
-
-ifeq ($(COMPILER),gcc)
-	RISCV_OBJDUMP_FLAGS ?=
-else
-ifneq ($(LINUX),1)
-	RISCV_OBJDUMP_FLAGS ?= --mattr=v
-endif
-endif
-
-# Compile two different versions of the runtime, since we cannot link code compiled with two different toolchains
-RUNTIME_GCC   ?= common/crt0-gcc.S.o common/printf-gcc.c.o common/string-gcc.c.o common/serial-gcc.c.o common/util-gcc.c.o
+# Runtime
 ifeq ($(LINUX),1)
-RUNTIME_LLVM  ?= common/util-llvm.c.o
+RUNTIME ?= common/util.c.o
 else
-RUNTIME_LLVM  ?= common/crt0-llvm.S.o common/printf-llvm.c.o common/string-llvm.c.o common/serial-llvm.c.o common/util-llvm.c.o
+RUNTIME ?= common/crt0.S.o common/printf.c.o common/string.c.o common/serial.c.o common/util.c.o
 endif
 RUNTIME_SPIKE ?= $(spike_env_dir)/benchmarks/common/crt.S.o.spike $(spike_env_dir)/benchmarks/common/syscalls.c.o.spike common/util.c.o.spike
 
-.INTERMEDIATE: $(RUNTIME_GCC) $(RUNTIME_LLVM)
-
-%-gcc.S.o: %.S
-	$(RISCV_CC_GCC) $(RISCV_CCFLAGS_GCC) -c $< -o $@
-
-%-gcc.c.o: %.c
-	$(RISCV_CC_GCC) $(RISCV_CCFLAGS_GCC) -c $< -o $@
-
-%-llvm.S.o: %.S
-	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
-
-%-llvm.c.o: %.c
-	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
-
 %.S.o: %.S
-	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
+	$(RISCV_CC) $(CCFLAGS) -c $< -o $@
 
 %.c.o: %.c
-	$(RISCV_CC) $(RISCV_CCFLAGS) -c $< -o $@
+	$(RISCV_CC) $(CCFLAGS) -c $< -o $@
 
 %.S.o.spike: %.S patch-spike-crt0
-	$(RISCV_CC) $(RISCV_CCFLAGS_SPIKE) -c $< -o $@
+	$(RISCV_CC) $(CCFLAGS_SPIKE) -c $< -o $@
 
 %.c.o.spike: %.c
-	$(RISCV_CC) $(RISCV_CCFLAGS_SPIKE) -c $< -o $@
+	$(RISCV_CC) $(CCFLAGS_SPIKE) -c $< -o $@
 
 %.cpp.o: %.cpp
-	$(RISCV_CXX) $(RISCV_CXXFLAGS) -c $< -o $@
+	$(RISCV_CXX) $(CCFLAGS) -c $< -o $@
 
 %.ld: %.ld.c
 	$(RISCV_CC) -P -E $(DEFINES) $< -o $@
