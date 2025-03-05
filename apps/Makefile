@@ -152,8 +152,9 @@ riscv_tests_spike: patch-spike-crt0
 # Format the sourcecode
 .PHONY: format
 format:
-	$(LLVM_INSTALL_DIR)/bin/clang-format -style=file -i $$(find . | grep -E "\.[h,c,cpp]$$" | grep -v riscv-tests)
-	$(LLVM_INSTALL_DIR)/bin/clang-format -style=file -i $$(find riscv-tests/isa/rv64uv | grep -E "\.[h,c,cpp]$$")
+	if [ -z "$$(which clang-format)" ]; then echo 'clang-format not installed. Please install it.'; fi
+	clang-format -style=file -i $$(find . | grep -E "\.[h,c,cpp]$$" | grep -v riscv-tests)
+	clang-format -style=file -i $$(find riscv-tests/isa/rv64uv | grep -E "\.[h,c,cpp]$$")
 
 # Run benchmarks on Spike
 define run_benchmark_spike
