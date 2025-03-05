@@ -26,7 +26,7 @@ jobs:
 #####################
 
   tc-gcc:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
@@ -61,7 +61,7 @@ jobs:
         path: tc-gcc.tar
 
   tc-isa-sim:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
@@ -96,7 +96,7 @@ jobs:
         path: tc-isa-sim.tar
 
   tc-verilator:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
@@ -136,7 +136,7 @@ jobs:
 ###################
 
   compile-apps:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
@@ -162,7 +162,7 @@ jobs:
         path: apps/bin
 
   compile-riscv-tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
@@ -195,7 +195,7 @@ jobs:
         path: apps/bin
 
   compile-ara:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
@@ -245,7 +245,7 @@ jobs:
 ####################
 
   simulate:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
@@ -279,7 +279,7 @@ jobs:
 ########################
 
   riscv-tests-simv:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
@@ -308,7 +308,7 @@ jobs:
       run: config=${{ matrix.ara_config }} make -C hardware -j8 riscv_tests_simv
 
   riscv-tests-spike:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: ["tc-isa-sim", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v4
@@ -341,7 +341,7 @@ jobs:
 ###################
 
   check-license:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
@@ -352,8 +352,29 @@ jobs:
     - name: Check license
       run: python scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
 
+  check-clang-format:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: 3.13.2
+    - name: Install Python requirements
+      run: pip install -r python-requirements.txt
+    - name: Install clang-format
+      run: sudo apt-get install clang-format
+    - name: Run clang-format
+      run: |
+        for file in `find apps -type f -name "*.[c|h|cpp|hpp]" | grep -vP "apps/riscv-tests"`; do
+          ./scripts/run-clang-format.py $file || EXIT_STATUS=$?
+        done
+        for file in `find apps/riscv-tests/isa/rv64uv -type f -name "*.[c|h|cpp|hpp]"`; do
+          ./scripts/run-clang-format.py $file || EXIT_STATUS=$?
+        done
+        exit $EXIT_STATUS
+
   check-trailing-whitespaces:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
       with:
@@ -381,7 +402,7 @@ jobs:
 #####################
 
   benchmark:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
@@ -427,7 +448,7 @@ jobs:
         path: benchmarks-${{ matrix.ara_config }}.tar
 
   roofline:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: benchmark
     steps:
     - uses: actions/checkout@v4
@@ -583,7 +604,7 @@ jobs:
 ####################
 
   clean-up:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
@@ -598,7 +619,7 @@ jobs:
             riscv-tests-spike
 
   clean-up-compile-runs:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       max-parallel: 1
       matrix:
