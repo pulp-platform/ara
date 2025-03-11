@@ -27,13 +27,14 @@ jobs:
 
   tc-gcc:
     runs-on: ubuntu-22.04
+    env:
+      GCC_URL: https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2025.01.20/riscv64-glibc-ubuntu-22.04-gcc-nightly-2025.01.20-nightly.tar.xz
+      GCC_FILE: riscv-gcc.tar.xz
     steps:
     - uses: actions/checkout@v4
-    - name: Recover the submodule commit hash
+    - name: Recover gcc's download link
       id: recover_hash
-      run: |
-        git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1
-        echo "tc-gcc-hash=`git submodule status toolchain/riscv-gnu-toolchain | cut -d' ' -f1`" >> $GITHUB_ENV
+      run: echo "tc-gcc-hash=$GCC_URL" >> $GITHUB_ENV
     - name: Cache the GCC toolchain
       uses: actions/cache@v4
       id: tc-gcc-cache
@@ -46,12 +47,17 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
     - name: Download the GCC toolchain
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
-    - name: Compile GCC
+      run: |
+        curl -L -o $GCC_FILE $GCC_URL
+        tar -xf $GCC_FILE
+    - name: Extract GCC
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get install libmpc-dev
-        CC=gcc CXX=g++ make toolchain-gcc
+        mkdir -p install
+        tar -xf $GCC_FILE -C install
+        GCC_OLD_NAME=$(tar -tf $GCC_FILE | head -n 1 | cut -f1 -d"/")
+        mv install/$GCC_OLD_NAME install/riscv-gcc
+        echo "gcc version: $(./install/riscv-gcc/bin/riscv64-unknown-elf-gcc --version | head -n 1)"
     - name: Tar GCC
       run: tar -cvf tc-gcc.tar install/riscv-gcc
     - name: Upload GCC
@@ -153,6 +159,12 @@ jobs:
       run: |
         git submodule update --init --recursive -- toolchain/riscv-isa-sim
         git submodule foreach --recursive git reset --hard
+    - name: Download the gcc toolchain
+      uses: actions/download-artifact@v4
+      with:
+        name: tc-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
     - name: Compile applications
       run: config=${{ matrix.ara_config }} make -C apps
     - name: Upload applications
@@ -415,6 +427,12 @@ jobs:
         python-version: 3.13.2
     - name: Install Python requirements
       run: pip install -r python-requirements.txt
+    - name: Download the GCC toolchain
+      uses: actions/download-artifact@v4
+      with:
+        name: tc-gcc
+    - name: Untar GCC
+      run: tar xvf tc-gcc.tar
     - name: Get Spike artifacts
       uses: actions/download-artifact@v4
       with:
