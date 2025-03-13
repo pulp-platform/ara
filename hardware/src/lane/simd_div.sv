@@ -8,6 +8,8 @@
 // The unit serializes the whole computation, so it cannot parallelize sub-64-bit arithmetic.
 
 module simd_div import ara_pkg::*; import rvv_pkg::*; #(
+    // CVA6 configuration
+    parameter  config_pkg::cva6_cfg_t CVA6Cfg = cva6_config_pkg::cva6_cfg,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t),
     localparam int  unsigned StrbWidth = DataWidth/8,
@@ -308,8 +310,9 @@ module simd_div import ara_pkg::*; import rvv_pkg::*; #(
 
   // Serial divider
   serdiv #(
-    .WIDTH           (ELEN),
-    .STABLE_HANDSHAKE(1   )
+    .CVA6Cfg         (CVA6Cfg),
+    .WIDTH           (ELEN   ),
+    .STABLE_HANDSHAKE(1      )
   ) i_serdiv (
     .clk_i    (clk_i            ),
     .rst_ni   (rst_ni           ),

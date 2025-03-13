@@ -370,6 +370,7 @@ module ara import ara_pkg::*; #(
     lane #(
       .NrLanes              (NrLanes              ),
       .VLEN                 (VLEN                 ),
+      .CVA6Cfg              (CVA6Cfg              ),
       .FPUSupport           (FPUSupport           ),
       .FPExtSupport         (FPExtSupport         ),
       .FixPtSupport         (FixPtSupport         ),
