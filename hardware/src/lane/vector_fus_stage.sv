@@ -10,6 +10,7 @@
 module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter  int           unsigned NrLanes         = 0,
     parameter  int           unsigned VLEN            = 0,
+    parameter  config_pkg::cva6_cfg_t CVA6Cfg         = cva6_config_pkg::cva6_cfg,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7
@@ -157,6 +158,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   vmfpu #(
     .NrLanes        (NrLanes        ),
     .VLEN           (VLEN           ),
+    .CVA6Cfg        (CVA6Cfg        ),
     .FPUSupport     (FPUSupport     ),
     .FPExtSupport   (FPExtSupport   ),
     .FixPtSupport   (FixPtSupport   ),
