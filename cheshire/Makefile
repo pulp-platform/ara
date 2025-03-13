@@ -58,8 +58,8 @@ update_xilinx_src:
 	$(BENDER) script vivado $(CUSTOM_XIL_BENDER_TARGETS) > $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.$(BOARD).tcl
 
 update_vsim_src:
-	$(MAKE) -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/target/sim/vsim/compile.cheshire_soc.tcl CHS_BENDER_RTL_FLAGS="$(CUSTOM_SIM_BENDER_TARGETS)"
-	$(MAKE) -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/target/sim/vcs/compile.cheshire_soc.sh CHS_BENDER_RTL_FLAGS="$(CUSTOM_SIM_BENDER_TARGETS)"
+	$(MAKE) -B -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/target/sim/vsim/compile.cheshire_soc.tcl CHS_BENDER_RTL_FLAGS="$(CUSTOM_SIM_BENDER_TARGETS)"
+	$(MAKE) -B -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/target/sim/vcs/compile.cheshire_soc.sh CHS_BENDER_RTL_FLAGS="$(CUSTOM_SIM_BENDER_TARGETS)"
 
 clean:
 	rm $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.$(BOARD).tcl
