@@ -209,6 +209,14 @@ module ara_tb;
         $display("[cva6-d$-stalls]: %d", int'(dut.dcache_stall_buf_q));
         $display("[cva6-i$-stalls]: %d", int'(dut.icache_stall_buf_q));
         $display("[cva6-sb-full]: %d", int'(dut.sb_full_buf_q));
+
+        $display("-------Ara Sequencer----------");
+        $display("[#Insns stalled due to hazards]:%d",int'(dut.i_ara_soc.i_system.i_ara.i_sequencer.stall_insns_q));
+        $display("[#Cycles insn stalled due to hazards]:%d",int'(dut.i_ara_soc.i_system.i_ara.i_sequencer.stall_cycles_q));
+        $display("[#Cycles Operand Requestor not ready]:%d", int'(dut.i_ara_soc.i_system.i_ara.i_sequencer.op_req_stall_cycles_d));
+
+        $display("----------FPU Stats-----------");
+        $display("[FPU utilization]:%.2f",(dut.i_ara_soc.i_system.i_ara.gen_lanes[0].i_lane.i_vfus.i_vmfpu.counter_q * 100.0/ dut.runtime_buf_q));
 `endif
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end

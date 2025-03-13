@@ -2397,4 +2397,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     end
   end
 
+  logic [30:0] counter_d, counter_q;
+  `FF(counter_q, counter_d, '0, clk_i, rst_ni);
+
+  always_comb begin : p_counter
+    counter_d = counter_q;
+    if (vfpu_out_valid & vfpu_out_ready)
+      counter_d = counter_q + 1;
+  end
+
 endmodule : vmfpu
