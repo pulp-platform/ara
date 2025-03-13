@@ -145,7 +145,7 @@ module ara_testharness #(
   // the last vector instruciton is over.
   logic cnt_en_mask;
 `ifndef IDEAL_DISPATCHER
-  assign cnt_en_mask = i_ara_soc.hw_cnt_en_o[0];
+  assign cnt_en_mask = 1'b1; //i_ara_soc.hw_cnt_en_o[0];
 `else
   assign cnt_en_mask = 1'b1;
 `endif

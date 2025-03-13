@@ -72,6 +72,12 @@ ifeq ($(ideal_dispatcher), 1)
   ideal        = "_ideal"
 endif
 
+# Latency arguments for perf simulations
+mem_latency ?= 0
+ifneq ($(mem_latency), 0)
+	bender_defs += --define ADD_MEM_LATENCY=1 --define MEM_LATENCY=$(mem_latency) 
+endif
+
 ifeq ($(vcd_dump), 1)
   vcd_path    ?= ../vcd/$(app).vcd
   bender_defs += --define VCD_DUMP=1 --define VCD_PATH=$(vcd_path)

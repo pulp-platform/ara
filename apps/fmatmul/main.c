@@ -72,24 +72,24 @@ int main() {
   // Measure only the full-size matmul
   for (uint64_t s = M; s <= M; s *= 2) {
 #else
-  for (uint64_t s = 4; s <= M; s *= 2) {
+  for (uint64_t s = M; s <= M; s *= 2) {
 #endif
     printf("\n");
     printf("------------------------------------------------------------\n");
-    printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", s,
-           s, s, s);
+    printf("Calculating a (%d x %d) x (%d x %d) matrix multiplication...\n", M,
+           N, N, P);
     printf("------------------------------------------------------------\n");
     printf("\n");
 
     // Matrices are initialized --> Start calculating
     printf("Calculating fmatmul...\n");
     start_timer();
-    fmatmul(c, a, b, s, s, s);
+    fmatmul(c, a, b, M, N, P);
     stop_timer();
 
     // Metrics
     int64_t runtime = get_timer();
-    float performance = 2.0 * s * s * s / runtime;
+    float performance = 2.0 * M * N * P / runtime;
     float utilization = 100 * performance / (2.0 * NR_LANES);
 
     printf("The execution took %d cycles.\n", runtime);
@@ -97,9 +97,10 @@ int main() {
            performance, utilization);
 
     // Verify the result only for s == M (to keep it simple)
+#ifdef CHECK
     if (s == M) {
       printf("Verifying result...\n");
-      int error = verify_matrix(c, g, s, s, THRESHOLD);
+      int error = verify_matrix(c, g, M, P, THRESHOLD);
       if (error != 0) {
         printf("Error code %d\n", error);
         printf("c[%d]=%d\n", error, c[error]);
@@ -108,6 +109,7 @@ int main() {
         printf("Passed.\n");
       }
     }
+#endif
   }
 
   return 0;

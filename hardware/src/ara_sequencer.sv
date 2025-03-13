@@ -352,6 +352,19 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // Update the token only upon new instructions
   assign ara_req_token_d = (ara_req_valid_i) ? ara_req_i.token : ara_req_token_q;
 
+  //////////////
+  // Counters //
+  //////////////
+  logic prev_stall_d, prev_stall_q;
+  logic [31:0] stall_cycles_d, stall_cycles_q;
+  logic [31:0] stall_insns_d, stall_insns_q;
+  logic [31:0] op_req_stall_cycles_d, op_req_stall_cycles_q;
+
+  `FF(prev_stall_q, prev_stall_d, 1'b0, clk_i, rst_ni);
+  `FF(stall_cycles_q, stall_cycles_d, '0, clk_i, rst_ni);
+  `FF(stall_insns_q, stall_insns_d, '0, clk_i, rst_ni);
+  `FF(op_req_stall_cycles_q, op_req_stall_cycles_d, '0, clk_i, rst_ni);
+
   always_comb begin: p_sequencer
     // Default assignments
     state_d               = state_q;
@@ -383,6 +396,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Update the running vector instructions
     for (int pe = 0; pe < NrPEs; pe++) pe_vinsn_running_d[pe] &= ~pe_resp_i[pe].vinsn_done;
 
+    // Some perf counters
+    prev_stall_d = prev_stall_q;
+    stall_cycles_d = stall_cycles_q;
+    stall_insns_d = stall_insns_q;
+    op_req_stall_cycles_d = op_req_stall_cycles_q;
+
     case (state_q)
       IDLE: begin
         // Sent a request, but the operand requesters are not ready
@@ -399,6 +418,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
           // We are not ready
           ara_req_ready_o = 1'b0;
+          op_req_stall_cycles_d = op_req_stall_cycles_q + 1;
+
         // Received a new request
         end else if (ara_req_valid_i) begin
           // The target PE is ready, and we can handle another running vector instruction
@@ -487,6 +508,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
             begin
               ara_req_ready_o = 1'b0;
               pe_req_valid_d  = 1'b0;
+              // WAW or WAR present and causing a stall
+              // This is since only Read operands are chained, write operands to VRF are commited directly
+              stall_cycles_d = stall_cycles_q + 1;
+              stall_insns_d = (prev_stall_q) ? stall_insns_q : stall_insns_q + 1;
+              prev_stall_d = 1'b1;
             end else begin
               // Acknowledge instruction
               ara_req_ready_o = 1'b1;
@@ -515,6 +541,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
               // Issue the instruction
               pe_req_valid_d = 1'b1;
+              prev_stall_d = 1'b0;
 
               // Mark that this vector instruction is writing to vector vd
               if (ara_req_i.use_vd) write_list_d[ara_req_i.vd] = '{vid: vinsn_id_n, valid: 1'b1};
