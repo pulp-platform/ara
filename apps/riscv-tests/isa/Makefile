@@ -41,9 +41,9 @@ RISCV_GCC_OPTS_C ?= -O2
 # Added LLVM variables
 RISCV_LLVM ?= clang -fuse-ld=lld
 RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax -nostdlib -nostartfiles
-RISCV_CC_OPTS_C ?= -O2 -mno-relax -nostdlib -nostartfiles
+RISCV_CC_OPTS_C ?= -O2 -mno-relax -nostdlib -nostartfiles -fno-vectorize -mllvm -scalable-vectorization=off -mllvm -riscv-v-vector-bits-min=0 -mno-implicit-float
 RISCV_CC_DEFS_C ?= $(ARA_DEFINES)
-LLVM_V_VERSION ?= v
+LLVM_V_VERSION ?= v_zfh_zvfh
 
 # Original objdump + spike variables
 RISCV_OBJDUMP ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
