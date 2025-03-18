@@ -27,15 +27,15 @@ void log_1xf64_bmark(double *args, double *results, size_t len) {
   // Start dumping VCD
   event_trigger = +1;
 #endif
-  for (size_t vl = vsetvl_e64m1(avl); avl > 0; avl -= vl) {
+  for (size_t vl = __riscv_vsetvl_e64m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
-    vl = vsetvl_e64m1(avl);
+    vl = __riscv_vsetvl_e64m1(avl);
     // Load vector
-    log_vec = vle64_v_f64m1(args, vl);
+    log_vec = __riscv_vle64_v_f64m1(args, vl);
     // Compute
     res_vec = __log_1xf64(log_vec, vl);
     // Store
-    vse64_v_f64m1(results, res_vec, vl);
+    __riscv_vse64_v_f64m1(results, res_vec, vl);
     // Bump pointers
     args += vl;
     results += vl;
@@ -55,15 +55,15 @@ void log_2xf32_bmark(float *args, float *results, size_t len) {
   // Start dumping VCD
   event_trigger = +1;
 #endif
-  for (size_t vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
+  for (size_t vl = __riscv_vsetvl_e32m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
-    vl = vsetvl_e32m1(avl);
+    vl = __riscv_vsetvl_e32m1(avl);
     // Load vector
-    log_vec = vle32_v_f32m1(args, vl);
+    log_vec = __riscv_vle32_v_f32m1(args, vl);
     // Compute
     res_vec = __log_2xf32(log_vec, vl);
     // Store
-    vse32_v_f32m1(results, res_vec, vl);
+    __riscv_vse32_v_f32m1(results, res_vec, vl);
     // Bump pointers
     args += vl;
     results += vl;
