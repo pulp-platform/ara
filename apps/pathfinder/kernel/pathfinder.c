@@ -59,33 +59,33 @@ void run_vector(int *wall, int *result_v, uint32_t cols, uint32_t rows,
 
   for (uint32_t j = 0; j < num_runs; j++) {
     for (uint32_t n = 0; n < cols; n += gvl) {
-      gvl = vsetvl_e32m1(cols);
-      temp = vle32_v_i32m1(&wall[n], gvl);
-      vse32_v_i32m1(&result_v[n], temp, gvl);
+      gvl = __riscv_vsetvl_e32m1(cols);
+      temp = __riscv_vle32_v_i32m1(&wall[n], gvl);
+      __riscv_vse32_v_i32m1(&result_v[n], temp, gvl);
     }
     dst = result_v;
 
-    gvl = vsetvl_e32m1(cols);
+    gvl = __riscv_vsetvl_e32m1(cols);
 
     for (uint32_t t = 0; t < rows - 1; t++) {
       aux = dst[0];
       for (uint32_t n = 0; n < cols; n = n + gvl) {
-        gvl = vsetvl_e32m1(cols - n);
-        xNextrow = vle32_v_i32m1(&dst[n], gvl);
+        gvl = __riscv_vsetvl_e32m1(cols - n);
+        xNextrow = __riscv_vle32_v_i32m1(&dst[n], gvl);
 
         xSrc = xNextrow;
         aux2 = (n + gvl >= cols) ? dst[n + gvl - 1] : dst[n + gvl];
-        xSrc_slideup = vslide1up_vx_i32m1(xSrc, aux, gvl);
-        xSrc_slidedown = vslide1down_vx_i32m1(xSrc, aux2, gvl);
+        xSrc_slideup = __riscv_vslide1up_vx_i32m1(xSrc, aux, gvl);
+        xSrc_slidedown = __riscv_vslide1down_vx_i32m1(xSrc, aux2, gvl);
 
-        xSrc = vmin_vv_i32m1(xSrc, xSrc_slideup, gvl);
-        xSrc = vmin_vv_i32m1(xSrc, xSrc_slidedown, gvl);
+        xSrc = __riscv_vmin_vv_i32m1(xSrc, xSrc_slideup, gvl);
+        xSrc = __riscv_vmin_vv_i32m1(xSrc, xSrc_slidedown, gvl);
 
-        xNextrow = vle32_v_i32m1(&wall[(t + 1) * cols + n], gvl);
-        xNextrow = vadd_vv_i32m1(xNextrow, xSrc, gvl);
+        xNextrow = __riscv_vle32_v_i32m1(&wall[(t + 1) * cols + n], gvl);
+        xNextrow = __riscv_vadd_vv_i32m1(xNextrow, xSrc, gvl);
 
         aux = dst[n + gvl - 1];
-        vse32_v_i32m1(&dst[n], xNextrow, gvl);
+        __riscv_vse32_v_i32m1(&dst[n], xNextrow, gvl);
       }
     }
   }
@@ -111,7 +111,7 @@ void run_vector_short_m4(int *wall, int *result_v, uint32_t cols, uint32_t rows,
   aux = neutral_value;
   aux2 = neutral_value;
 
-  gvl = vsetvl_e32m4(cols);
+  gvl = __riscv_vsetvl_e32m4(cols);
 
   for (uint32_t j = 0; j < num_runs; j++) {
 

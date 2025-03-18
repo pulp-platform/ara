@@ -41,10 +41,8 @@
 extern unsigned long int NFFT;
 
 extern float twiddle[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-__attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern float twiddle_vec_reim[]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
-__attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern v2f samples[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern float samples_reim[]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));

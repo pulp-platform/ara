@@ -27,15 +27,15 @@ void cos_1xf64_bmark(double *angles, double *results, size_t len) {
   // Start dumping VCD
   event_trigger = +1;
 #endif
-  for (size_t vl = vsetvl_e64m1(avl); avl > 0; avl -= vl) {
+  for (size_t vl = __riscv_vsetvl_e64m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
-    vl = vsetvl_e64m1(avl);
+    vl = __riscv_vsetvl_e64m1(avl);
     // Load vector
-    cos_vec = vle64_v_f64m1(angles, vl);
+    cos_vec = __riscv_vle64_v_f64m1(angles, vl);
     // Compute
     res_vec = __cos_1xf64(cos_vec, vl);
     // Store
-    vse64_v_f64m1(results, res_vec, vl);
+    __riscv_vse64_v_f64m1(results, res_vec, vl);
     // Bump pointers
     angles += vl;
     results += vl;
@@ -55,15 +55,15 @@ void cos_2xf32_bmark(float *angles, float *results, size_t len) {
   // Start dumping VCD
   event_trigger = +1;
 #endif
-  for (size_t vl = vsetvl_e32m1(avl); avl > 0; avl -= vl) {
+  for (size_t vl = __riscv_vsetvl_e32m1(avl); avl > 0; avl -= vl) {
     // Strip-mine
-    vl = vsetvl_e32m1(avl);
+    vl = __riscv_vsetvl_e32m1(avl);
     // Load vector
-    cos_vec = vle32_v_f32m1(angles, vl);
+    cos_vec = __riscv_vle32_v_f32m1(angles, vl);
     // Compute
     res_vec = __cos_2xf32(cos_vec, vl);
     // Store
-    vse32_v_f32m1(results, res_vec, vl);
+    __riscv_vse32_v_f32m1(results, res_vec, vl);
     // Bump pointers
     angles += vl;
     results += vl;
