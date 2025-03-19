@@ -206,8 +206,8 @@ void SetupR2SwapTable(short int *SwapTable, int Ni) {
   }
 }
 
-void __attribute__((__noinline__))
-SetupInput(signed short *In, int N, int Dyn) {
+void __attribute__((__noinline__)) SetupInput(signed short *In, int N,
+                                              int Dyn) {
   unsigned int i, j;
   /*
           float Freq_Step[] = {
