@@ -133,8 +133,8 @@ int64_t CropAndResizePerBox(const float *image_data, const int batch_size,
                      x] = top + (bottom - top) * y_lerp;
         }
       } // end for x
-    }   // end for y
-  }     // end for b
+    } // end for y
+  } // end for b
 #ifdef PRINTF
   printf("End of the scalar function\n");
 #endif
@@ -309,8 +309,8 @@ int64_t CropAndResizePerBox_BCHW_vec(
 
         crops_data = prev_crops_data;
       } // end for x
-    }   // end for y
-  }     // end for b
+    } // end for y
+  } // end for b
   return 0;
 }
 
@@ -474,8 +474,8 @@ int64_t CropAndResizePerBox_BHWC_vec(
 
         crops_data = prev_crops_data;
       } // end for x
-    }   // end for y
-  }     // end for b
+    } // end for y
+  } // end for b
   return 0;
 }
 
