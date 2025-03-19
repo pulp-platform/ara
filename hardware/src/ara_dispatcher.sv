@@ -3351,6 +3351,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             if (state_qq != WAIT_IDLE) begin
               state_d = WAIT_IDLE;
               acc_resp_o.req_ready = 1'b0;
+              is_config = 1'b1;
             end else begin
               // These always respond at the same cycle
               acc_resp_o.resp_valid = 1'b1;
