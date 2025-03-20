@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Remove timing loop in addrgen (triggered by CVA6 pulp-v2)
  - Fix latch in vmfpu
  - Remove spurious .c files from cheshire's test folder after compilation
+ - RVV CSR instructions are "config" instructions in ara dispatcher
 
 ### Added
 
@@ -114,6 +115,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Bump default simulator to QuestaSim 2021.3
  - Bump CVA6 to pulp-v2 and update parametrization
  - Bump QuestaSim version
+ - Bump LLVM to version 20.1.0
+ - Update RVV intrinsics
 
 ## 3.0.0 - 2023-09-08
 
