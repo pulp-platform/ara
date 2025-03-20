@@ -111,7 +111,7 @@ void run_vector_short_m4(int *wall, int *result_v, uint32_t cols, uint32_t rows,
   aux = neutral_value;
   aux2 = neutral_value;
 
-  gvl = __riscv_vsetvl_e32m4(cols);
+  asm volatile("vsetvli %0, %1, e32, m4, ta, ma" : "=r"(gvl) : "r"(cols));
 
   for (uint32_t j = 0; j < num_runs; j++) {
 
