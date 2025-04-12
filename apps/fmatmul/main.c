@@ -45,6 +45,7 @@ extern double c[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 extern double g[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 #define THRESHOLD 0.001
+#define CHECK
 
 // Verify the matrix
 int verify_matrix(double *result, double *gold, size_t R, size_t C,

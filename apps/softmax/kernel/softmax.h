@@ -25,11 +25,6 @@ void softmax(const float *i, const float *o, const float *buf,
 void softmax_vec(const float *i, const float *o, uint64_t channels,
                  uint64_t innerSize);
 
-void softmax_vec_reduction(const double *i, const double *o, uint64_t channels,
-                uint64_t innerSize);
-
-void softmax_vec_reduction_2(const double *i, const double *o, uint64_t channels,
-    uint64_t innerSize);
-
-void softmax_vec_reduction_3(const double *i, const double *o, uint64_t innerSize);
+void softmax_vec_reduction(const float *i, const float *o, uint64_t channels,
+                 uint64_t innerSize);
 #endif

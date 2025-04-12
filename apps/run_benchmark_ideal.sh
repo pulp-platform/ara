@@ -6,14 +6,10 @@ dtype=$2
 nr_lanes=$3
 lat=$4
 
-logdir=logs
+logdir=logs-ideal
 
 make clean
 mkdir -p ${logdir}/$app
-
-#Build hw
-cd ../hardware/
-make clean && make compile config=${nr_lanes}_lanes mem_latency=${lat}
 
 cd ../apps/
 
@@ -29,7 +25,7 @@ echo "L=$nr_lanes LEN=$len"
 if [[ $app == "fmatmul" ]]
 then
   #args_app="256 256 $len"
-  args_app="64 64 $len"
+  args_app="16 16 $len"
   str_app=FMATMUL
 elif [[ $app == "fconv2d" ]]
 then
@@ -44,12 +40,12 @@ elif [[ $app == "jacobi2d" ]]
 then
   r=$((len+2))
   #args_app="256 $r"
-  args_app="64 $r"
+  args_app="16 $r"
   str_app=JACOBI2D
 elif [[ $app == "softmax" ]]
 then
-  args_app="64 $len"
-  #args_app="1 $len"
+  #args_app="64 $len"
+  args_app="1 $len"
   str_app=SOFTMAX
 elif [[ $app == "exp" ]]
 then
@@ -61,23 +57,24 @@ fi
 
 # Build app
 echo "$app"
-make $app/data.S def_args_$app="$args_app" config=${nr_lanes}_lanes
+
+make $app/data.S def_args_$app="$args_app" config=${nr_lanes}_lanes -B
 cp $app/data.S benchmarks/
 
-make bin/benchmarks ENV_DEFINES="-D$str_app -Ddtype=$dtype" config=${nr_lanes}_lanes old_data=1
+make bin/benchmarks.ideal ENV_DEFINES="-D$str_app -Ddtype=$dtype" config=${nr_lanes}_lanes -B
 
 # Simulate
 appname=${app}_${nr_lanes}_${bytes_lane}
 
-cp bin/benchmarks bin/${appname}
-cp bin/benchmarks.dump bin/${appname}.dump
+cp bin/benchmarks.ideal bin/${appname}.ideal
+cp ideal_dispatcher/vtrace/benchmarks.vtrace ideal_dispatcher/vtrace/${appname}.vtrace
 
+#Build hw
 cd ../hardware/
+make clean 
 
-logfile=../apps/${logdir}/${app}/${nr_lanes}L_${bytes_lane}B_${lat}mem_opt.log
-#logfile=../apps/${logdir}/${app}/${nr_lanes}L_${bytes_lane}B_${lat}mem.log
-
-make simc app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} | tee $logfile
+logfile=../apps/${logdir}/${app}/${nr_lanes}L_${bytes_lane}B_${lat}mem.log
+make simc app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} ideal_dispatcher=1 | tee $logfile
 #make sim app=${appname} config=${nr_lanes}_lanes #> $logfile &
 cd ../apps
 
