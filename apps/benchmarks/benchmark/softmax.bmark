@@ -35,14 +35,17 @@
 
 extern uint64_t channels;
 extern uint64_t innerSize;
-extern float i[] __attribute__((aligned(4 * NR_LANES)));
-extern float buf[] __attribute__((aligned(4 * NR_LANES)));
-extern float o_s[] __attribute__((aligned(4 * NR_LANES)));
-extern float o_v[] __attribute__((aligned(4 * NR_LANES)));
+
+#define T double
+
+extern T i[] __attribute__((aligned(4 * NR_LANES)));
+extern T buf[] __attribute__((aligned(4 * NR_LANES)));
+extern T o_s[] __attribute__((aligned(4 * NR_LANES)));
+extern T o_v[] __attribute__((aligned(4 * NR_LANES)));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
-    softmax_vec(i, o_v, channels, innerSize);
+    softmax_vec_reduction(i, o_v, channels, innerSize);
 }
 
 int main() {
@@ -55,7 +58,7 @@ int main() {
 
   HW_CNT_READY;
   start_timer();
-  softmax_vec(i, o_v, channels, innerSize);
+  softmax_vec_reduction(i, o_v, channels, innerSize);
   stop_timer();
 
   runtime = get_timer();

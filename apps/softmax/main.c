@@ -45,8 +45,8 @@
 
 extern uint64_t channels;
 extern uint64_t innerSize;
-#define T double
 
+#define T double
 extern T i[] __attribute__((aligned(4 * NR_LANES)));
 extern T buf[] __attribute__((aligned(4 * NR_LANES)));
 extern T o_s[] __attribute__((aligned(4 * NR_LANES)));
@@ -76,8 +76,8 @@ int main() {
 
   printf("Vector Softmax...\n");
   start_timer();
-  // softmax_vec_reduction(i, o_v, channels, innerSize);
-  softmax_vec_reduction_3(i, o_v, innerSize);
+  softmax_vec_reduction(i, o_v, channels, innerSize);
+  // softmax_vec(i, o_v, channels, innerSize);
   stop_timer();
 
   runtime = get_timer();
@@ -92,12 +92,12 @@ int main() {
 #ifdef CHECK
   for (uint64_t k = 0; k < channels * innerSize; ++k) {
 #ifdef SANITY_CHECK
-    if (o_g[k] != o_v[k]) {
+    if (o_v[k] != o_g[k]) {
 #else
-    if (!similarity_check(o_g[k], o_v[k], THRESHOLD)) {
+    if (!similarity_check(o_v[k], o_g[k], THRESHOLD)) {
 #endif
       error = 1;
-      printf("Error at index %d. %lf != %lf\n", k, o_v[k], o_g[k]);
+      printf("Error at index %d. %f != %f\n", k, o_v[k], o_g[k]);
     }
   }
   if (!error)

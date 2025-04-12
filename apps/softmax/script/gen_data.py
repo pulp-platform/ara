@@ -49,8 +49,7 @@ else:
 dtype=np.float64
 
 # Vector of samples
-# i = rand_matrix(channels * innerSize, dtype).astype(dtype)
-i = np.ones(channels * innerSize, dtype=dtype).astype(dtype)
+i = rand_matrix(channels * innerSize, dtype).astype(dtype)
 
 # Results buffer
 buf = np.zeros(channels * innerSize, dtype=dtype)
@@ -59,9 +58,9 @@ o_g = np.zeros(channels * innerSize, dtype=dtype)
 for c in range(channels):
   inp = i[c*innerSize : (c+1)*innerSize]
   i_ = inp - np.max(inp)
-  o_m = np.exp(inp, dtype=dtype)
+  o_m = np.exp(i_, dtype=dtype)
   s = np.sum(o_m)
-  o_g[c*innerSize : (c+1)*innerSize] = o_m # / s
+  o_g[c*innerSize : (c+1)*innerSize] = o_m / s
 
 # Create the file
 print(".section .data,\"aw\",@progbits")
