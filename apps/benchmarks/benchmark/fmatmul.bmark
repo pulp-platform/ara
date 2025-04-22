@@ -65,9 +65,19 @@ int main() {
   fmatmul(c, a, b, M, N, P);
   stop_timer();
 
+  dtype r;
+  
   int64_t runtime = get_timer();
   float performance = 2.0 * M * N * P / runtime;
-  printf("[sw-cycles]: %ld\n", runtime);
+  float utilization;
+  
+  if (sizeof(r) == 8) {
+    utilization = 100 * performance / (2.0 * NR_LANES);  
+  } else {
+    utilization = 100 * performance / (2.0 * NR_LANES * 2.0); // 2 FP32-ops/lane/cycle
+  }
+
+  printf("M:%d N:%d P=%d [sw-cycles]: %ld performance:%f util:%f%%\n", M, N, P, runtime, performance, utilization);
 
   return 0;
 }

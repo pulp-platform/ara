@@ -46,13 +46,22 @@ else:
   print("Error. Give me two arguments: the number of channels and the inner size.")
   sys.exit()
 
+dtype=np.float64
+
 # Vector of samples
-i = rand_matrix(channels * innerSize, np.float32).astype(np.float32)
+# i = rand_matrix(channels * innerSize, dtype).astype(dtype)
+i = np.ones(channels * innerSize, dtype=dtype).astype(dtype)
 
 # Results buffer
-buf = np.zeros(channels * innerSize, dtype=np.float32)
-o_s = np.zeros(channels * innerSize, dtype=np.float32)
-o_g = np.zeros(channels * innerSize, dtype=np.float32)
+buf = np.zeros(channels * innerSize, dtype=dtype)
+o_s = np.zeros(channels * innerSize, dtype=dtype)
+o_g = np.zeros(channels * innerSize, dtype=dtype)
+for c in range(channels):
+  inp = i[c*innerSize : (c+1)*innerSize]
+  i_ = inp - np.max(inp)
+  o_m = np.exp(inp, dtype=dtype)
+  s = np.sum(o_m)
+  o_g[c*innerSize : (c+1)*innerSize] = o_m # / s
 
 # Create the file
 print(".section .data,\"aw\",@progbits")
@@ -62,3 +71,4 @@ emit("i", i, 'NR_LANES*4')
 emit("buf", i, 'NR_LANES*4')
 emit("o_s", i, 'NR_LANES*4')
 emit("o_v", i, 'NR_LANES*4')
+emit("o_g", o_g, 'NR_LANES*4')

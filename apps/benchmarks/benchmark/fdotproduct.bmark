@@ -91,7 +91,17 @@ int main() {
   }
 
   v_sw_runtime = get_timer();
-  printf("[sw-cycles]: %ld\n", v_sw_runtime);
+
+
+  float performance = 2.0 * avl / v_sw_runtime;
+  float utilization;
+
+  if (sizeof(r) == 8) {
+    utilization = 100 * performance / (NR_LANES);
+  } else {
+    utilization = 100 * performance / (NR_LANES * 2.0); // 2 FP32-ops/lane/cycle
+  }
+  printf("VL:%d [sw-cycles]: %ld performance:%f util:%f%%\n", avl, v_sw_runtime, performance, utilization);
 
   return 0;
 }

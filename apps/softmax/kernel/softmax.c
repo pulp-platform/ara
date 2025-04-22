@@ -211,3 +211,264 @@ void softmax_vec(const float *i, const float *o, uint64_t channels,
     __o = _o;
   }
 }
+
+void softmax_vec_reduction(const double *i, const double *o, uint64_t channels,
+  uint64_t innerSize) {
+
+size_t avl = innerSize;
+size_t vl;
+
+double *i_ = (double *) i;
+double *o_ = (double *) o;
+
+vl = vsetvl_e64m1(avl); // For now assuming avl fits VRF, so vl = avl
+
+vfloat64m1_t vec_zero = vfmv_v_f_f64m1(0, vl);
+
+vfloat64m1_t vec_res;
+vfloat64m1_t vec_a = vle64_v_f64m1(i_, vl);
+i_ += vl;
+
+for (uint64_t c=0; c<channels; c+=1) {
+// Find max
+vfloat64m1_t vec_red_max;
+vec_red_max = vfredmax_vs_f64m1_f64m1(vec_red_max, vec_a, vec_zero, vl);
+
+if (c > 0) {
+vse64_v_f64m1(o_, vec_res, vl);
+o_ += vl;
+}
+
+double max = vfmv_f_s_f64m1_f64(vec_red_max);
+vfloat64m1_t vec_b = vfsub_vf_f64m1(vec_a, max, vl);
+
+// Find exp
+vfloat64m1_t vec_c = __exp_1xf64(vec_b, vl);
+
+// Sum and divide
+vfloat64m1_t vec_red_sum;
+vec_red_sum = vfredusum_vs_f64m1_f64m1(vec_red_sum, vec_c, vec_zero, vl);
+
+// Load next row
+if (c+1 < channels) {
+vec_a = vle64_v_f64m1(i_, vl);
+}
+
+double sum = vfmv_f_s_f64m1_f64(vec_red_sum);
+double sum_inv = 1.0/sum;
+
+vec_res = vfmul_vf_f64m1(vec_c, sum_inv, vl);
+i_ += vl;
+
+}
+
+vse64_v_f64m1(o_, vec_res, vl);
+
+}
+
+void softmax_vec_reduction_2(const double *i, const double *o, uint64_t channels,
+  uint64_t innerSize) {
+
+size_t avl = innerSize;
+size_t vl;
+
+double *i_ = (double *) i;
+double *o_ = (double *) o;
+double *is = (double *) i;
+double *os = (double *) o;
+
+vfloat64m1_t vec_zero = vfmv_v_f_f64m1(0, vl);
+vfloat64m1_t vec_a, vec_b, vec_c, vec_max;
+
+for (uint64_t c=0; c<channels; c+=1) {
+  vl = vsetvl_e64m1(avl);
+  // Find max
+  vec_max = vfmv_v_f_f64m1(0.0, vl);
+  while (avl > 0) {
+    vec_a = vle64_v_f64m1(i_, vl);
+    vec_max = vfmax_vv_f64m1(vec_max, vec_a, vl);
+    i_ += vl;
+    avl -= vl;
+  }
+  vfloat64m1_t vec_red_max = vfredmax_vs_f64m1_f64m1(vec_red_max, vec_max, vec_zero, vl);
+  i_ = is;
+  avl = innerSize;
+
+  double max = vfmv_f_s_f64m1_f64(vec_red_max);
+  vfloat64m1_t vec_sum = vfmv_v_f_f64m1(0, vl);
+
+  while (avl > 0) {
+    vec_a = vle64_v_f64m1(i_, vl);
+    vec_b = vfsub_vf_f64m1(vec_a, max, vl);
+
+    // Find exp
+    vec_c = __exp_1xf64(vec_b, vl);
+    
+    // Sum and divide
+    vec_sum = vfadd_vv_f64m1(vec_sum, vec_c, vl);
+
+    // Store
+    vse64_v_f64m1(o_, vec_c, vl);
+    i_ += vl;
+    o_ += vl;
+    avl -= vl;
+  }
+
+  is += innerSize;
+  os += innerSize;
+  i_ = is;
+  o_ = os;
+  avl=innerSize;
+
+}
+}
+
+void softmax_vec_reduction_3(const double *i, const double *o, uint64_t innerSize) {
+
+double *i_ = (double *)i;
+double *o_ = (double *)o;
+
+size_t vl, avl = innerSize;
+
+// Load the first portion of the long vector
+vl = vsetvl_e64m1(avl);
+vfloat64m1_t buf_a = vfmv_v_f_f64m1(0, vl);;
+
+// buf_a = vle64_v_f64m1(i_, vl);
+// i_ += vl;
+
+// Stripmining
+// avl -= vl;
+for (; avl > 0; avl-=vl) {
+    // Load the next remaining vector
+    vl = vsetvl_e64m1(avl);
+    vfloat64m1_t buf_b = vle64_v_f64m1(i_, vl);
+
+    // Do a vector-vector max operation
+    buf_a = vfmax_vv_f64m1(buf_a, buf_b, vl);
+
+    // Update vector length
+    i_ += vl;
+}
+
+// Reduce the max present in buf_a
+vfloat64m1_t vec_zero = vfmv_v_f_f64m1(0, vl);
+
+vfloat64m1_t vec_red_max;
+vec_red_max = vfredmax_vs_f64m1_f64m1(vec_red_max, buf_a, vec_zero, vl);
+
+double max = vfmv_f_s_f64m1_f64(vec_red_max);
+
+// Reset avl, i_
+avl = innerSize;
+double *i1_ = (double *)i;
+vfloat64m1_t buf_d = vfmv_v_f_f64m1(0, vl);
+
+// Stripmine and find exponentials
+double gvl = vl;
+vfloat64m1_t exp_hi = vfmv_v_f_f64m1(88.3762626647949, gvl);
+vfloat64m1_t exp_lo = vfmv_v_f_f64m1(-88.3762626647949, gvl);
+
+vfloat64m1_t cephes_LOG2EF = vfmv_v_f_f64m1(1.44269504088896341, gvl);
+vfloat64m1_t cephes_exp_C1 = vfmv_v_f_f64m1(0.693359375, gvl);
+vfloat64m1_t cephes_exp_C2 = vfmv_v_f_f64m1(-2.12194440e-4, gvl);
+
+vfloat64m1_t cephes_exp_p0 = vfmv_v_f_f64m1(1.9875691500E-4, gvl);
+vfloat64m1_t cephes_exp_p1 = vfmv_v_f_f64m1(1.3981999507E-3, gvl);
+vfloat64m1_t cephes_exp_p2 = vfmv_v_f_f64m1(8.3334519073E-3, gvl);
+vfloat64m1_t cephes_exp_p3 = vfmv_v_f_f64m1(4.1665795894E-2, gvl);
+vfloat64m1_t cephes_exp_p4 = vfmv_v_f_f64m1(1.6666665459E-1, gvl);
+vfloat64m1_t cephes_exp_p5 = vfmv_v_f_f64m1(5.0000001201E-1, gvl);
+
+for (; avl > 0; avl-= vl) {
+    vl = vsetvl_e64m1(avl);
+    vfloat64m1_t x = vle64_v_f64m1(i1_, vl);
+    // vfloat64m1_t buf_b = vfsub_vf_f64m1(buf_a, max, vl);
+    
+    // Find exp
+    // vfloat64m1_t buf_c = __exp_1xf64(buf_a, vl);
+    double gvl = vl;
+
+    /////////////// START EXP ////////////////////
+
+    vfloat64m1_t tmp;
+    vfloat64m1_t tmp2;
+    vfloat64m1_t tmp4;
+    vfloat64m1_t fx;
+  
+    vfloat64m1_t one = vfmv_v_f_f64m1(1.0, gvl);
+    vfloat64m1_t zero = vec_zero; //vfmv_v_f_f64m1(0.0, gvl);
+    vfloat64m1_t z;
+    vfloat64m1_t y;
+  
+    vbool64_t mask;
+    vint64m1_t imm0;
+    vint64m1_t tmp3;
+  
+    x = vfmin_vv_f64m1(x, exp_hi, gvl);
+    x = vfmax_vv_f64m1(x, exp_lo, gvl);
+  
+    fx = vfmv_v_f_f64m1(0.5, gvl);
+    fx = vfmacc_vv_f64m1(fx, x, cephes_LOG2EF, gvl);
+  
+    tmp3 = vfcvt_x_f_v_i64m1(fx, gvl);
+    tmp = vfcvt_f_x_v_f64m1(tmp3, gvl);
+  
+    mask = vmflt_vv_f64m1_b64(fx, tmp, gvl);
+    tmp2 = vmerge_vvm_f64m1(mask, zero, one, gvl);
+    fx = vfsub_vv_f64m1(tmp, tmp2, gvl);
+    tmp = vfmul_vv_f64m1(fx, cephes_exp_C1, gvl);
+    z = vfmul_vv_f64m1(fx, cephes_exp_C2, gvl);
+    x = vfsub_vv_f64m1(x, tmp, gvl);
+    x = vfsub_vv_f64m1(x, z, gvl);
+  
+    z = vfmul_vv_f64m1(x, x, gvl);
+  
+    y = cephes_exp_p0;
+    y = vfmadd_vv_f64m1(y, x, cephes_exp_p1, gvl);
+    y = vfmadd_vv_f64m1(y, x, cephes_exp_p2, gvl);
+    y = vfmadd_vv_f64m1(y, x, cephes_exp_p3, gvl);
+    y = vfmadd_vv_f64m1(y, x, cephes_exp_p4, gvl);
+    y = vfmadd_vv_f64m1(y, x, cephes_exp_p5, gvl);
+    y = vfmadd_vv_f64m1(y, z, x, gvl);
+    y = vfadd_vv_f64m1(y, one, gvl);
+  
+    imm0 = vfcvt_x_f_v_i64m1(fx, gvl);
+    imm0 = vadd_vv_i64m1(imm0, vmv_v_x_i64m1(1023, gvl), gvl);
+    imm0 = vsll_vv_i64m1(imm0, vmv_v_x_u64m1(52, gvl), gvl);
+  
+    tmp4 = vreinterpret_v_i64m1_f64m1(imm0);
+    y = vfmul_vv_f64m1(y, tmp4, gvl);
+
+    ////////////////// END EXP ////////////////////////
+
+    // buf_d = vfadd_vv_f64m1(buf_c, buf_d, vl);
+    vse64_v_f64m1(o_, y, vl);
+    i1_ += vl;
+    o_ += vl;
+}
+
+// // Reset avl, i_
+// avl = innerSize;
+// double *i2_ = (double *)i;
+// o_ = (double *)o;
+// vl = vsetvl_e64m1(avl);
+
+// // Reduction to find sum of exponentials
+// vfloat64m1_t vec_red_sum;
+// vec_red_sum = vfredusum_vs_f64m1_f64m1(vec_red_sum, buf_d, vec_zero, vl);
+
+// double sum = vfmv_f_s_f64m1_f64(vec_red_sum);
+// double sum_inv = 1.0/sum;
+
+// // Stripmining to the last multiplications
+// for (; avl > 0; avl-= vl) {
+//     vl = vsetvl_e64m1(avl);
+//     vfloat64m1_t buf_a = vle64_v_f64m1(i2_, vl);
+//     i2_ += vl;
+//     vfloat64m1_t buf_b = vfmul_vf_f64m1(buf_a, sum_inv, vl);
+//     vse64_v_f64m1(o_, buf_b, vl);
+//     o_ += vl;
+// }
+
+}
