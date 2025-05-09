@@ -101,7 +101,7 @@ int main() {
   } else {
     utilization = 100 * performance / (NR_LANES * 2.0); // 2 FP32-ops/lane/cycle
   }
-  printf("VL:%d [sw-cycles]: %ld performance:%f util:%f%%\n", avl, v_sw_runtime, performance, utilization);
+  printf("VL:%d [sw-cycles]: %ld perf:%f util:%f%%\n", avl, v_sw_runtime, performance, utilization);
 
   return 0;
 }

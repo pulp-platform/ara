@@ -77,7 +77,7 @@ int main() {
     utilization = 100 * performance / (2.0 * NR_LANES * 2.0); // 2 FP32-ops/lane/cycle
   }
 
-  printf("M:%d N:%d P=%d [sw-cycles]: %ld performance:%f util:%f%%\n", M, N, P, runtime, performance, utilization);
+  printf("M:%d N:%d P=%d [sw-cycles]: %ld perf:%f util:%f%%\n", M, N, P, runtime, performance, utilization);
 
   return 0;
 }
