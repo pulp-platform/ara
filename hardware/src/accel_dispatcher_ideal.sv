@@ -148,6 +148,7 @@ module accel_dispatcher_ideal import axi_pkg::*; import ara_pkg::*; # (
       $display("[#Cycles Operand Requestor not ready]:%d", int'(dut.i_ara_soc.i_system.i_ara.i_sequencer.op_req_stall_cycles_d));
 
       $display("----------FPU Stats-----------");
+      $display("[OPS]:%d", dut.i_ara_soc.i_system.i_ara.gen_lanes[0].i_lane.i_vfus.i_vmfpu.counter_q);
       $display("[FPU utilization]:%.2f",(dut.i_ara_soc.i_system.i_ara.gen_lanes[0].i_lane.i_vfus.i_vmfpu.counter_q * 100.0/ perf_cnt_q));
 
       $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", 0));

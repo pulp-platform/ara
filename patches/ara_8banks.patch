@@ -1,0 +1,13 @@
+diff --git a/hardware/include/ara_pkg.sv b/hardware/include/ara_pkg.sv
+index f1fd65f2..90a79000 100644
+--- a/hardware/include/ara_pkg.sv
++++ b/hardware/include/ara_pkg.sv
+@@ -934,7 +934,7 @@ typedef struct packed {
+     // Each vector register spans multiple words in each bank in each lane
+     // The start address is the same in every lane
+     // Therefore, within each lane, each vector register chunk starts on a given offset
+-    vaddr = vid * (vlenb / NrLanes / NrVRFBanksPerLane);
++    vaddr = vid * (vlenb / NrLanes / 8);
+     // NOTE: the only extensively tested configuration of Ara keeps:
+     //        - (VLEN / NrLanes) constant to 1024;
+     //        - NrVRFBanksPerLane always equal to 8.

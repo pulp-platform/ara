@@ -1,0 +1,22 @@
+diff --git a/hardware/include/ara_pkg.sv b/hardware/include/ara_pkg.sv
+index f1fd65f2..23f39ac4 100644
+--- a/hardware/include/ara_pkg.sv
++++ b/hardware/include/ara_pkg.sv
+@@ -926,7 +926,7 @@ typedef struct packed {
+ 
+   // Each lane has eight VRF banks
+   // NOTE: values != 8 are not supported
+-  localparam int unsigned NrVRFBanksPerLane = 8;
++  localparam int unsigned NrVRFBanksPerLane = 4;
+ 
+   // Find the starting address (in bytes) of a vector register chunk of vid
+   function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes, int vlen);
+@@ -934,7 +934,7 @@ typedef struct packed {
+     // Each vector register spans multiple words in each bank in each lane
+     // The start address is the same in every lane
+     // Therefore, within each lane, each vector register chunk starts on a given offset
+-    vaddr = vid * (vlenb / NrLanes / NrVRFBanksPerLane);
++    vaddr = vid * (vlenb / NrLanes / 8);
+     // NOTE: the only extensively tested configuration of Ara keeps:
+     //        - (VLEN / NrLanes) constant to 1024;
+     //        - NrVRFBanksPerLane always equal to 8.
