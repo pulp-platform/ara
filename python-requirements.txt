@@ -12,4 +12,4 @@ tabulate
 yamlfmt
 numpy
 matplotlib
-sklearn
+scikit-learn
