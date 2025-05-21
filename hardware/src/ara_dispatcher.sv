@@ -242,6 +242,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic in_lane_op;
   // If the vslideup offset is greater than csr_vl_q, the vslideup has no effects
   logic null_vslideup;
+  // Does the selected reg group for the selected EMUL have same EEW encoding?
+  logic is_same_eew;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete, load_complete_q;
@@ -3609,7 +3611,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
         // During a vstore, if vstart > 0, reshuffle immediately not to complicate operand fetch stage
-        reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && (csr_vstart_q != '0))),
+        // During a vstore with EMUL > 1, reshuffle immediately if the register group's EEW is not the
+        // same for every reg.
+        reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && ((csr_vstart_q != '0) || !is_same_eew))),
                            ara_req.use_vs2 && (ara_req.eew_vs2    != eew_q[ara_req.vs2]) && eew_valid_q[ara_req.vs2] && in_lane_op,
                            ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
         // Mask out requests if they refer to the same register!
@@ -3736,5 +3740,39 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     // The token must change at every new instruction
     ara_req.token = (ara_req_valid_o && ara_req_ready_i) ? ~ara_req_o.token : ara_req_o.token;
   end: p_decoder
+
+  // Check if register groups have all their registers with the same EEW encoding
+  always_comb begin
+    logic [15:0] same_eew_m2;
+    logic [7:0]  same_eew_m4;
+    logic [3:0]  same_eew_m8;
+    logic [3:0]  same_eew_by_lmul;
+
+    // LMUL = 2: group of 2 registers
+    for (int i = 0; i < 16; i++) begin
+      same_eew_m2[i] = (eew_q[2*i] == eew_q[2*i+1]);
+    end
+
+    // LMUL = 4: group of 4 registers (2 LMUL=2 groups + mid-pair check)
+    for (int i = 0; i < 8; i++) begin
+      same_eew_m4[i] = (eew_q[4*i+1] == eew_q[4*i+2]) &&
+                       (same_eew_m2[2*i] && same_eew_m2[2*i+1]);
+    end
+
+    // LMUL = 8: group of 8 registers (2 LMUL=4 groups + mid-pair check)
+    for (int i = 0; i < 4; i++) begin
+      same_eew_m8[i] = (eew_q[8*i+3] == eew_q[8*i+4]) &&
+                       (same_eew_m4[2*i] && same_eew_m4[2*i+1]);
+    end
+
+    // Final selection per LMUL
+    same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs1[4:1]];
+    same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs1[4:2]];
+    same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs1[4:3]];
+
+    // If EMUL is fractional (emul[2] == 1), EEW is considered uniform
+    is_same_eew = same_eew_by_lmul[ara_req.emul[1:0]] | ara_req.emul[2];
+  end
 
 endmodule : ara_dispatcher
