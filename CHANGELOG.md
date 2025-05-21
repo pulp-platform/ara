@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix latch in vmfpu
  - Remove spurious .c files from cheshire's test folder after compilation
  - RVV CSR instructions are "config" instructions in ara dispatcher
+ - Reshuffle vector store's source reg group if emul > 1 and encoding is not homogeneous.
 
 ### Added
 
@@ -117,6 +118,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Bump QuestaSim version
  - Bump LLVM to version 20.1.0
  - Update RVV intrinsics
+ - Bump CI's OS to Ubuntu 22.04
+ - Bump CI's Python to 3.12.0
 
 ## 3.0.0 - 2023-09-08
 
