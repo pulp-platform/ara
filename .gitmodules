@@ -22,4 +22,4 @@
 	update = none
 [submodule "cheshire/sw/cva6-sdk"]
 	path = cheshire/sw/cva6-sdk
-	url = git@github.com:moimfeld/cva6-sdk.git
+	url = https://github.com/pulp-platform/cva6-sdk.git
