@@ -18,7 +18,7 @@ Check `FUNCTIONALITIES.md` to check which instructions are currently supported b
 Make sure you clone this repository recursively to get all the necessary submodules:
 
 ```bash
-git submodule update --init --recursive
+make git-submodules
 ```
 
 If the repository path of any submodule changes, run the following command to change your submodule's pointer to the remote repository:

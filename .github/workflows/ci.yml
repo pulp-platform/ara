@@ -46,10 +46,10 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
     - name: Download the LLVM toolchain
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/riscv-llvm
+      run: git submodule update --init --recursive --checkout -- toolchain/riscv-llvm
     - name: Download Newlib
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/newlib
+      run: git submodule update --init --recursive --checkout -- toolchain/newlib
     - name: Compile LLVM
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: |
@@ -85,7 +85,7 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
     - name: Download the GCC toolchain
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
-      run: git submodule update --init --recursive -- toolchain/riscv-gnu-toolchain
+      run: git submodule update --init --recursive --checkout -- toolchain/riscv-gnu-toolchain
     - name: Compile GCC
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
       run: |

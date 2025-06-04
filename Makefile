@@ -50,7 +50,16 @@ else
 	CLANG_LDFLAGS  := ""
 endif
 
+# Submodule update - Big modules are not automatically updated by default
+# and require a manual call.
+git-submodules:
+	git submodule update --init --recursive
+	git submodule update --init --recursive --checkout -- $(ROOT_DIR)/toolchain/riscv-gnu-toolchain
+	git submodule update --init --recursive --checkout -- $(ROOT_DIR)/toolchain/newlib
+	git submodule update --init --recursive --checkout -- $(ROOT_DIR)/toolchain/riscv-llvm
+
 # Default target
+.PHONY: git-submodules
 all: toolchains riscv-isa-sim verilator
 
 # GCC and LLVM Toolchains
@@ -59,7 +68,7 @@ toolchains: toolchain-gcc toolchain-llvm
 
 toolchain-llvm: toolchain-llvm-main toolchain-llvm-newlib toolchain-llvm-rt
 
-toolchain-gcc: Makefile
+toolchain-gcc: git-submodules Makefile
 	mkdir -p $(GCC_INSTALL_DIR)
 	# Apply patch on riscv-binutils
 	cd $(CURDIR)/toolchain/riscv-gnu-toolchain/riscv-binutils
@@ -67,7 +76,7 @@ toolchain-gcc: Makefile
 	CC=$(CC) CXX=$(CXX) ../configure --prefix=$(GCC_INSTALL_DIR) --with-arch=rv64gcv --with-cmodel=medlow --enable-multilib && \
 	$(MAKE) MAKEINFO=true -j4
 
-toolchain-llvm-main: Makefile
+toolchain-llvm-main: git-submodules Makefile
 	mkdir -p $(LLVM_INSTALL_DIR)
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && rm -rf build && mkdir -p build && cd build && \
 	$(CMAKE) -G Ninja  \
@@ -82,7 +91,7 @@ toolchain-llvm-main: Makefile
 	cd $(ROOT_DIR)/toolchain/riscv-llvm && \
 	$(CMAKE) --build build --target install
 
-toolchain-llvm-newlib: Makefile toolchain-llvm-main
+toolchain-llvm-newlib: git-submodules Makefile toolchain-llvm-main
 	cd ${ROOT_DIR}/toolchain/newlib && rm -rf build && mkdir -p build && cd build && \
 	../configure --prefix=${LLVM_INSTALL_DIR} \
 	--target=riscv64-unknown-elf \
@@ -94,7 +103,7 @@ toolchain-llvm-newlib: Makefile toolchain-llvm-main
 	make && \
 	make install
 
-toolchain-llvm-rt: Makefile toolchain-llvm-main toolchain-llvm-newlib
+toolchain-llvm-rt: git-submodules Makefile toolchain-llvm-main toolchain-llvm-newlib
 	cd $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt && rm -rf build && mkdir -p build && cd build && \
 	$(CMAKE) $(ROOT_DIR)/toolchain/riscv-llvm/compiler-rt -G Ninja \
 	-DCMAKE_INSTALL_PREFIX=$(LLVM_INSTALL_DIR) \
