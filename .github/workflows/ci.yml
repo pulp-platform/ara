@@ -28,6 +28,22 @@ jobs:
   tc-llvm:
     runs-on: ubuntu-22.04
     steps:
+    # LLVM and GCC installations require plenty of disk space
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
     - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
@@ -67,6 +83,22 @@ jobs:
   tc-gcc:
     runs-on: ubuntu-22.04
     steps:
+    # LLVM and GCC installations require plenty of disk space
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
     - uses: actions/checkout@v4
     - name: Recover the submodule commit hash
       id: recover_hash
