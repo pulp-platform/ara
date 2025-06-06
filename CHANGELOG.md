@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add Cheshire Linux FPGA flow for vcu128 and vcu118
  - Add RVV tests to be used with Cheshire's stub and specific debug environment.
  - Add ara-cheshire bender flow for vcs
+ - Add support for `rvv-bench` instruction benchmarking/verification
 
 ### Changed
 
