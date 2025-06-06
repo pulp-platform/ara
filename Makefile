@@ -183,6 +183,22 @@ riscv_tests:
 	make -C apps -j4 riscv_tests && \
 	make -C hardware riscv_tests_simc
 
+# Initialize RVV-bench benchmark suite
+rvv-bench:
+	git submodule update --init --recursive --checkout -- $(ROOT_DIR)/apps/rvv-bench \
+	&& cd apps \
+	&& cp rvv-bench/nolibc.h . \
+	&& rm -r rvv \
+	&& mkdir rvv \
+	&& cp rvv-bench/instructions/rvv/gen.S . \
+	&& cp rvv-bench/instructions/rvv/config.h rvv-bench/instructions/rvv/main.c rvv \
+	&& sed -e '2a#define CUSTOM_HOST 1' -e '2a#include "printf.h"' -e '2a#include <string.h>' -i nolibc.h \
+	&& sed 's/main/nolibc_main/g;s/_start/main/g;s/nolibc_main();/\0\n#define main nolibc_main/g' -i nolibc.h \
+	&& sed 's/\(memwrite(.*\)}/\1printf("%.*s",len,ptr);}/g' -i nolibc.h \
+	&& sed 's/WARMUP.*$$/WARMUP 1/g;s/UNROLL.*$$/UNROLL 4/g;s/LOOP.*$$/LOOP 8/1;s/RUNS.*$$/RUNS 1/g' -i rvv/config.h \
+	&& sed 's/\.\.\/nolibc/nolibc/g' -i rvv/main.c \
+	&& m4 gen.S > rvv/gen.S
+
 # Helper targets
 .PHONY: clean
 

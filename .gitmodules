@@ -23,3 +23,7 @@
 [submodule "cheshire/sw/cva6-sdk"]
 	path = cheshire/sw/cva6-sdk
 	url = https://github.com/pulp-platform/cva6-sdk.git
+[submodule "apps/rvv-bench"]
+	path = apps/rvv-bench
+	url = https://github.com/camel-cdr/rvv-bench.git
+	update = none
