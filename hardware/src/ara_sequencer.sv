@@ -268,7 +268,13 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VMUL:VFCVTFF]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_MFpu) target_vfus[i] = 1'b1;
-      [VMSEQ:VMXNOR]:
+      [VMSEQ:VIOTA]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu || i == VFU_MaskUnit) target_vfus[i] = 1'b1;
+      VID:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_MaskUnit) target_vfus[i] = 1'b1;
+      [VCPOP:VMXNOR]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_MaskUnit) target_vfus[i] = 1'b1;
       [VRGATHER:VCOMPRESS]:
