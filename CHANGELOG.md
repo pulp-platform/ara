@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Remove spurious .c files from cheshire's test folder after compilation
  - RVV CSR instructions are "config" instructions in ara dispatcher
  - Reshuffle vector store's source reg group if emul > 1 and encoding is not homogeneous.
+ - Pass CVA6Cfg to serial divider in Ara
+ - Force cheshire's sim scripts re-generation
 
 ### Added
 
@@ -120,6 +122,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Update RVV intrinsics
  - Bump CI's OS to Ubuntu 22.04
  - Bump CI's Python to 3.12.0
+ - Don't download heavy git submodule by default (reserve a make command for that)
+ - Switch to a better buildroot mirror
+ - CI frees up space in the runner before building a toolchain
 
 ## 3.0.0 - 2023-09-08
 
