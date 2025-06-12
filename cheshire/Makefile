@@ -16,7 +16,7 @@ BACKREF_CHS_VCS         := $(BACKREF_CHS_ROOT)/target/sim/vcs/
 
 # Tools
 BENDER := bender
-VIVADO ?= 'vitis-2020.2 vivado'
+VIVADO ?= vitis-2020.2 vivado
 
 # Caution: Questasim requires this to point to the *actual* compiler install path
 CXX_PATH := $(shell which $(CXX))
