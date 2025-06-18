@@ -243,7 +243,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // If the vslideup offset is greater than csr_vl_q, the vslideup has no effects
   logic null_vslideup;
   // Does the selected reg group for the selected EMUL have same EEW encoding?
-  logic is_same_eew;
+  logic vs1_is_same_eew;
+  logic vs2_is_same_eew;
+  logic vd_is_same_eew;
+  logic vs1_some_is_valid;
+  logic vs2_some_is_valid;
+  logic vd_some_is_valid;
+  // EMUL for vs1, vs2, and vd. Useful for shuffling
+  rvv_pkg::vlmul_e emul_vs1, emul_vs2;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete, load_complete_q;
@@ -441,6 +448,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     is_config            = 1'b0;
     ignore_zero_vl_check = 1'b0;
+
+    emul_vs1 = ara_req.emul;
+    emul_vs2 = ara_req.emul;
 
     // Saturation in any lane will raise vxsat flag
     csr_vxsat_d |= |vxsat_flag_i;
@@ -2967,6 +2977,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // For memory operations: EMUL = LMUL * (EEW / SEW)
             // EEW is encoded in the instruction
             ara_req.emul = vlmul_e'(csr_vtype_q.vlmul + (ara_req.vtype.vsew - csr_vtype_q.vsew));
+            emul_vs2     = vlmul_e'(csr_vtype_q.vlmul + (ara_req.eew_vs2 - csr_vtype_q.vsew));
 
             // Exception if EMUL > 8 or < 1/8
             unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
@@ -3211,6 +3222,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // For memory operations: EMUL = LMUL * (EEW / SEW)
             // EEW is encoded in the instruction
             ara_req.emul = vlmul_e'(csr_vtype_q.vlmul + (ara_req.vtype.vsew - csr_vtype_q.vsew));
+            emul_vs2     = vlmul_e'(csr_vtype_q.vlmul + (ara_req.eew_vs2 - csr_vtype_q.vsew));
 
             // Exception if EMUL > 8 or < 1/8
             unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
@@ -3334,6 +3346,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               end
             end
             ara_req.eew_vs1 = ara_req.vtype.vsew; // This is the new vs1 EEW
+            emul_vs1 = vlmul_e'(csr_vtype_q.vlmul + (ara_req.eew_vs1 - csr_vtype_q.vsew));
           end
 
           ////////////////////////////
@@ -3611,11 +3624,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
         // During a vstore, if vstart > 0, reshuffle immediately not to complicate operand fetch stage
-        // During a vstore with EMUL > 1, reshuffle immediately if the register group's EEW is not the
-        // same for every reg.
-        reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && ((csr_vstart_q != '0) || !is_same_eew))),
-                           ara_req.use_vs2 && (ara_req.eew_vs2    != eew_q[ara_req.vs2]) && eew_valid_q[ara_req.vs2] && in_lane_op,
-                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
+        // If EMUL > 1, reshuffle if the register group's EEW is not the same for every reg.
+        reshuffle_req_d = {ara_req.use_vs1 && vs1_some_is_valid && !(vs1_is_same_eew && ((!in_lane_op && !is_vstore) || (in_lane_op && (ara_req.eew_vs1 == eew_q[ara_req.vs1])) || (is_vstore && (csr_vstart_q == '0)))),
+                           ara_req.use_vs2 && vs2_some_is_valid && !(vs2_is_same_eew && (!in_lane_op || (ara_req.eew_vs2 == eew_q[ara_req.vs2]))),
+                           ara_req.use_vd  && vd_some_is_valid  && !(vd_is_same_eew && (ara_req.vtype.vsew == eew_q[ara_req.vd])) && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
         // Mask out requests if they refer to the same register!
         reshuffle_req_d &= {
           (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
@@ -3642,6 +3654,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           end
           default:;
         endcase
+
+        // Mask the next request if we don't need to reshuffle the next reg
+        if (eew_new_buffer_d == eew_old_buffer_d) rs_mask_request_d = 1'b1;
       end
 
       // Reshuffle if at least one of the three registers needs a reshuffle
@@ -3746,7 +3761,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     logic [15:0] same_eew_m2;
     logic [7:0]  same_eew_m4;
     logic [3:0]  same_eew_m8;
-    logic [3:0]  same_eew_by_lmul;
+    logic [3:0]  vs1_same_eew_by_lmul;
+    logic [3:0]  vs2_same_eew_by_lmul;
+    logic [3:0]  vd_same_eew_by_lmul;
 
     // LMUL = 2: group of 2 registers
     for (int i = 0; i < 16; i++) begin
@@ -3766,13 +3783,73 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Final selection per LMUL
-    same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
-    same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs1[4:1]];
-    same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs1[4:2]];
-    same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs1[4:3]];
+    vs1_same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    vs1_same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs1[4:1]];
+    vs1_same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs1[4:2]];
+    vs1_same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs1[4:3]];
+
+    vs2_same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    vs2_same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs2[4:1]];
+    vs2_same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs2[4:2]];
+    vs2_same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs2[4:3]];
+
+    vd_same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    vd_same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vd[4:1]];
+    vd_same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vd[4:2]];
+    vd_same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vd[4:3]];
 
     // If EMUL is fractional (emul[2] == 1), EEW is considered uniform
-    is_same_eew = same_eew_by_lmul[ara_req.emul[1:0]] | ara_req.emul[2];
+    vs1_is_same_eew = vs1_same_eew_by_lmul[emul_vs1[1:0]] | emul_vs1[2];
+    vs2_is_same_eew = vs2_same_eew_by_lmul[emul_vs2[1:0]] | emul_vs2[2];
+    vd_is_same_eew = vd_same_eew_by_lmul[ara_req.emul[1:0]] | ara_req.emul[2];
+  end
+
+  // Check if the selected register groups have at least one register with valid data in it
+  always_comb begin
+    logic [15:0] some_valid_m2;
+    logic [7:0]  some_valid_m4;
+    logic [3:0]  some_valid_m8;
+    logic [3:0]  vs1_some_is_valid_by_lmul;
+    logic [3:0]  vs2_some_is_valid_by_lmul;
+    logic [3:0]  vd_some_is_valid_by_lmul;
+
+    // LMUL = 2: group of 2 registers
+    for (int i = 0; i < 16; i++) begin
+      some_valid_m2[i] = (eew_valid_q[2*i] | eew_valid_q[2*i+1]);
+    end
+
+    // LMUL = 4: group of 4 registers (2 LMUL=2 groups + mid-pair check)
+    for (int i = 0; i < 8; i++) begin
+      some_valid_m4[i] = (eew_valid_q[4*i+1] | eew_valid_q[4*i+2]) ||
+                         (some_valid_m2[2*i] | some_valid_m2[2*i+1]);
+    end
+
+    // LMUL = 8: group of 8 registers (2 LMUL=4 groups + mid-pair check)
+    for (int i = 0; i < 4; i++) begin
+      some_valid_m8[i] = (eew_valid_q[8*i+3] | eew_valid_q[8*i+4]) ||
+                         (some_valid_m4[2*i] | some_valid_m4[2*i+1]);
+    end
+
+    // Final selection per LMUL
+    vs1_some_is_valid_by_lmul[LMUL_1] = eew_valid_q[ara_req.vs1];
+    vs1_some_is_valid_by_lmul[LMUL_2] = some_valid_m2[ara_req.vs1[4:1]];
+    vs1_some_is_valid_by_lmul[LMUL_4] = some_valid_m4[ara_req.vs1[4:2]];
+    vs1_some_is_valid_by_lmul[LMUL_8] = some_valid_m8[ara_req.vs1[4:3]];
+
+    vs2_some_is_valid_by_lmul[LMUL_1] = eew_valid_q[ara_req.vs2];
+    vs2_some_is_valid_by_lmul[LMUL_2] = some_valid_m2[ara_req.vs2[4:1]];
+    vs2_some_is_valid_by_lmul[LMUL_4] = some_valid_m4[ara_req.vs2[4:2]];
+    vs2_some_is_valid_by_lmul[LMUL_8] = some_valid_m8[ara_req.vs2[4:3]];
+
+    vd_some_is_valid_by_lmul[LMUL_1] = eew_valid_q[ara_req.vd];
+    vd_some_is_valid_by_lmul[LMUL_2] = some_valid_m2[ara_req.vd[4:1]];
+    vd_some_is_valid_by_lmul[LMUL_4] = some_valid_m4[ara_req.vd[4:2]];
+    vd_some_is_valid_by_lmul[LMUL_8] = some_valid_m8[ara_req.vd[4:3]];
+
+    // If EMUL is fractional (emul[2] == 1), EEW is considered one
+    vs1_some_is_valid = vs1_some_is_valid_by_lmul[emul_vs1[1:0] & {2{~emul_vs1[2]}}];
+    vs2_some_is_valid = vs2_some_is_valid_by_lmul[emul_vs2[1:0] & {2{~emul_vs2[2]}}];
+    vd_some_is_valid = vd_some_is_valid_by_lmul[ara_req.emul[1:0] & {2{~ara_req.emul[2]}}];
   end
 
 endmodule : ara_dispatcher
