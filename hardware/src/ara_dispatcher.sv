@@ -435,6 +435,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_vs1      : csr_vtype_q.vsew,
       old_eew_vs1  : csr_vtype_q.vsew,
       eew_vs2      : csr_vtype_q.vsew,
+      old_eew_vs2  : csr_vtype_q.vsew,
       eew_vd_op    : csr_vtype_q.vsew,
       eew_vmask    : eew_q[VMASK],
       cvt_resize   : CVT_SAME,
@@ -2970,6 +2971,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // These also read vs2
                 ara_req.vs2     = insn.vmem_type.rs2;
                 ara_req.use_vs2 = 1'b1;
+                ara_req.old_eew_vs2 = eew_q[ara_req.vs2]; // This is the old vs2 EEW;
               end
               default:;
             endcase
@@ -3215,6 +3217,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // These also read vs2
                 ara_req.vs2     = insn.vmem_type.rs2;
                 ara_req.use_vs2 = 1'b1;
+                ara_req.old_eew_vs2 = eew_q[ara_req.vs2]; // This is the old vs2 EEW;
               end
               default:;
             endcase
