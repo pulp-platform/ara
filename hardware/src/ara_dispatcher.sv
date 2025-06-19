@@ -3727,8 +3727,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                            ara_req.use_vd  && vd_some_is_valid  && !(vd_is_same_eew && (ara_req.vtype.vsew == eew_q[ara_req.vd])) && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
         // Mask out requests if they refer to the same register!
         reshuffle_req_d &= {
-          (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
-          (insn.varith_type.rs2 != insn.varith_type.rd),
+          !(((insn.varith_type.rs1 == insn.varith_type.rd) && reshuffle_req_d[0]) || ((insn.varith_type.rs1 == insn.varith_type.rs2) && reshuffle_req_d[1])),
+          !((insn.varith_type.rs2 == insn.varith_type.rd) && reshuffle_req_d[0]),
           1'b1};
 
         // Prepare the information to reshuffle the vector registers during the next cycles
