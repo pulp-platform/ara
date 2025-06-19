@@ -165,12 +165,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // If the reg was not written, the content is unknown. No need to reshuffle
   // when writing with != EEW
   logic [31:0] eew_valid_d, eew_valid_q;
+  // Help for reshuffling
+  rvv_pkg::vlmul_e emul_vs1_d, emul_vs1_q, emul_vs2_d, emul_vs2_q;
   // Save eew information before reshuffling
   rvv_pkg::vew_e eew_old_buffer_d, eew_old_buffer_q, eew_new_buffer_d, eew_new_buffer_q;
   // Helpers to handle reshuffling with LMUL > 1
-  logic [2:0] rs_lmul_cnt_d, rs_lmul_cnt_q;
-  logic [2:0] rs_lmul_cnt_limit_d, rs_lmul_cnt_limit_q;
-  logic rs_mask_request_d, rs_mask_request_q;
+  logic [2:0] reg_lmul_cnt_d, reg_lmul_cnt_q;
+  logic [2:0] reg_lmul_cnt_limit_d, reg_lmul_cnt_limit_q;
+  logic reg_mask_request_d, reg_mask_request_q;
   // Save vreg to be reshuffled before reshuffling
   logic [4:0] vs_buffer_d, vs_buffer_q;
   // Keep track of the registers to be reshuffled |vs1|vs2|vd|
@@ -191,13 +193,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_new_buffer_q     <= rvv_pkg::EW8;
       vs_buffer_q          <= '0;
       reshuffle_req_q      <= '0;
-      rs_lmul_cnt_q        <= '0;
-      rs_lmul_cnt_limit_q  <= '0;
-      rs_mask_request_q    <= 1'b0;
+      reg_lmul_cnt_q       <= '0;
+      reg_lmul_cnt_limit_q <= '0;
+      reg_mask_request_q   <= 1'b0;
       reshuffle_eew_vs1_q  <= rvv_pkg::EW8;
       reshuffle_eew_vs2_q  <= rvv_pkg::EW8;
       reshuffle_eew_vd_q   <= rvv_pkg::EW8;
       pending_seg_mem_op_q <= 1'b0;
+      emul_vs1_q           <= LMUL_1;
+      emul_vs2_q           <= LMUL_1;
     end else begin
       state_q              <= state_d;
       state_qq             <= state_q;
@@ -207,13 +211,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_new_buffer_q     <= eew_new_buffer_d;
       vs_buffer_q          <= vs_buffer_d;
       reshuffle_req_q      <= reshuffle_req_d;
-      rs_lmul_cnt_q        <= rs_lmul_cnt_d;
-      rs_lmul_cnt_limit_q  <= rs_lmul_cnt_limit_d;
-      rs_mask_request_q    <= rs_mask_request_d;
+      reg_lmul_cnt_q       <= reg_lmul_cnt_d;
+      reg_lmul_cnt_limit_q <= reg_lmul_cnt_limit_d;
+      reg_mask_request_q   <= reg_mask_request_d;
       reshuffle_eew_vs1_q  <= reshuffle_eew_vs1_d;
       reshuffle_eew_vs2_q  <= reshuffle_eew_vs2_d;
       reshuffle_eew_vd_q   <= reshuffle_eew_vd_d;
       pending_seg_mem_op_q <= pending_seg_mem_op_d;
+      emul_vs1_q           <= emul_vs1_d;
+      emul_vs2_q           <= emul_vs2_d;
     end
   end
 
@@ -222,7 +228,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
 
   // Helper signals to discriminate between config/csr, load/store instructions and the others
-  logic is_config, is_vload, is_vstore;
+  logic is_config, is_vload, is_vstore, is_vmvnrr;
   // Whole-register memory-ops / move should be executed even when vl == 0
   logic ignore_zero_vl_check;
   // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
@@ -385,9 +391,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     pending_seg_mem_op_d = pending_seg_mem_op_q;
 
-    rs_lmul_cnt_d       = '0;
-    rs_lmul_cnt_limit_d = '0;
-    rs_mask_request_d   = 1'b0;
+    reg_lmul_cnt_d       = '0;
+    reg_lmul_cnt_limit_d = '0;
+    reg_mask_request_d   = 1'b0;
 
     illegal_insn = 1'b0;
     illegal_insn_load  = 1'b0;
@@ -399,6 +405,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     is_vstore     = 1'b0;
     load_zero_vl  = 1'b0;
     store_zero_vl = 1'b0;
+
+    is_vmvnrr = 1'b0;
 
     skip_lmul_checks     = 1'b0;
 
@@ -452,6 +460,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     emul_vs1 = ara_req.emul;
     emul_vs2 = ara_req.emul;
+    emul_vs1_d = emul_vs1_q;
+    emul_vs2_d = emul_vs2_q;
 
     // Saturation in any lane will raise vxsat flag
     csr_vxsat_d |= |vxsat_flag_i;
@@ -489,9 +499,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.resp_valid = 1'b0;
 
         // Handle LMUL > 1
-        rs_lmul_cnt_d       = rs_lmul_cnt_q;
-        rs_lmul_cnt_limit_d = rs_lmul_cnt_limit_q;
-        rs_mask_request_d   = 1'b0;
+        reg_lmul_cnt_d       = reg_lmul_cnt_q;
+        reg_lmul_cnt_limit_d = reg_lmul_cnt_limit_q;
+        reg_mask_request_d   = 1'b0;
 
         // Every single reshuffle request refers to LMUL == 1
         ara_req.emul = LMUL_1;
@@ -502,7 +512,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // These generate a reshuffle request to Ara's backend
         // When LMUL > 1, not all the regs that compose a large
         // register should always be reshuffled
-        ara_req_valid         = ~rs_mask_request_q;
+        ara_req_valid         = ~reg_mask_request_q;
         ara_req.use_scalar_op = 1'b1;
         ara_req.vs2           = vs_buffer_q;
         ara_req.eew_vs2       = eew_old_buffer_q;
@@ -525,8 +535,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Backend ready - Decide what to do next
         if (ara_req_ready_i) begin
           // Register completely reshuffled
-          if (rs_lmul_cnt_q == rs_lmul_cnt_limit_q) begin
-            rs_lmul_cnt_d = 0;
+          if (reg_lmul_cnt_q == reg_lmul_cnt_limit_q) begin
+            reg_lmul_cnt_d = 0;
 
             // Delete the already processed vector register from the notebook -> |vs1|vs2|vd|
             unique casez (reshuffle_req_q)
@@ -544,11 +554,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 eew_old_buffer_d = eew_q[insn.vmem_type.rs2];
                 eew_new_buffer_d = reshuffle_eew_vs2_q;
                 vs_buffer_d      = insn.varith_type.rs2;
+                reg_lmul_cnt_limit_d = emul_vs2_q;
               end
               3'b100: begin
                 eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
                 eew_new_buffer_d = reshuffle_eew_vs1_q;
                 vs_buffer_d      = insn.varith_type.rs1;
+                reg_lmul_cnt_limit_d = emul_vs1_q;
               end
               default:;
             endcase
@@ -570,7 +582,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // The register is not completely reshuffled (LMUL > 1)
           end else begin
             // Count up
-            rs_lmul_cnt_d = rs_lmul_cnt_q + 1;
+            reg_lmul_cnt_d = reg_lmul_cnt_q + 1;
 
             // Prepare the information to reshuffle the vector registers during the next cycles
             // Since LMUL > 1, we should go on and check if the next register needs a reshuffle
@@ -595,7 +607,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             endcase
 
             // Mask the next request if we don't need to reshuffle the next reg
-            if (eew_new_buffer_d == eew_old_buffer_d) rs_mask_request_d = 1'b1;
+            if (eew_new_buffer_d == eew_old_buffer_d) reg_mask_request_d = 1'b1;
           end
         end
       end
@@ -1358,18 +1370,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     unique case (insn.varith_type.rs1[17:15])
                       3'd0 : begin
                         vlmax <<= 0;
+                        emul_vs1     = LMUL_1;
                         ara_req.emul = LMUL_1;
                       end
                       3'd1 : begin
                         vlmax <<= 1;
+                        emul_vs1     = LMUL_2;
                         ara_req.emul = LMUL_2;
                       end
                       3'd3 : begin
                         vlmax <<= 2;
+                        emul_vs1     = LMUL_4;
                         ara_req.emul = LMUL_4;
                       end
                       3'd7 : begin
                         vlmax <<= 3;
+                        emul_vs1     = LMUL_8;
                         ara_req.emul = LMUL_8;
                       end
                       default: begin
@@ -1385,6 +1401,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.use_vs2       = 1'b0;
                     ara_req.vs1           = insn.varith_type.rs2;
                     ara_req.eew_vs1       = eew_q[insn.varith_type.rs2];
+                    // Special treatment during reshuffle because vs1 is read from rs2
+                    is_vmvnrr = 1'b1;
                     // Copy the encoding information to the new register
                     ara_req.vtype.vsew    = eew_q[insn.varith_type.rs2];
                     ara_req.vl            = vlmax; // whole register move
@@ -1534,16 +1552,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     case (insn.varith_type.rs1)
                       5'b00000: begin
                         ara_req.op      = ara_pkg::VMVXS;
+                        ara_req.use_vs1 = 1'b0;
                         ara_req.vl      = 1;
                         // Scalar source
                         emul_vs2        = LMUL_1;
+                        ara_req.emul    = LMUL_1;
                       end
                       5'b10000: begin
                         ara_req.op      = ara_pkg::VCPOP;
+                        ara_req.use_vs1 = 1'b0;
                         ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
                       5'b10001: begin
                         ara_req.op      = ara_pkg::VFIRST;
+                        ara_req.use_vs1 = 1'b0;
                         ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
                       default :;
@@ -2030,6 +2052,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.vl      = |csr_vl_q ? 1 : '0;
                     // This instruction ignores LMUL checks
                     skip_lmul_checks  = 1'b1;
+                    ara_req.emul      = LMUL_1;
                   end
                   // Divide instructions
                   6'b100000: ara_req.op = ara_pkg::VDIVU;
@@ -2288,6 +2311,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.vstart     = '0;
                       skip_lmul_checks     = 1'b1;
                       ignore_zero_vl_check = 1'b1;
+                      emul_vs2           = LMUL_1;
+                      ara_req.emul       = LMUL_1;
 
                       // Zero-extend operands
                       unique case (csr_vtype_q.vsew)
@@ -2730,6 +2755,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.vl      = |csr_vl_q ? 1 : '0;
                       // This instruction ignores LMUL checks
                       skip_lmul_checks  = 1'b1;
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b010111: ara_req.op = ara_pkg::VMERGE;
                     6'b011000: begin
@@ -3747,19 +3773,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           3'b100: begin
             eew_old_buffer_d = is_vstore ? eew_q[insn.vmem_type.rd] : eew_q[insn.vmem_type.rs1];
             eew_new_buffer_d = ara_req.eew_vs1;
-            vs_buffer_d      = is_vstore ? insn.vmem_type.rd : insn.varith_type.rs1;
+            vs_buffer_d      = is_vstore ? insn.vmem_type.rd : (is_vmvnrr ? insn.varith_type.rs2 : insn.varith_type.rs1);
           end
           default:;
         endcase
 
         // Mask the next request if we don't need to reshuffle the next reg
-        if (eew_new_buffer_d == eew_old_buffer_d) rs_mask_request_d = 1'b1;
+        if (eew_new_buffer_d == eew_old_buffer_d) reg_mask_request_d = 1'b1;
       end
 
       // Reshuffle if at least one of the three registers needs a reshuffle
       if (|reshuffle_req_d) begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
+        automatic rvv_pkg::vlmul_e reshuffle_emul;
 
         // Stall the interface, and inject a reshuffling instruction
         acc_resp_o.req_ready  = 1'b0;
@@ -3767,12 +3794,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         ara_req_valid  = 1'b0;
 
         // Initialize the reshuffle counter limit to handle LMUL > 1
-        unique case (ara_req.emul)
-          LMUL_2:  rs_lmul_cnt_limit_d = 1;
-          LMUL_4:  rs_lmul_cnt_limit_d = 3;
-          LMUL_8:  rs_lmul_cnt_limit_d = 7;
-          default: rs_lmul_cnt_limit_d = 0;
+        unique casez (reshuffle_req_d)
+          3'b??1: reshuffle_emul = ara_req.emul;
+          3'b?10: reshuffle_emul = emul_vs2;
+          3'b100: reshuffle_emul = emul_vs1;
         endcase
+
+        unique case (reshuffle_emul)
+          LMUL_2:  reg_lmul_cnt_limit_d = 1;
+          LMUL_4:  reg_lmul_cnt_limit_d = 3;
+          LMUL_8:  reg_lmul_cnt_limit_d = 7;
+          default: reg_lmul_cnt_limit_d = 0;
+        endcase
+
+        // Save vs1 and vs2 emul for reshuffling. vd, if needed, has been saved already.
+        emul_vs1_d = emul_vs1;
+        emul_vs2_d = emul_vs2;
 
         // Save info for next reshuffles
         reshuffle_eew_vs1_d = ara_req.eew_vs1;
