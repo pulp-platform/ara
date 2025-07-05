@@ -27,3 +27,6 @@
 	path = apps/rvv-bench
 	url = https://github.com/camel-cdr/rvv-bench.git
 	update = none
+[submodule "cheshire/sw/riscv-vectorized-benchmark-suite"]
+	path = cheshire/sw/riscv-vectorized-benchmark-suite
+	url = https://github.com/mp-17/riscv-vectorized-benchmark-suite.git
