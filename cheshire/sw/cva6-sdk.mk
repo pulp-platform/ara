@@ -44,8 +44,8 @@ $(TARGET_OS_TOOLCHAIN): $(CVA6_SDK_UPDATED)
 ## Build RVV Software ##
 ########################
 
-$(ARA_APPS)/bin/%-linux: $(shell find $(ARA_APPS)/$* -name "*.c" -o -name "*.S") $(TARGET_OS_TOOLCHAIN)
-	make -C $(ARA_APPS) bin/$*-linux LINUX=1 config=${ARA_CONFIGURATION}
+$(ARA_APPS)/bin/%-linux: $(shell find $(ARA_APPS) ! -path "*rivec-bmarks*" -name "*.c" -o -name "*.S" ) $(TARGET_OS_TOOLCHAIN)
+	make -C $(ARA_APPS) -B bin/$*-linux LINUX=1 config=${ARA_CONFIGURATION}
 
 .PRECIOUS: $(CVA6_SDK_ROOT)/rootfs/%
 $(CVA6_SDK_ROOT)/rootfs/%: $(ARA_APPS)/bin/%-linux
@@ -53,6 +53,9 @@ $(CVA6_SDK_ROOT)/rootfs/%: $(ARA_APPS)/bin/%-linux
 
 %-linux: $(CVA6_SDK_ROOT)/rootfs/%
 	@echo "$@ built and copied."
+
+# Vars and rules to make the RiVec bmarks
+include rivec.mk
 
 #####################
 ## Build Linux IMG ##

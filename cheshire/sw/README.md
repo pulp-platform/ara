@@ -32,6 +32,32 @@ cd ${ARA_ROOT}/cheshire/sw
 make linux-img
 ```
 
+### Compile RiVec software
+
+To compile a RiVec application, follow the following steps.
+
+Be sure the rivec-bmarks have been initialized:
+
+```bash
+make -C ${ARA_ROOT}/apps/rivec-bmarks
+```
+
+Then, set up the application and then compile it for scalar and vector.
+
+For example, for `_axpy`:
+
+```bash
+make rivec-bmark-_axpy
+```
+
+To build all the rivec apps:
+
+```bash
+make rivec-all
+```
+
+This command also moves large input dataset files from RiVec into the `rootfs` directory. If the payload size needs to be limited, please manually remove all the largest input files from `cva6-sdk/rootfs` and `cva6-sdk/buildroot/output/target`.
+
 ## Bare-metal
 
 Compile the source files with the vector extension support enable:

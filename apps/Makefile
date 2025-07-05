@@ -27,8 +27,9 @@ include $(COMMON_DIR)/riscv_tests.mk
 include $(COMMON_DIR)/default_args.mk
 
 APPS := $(patsubst $(APPS_DIR)/%/main.c,%,$(shell find $(APPS_DIR) -name "main.c"))
+APPS += $(patsubst $(APPS_DIR)/%/main.cpp,%,$(shell find $(APPS_DIR) -name "main.cpp"))
 # Don't automatically compile the benchmark app, which is only a wrapper around the other apps
-BINARIES := $(filter-out bin/benchmarks, $(addprefix bin/,$(APPS)))
+BINARIES := $(filter-out bin/benchmarks bin/rivec-bmarks% bin/_%, $(addprefix bin/,$(APPS)))
 
 CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si
 # Atomics are messy, since there is currently no memory region capable of handling them
@@ -97,17 +98,17 @@ endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template_ideal,$(app))))
 
 define app_compile_template_spike
-bin/$1.spike: $1/data.S.o.spike $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE) patch-spike-crt0
+bin/$1.spike: $1/data.S.o.spike $(addsuffix .o.spike, $(shell find $(1) -name "*.c" -o -name "*.cpp" -o -name "*.S")) $(RUNTIME_SPIKE) $(COMMON_SPIKE) patch-spike-crt0
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $$(RISCV_CCFLAGS_SPIKE) -o $$@ $$(addsuffix .o.spike, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_SPIKE) $$(RISCV_LDFLAGS_SPIKE) -DSPIKE
+	$$(RISCV_CC) -Iinclude $$(RISCV_CCFLAGS_SPIKE) -o $$@ $$(addsuffix .o.spike, $$(shell find $(1) -name "*.c" -o -name "*.cpp" -o -name "*.S")) $(RUNTIME_SPIKE) $$(RISCV_LDFLAGS_SPIKE) -DSPIKE
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 endef
 $(foreach app,$(APPS),$(eval $(call app_compile_template_spike,$(app))))
 
 define app_compile_template
-bin/$1$(BIN_SUFFIX): $1/data.S.o $(addsuffix .o, $(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
+bin/$1$(BIN_SUFFIX): $1/data.S.o $(addsuffix .o, $(shell find -L $(1) -name "*.c" -o -name "*.cpp" -o -name "*.S")) $(RUNTIME_LLVM) linker_script
 	mkdir -p bin/
-	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find $(1) -name "*.c" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS)
+	$$(RISCV_CC) -Iinclude $(RISCV_CCFLAGS) -o $$@ $$(addsuffix .o, $$(shell find -L $(1) -name "*.c" -o -name "*.cpp" -o -name "*.S")) $(RUNTIME_LLVM) $$(RISCV_LDFLAGS)
 	$$(RISCV_OBJDUMP) $$(RISCV_OBJDUMP_FLAGS) -D $$@ > $$@.dump
 	$$(RISCV_STRIP) $$@ -S --strip-unneeded
 endef

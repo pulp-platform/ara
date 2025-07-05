@@ -1,0 +1,1 @@
+../../cheshire/sw/riscv-vectorized-benchmark-suite/_somier/intrinsics/somier_intr_lmul1.c
