@@ -1,4 +1,4 @@
 Accelerator Dispatcher
 =======================
 
-Dispatcher of CVA6 that send instruction to accelerator.
+Dispatcher of CVA6 that dispatch instruction to accelerator.
