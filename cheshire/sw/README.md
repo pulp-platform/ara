@@ -58,6 +58,12 @@ make rivec-all
 
 This command also moves large input dataset files from RiVec into the `rootfs` directory. If the payload size needs to be limited, please manually remove all the largest input files from `cva6-sdk/rootfs` and `cva6-sdk/buildroot/output/target`.
 
+To automatically prune the largest input datasets, execute:
+
+```bash
+make rivec-all-small
+```
+
 ## Bare-metal
 
 Compile the source files with the vector extension support enable:
