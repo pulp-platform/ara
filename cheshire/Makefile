@@ -61,6 +61,9 @@ update_vsim_src:
 	$(MAKE) -B -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/target/sim/vsim/compile.cheshire_soc.tcl CHS_BENDER_RTL_FLAGS="$(CUSTOM_SIM_BENDER_TARGETS)"
 	$(MAKE) -B -C $(BACKREF_CHS_ROOT) $(BACKREF_CHS_ROOT)/target/sim/vcs/compile.cheshire_soc.sh CHS_BENDER_RTL_FLAGS="$(CUSTOM_SIM_BENDER_TARGETS)"
 
+patch_cheshire_high_perf_hw:
+	cd $(BACKREF_CHS_ROOT) && git apply $(MAKEFILE_DIR)/patches/cheshire_patch_0.diff
+
 clean:
 	rm $(BACKREF_CHS_XIL_SCRIPTS)/add_sources.$(BOARD).tcl
 	rm $(MAKEFILE_DIR)/add_sources.$(BOARD).tcl

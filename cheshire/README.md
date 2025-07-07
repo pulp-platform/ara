@@ -104,6 +104,13 @@ git checkout ${CHS_HASH}
 echo 'Checkout hardware deps'
 bender checkout
 export ARA_ROOT=$(bender -d ${CHS_ROOT} path ara)
+# Apply patches if needed
+# The following is non-mandatory:
+# Upsize Cheshire's memory and disable VGA
+make -C ${ARA_ROOT}/cheshire patch_cheshire_high_perf_hw
+# The following is non-mandatory
+# Setup L2 as a cache and not as a scratchpad when running Linux
+make -C ${ARA_ROOT}/cheshire/sw patch_cheshire_high_perf_sw
 # Compile RVV kernels
 echo 'Install the Linux compiler and compile the LINUX RVV kernels'
 make -C ${ARA_ROOT}/cheshire/sw ${RVV_KERNELS} HOST_TOOLCHAIN_SUFFIX=${HOST_TOOLCHAIN_SUFFIX}
@@ -131,6 +138,18 @@ make -C ${ARA_ROOT}/cheshire ara-chs-xilinx-flash BOARD=${BOARD} CHS_XILINX_HWS_
 ```bash
 cd ${ARA_ROOT}/cheshire/sw
 make chs-sw-all
+```
+
+### Patch Cheshire (optional)
+
+Optionally, Cheshire can be patched to have a larger main memory, VGA disabled, and LLC configured as cache under Linux.
+This provides better performance.
+
+```bash
+cd ${ARA_ROOT}/cheshire
+make patch_cheshire_high_perf_hw
+cd ${ARA_ROOT}/cheshire/sw
+make patch_cheshire_high_perf_sw
 ```
 
 ### Generate the FPGA bitstream
