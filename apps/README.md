@@ -18,3 +18,17 @@ Example:
 cd apps
 make bin/fconv2d OUT_MTX_SIZE=112 F_SIZE=7
 ```
+
+### Linux programs
+
+Compile $app for bare-metal:
+
+```bash
+make ${app}
+```
+
+Compile $app for OS:
+
+```bash
+make ${app}-linux LINUX=1
+```
