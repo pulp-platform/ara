@@ -459,7 +459,7 @@ jobs:
       run: tar xvf tc-llvm.tar
     - name: Run clang-format
       run: |
-        for file in `find apps -type f -name "*.[c|h|cpp|hpp]" | grep -vP "apps/riscv-tests"`; do
+        for file in `find apps -type f -name "*.[c|h|cpp|hpp]" ! -path "*rivec-bmarks*" | grep -vP "apps/riscv-tests"`; do
           ./scripts/run-clang-format.py --clang-format-executable install/riscv-llvm/bin/clang-format $file || EXIT_STATUS=$?
         done
         for file in `find apps/riscv-tests/isa/rv64uv -type f -name "*.[c|h|cpp|hpp]"`; do
@@ -486,10 +486,10 @@ jobs:
     # are mandatory there if they exist.
     - name: Check for trailing whitespaces and tabs
       run: |
-        bash -O extglob -c                \
-        "git diff --check $base HEAD --   \
-        apps config .github *.md Bender.* \
-        Makefile hardware/!(patches)"
+        bash -O extglob -c                       \
+        "git diff --check $base HEAD --          \
+        apps/!(rivec-bmarks) config .github *.md \
+        Bender.* Makefile hardware/!(patches)"
 
 #####################
 #  Benchmark stage  #
