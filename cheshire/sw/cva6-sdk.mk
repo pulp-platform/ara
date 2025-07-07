@@ -40,6 +40,13 @@ $(TARGET_OS_TOOLCHAIN): $(CVA6_SDK_UPDATED)
 	RVV=$(RVV_LINUX)
 	touch $@
 
+#######################
+## Patch SW Cheshire ##
+#######################
+
+patch_cheshire_high_perf_sw:
+	cd $(CVA6_SDK_ROOT)/opensbi && git apply $(ARA_ROOT)/cheshire/patches/opensbi_patch_1.diff
+
 ########################
 ## Build RVV Software ##
 ########################
