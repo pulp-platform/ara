@@ -1,0 +1,1 @@
+Loop of fmamtul (i.e., with warm-up).
