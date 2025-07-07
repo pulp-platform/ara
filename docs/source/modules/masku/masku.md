@@ -1,19 +1,73 @@
 # `masku` — Ara's mask unit, for mask bits dispatch, mask operations, bits handling
 
-## Overview
+# Mask Unit
 
-The Mask Unit (`mask_unit`) and `masku_operands` modules are key components in the Ara vector processor, dedicated to handling RISC-V vector mask instructions. They collectively manage operand preparation, control and sequencing of mask-specific functional units (FUs), and result composition for conditional operations.
+The Mask Unit (MASKU) handles the mask-layout vectors in Ara.
+The MASKU is connected to all the lanes directly, through dedicated result queues, and through the VALU/VMFPU.
 
----
+The mask unit can:
+  1) Create mask predication bits and distribute them to the other computational units.
+  2) Completely or partially process instructions that use mask-layout vectors (e.g., `vmsof`, `viota`, `vcompress`, `vmand`, `vmseq`).
+  3) Execute `vrgather` instructions.
 
-## Module: `mask_unit`
+The instructions executed in the MASKU can be either fully handled by the MASKU, i.e., their execution is completely done in the MASKU, or partially handled by the MASKU when part of the computation also happens in a different unit.
 
-### Purpose
+Fully handle:
+ - `vrgather`, `vrgatherei16`, `vcompress`
+ - `vcpop`, `vfirst`
+ - `viota`, `vid`
+ - `vmsbf`, `vmsif`, `vmsof`
 
-The `mask_unit` acts as a specialized vector execution unit for handling mask instructions. It coordinates operand preparation, functional unit selection, execution control, and sequencing. It is responsible for:
-- Interfacing with the global functional unit request and response buses
-- Synchronizing execution based on `vstart`, `vl`, and `vm`
-- Handling compressed and uncompressed mask representations
+Partially handle:
+ - Masked instructions (predication)
+ - Mask logical instructions (e.g., `vmand`)
+ - Comparison instructions (e.g., `vmseq`, `vmfeq`)
+ - `vmadc`, `vmsbc`
+
+## Working principles:
+The mask unit receives an instruction broadcasted by the main sequencer and saves it in its instruction queue.
+
+Depending on the instruction type, the MASKU will initialize the related state (e.g., counters) and start the execution.
+
+There are mainly four types of instructions that use different control signals in the mask unit:
+  A) Masked instructions (predication)
+  B) Vector gather instructions
+  C) All the other instructions supported by the MASKU
+
+The MASKU receives source operands from the lanes and the received payload is always balanced, e.g., every MASKU will receive multiple `NrLanes * 64` balanced payloads.
+
+### A
+All the masked instructions executed outside of the MASKU are type-A.
+When a masked instruction is executed outside of the MASKU, the units responsible to handle the instruction stall until receiveing the predication mask bits from the MASKU.
+
+The lane sequencers of each lane will always enable the `MaskM` operand requester and queue to fetch the `v0` mask vector and send it to the MASKU.
+The MASKU can receive `NrLanes * 64` bits of `v0` vector from the lanes every cycle.
+
+Upon reception of a chunk of the `v0` operand, the MASKU processes it (mask source) to create `NrLanes` 8-bit byte strobes, one per lane. The mask strobes are saved in the mask queue, connected to all the other Ara units directly.
+The MASKU handshaked the input `v0` chunk once it is fully processed, to get the next chunk if needed.
+
+Each bit of each mask strobe corresponds to a byte of the data bus. If the mask strobe bit is at `1`, the corresponding byte on the data bus is active and will be written. Otherwise, the corresponding byte is not active and will not be written.
+
+Note: the strobe creation happens in the MASKU since the mask bits are not always saved sequentially in `v0` and are never saved with a EW1 encoding. Instead, the content of `v0` can be encoded with EW8, EW16, EW32, or EW64 byte-layout encoding. This implies that, even for in-lane operations, the `i`th mask bit is never saved in the `i % NrLanes`th lane's VRF chunk.
+EW1 is avoided when possible since it would require a more complex reshuffling stage. Only the MASKU can handle bit-level reshuffling.
+
+### B
+Vector gather instructions (`vrgather`, `vcompress`) are completely executed by the MASKU in two stages.
+
+First, the lane sequencers of each lane will enable the `AluA` operand requester and queue to inject the index operand (`vs1`) into the `MASKU` through the ALU.
+
+The MASKU processes the incoming source operands from `vs1` to create the indices used for the vector gather operation. These indices are used to 1) create a request to the `MaskB` opqueue of each lane
+
+Note: since `vrgather` can be masked, it needs three input sources to the MASKU at full operations. We inject the indexes through the ALU to re-use the already-existing connections from the ALU to the MASKU. On the other hand, we use the `vd` operand queue to forward the source operand register elements (`vs2`) through the `MaskB` since this request is non-standard (i.e., it does not come from the main sequencer) and the `MaskB` is not connected to further units (e.g., the ALU), simplifying the control.
+
+### C
+Vector instructions that do not belong to A) and B) categories belong to C).
+ - `vcpop`, `vfirst`: these instructions process a mask input vector, accumulate a result, and returns it as a scalar element to the main sequencer (and then, to CVA6)
+ - `viota`, `vid`: these instructions write back a non-mask vector into the VRF. `viota` requires a mask-vector as a source operand.
+ - `vmsbf`, `vmsif`, `vmsof`: these instructions take mask-vector as inputs and write back mask vectors into the VRF.
+ - Mask logical instructions (e.g., `vmand`): these instructions are executed by the ALU/FPU. The resulting mask vector is filtered and written back by the MASKU.
+ - Comparison instructions (e.g., `vmseq`, `vmfeq`): these instructions are executed by the ALU/FPU. The resulting mask vector is shuffled and written back by the MASKU.
+ - `vmadc`, `vmsbc`: these instructions are executed by the ALU/FPU. The resulting mask vector is filtered and written back by the MASKU.
 
 ---
 
@@ -123,5 +177,3 @@ The ALU or FPU result is compressed into a Boolean vector:
 `alu_result_compressed_seq_o[bit_index] = masku_operand_alu_o[lane][bit_offset];`
 
 This compression is needed for e.g., `vmsgt`, `vmfeq`.
-
----

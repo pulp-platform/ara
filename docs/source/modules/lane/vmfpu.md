@@ -4,7 +4,7 @@
 
 ---
 
-## 📘 Summary
+## Summary
 
 The `vmfpu` module is part of the Ara RISC-V vector processor and implements the Vector Multiply and Floating Point Unit (VFPU) responsible for executing arithmetic operations that include multiplication and floating point computation. It supports operations over elements coming from the vector register file, controlled by the vector instruction sequencer and interconnected via operand queues.
 
@@ -12,7 +12,7 @@ This module receives instructions, manages multiple operand queues, schedules op
 
 ---
 
-## 🔧 Interface Description
+## Interface Description
 
 ### Clocking and Reset
 
@@ -43,7 +43,7 @@ This module receives instructions, manages multiple operand queues, schedules op
 
 ---
 
-## 🧠 Functional Blocks Overview
+## Functional Blocks Overview
 
 ### 1. Operand Queue Decoding
 
@@ -79,7 +79,7 @@ These registers decouple execution and result storage, facilitating pipeline thr
 
 ---
 
-## 🔍 Code Walkthrough
+## Code Walkthrough
 
 ### Module Declaration and Parameters
 
@@ -145,5 +145,3 @@ stream_register #(...) i_fpu_stream_reg (
 ```
 
 Once the result is accepted by the downstream module, the FSM returns to IDLE.
-
----

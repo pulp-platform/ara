@@ -1,4 +1,3 @@
-
 # `ara_sequencer` — Instruction sequencer and macro dependency check
 
 Overview
@@ -36,7 +35,7 @@ Main Components
 ---------------
 ### Instruction State Tracking
 - `pe_vinsn_running_q`: Bitmap showing which PE is executing which instruction
-- `vinsn_running_q`: Aggregated bitmap indicating if any instruction is live
+- `vinsn_running_q`: Aggregated bitmap indicating if any instruction is live. This signal is extremely useful for debug
 - `vinsn_id_n`: Allocated ID for the next instruction using LZC
 
 ### Hazard Management
@@ -82,8 +81,50 @@ Instruction Flow
 
 FSM States
 ----------
-- **IDLE**: Default state; waits for instruction or handles operand delay.
+- **IDLE**: Default state; waits for instruction or handles stalls from the lanes' operand requesters.
 - **WAIT**: Holding state for memory/scalar responses.
+
+Dependency tracking and chaining
+----------
+Dependencies are tracked per instruction, so that chaining can be implemented at vector-element level.
+
+The sequencer only knows which instruction depends on which other instruction, and assign special "hazard" signals to each instruction before issuing it to the units.
+Every instruction keeps hazard metadata per operand register, so that it is clear upon which instruction every operand register depends.
+
+Chaining is implemented in each lane, during operand fetch.
+Every dependency (RAW, WAR, WAW) on a specific register will throttle the source operand fetch from the VRF. This throttling is controlled by the write throughput of the instruction that generated the dependency.
+
+RAW example:
+```
+vld v0, addr
+vadd v1, v0, v0
+```
+
+When executing the `vadd` (`vld` is executing in parallel), a lane will fetch the next element from `v0` only if `vld` has written one element first. This control is a credit-based system with a depth of one element only. Therefore, if `vld` writes 5 elements, the `vadd` only registers one credit for a read.
+
+WAR and WAW hazards are handled in the same way.
+
+WAR example:
+```
+vmul v2, v1, v1
+vadd v1, v0, v0
+```
+
+Also in this case, `vadd` will be able to fetch from `v0` only when `vmul` has written into `v2`. This works because if source operands are chained, destination operands are also correctly ordered.
+
+As soon as one instruction that causes a dependency is completes execution, the scoreboard is cleared and the second instruction will be allowed to fetch operands without restrictions.
+
+This works as long as:
+ - The second instruction has source operands from the VRF. For example, WAR and WAW stall loads, which would not be able to chain with this mechanism.
+ - The first instruction actually writes something into the VRF. Therefore, WAR on store instructions stalls the second instruction until the first one has not completed.
+
+Instruction Issue
+----------
+The sequencer keeps an instruction counter per functional unit to track how many instructions are in-flight and stall instruction issue whenever the next target functional unit's instruction queue is already full.
+
+A new instruction bumps up the respective counter, and a completed instruction bumps it down.
+
+Since, for timing reasons, instructions flow into the sequencer and bump the respective counter without waiting to be issues, counters can also go beyond their maximum capacity for one cycle. This event is registered through a gold ticket assigned to the instruction, which basically implies that the instruction was already registered by the respective counter. As soon as the counter returns to its maximum capacity (this happens when an instruction is finishes execution in the respective unit), the gold ticket allows the stalled instruction to proceed.
 
 Physical Considerations
 -----------------------
@@ -91,15 +132,3 @@ Physical Considerations
 - `stall_lanes_desynch`: Ensures lane-0 aligned counters for ALU/MFPU
 - `global_hazard_table_d`: Matrix [NrVInsn][NrVInsn] with sparse update logic
 - Careful pipeline management to support exception-aware issuing
-
-Debugging Aids
---------------
-- `ara_idle_o` signal is useful for performance counters and host sync
-- Gold ticket logic ensures deterministic debugging of stalls
-- Fine-grain visibility into `read_list_q`/`write_list_q` helps trace hazards
-
-Recommendations
----------------
-- Always probe `global_hazard_table_o` to track true dependencies
-- Monitor `vinsn_queue_issue` to analyze stall causes
-- Align slide/mask-heavy operations to minimize all-to-all congestion

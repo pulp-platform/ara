@@ -143,9 +143,3 @@ Basic structural checks ensure valid parameter configurations:
 if (NrLanes == 0)
   $error("[lane] Ara needs to have at least one lane.");
 ```
-
----
-
-## Summary
-
-This `lane` module is the fundamental data path unit in Ara's vector processing system. It integrates instruction decoding, operand fetching, register file management, execution unit coordination, and shared bus arbitration to support RISC-V vector extensions across multiple data lanes.

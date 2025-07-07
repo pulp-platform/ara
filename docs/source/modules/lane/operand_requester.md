@@ -109,9 +109,3 @@ On store-related exceptions (`lsu_ex_flush_i`), operand requests associated with
 - `MaskM`
 
 are **aborted** immediately. Metadata is reset, and the FSM transitions back to `IDLE`.
-
----
-
-## Summary
-
-The `operand_requester` is critical in enabling efficient, hazard-free operand distribution to functional units. Its arbitration logic ensures fair and deterministic VRF access, while its hazard control and exception handling mechanisms preserve correctness in concurrent instruction execution.

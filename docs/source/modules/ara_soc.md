@@ -7,7 +7,7 @@ The `ara_soc` module is a top-level **dummy system-on-chip** used to instantiate
 This SoC includes:
 - Ara + CVA6 integration
 - L2 memory (a simple SRAM, called DRAM in the file for historical reasons)
-- UART peripheral
+- Dummy UART peripheral
 - Control and status registers
 - AXI crossbar interconnect and protocol adapters
 
@@ -50,12 +50,13 @@ It is **parameterizable** to support varying numbers of vector lanes and data wi
 - Managed via `axi_xbar` with routing rules
 
 ### SRAM (L2 Memory)
-- Backed by synthesizable SRAM (`tc_sram`)
+- Backed by non-synthesizable SRAM (`tc_sram`)
 - Connected via `axi_to_mem` and `axi_atop_filter` (atomics filtered out)
 
-### UART
+### Dummy UART
 - APB interface exposed to the environment
 - Internally connected via AXI-Lite and AXI width converter
+- Used to implement printf's putc in during simulation
 
 ### Control Registers
 - Control and status block (exit signal, counters, etc.)
@@ -75,10 +76,10 @@ It is **parameterizable** to support varying numbers of vector lanes and data wi
 - `uart_prdata_i`, `uart_pready_i`, `uart_pslverr_i`: UART bus inputs
 
 ### Outputs
-- `exit_o`: Simulation termination flag
-- `hw_cnt_en_o`: Hardware counter enable signal
-- `scan_data_o`: Scan chain output
-- `uart_*`: APB UART outputs
+- `exit_o`: Simulation termination flag, sensed by the testbench to end the simulation.
+- `hw_cnt_en_o`: Hardware counter enable signal. Used for benchmarking.
+- `scan_data_o`: Scan chain output.
+- `uart_*`: APB UART outputs.
 
 ---
 
@@ -89,3 +90,7 @@ CVA6 is configured dynamically using:
 ```systemverilog
 function automatic config_pkg::cva6_user_cfg_t gen_usr_cva6_config(...);
 ```
+
+## Memory
+
+CVA6 + Ara access the memory through AXI using a `32 * #Lanes`-bit wide data port. This wide data port avoids complex interconnects and banked memory management, but performs poorly with indexed memory operations.

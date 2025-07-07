@@ -87,9 +87,3 @@ These are extracted from the operand unions and sign-extended (for signed ops).
 - **Fully serialized pipeline.**
 - Accepts new input **only** when the previous result is fully committed.
 - Maintains FSM state and stable operand/context throughout.
-
----
-
-## Summary
-
-The `simd_div` module performs element-wise division operations using a serial pipeline. It supports dynamic masking, multiple VEWs, and signed/unsigned operation types. Internally, it uses compact FSMs to serialize operand issue and result collection, reducing area at the cost of throughput.

@@ -1,12 +1,12 @@
 # `addrgen`: Ara Vector Address Generation Unit
 
-**Module role:** Generates memory addresses and issues AXI memory requests for vector memory operations in the Ara vector processor. It supports various memory access patterns, MMU translations, and exceptions. The module is instantiated once per vector lane cluster.
+**Module role:** Generates memory addresses and issues AXI memory requests for vector memory operations in the Ara vector processor. It supports various memory access patterns, MMU translations, and exceptions.
 
 ---
 
 ## Overview
 
-The `addrgen` module orchestrates address calculation and transaction generation for vector memory instructions, such as:
+The `addrgen` module orchestrates AXI4 address calculation and transaction generation for vector memory instructions, such as:
 
 - **Unit-stride** operations (`VLE`, `VSE`)
 - **Strided** operations (`VLSE`, `VSSE`)
@@ -57,9 +57,11 @@ It interacts with:
 
 ## Architecture Overview
 
+The `addrgen` is composed of two different FSMs.
+
 ### 1. **Instruction FSM (`state_q`)**
 
-Tracks the progress of high-level memory operations:
+Tracks the high-level progress of memory operations:
 - `IDLE`: Waiting for a valid request.
 - `ADDRGEN`: Preparing address and issuing AXI transaction.
 - `ADDRGEN_IDX_OP`: Handling indexed operands.
@@ -68,22 +70,26 @@ Tracks the progress of high-level memory operations:
 
 ### 2. **AXI FSM (`axi_addrgen_state_q`)**
 
-Handles physical memory request generation:
+Handles AXI4 physical memory request generation:
 - `IDLE`: Idle state
 - `AXI_DW_STORE_MISALIGNED`: Align store address and bytes
 - `WAITING_CORE_STORE_PENDING`: Wait if scalar store in progress
-- `REQUESTING`: Issue AR/AW requests
+- `REQUESTING`: Issue AR/AW requests (if possible, through AXI bursts)
 - `WAIT_TRANSLATION`: MMU pending
 
 ### 3. **Request Queue (FIFO)**
 
-A `fifo_v3` instance stores pending AXI requests. This decouples request generation from LSU/STU consumption and allows burst and indexed access interleaving.
+A `fifo_v3` instance stores pending AXI requests. This decouples request generation (`addrgen`) from LSU/STU consumption.
 
-### 4. **Stride / Index Support**
+### 4. **Different types of memory operation**
 
-- **Strided access**: Calculates address as `base + i * stride`
-- **Indexed access**: Uses `addrgen_operand_i[i]` for each element
-- Deshuffling logic extracts sub-words and aligns them properly
+Unit-stride accesses are handled through AXI bursts. The logic checks that each burst complies with AXI4, e.g., no 4-KiB page boundary crossing, max. 256 beats in a burst, etc.
+AXI4 bursts are also convenient for virtual-to-physical translation, as each burst is always kept in a single 4-KiB page.
+This type of access fully utilizes the memory bus.
+
+Strided accesses, instead, usually under-utilize the bus. Each element is requested through a different AXI transaction.
+
+Indexed memory accesses also under-utilize the bus and stall the front-end until the last element has been checked for exception. Also, they require a source operand, which is deshuffled in the `addrgen`.
 
 ### 5. **Translation and Exceptions**
 
@@ -93,30 +99,3 @@ A `fifo_v3` instance stores pending AXI requests. This decouples request generat
   - Page faults
   - Fault-only-first violations
 - Tracks first valid fault via `fof_first_valid_q`
-
----
-
-## Key Internal Logic
-
-### Address Computation
-```systemverilog
-next_addr = base + (stride * index);
-```
-- Uses `lzc` for detecting misalignment
-- Computes page boundaries to avoid burst violations
-
-### Deshuffling
-```systemverilog
-deshuffle(op_i) -> subword extraction for indexed ops
-```
-- Handled in a separate pipeline stage
-- Prepares operands for translation and access
-
-### Spill Register
-Used to hold deshuffled operand if LSU is back-pressured or AXI isn’t ready.
-
----
-
-## Summary
-
-The `addrgen` module is a central component of Ara’s vector memory architecture, designed to handle complex addressing patterns with support for translations, exceptions, and various access modes. It is optimized for flexibility, correctness, and modular integration with the broader vector execution pipeline.

@@ -4,7 +4,7 @@ This document provides an in-depth technical explanation of the `simd_alu` modul
 
 ---
 
-## 📌 Summary
+## Summary
 
 - **Module Name:** `simd_alu`
 - **Source:** `simd_alu.sv`
@@ -14,7 +14,7 @@ This document provides an in-depth technical explanation of the `simd_alu` modul
 
 ---
 
-## 📥 Inputs
+## Inputs
 
 | Signal                | Type                       | Description |
 |----------------------|----------------------------|-------------|
@@ -29,7 +29,7 @@ This document provides an in-depth technical explanation of the `simd_alu` modul
 | `rm`                 | `strb_t`                   | Rounding mode (used in fixed-point ops) |
 | `vxrm_i`             | `vxrm_t`                   | Fixed-point rounding mode (VXRM) |
 
-## 📤 Outputs
+## Outputs
 
 | Signal       | Type          | Description |
 |--------------|---------------|-------------|
@@ -38,14 +38,14 @@ This document provides an in-depth technical explanation of the `simd_alu` modul
 
 ---
 
-## 🧩 Internal Types
+## Internal Types
 
 - `alu_operand_t`: Unions allowing the interpretation of a 64-bit value as 8/16/32/64-bit elements.
 - `alu_sat_operand_t`: Extended width unions for saturation detection.
 
 ---
 
-## ⚙️ Main Features and Functionality
+## Main Features and Functionality
 
 ### 1. **Vector Element Width Awareness**
 
@@ -82,13 +82,13 @@ Rounding behavior for fixed-point arithmetic and narrowing instructions is selec
 
 ---
 
-## 📏 Assertions
+## Assertions
 
 - The final assertion checks that `DataWidth == $bits(alu_operand_t)` to ensure 64-bit operation compatibility.
 
 ---
 
-## 🔧 Instruction Categories
+## Instruction Categories
 
 Instructions include but are not limited to:
 
@@ -104,7 +104,7 @@ Instructions include but are not limited to:
 
 ---
 
-## 🧠 Design Considerations
+## Design Considerations
 
 - **Efficiency:** Optimized for combinational output with modular per-lane calculations.
 - **Flexibility:** Supports varied element widths and rounding behavior.
@@ -114,7 +114,7 @@ Instructions include but are not limited to:
 
 ---
 
-## 🧪 Example Behavior (Pseudocode)
+## Example Behavior (Pseudocode)
 
 ```systemverilog
 // VADD with EW16 and two operands
@@ -122,9 +122,3 @@ for (int i = 0; i < 4; i++) {
     res.w16[i] = opa.w16[i] + opb.w16[i];
 }
 ```
-
----
-
-## ✅ Conclusion
-
-The `simd_alu` is a fundamental component of Ara's vector execution unit. It performs wide, element-wise vector operations with robust support for masking, fixed-point computation, rounding, saturation, and reduction instructions. The design is structured to be extensible and adaptable across different precision settings, allowing Ara to efficiently execute RVV-compliant workloads.

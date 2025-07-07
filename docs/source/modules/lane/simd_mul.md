@@ -5,13 +5,13 @@
 
 ---
 
-## ❖ Overview
+## Overview
 
 The `simd_mul` module is Ara’s SIMD multiplier, supporting 8/16/32/64-bit elements and fixed-point multiplication with rounding and saturation. It operates in a pipelined manner and can produce one 64-bit result per cycle when fully utilized. It supports several RISC-V vector arithmetic operations (`VMUL`, `VMULH`, `VMULHU`, `VSMUL`, `VMADD`, `VMACC`, etc.).
 
 ---
 
-## ❖ Parameters
+## Parameters
 
 | Parameter        | Type                 | Description |
 |------------------|----------------------|-------------|
@@ -21,7 +21,7 @@ The `simd_mul` module is Ara’s SIMD multiplier, supporting 8/16/32/64-bit elem
 
 ---
 
-## ❖ Interface
+## Interface
 
 | Port             | Direction | Type              | Description |
 |------------------|-----------|-------------------|-------------|
@@ -41,76 +41,61 @@ The `simd_mul` module is Ara’s SIMD multiplier, supporting 8/16/32/64-bit elem
 
 ---
 
-## ❖ Key Internal Structures
+## Key Internal Structures
 
-### ➤ Operand Packing (`mul_operand_t`)
+### Operand Packing (`mul_operand_t`)
 Unions the operand into multiple views (64, 32, 16, or 8-bit chunks) for ease of SIMD processing.
 
-### ➤ Pipeline Buffers
+### Pipeline Buffers
 Multi-stage pipeline implemented using shift-register logic, enabled via `NumPipeRegs`. All operands, opcodes, masks, and valid bits are pipelined.
 
-### ➤ Ready Valid Interface
+### Ready Valid Interface
 Flow control logic supports handshake-based data propagation through the pipeline.
 
 ---
 
-## ❖ Functional Description
+## Functional Description
 
-### ➤ Multiply Logic
+### Multiply Logic
 Supports various operations:
 - `VMUL`, `VMULHU`, `VMULHSU`, `VMULH` → Integer multiply
 - `VSMUL` → Fixed-point multiply with rounding/saturation
 - `VMACC`, `VMADD`, `VNMSAC`, `VNMSUB` → Multiply-accumulate & multiply-subtract
 
-### ➤ Signedness
+### Signedness
 Sign control logic dynamically selects signed/unsigned behavior based on opcode (`signed_a`, `signed_b`).
 
-### ➤ Result Rounding
+### Result Rounding
 Rounding logic for `VSMUL` is driven by `vxrm` mode:
 - 00: round to nearest even
 - 01: round to nearest, tie to max magnitude
 - 10: truncate
 - 11: ceiling
 
-### ➤ Saturation (`vxsat`)
+### Saturation (`vxsat`)
 When enabled (`FixedPointEnable`), detects overflow and sets corresponding saturation bits.
 
 ---
 
-## ❖ Element Width Handling
+## Element Width Handling
 
 For each supported width, dedicated combinational blocks handle:
 - Partial multiplications
 - Optional fixed-point rounding/saturation
 - Result assembly and output formatting
 
-### ➤ EW64
+### EW64
 - 1 × 64-bit operation
 - Uses full 128-bit product
 
-### ➤ EW32
+### EW32
 - 2 × 32-bit elements
 - Operates on upper/lower halves
 
-### ➤ EW16
+### EW16
 - 4 × 16-bit elements
 - Operates on 16-bit lanes
 
-### ➤ EW8
+### EW8
 - 8 × 8-bit elements
 - Operates on each byte independently
-
----
-
-## ❖ Design Strengths
-
-- Modular and parametric.
-- Element-width adaptable.
-- Fully pipelined and latency-configurable.
-- Supports fixed-point arithmetic with saturating multiply.
-
----
-
-## ❖ Conclusion
-
-This module provides a highly reusable, parametric vector SIMD multiplier for the Ara architecture. It balances performance (via pipelining) with functionality (including fixed-point support). It is suitable as a drop-in building block for RVV-style SIMD execution pipelines.

@@ -99,11 +99,3 @@ bit_select = {
 ```
 
 Each index `j` selects `bit_select[j]` to help evaluate whether remaining bits are non-zero.
-
----
-
-## Summary
-
-This module is essential for accurate fixed-point rounding in Ara's vector datapath, adhering to RISC-V vector rounding modes. It is carefully tailored to handle various element widths and vector rounding policies as per the RISC-V specification.
-
----

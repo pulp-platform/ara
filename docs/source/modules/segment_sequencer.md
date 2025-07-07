@@ -1,4 +1,4 @@
-# `segment_sequencer` Module Documentation
+# `segment_sequencer` - Split segment memory operations into multiple micro-ops
 
 This module breaks down segment memory operations into a sequence of scalar memory operations. While this results in poor instruction-per-cycle (IPC) performance, it simplifies hardware implementation and avoids the need for tightly coupled multi-element memory accesses.
 

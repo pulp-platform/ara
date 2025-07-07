@@ -85,9 +85,3 @@ Handles vector stores:
 - Assertions for:
   - Minimum lane requirement
   - AXI interface width sanity
-
----
-
-## Summary
-
-The `vlsu` module is a centralized engine for vector memory operations in Ara. It instantiates all required submodules: `axi_cut`, `addrgen`, `vldu`, and `vstu`. The unit bridges the CVA6 CPU and Ara’s vector lanes with full support for MMU-based virtual memory, exceptions, and masked operations. It is cleanly partitioned and designed to be highly modular and extensible.

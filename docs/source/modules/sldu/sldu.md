@@ -45,6 +45,10 @@ The `sldu` module serves as the interface and coordinator for the entire slide o
 
 - Responds to stride updates and dynamically loads new strides.
 
+The slide unit's datapath can only handle power-of-two strides. Every non-power-of-two stride is broken down into power-of-two strides. This ensures a lightweight interconnect datapath in the slide unit while accelerating the common case. Non-power-of-2 slides are extremely rare.
+
+The slide unit can also reshuffle, i.e., perform a slide-by-zero with different input and output data widths. This is used to change the byte layout of a vector register file.
+
 ---
 
 ## 2. `sldu_op_dp`: Slide Operand Datapath
@@ -67,7 +71,7 @@ It operates with flattened vectors (`op_i_flat`, `op_o_flat`) for simplified int
 ### Notable Features
 
 - Handles conversions across EEWs (e.g., EW8 → EW16)
-- Cannot slide and reshuffle in the same cycle (limitation noted in the header)
+- To have a simpler datapath, it cannot slide and reshuffle in the same cycle
 
 ---
 
@@ -105,5 +109,3 @@ This utility module generates stride vectors where exactly one bit is high (i.e.
 - `sldu_op_dp` interprets the sliding direction (`dir_i`) and index (`slamt_i`) to select the output permutation.
 - `stride_p2_o` controls which element is selected during a stride-slide.
 - All data vectors (`op_i`, `op_o`) are organized as `elen_t [NrLanes-1:0]`, allowing lane-based parallel operation.
-
----

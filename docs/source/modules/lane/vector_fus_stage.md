@@ -141,9 +141,3 @@ The control strategy is uniform:
 - Follows strict handshake protocols to avoid hazards.
 - Clean separation of logic for ALU and MFPU makes it easy to extend or adapt.
 - Interfacing with the Mask and Slide Units is modular and scalable.
-
----
-
-## 8. Conclusion
-
-The `vector_fus_stage` is a central block in Ara’s vector datapath. It connects the arithmetic and functional logic to the pipeline, managing mask handling, exceptions, reduction signals, and saturation flags. Due to its modular instantiations and strict interface discipline, it is both **scalable** and **reliable** for SIMD processing.

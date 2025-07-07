@@ -2,16 +2,18 @@
 
 ## Overview
 
-The `ara` module is the **top-level vector processing unit** that implements the RISC-V Vector Extension (RVV). It interfaces directly with the **CVA6 scalar core** and contains all vector-specific sub-units required to execute RVV instructions, including:
+The `ara` module is the **top-level vector processing unit** that implements the RISC-V Vector 1.0 Extension (RVV). It interfaces directly with the **CVA6 scalar core** and contains all vector-specific sub-units required to execute RVV instructions, including:
 
-- A dispatcher (decodes vector instructions, injects reshuffles)
-- A sequencer (controls operand dispatch and result collection)
-- Lanes (vector ALUs)
-- Vector Load/Store Unit (VLSU)
-- Slide Unit (SLDU)
-- Mask Unit (MASKU)
+- A dispatcher (decodes vector instructions, keeps the vector CSR state, injects special micro-operations)
+- A sequencer (controls instruction issue to the units, enforce instruction dependencies, collect results)
+- Lanes (each lane contains a slice of the vector register file plus the arithmetic units)
+- Vector Load/Store Unit (VLSU, it initiates AXI AR/AW transactions and handle the dataflow from/to memory)
+- Slide Unit (SLDU, runs vector slides and byte layout reshuffling)
+- Mask Unit (MASKU, assembles and distributes mask (predication) bits, executes bit-level mask instructions, and runs more complex bit-level permutations plus vrgather)
 
 The design is **modular and scalable**, with configurable parameters for lane count, VLEN, data types, and extended features like segmentation or MMU support.
+
+The most stable configurations are with a power-of-2 number of lanes from 2 to 16, with a VLEN derived from considering a VLEN-per-lane of 1024 bit/lane.
 
 ---
 
@@ -48,24 +50,26 @@ The design is **modular and scalable**, with configurable parameters for lane co
 
 ### 1. Dispatcher (`ara_dispatcher`)
 - Fully decodes RVV instructions
+- Keeps the vector CSR state
 - Handles register reshuffling for EW mismatches
-- Injects vector micro-ops
+- Injects special vector micro-ops (e.g., reshuffle slides, segment memory micro-ops)
 - Tracks active instructions and completion
 
 ### 2. Sequencer (`ara_sequencer`)
 - Manages vector instruction lifecycle
+- Tracks instruction dependencies with a scoreboard
 - Handles scalar responses and exception tracking
-- Dispatches work to lanes and special units
+- Broadcast work to lanes and special units
 
 ### 3. Vector Lanes (`lane`)
-- One per lane
-- Executes vector ALU, FPU, and logic ops
-- Connects to mask, slide, load, and store units
+- Keeps a slice of the Vector Register File and multiple functional units (FPU, ALU, Multiplier)
+- Executes arithmetic and logic vector operations
+- Feed Ara's units through the VRF, and receive memory operands from the load unit
 
 ### 4. Vector Load/Store Unit (`vlsu`)
 - Handles vector memory access
-- Interfaces with MMU and AXI
-- Manages address generation and fault detection
+- Interfaces with CVA6's MMU (virtual address translation through dedicated interface) and memory (through AXI4)
+- Manages address generation and exception detection for memory operations
 
 ### 5. Slide Unit (`sldu`)
 - Performs byte-reshuffling and slide ops
@@ -90,28 +94,6 @@ When `OSSupport = 1`, the module:
 
 ## Interconnect & Communication
 
-- **AXI Bus**: All memory traffic goes through `axi_req_o`, shared by `vlsu`.
-- **Lane Communication**: Mask, slide, and result buses are coordinated across all lanes.
-- **Pipeline Control**: All stages use ready/valid handshake semantics.
-- **Flush Support**: For load/store exceptions via `lsu_ex_flush_*`.
+The sequencer broadcasts instructions to all the units in parallel (VLSU, SLDU, MASKU, Lanes). Also, the all-to-all connected units (VLSU, SLDU, MASKU) are connected to every lane in parallel.
 
----
-
-## Key Internal Types
-
-- `ara_req_t`, `ara_resp_t`: Internal vector instruction & response format
-- `vaddr_t`: Lane-local VRF address
-- `strb_t`: Byte-enable for partial updates
-- `vxrm_t`, `vtype_t`: RISC-V RVV control metadata
-
----
-
-## Assertions
-
-```systemverilog
-if (NrLanes == 0) ...
-if (NrLanes != 2**$clog2(NrLanes)) ...
-if (NrLanes > MaxNrLanes) ...
-if (VLEN == 0) ...
-if (VLEN < ELEN) ...
-if (VLEN != 2**$clog2(VLEN)) ...
+Each lane works on a 64-bit datapath, and every all-to-all unit receives at least one bus of 64-bit from every lane.

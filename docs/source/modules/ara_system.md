@@ -10,6 +10,34 @@ This module is the core of Ara's architectural integration, enabling:
 - Coherent invalidation handling for vector memory stores
 - Flexible benchmarking configurations through parameterization
 
+CVA6 is a RV64GC RISC-V Linux-ready core. It features one L1 instruction cache and one L1 data cache connecting to the L2 memory.
+
+CVA6 is the only "RISC-V core" properly speaking, meaning that it is the only one accessing the program's instruction flow.
+
+Ara is a tighlty-coupled accelerator plugged into CVA6, and receives vector instructions from CVA6.
+
+Both Ara and CVA6 have a private AXI4-compliant Load-Store unit. Ara's one directly connects to the L2 memory, bypassing CVA6's L1 data cache.
+
+This allows for potential coherence and memory operation ordering issues.
+
+---
+
+## Memory Coherence and Consistency
+
+Memory coherence is enforced through three main mechanisms:
+ - Memory writes are serialized through a single memory bus.
+ - CVA6 L1-D$ is write-through.
+ - An invalidation filter snoops on Ara's AXI AW memory bus and invalidates the potentially-stale sets in CVA6's L1-D$.
+
+Memory ordering is enforced by CVA6 and control signals between CVA6 and Ara. No memory operations are issued or started until it's safe to do so.
+For example, pending vector stores prevent CVA6 from issuing scalar memory operations, and vector memory operations are not dispatched to Ara if there is a pending scalar store.
+
+---
+
+## Virtual memory support
+
+Ara uses CVA6's MMU to translate virtual addresses into physical ones. This is done through the MMU interface.
+
 ---
 
 ## Parameters
@@ -60,13 +88,13 @@ This module is the core of Ara's architectural integration, enabling:
 
 ### 1. **CVA6 Core**
 - Scalar processor core
-- Interfaces to Ara via CVXIF
-- Outputs standard AXI (`ariane_axi_req_t`) at narrow data width
+- Interfaces to Ara via a dedicated accelerator port
+- Outputs standard AXI (`ariane_axi_req_t`) at narrow data width to L2 memory
 
 ### 2. **Ara Accelerator**
 - Fully parameterized vector unit
-- Receives CVXIF requests, returns results
-- AXI master interface at wide data width
+- Receives CVA6 requests, returns results and exceptions
+- AXI master interface at wide data width (`32 * #Lanes` data width)
 
 ### 3. **AXI Width Converter**
 - `axi_dw_converter` adjusts CVA6's narrow AXI (e.g., 64-bit) to match Ara/system-wide bus width
@@ -90,10 +118,10 @@ This module is the core of Ara's architectural integration, enabling:
 
 ---
 
-## Alternate Configuration: `IDEAL_DISPATCHER`
+## Alternative Configuration: `IDEAL_DISPATCHER`
+
+The ideal dispatcher is just a tool to benchmark Ara's performance with an ideal vector instruction dispatcher instantiated INSTEAD OF CVA6.
 
 If `IDEAL_DISPATCHER` is defined:
-- CVA6 is replaced with a perfect dispatcher (`accel_dispatcher_ideal`)
-- Useful for functional validation or micro-benchmarking Ara in isolation
-
----
+- CVA6 is replaced with a perfect dispatcher (`accel_dispatcher_ideal`), i.e., a FIFO containing the dynamic instruction trace of the program plus the correct register file values
+- Useful for functional validation/benchmarking or micro-benchmarking Ara in isolation

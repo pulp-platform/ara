@@ -1,4 +1,3 @@
-
 # `vldu`: Ara's Vector Load Unit
 
 The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for loading data from memory into the Vector Register File (VRF) by receiving memory transactions via the AXI R channel and delivering vector data, possibly masked, to the lanes. This unit supports:
@@ -9,7 +8,7 @@ The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for
 
 ---
 
-## 📌 Module Parameters
+## Module Parameters
 
 | Parameter         | Description                                                |
 |-------------------|------------------------------------------------------------|
@@ -24,9 +23,9 @@ The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for
 
 ---
 
-## 🔌 Interfaces
+## Interfaces
 
-### ▶️ Inputs
+###️ Inputs
 - **Clock & Reset**: `clk_i`, `rst_ni`
 - **Memory Load Channel**: `axi_r_i`, `axi_r_valid_i`
 - **Instruction Inputs**:
@@ -38,7 +37,7 @@ The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for
   - `mask_i`, `mask_valid_i`: Per-lane mask bytes
 - **Flush**: `lsu_ex_flush_i`
 
-### ⏹ Outputs
+### Outputs
 - **AXI Handshake**: `axi_r_ready_o`
 - **Instruction Handshake**: `pe_req_ready_o`
 - **Memory Completion**: `load_complete_o`
@@ -49,7 +48,7 @@ The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for
 
 ---
 
-## 🔧 Internal Structure
+## Internal Structure
 
 ### 1. Mask Cut
 - Uses `spill_register_flushable` for each lane.
@@ -89,7 +88,7 @@ The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for
 
 ---
 
-## 🔁 Instruction Lifecycle
+## Instruction Lifecycle
 
 1. **Accept**: Valid `pe_req_i` is accepted if there's space and VFU matches.
 2. **Issue**: Begins loading AXI data. Uses mask unit if applicable.
@@ -99,14 +98,10 @@ The `vldu` module implements Ara’s **Vector Load Unit**. It is responsible for
 
 ---
 
-## ✅ Design Considerations
+## Design Considerations
 
 - **Masking Support**: Integrated at per-byte level using per-lane strobes.
 - **Pipeline Decoupling**: Three-phase VIQ lets accept, issue, and commit progress independently.
 - **Exception Robustness**: Can gracefully handle faults without data corruption.
 - **Performance**: Decouples address generation, AXI, and VRF phases to maximize throughput.
 - **Alignment & vstart**: First load carefully handles misalignment and partial data.
-
----
-
-If you'd like a downloadable `.md` version, I can generate it for you.

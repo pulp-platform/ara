@@ -1,4 +1,3 @@
-
 # `vstu`: Ara Vector Store Unit
 
 The `vstu` module implements the **vector store unit** of the Ara RISC-V vector processor. It is responsible for generating and issuing memory write (store) operations via the AXI W and B channels. It consumes vector operands from the vector lanes, aligns and masks them, and dispatches them as AXI bursts to memory. It supports vector masking, vector start (`vstart`) handling, and exception processing in case of illegal transactions or MMU faults.
@@ -55,6 +54,8 @@ The `vstu` module implements the **vector store unit** of the Ara RISC-V vector 
 ---
 
 ## Key Functional Blocks
+
+The VSTU can change the byte layout of the vector registers on-the-fly and does not usually require reshuffles.
 
 ### Vector Instruction Queue
 
@@ -118,15 +119,3 @@ Catches and handles:
 - Store permission violations
 
 Flushes affected instructions if they’re the only pending ones and transitions the state accordingly.
-
----
-
-## Summary
-
-The `vstu` module is a high-performance vector memory store engine handling:
-- Wide operand alignment
-- Precise masking
-- Streaming AXI W beats
-- Clean separation of issue and commit stages
-
-It enables Ara to issue and retire vector stores with fine-grained control over masking, alignment, and exception signaling.
