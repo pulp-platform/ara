@@ -130,6 +130,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Don't download heavy git submodule by default (reserve a make command for that)
  - Switch to a better buildroot mirror
  - CI frees up space in the runner before building a toolchain
+ - Update documentation
 
 ## 3.0.0 - 2023-09-08
 
