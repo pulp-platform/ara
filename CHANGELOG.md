@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Reshuffle vector store's source reg group if emul > 1 and encoding is not homogeneous.
  - Pass CVA6Cfg to serial divider in Ara
  - Force cheshire's sim scripts re-generation
+ - Fix u-boot to support RVV-linux
 
 ### Added
 
@@ -75,6 +76,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add RVV tests to be used with Cheshire's stub and specific debug environment.
  - Add ara-cheshire bender flow for vcs
  - Add support for `rvv-bench` instruction benchmarking/verification
+ - Add original RiVec benchmark and port to AraOS flow
+ - Add fmatmul-loop application
+ - Add high-performance patches to cheshire and opensbi for AraOS
 
 ### Changed
 
