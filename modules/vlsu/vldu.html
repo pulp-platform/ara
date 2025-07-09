@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vldu: Ara’s Vector Load Unit &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="vstu: Ara Vector Store Unit" href="vstu.html" />
+    <link rel="prev" title="addrgen: Ara Vector Address Generation Unit" href="addrgen.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-parameters">Module Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interfaces">Interfaces</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#outputs">Outputs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-structure">Internal Structure</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mask-cut">1. Mask Cut</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vector-instruction-queue-viq">2. Vector Instruction Queue (VIQ)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#result-queue-rq">3. Result Queue (RQ)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#axi-data-reception">4. AXI Data Reception</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vrf-commit-logic">5. VRF Commit Logic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#exception-handling-fsm">6. Exception Handling FSM</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#instruction-lifecycle">Instruction Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#design-considerations">Design Considerations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/vlsu/vldu.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="vldu-ara-s-vector-load-unit">
+<h1><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit<a class="headerlink" href="#vldu-ara-s-vector-load-unit" title="Permalink to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">vldu</span></code> module implements Ara’s <strong>Vector Load Unit</strong>. It is responsible for loading data from memory into the Vector Register File (VRF) by receiving memory transactions via the AXI R channel and delivering vector data, possibly masked, to the lanes. This unit supports:</p>
+<ul class="simple">
+<li><p><strong>Masked/unmasked vector loads</strong></p></li>
+<li><p><strong>Multi-instruction pipelining</strong> with an internal instruction queue</p></li>
+<li><p><strong>AXI burst handling</strong></p></li>
+<li><p><strong>Exception tracking</strong> and safe partial commits</p></li>
+</ul>
+<hr class="docutils" />
+<section id="module-parameters">
+<h2>Module Parameters<a class="headerlink" href="#module-parameters" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NrLanes</span></code></p></td>
+<td><p>Number of vector lanes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">VLEN</span></code></p></td>
+<td><p>Vector register length in bits.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">vaddr_t</span></code></p></td>
+<td><p>Address type for vector register file addressing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pe_req_t</span></code></p></td>
+<td><p>Vector instruction request type.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pe_resp_t</span></code></p></td>
+<td><p>Vector instruction response type.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">AxiDataWidth</span></code></p></td>
+<td><p>Width of the AXI data channel.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">AxiAddrWidth</span></code></p></td>
+<td><p>Width of the AXI address channel.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">axi_r_t</span></code></p></td>
+<td><p>AXI R-channel data type.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="interfaces">
+<h2>Interfaces<a class="headerlink" href="#interfaces" title="Permalink to this heading"></a></h2>
+<p>###️ Inputs</p>
+<ul class="simple">
+<li><p><strong>Clock &amp; Reset</strong>: <code class="docutils literal notranslate"><span class="pre">clk_i</span></code>, <code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></li>
+<li><p><strong>Memory Load Channel</strong>: <code class="docutils literal notranslate"><span class="pre">axi_r_i</span></code>, <code class="docutils literal notranslate"><span class="pre">axi_r_valid_i</span></code></p></li>
+<li><p><strong>Instruction Inputs</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">pe_req_i</span></code>, <code class="docutils literal notranslate"><span class="pre">pe_req_valid_i</span></code>: New vector instruction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pe_vinsn_running_i</span></code>: Tracks active vector instructions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">axi_addrgen_req_i</span></code>, <code class="docutils literal notranslate"><span class="pre">axi_addrgen_req_valid_i</span></code>: Load address metadata</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">addrgen_illegal_load_i</span></code>: Signals illegal access</p></li>
+</ul>
+</li>
+<li><p><strong>Masking Support</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">mask_i</span></code>, <code class="docutils literal notranslate"><span class="pre">mask_valid_i</span></code>: Per-lane mask bytes</p></li>
+</ul>
+</li>
+<li><p><strong>Flush</strong>: <code class="docutils literal notranslate"><span class="pre">lsu_ex_flush_i</span></code></p></li>
+</ul>
+<section id="outputs">
+<h3>Outputs<a class="headerlink" href="#outputs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>AXI Handshake</strong>: <code class="docutils literal notranslate"><span class="pre">axi_r_ready_o</span></code></p></li>
+<li><p><strong>Instruction Handshake</strong>: <code class="docutils literal notranslate"><span class="pre">pe_req_ready_o</span></code></p></li>
+<li><p><strong>Memory Completion</strong>: <code class="docutils literal notranslate"><span class="pre">load_complete_o</span></code></p></li>
+<li><p><strong>Response</strong>: <code class="docutils literal notranslate"><span class="pre">pe_resp_o</span></code>, <code class="docutils literal notranslate"><span class="pre">ldu_current_burst_exception_o</span></code></p></li>
+<li><p><strong>Lane Interface</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">ldu_result_req_o</span></code>, <code class="docutils literal notranslate"><span class="pre">ldu_result_addr_o</span></code>, <code class="docutils literal notranslate"><span class="pre">ldu_result_wdata_o</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ldu_result_id_o</span></code>, <code class="docutils literal notranslate"><span class="pre">ldu_result_be_o</span></code></p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="internal-structure">
+<h2>Internal Structure<a class="headerlink" href="#internal-structure" title="Permalink to this heading"></a></h2>
+<section id="mask-cut">
+<h3>1. Mask Cut<a class="headerlink" href="#mask-cut" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Uses <code class="docutils literal notranslate"><span class="pre">spill_register_flushable</span></code> for each lane.</p></li>
+<li><p>Applies masking only when <code class="docutils literal notranslate"><span class="pre">vm=0</span></code>.</p></li>
+<li><p>Ensures valid masks are acknowledged only when a masked instruction is issued.</p></li>
+</ul>
+</section>
+<section id="vector-instruction-queue-viq">
+<h3>2. Vector Instruction Queue (VIQ)<a class="headerlink" href="#vector-instruction-queue-viq" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Triple-pointers:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">accept_pnt</span></code>, <code class="docutils literal notranslate"><span class="pre">issue_pnt</span></code>, <code class="docutils literal notranslate"><span class="pre">commit_pnt</span></code></p></li>
+</ul>
+</li>
+<li><p>Accepts instructions and issues them sequentially.</p></li>
+<li><p>Maintains counts of inflight and committed instructions.</p></li>
+<li><p>Separate counters track committed/issued instructions and their remaining byte loads.</p></li>
+</ul>
+</section>
+<section id="result-queue-rq">
+<h3>3. Result Queue (RQ)<a class="headerlink" href="#result-queue-rq" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Per-lane dual-entry queue buffering data before final commitment.</p></li>
+<li><p>Data is written to VRF only after <strong>final grants</strong> (<code class="docutils literal notranslate"><span class="pre">ldu_result_final_gnt_i</span></code>) are received.</p></li>
+<li><p>Supports partial writes for <code class="docutils literal notranslate"><span class="pre">vstart</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>.</p></li>
+</ul>
+</section>
+<section id="axi-data-reception">
+<h3>4. AXI Data Reception<a class="headerlink" href="#axi-data-reception" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Data is read beat-by-beat.</p></li>
+<li><p>Beat slicing is calculated with <code class="docutils literal notranslate"><span class="pre">beat_lower_byte</span></code> and <code class="docutils literal notranslate"><span class="pre">beat_upper_byte</span></code>.</p></li>
+<li><p>Data is shuffled using <code class="docutils literal notranslate"><span class="pre">shuffle_index</span></code> based on element size (vsew).</p></li>
+<li><p>Per-lane address and ID are calculated and stored in <code class="docutils literal notranslate"><span class="pre">result_queue</span></code>.</p></li>
+</ul>
+</section>
+<section id="vrf-commit-logic">
+<h3>5. VRF Commit Logic<a class="headerlink" href="#vrf-commit-logic" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>All data must be granted and acknowledged before commit.</p></li>
+<li><p>Updates commit counters and triggers <code class="docutils literal notranslate"><span class="pre">load_complete_o</span></code>.</p></li>
+</ul>
+</section>
+<section id="exception-handling-fsm">
+<h3>6. Exception Handling FSM<a class="headerlink" href="#exception-handling-fsm" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>States:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">IDLE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VALID_RESULT_QUEUE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WAIT_RESULT_QUEUE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HANDLE_EXCEPTION</span></code></p></li>
+</ul>
+</li>
+<li><p>Ensures partially buffered results are committed before signaling an exception.</p></li>
+<li><p>Keeps <code class="docutils literal notranslate"><span class="pre">ldu_current_burst_exception_o</span></code> accurate for safe exception replay.</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="instruction-lifecycle">
+<h2>Instruction Lifecycle<a class="headerlink" href="#instruction-lifecycle" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Accept</strong>: Valid <code class="docutils literal notranslate"><span class="pre">pe_req_i</span></code> is accepted if there’s space and VFU matches.</p></li>
+<li><p><strong>Issue</strong>: Begins loading AXI data. Uses mask unit if applicable.</p></li>
+<li><p><strong>AXI Read</strong>: Transfers data beat-by-beat to result queue.</p></li>
+<li><p><strong>VRF Commit</strong>: Writes to VRF after grant. Signals completion.</p></li>
+<li><p><strong>Exception</strong>: If exception occurs mid-load, transitions to FSM to commit partials.</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="design-considerations">
+<h2>Design Considerations<a class="headerlink" href="#design-considerations" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Masking Support</strong>: Integrated at per-byte level using per-lane strobes.</p></li>
+<li><p><strong>Pipeline Decoupling</strong>: Three-phase VIQ lets accept, issue, and commit progress independently.</p></li>
+<li><p><strong>Exception Robustness</strong>: Can gracefully handle faults without data corruption.</p></li>
+<li><p><strong>Performance</strong>: Decouples address generation, AXI, and VRF phases to maximize throughput.</p></li>
+<li><p><strong>Alignment &amp; vstart</strong>: First load carefully handles misalignment and partial data.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="addrgen.html" class="btn btn-neutral float-left" title="addrgen: Ara Vector Address Generation Unit" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="vstu.html" class="btn btn-neutral float-right" title="vstu: Ara Vector Store Unit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

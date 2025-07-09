@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ara: Top-Level Vector Unit &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ara_dispatcher — Vector Instruction Decoder and Issuer" href="ara_dispatcher.html" />
+    <link rel="prev" title="ara_system: Integration of CVA6 and Ara" href="ara_system.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ports">Ports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-units">Internal Units</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dispatcher-ara-dispatcher">1. Dispatcher (<code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sequencer-ara-sequencer">2. Sequencer (<code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vector-lanes-lane">3. Vector Lanes (<code class="docutils literal notranslate"><span class="pre">lane</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vector-load-store-unit-vlsu">4. Vector Load/Store Unit (<code class="docutils literal notranslate"><span class="pre">vlsu</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slide-unit-sldu">5. Slide Unit (<code class="docutils literal notranslate"><span class="pre">sldu</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mask-unit-masku">6. Mask Unit (<code class="docutils literal notranslate"><span class="pre">masku</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#mmu-support">MMU Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interconnect-communication">Interconnect &amp; Communication</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/ara.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ara-top-level-vector-unit">
+<h1><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit<a class="headerlink" href="#ara-top-level-vector-unit" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">ara</span></code> module is the <strong>top-level vector processing unit</strong> that implements the RISC-V Vector 1.0 Extension (RVV). It interfaces directly with the <strong>CVA6 scalar core</strong> and contains all vector-specific sub-units required to execute RVV instructions, including:</p>
+<ul class="simple">
+<li><p>A dispatcher (decodes vector instructions, keeps the vector CSR state, injects special micro-operations)</p></li>
+<li><p>A sequencer (controls instruction issue to the units, enforce instruction dependencies, collect results)</p></li>
+<li><p>Lanes (each lane contains a slice of the vector register file plus the arithmetic units)</p></li>
+<li><p>Vector Load/Store Unit (VLSU, it initiates AXI AR/AW transactions and handle the dataflow from/to memory)</p></li>
+<li><p>Slide Unit (SLDU, runs vector slides and byte layout reshuffling)</p></li>
+<li><p>Mask Unit (MASKU, assembles and distributes mask (predication) bits, executes bit-level mask instructions, and runs more complex bit-level permutations plus vrgather)</p></li>
+</ul>
+<p>The design is <strong>modular and scalable</strong>, with configurable parameters for lane count, VLEN, data types, and extended features like segmentation or MMU support.</p>
+<p>The most stable configurations are with a power-of-2 number of lanes from 2 to 16, with a VLEN derived from considering a VLEN-per-lane of 1024 bit/lane.</p>
+</section>
+<hr class="docutils" />
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NrLanes</span></code></p></td>
+<td><p>Number of parallel vector lanes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">VLEN</span></code></p></td>
+<td><p>Vector length (in bits)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OSSupport</span></code></p></td>
+<td><p>Enables MMU and fault-only-first logic</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FPUSupport</span></code></p></td>
+<td><p>Enables FP16/32/64 support</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FPExtSupport</span></code></p></td>
+<td><p>Enables <code class="docutils literal notranslate"><span class="pre">vfrec7</span></code>, <code class="docutils literal notranslate"><span class="pre">vfrsqrt7</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FixPtSupport</span></code></p></td>
+<td><p>Enables fixed-point support</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SegSupport</span></code></p></td>
+<td><p>Enables segmented memory operations</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">CVA6Cfg</span></code></p></td>
+<td><p>CVA6 configuration record</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Axi*Width</span></code></p></td>
+<td><p>AXI bus widths</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">axi_*</span></code></p></td>
+<td><p>AXI channel and bundle typedefs</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">exception_t</span></code>, <code class="docutils literal notranslate"><span class="pre">accelerator_*</span></code>, <code class="docutils literal notranslate"><span class="pre">acc_mmu_*</span></code></p></td>
+<td><p>Types for accelerator/MMU interfacing</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="ports">
+<h2>Ports<a class="headerlink" href="#ports" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Port</p></th>
+<th class="head"><p>Dir</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code>, <code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></td>
+<td><p>In</p></td>
+<td><p>Clock and reset</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scan_*</span></code></p></td>
+<td><p>In/Out</p></td>
+<td><p>Scan chain (test)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">acc_req_i</span></code>, <code class="docutils literal notranslate"><span class="pre">acc_resp_o</span></code></p></td>
+<td><p>In/Out</p></td>
+<td><p>Vector accelerator interface (with CVA6)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">axi_req_o</span></code>, <code class="docutils literal notranslate"><span class="pre">axi_resp_i</span></code></p></td>
+<td><p>Out/In</p></td>
+<td><p>AXI memory interface</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="internal-units">
+<h2>Internal Units<a class="headerlink" href="#internal-units" title="Permalink to this heading"></a></h2>
+<section id="dispatcher-ara-dispatcher">
+<h3>1. Dispatcher (<code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code>)<a class="headerlink" href="#dispatcher-ara-dispatcher" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Fully decodes RVV instructions</p></li>
+<li><p>Keeps the vector CSR state</p></li>
+<li><p>Handles register reshuffling for EW mismatches</p></li>
+<li><p>Injects special vector micro-ops (e.g., reshuffle slides, segment memory micro-ops)</p></li>
+<li><p>Tracks active instructions and completion</p></li>
+</ul>
+</section>
+<section id="sequencer-ara-sequencer">
+<h3>2. Sequencer (<code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code>)<a class="headerlink" href="#sequencer-ara-sequencer" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Manages vector instruction lifecycle</p></li>
+<li><p>Tracks instruction dependencies with a scoreboard</p></li>
+<li><p>Handles scalar responses and exception tracking</p></li>
+<li><p>Broadcast work to lanes and special units</p></li>
+</ul>
+</section>
+<section id="vector-lanes-lane">
+<h3>3. Vector Lanes (<code class="docutils literal notranslate"><span class="pre">lane</span></code>)<a class="headerlink" href="#vector-lanes-lane" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Keeps a slice of the Vector Register File and multiple functional units (FPU, ALU, Multiplier)</p></li>
+<li><p>Executes arithmetic and logic vector operations</p></li>
+<li><p>Feed Ara’s units through the VRF, and receive memory operands from the load unit</p></li>
+</ul>
+</section>
+<section id="vector-load-store-unit-vlsu">
+<h3>4. Vector Load/Store Unit (<code class="docutils literal notranslate"><span class="pre">vlsu</span></code>)<a class="headerlink" href="#vector-load-store-unit-vlsu" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Handles vector memory access</p></li>
+<li><p>Interfaces with CVA6’s MMU (virtual address translation through dedicated interface) and memory (through AXI4)</p></li>
+<li><p>Manages address generation and exception detection for memory operations</p></li>
+</ul>
+</section>
+<section id="slide-unit-sldu">
+<h3>5. Slide Unit (<code class="docutils literal notranslate"><span class="pre">sldu</span></code>)<a class="headerlink" href="#slide-unit-sldu" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Performs byte-reshuffling and slide ops</p></li>
+<li><p>Optimized for power-of-two strides</p></li>
+<li><p>All-to-all lane connectivity</p></li>
+</ul>
+</section>
+<section id="mask-unit-masku">
+<h3>6. Mask Unit (<code class="docutils literal notranslate"><span class="pre">masku</span></code>)<a class="headerlink" href="#mask-unit-masku" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Centralized logic for mask generation and bit-level access</p></li>
+<li><p>Handles mask combination ops (e.g., <code class="docutils literal notranslate"><span class="pre">vfirst</span></code>, <code class="docutils literal notranslate"><span class="pre">vcpop</span></code>)</p></li>
+<li><p>Shares scalar result lines with the sequencer</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="mmu-support">
+<h2>MMU Support<a class="headerlink" href="#mmu-support" title="Permalink to this heading"></a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">OSSupport</span> <span class="pre">=</span> <span class="pre">1</span></code>, the module:</p>
+<ul class="simple">
+<li><p>Interfaces with CVA6’s MMU (via SV39)</p></li>
+<li><p>Performs virtual-to-physical address translation</p></li>
+<li><p>Supports fault-only-first loads and address exceptions</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="interconnect-communication">
+<h2>Interconnect &amp; Communication<a class="headerlink" href="#interconnect-communication" title="Permalink to this heading"></a></h2>
+<p>The sequencer broadcasts instructions to all the units in parallel (VLSU, SLDU, MASKU, Lanes). Also, the all-to-all connected units (VLSU, SLDU, MASKU) are connected to every lane in parallel.</p>
+<p>Each lane works on a 64-bit datapath, and every all-to-all unit receives at least one bus of 64-bit from every lane.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ara_system.html" class="btn btn-neutral float-left" title="ara_system: Integration of CVA6 and Ara" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ara_dispatcher.html" class="btn btn-neutral float-right" title="ara_dispatcher — Vector Instruction Decoder and Issuer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

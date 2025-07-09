@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Introduction &mdash; Ara 1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <title>Introduction &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=359c27e9"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Ara" href="ara.html" />
+    <link rel="next" title="ara_soc: Top-Level Dummy SoC for Ara" href="modules/ara_soc.html" />
     <link rel="prev" title="Welcome to Ara’s documentation!" href="index.html" /> 
 </head>
 
@@ -35,15 +36,64 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#scope-and-purpose">Scope and Purpose</a><ul class="simple">
+<li class="toctree-l2"><a class="reference internal" href="#introduction-to-ara">Introduction to Ara</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#architectural-overview">Architectural Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#target-use-cases">Target Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ara-for-non-experts">Ara for Non-Experts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#what-is-ara">What Is Ara?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#why-is-ara-useful">Why Is Ara Useful?</a><ul class="simple">
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="ara.html">Ara</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
 </ul>
 
         </div>
@@ -70,27 +120,78 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="introduction">
-<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
-<p>This Section Will Introduce you the Ara Vector Processor</p>
-<div class="section" id="scope-and-purpose">
-<h2>Scope and Purpose<a class="headerlink" href="#scope-and-purpose" title="Permalink to this headline">¶</a></h2>
-<p>This subheading explain scope and purpose</p>
-<div class="figure align-default" id="id1">
+  <section id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h1>
+<p>This Section will Introduce you the Ara Vector Processor.</p>
+<section id="introduction-to-ara">
+<h2>Introduction to Ara<a class="headerlink" href="#introduction-to-ara" title="Permalink to this heading"></a></h2>
+<p>Ara is a <strong>modular, open-source vector processing unit</strong> designed to <strong>augment RISC-V processors</strong> with <strong>high-performance, energy-efficient vector computation</strong>. It is developed by the <a class="reference external" href="https://pulp-platform.org/">PULP platform</a> at ETH Zurich and the University of Bologna.</p>
+<p>At its core, <strong>Ara is a scalable vector accelerator</strong> compliant with the <a class="reference external" href="https://github.com/riscv/riscv-v-spec">RISC-V Vector Extension 1.0 (RVV)</a>. It is specifically designed to target <strong>data-parallel workloads</strong> in embedded and high-performance computing environments. Ara is built to plug into the <a class="reference external" href="https://github.com/openhwgroup/cva6">CVA6 RISC-V core</a>, and is suitable for system-on-chip (SoC) designs that require vector processing capabilities for applications such as:</p>
+<ul class="simple">
+<li><p>Signal processing</p></li>
+<li><p>Linear algebra</p></li>
+<li><p>Machine learning kernels</p></li>
+<li><p>Computer vision</p></li>
+</ul>
+<p>Ara can be configured with a power-of-2 number of parallel vector lanes ranging from 2 to 16. Each lane contains a slice of the Vector Register File (VRF), a SIMD FPU, and a SIMD ALU/Multiplier.</p>
+<p>Since Multiply-and-Accumulate instructions can be executed in one cycle by each FPU, the maximum performance of Ara is <cite>2 * #Lanes</cite> 64-bit packets/cycle, where each 64-bit packet can contain from one 64-bit element to eight 8-bit elements, processed in SIMD fashion.</p>
+</section>
+<section id="architectural-overview">
+<h2>Architectural Overview<a class="headerlink" href="#architectural-overview" title="Permalink to this heading"></a></h2>
+<figure class="align-default" id="id1">
 <a class="reference internal image-reference" href="_images/ara_top.png"><img alt="Ara Top level Image" src="_images/ara_top.png" style="width: 826.4000000000001px; height: 602.4px;" /></a>
-<p class="caption"><span class="caption-text">Ara’s top level diagram</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
-</div>
+<figcaption>
+<p><span class="caption-text">Ara’s top level diagram</span><a class="headerlink" href="#id1" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<p>Ara is composed of the following major components:</p>
+<ul class="simple">
+<li><p><strong>Vector Functional Units (VFUs)</strong>: Includes ALUs, FPUs, multipliers, mask units, and slide units, each operating across multiple lanes in parallel.</p></li>
+<li><p><strong>Vector Lanes</strong>: The architecture is scalable to multiple lanes. Each lane processes one slice of the data, providing parallelism at the element level.</p></li>
+<li><p><strong>Dispatcher &amp; Sequencer</strong>: These components decode and schedule vector instructions, ensuring synchronization and legal execution patterns.</p></li>
+<li><p><strong>Register File (VRF)</strong>: Ara contains a large vector register file, partitioned across lanes for bandwidth scalability.</p></li>
+<li><p><strong>Memory Interface</strong>: Vector loads and stores are issued via AXI-compatible memory accesses, either from DRAM or TCDM (depending on system integration).</p></li>
+</ul>
+<p>Ara is <strong>modular by construction</strong>: users can configure the number of lanes, supported datatypes (int/fixed/fp), and optional features like floating-point extensions or reductions.</p>
+</section>
+<section id="target-use-cases">
+<h2>Target Use Cases<a class="headerlink" href="#target-use-cases" title="Permalink to this heading"></a></h2>
+<p>Ara is ideal for:</p>
+<ul class="simple">
+<li><p><strong>Academic research</strong> into vector architectures and compilers</p></li>
+<li><p><strong>Hardware/software co-design</strong></p></li>
+<li><p><strong>Custom accelerators</strong> in SoC designs</p></li>
+<li><p><strong>FPGA-based prototyping</strong> of RVV software</p></li>
+</ul>
+</section>
+<section id="ara-for-non-experts">
+<h2>Ara for Non-Experts<a class="headerlink" href="#ara-for-non-experts" title="Permalink to this heading"></a></h2>
+<section id="what-is-ara">
+<h3>What Is Ara?<a class="headerlink" href="#what-is-ara" title="Permalink to this heading"></a></h3>
+<p>Think of Ara as a <strong>muscle boost for a processor</strong>, specialized in handling <strong>repetitive data-heavy tasks</strong>—like multiplying a thousand numbers in parallel or transforming images efficiently.</p>
+<p>Instead of performing one operation at a time, Ara handles <strong>many operations at once</strong> using <strong>vectors</strong> (think: long lists of numbers). This is similar to how modern GPUs work for games and machine learning—but in a way that is more <strong>tailored to embedded systems</strong> and open-source hardware.</p>
+</section>
+<section id="why-is-ara-useful">
+<h3>Why Is Ara Useful?<a class="headerlink" href="#why-is-ara-useful" title="Permalink to this heading"></a></h3>
+<p>Most general-purpose CPUs process one or two pieces of data per cycle. Ara can process <strong>dozens or hundreds of values in parallel</strong>. This makes it <strong>much faster and more energy-efficient</strong> when dealing with structured, repetitive workloads like:</p>
+<ul class="simple">
+<li><p>Filtering an audio signal</p></li>
+<li><p>Applying a blur effect on an image</p></li>
+<li><p>Computing dot products in a neural network layer</p></li>
+</ul>
+<p>Ara plugs into a RISC-V core like an add-on, offloading these “bulk” computations.</p>
 <div class="toctree-wrapper compound">
 </div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="index.html" class="btn btn-neutral float-left" title="Welcome to Ara’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="ara.html" class="btn btn-neutral float-right" title="Ara" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="modules/ara_soc.html" class="btn btn-neutral float-right" title="ara_soc: Top-Level Dummy SoC for Ara" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

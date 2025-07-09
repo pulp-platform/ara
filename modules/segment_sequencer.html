@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>segment_sequencer - Split segment memory operations into multiple micro-ops &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ara_sequencer — Instruction sequencer and macro dependency check" href="ara_sequencer.html" />
+    <link rel="prev" title="ara_dispatcher — Vector Instruction Decoder and Issuer" href="ara_dispatcher.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#key-parameters">Key Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-signals">Interface Signals</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#clock-reset">Clock &amp; Reset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#control-inputs">Control Inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operation-tracking">Operation Tracking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ara-frontend-backend-interface">Ara Frontend-Backend Interface</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#functionality">Functionality</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fsm-states">FSM States</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#micro-operation-construction">Micro-operation Construction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#control-logic">Control Logic</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#disabled-mode-segsupport-0">Disabled Mode (SegSupport == 0)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/segment_sequencer.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="segment-sequencer-split-segment-memory-operations-into-multiple-micro-ops">
+<h1><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops<a class="headerlink" href="#segment-sequencer-split-segment-memory-operations-into-multiple-micro-ops" title="Permalink to this heading"></a></h1>
+<p>This module breaks down segment memory operations into a sequence of scalar memory operations. While this results in poor instruction-per-cycle (IPC) performance, it simplifies hardware implementation and avoids the need for tightly coupled multi-element memory accesses.</p>
+<section id="key-parameters">
+<h2>Key Parameters<a class="headerlink" href="#key-parameters" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">SegSupport</span></code>: Enables or disables segment memory support (<code class="docutils literal notranslate"><span class="pre">1'b1</span></code> enables it).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ara_req_t</span></code>, <code class="docutils literal notranslate"><span class="pre">ara_resp_t</span></code>: Types representing Ara’s request and response protocols.</p></li>
+</ul>
+</section>
+<section id="interface-signals">
+<h2>Interface Signals<a class="headerlink" href="#interface-signals" title="Permalink to this heading"></a></h2>
+<section id="clock-reset">
+<h3>Clock &amp; Reset<a class="headerlink" href="#clock-reset" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code>: Clock signal.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rst_ni</span></code>: Active-low reset.</p></li>
+</ul>
+</section>
+<section id="control-inputs">
+<h3>Control Inputs<a class="headerlink" href="#control-inputs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ara_idle_i</span></code>: Indicates Ara is idle.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">is_segment_mem_op_i</span></code>: Indicates the instruction is a segment memory op.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">illegal_insn_i</span></code>: Signals if the instruction is illegal.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">is_vload_i</span></code>: Identifies if the operation is a vector load.</p></li>
+</ul>
+</section>
+<section id="operation-tracking">
+<h3>Operation Tracking<a class="headerlink" href="#operation-tracking" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">seg_mem_op_end_o</span></code>: Signals the end of a segment memory op.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">load_complete_i/o</span></code>, <code class="docutils literal notranslate"><span class="pre">store_complete_i/o</span></code>: Track completion of memory operations.</p></li>
+</ul>
+</section>
+<section id="ara-frontend-backend-interface">
+<h3>Ara Frontend-Backend Interface<a class="headerlink" href="#ara-frontend-backend-interface" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ara_req_i/o</span></code>, <code class="docutils literal notranslate"><span class="pre">ara_req_valid_i/o</span></code>, <code class="docutils literal notranslate"><span class="pre">ara_req_ready_i</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ara_resp_i/o</span></code>, <code class="docutils literal notranslate"><span class="pre">ara_resp_valid_i/o</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="functionality">
+<h2>Functionality<a class="headerlink" href="#functionality" title="Permalink to this heading"></a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">SegSupport</span></code> is enabled, this module implements a small FSM to micro-sequence a segment operation into a series of scalar instructions. These instructions are prepared by adjusting <code class="docutils literal notranslate"><span class="pre">vs1</span></code>, <code class="docutils literal notranslate"><span class="pre">vd</span></code>, and <code class="docutils literal notranslate"><span class="pre">scalar_op</span></code> fields, and issuing one sub-operation at a time.</p>
+<section id="fsm-states">
+<h3>FSM States<a class="headerlink" href="#fsm-states" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">IDLE</span></code>: Wait for segment memory op. Sample <code class="docutils literal notranslate"><span class="pre">nf</span></code> and <code class="docutils literal notranslate"><span class="pre">is_vload_i</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SEGMENT_MICRO_OPS</span></code>: Sequentially issue micro-operations for each field of the segment.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SEGMENT_MICRO_OPS_WAIT_END</span></code>: Wait for Ara backend to become idle.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SEGMENT_MICRO_OPS_END</span></code>: Forward the final response and signal completion.</p></li>
+</ul>
+</section>
+<section id="micro-operation-construction">
+<h3>Micro-operation Construction<a class="headerlink" href="#micro-operation-construction" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>For each segment element:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">vl</span></code> is set to 1</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vstart</span></code> tracks the segment index</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vs1</span></code>, <code class="docutils literal notranslate"><span class="pre">vd</span></code>, and <code class="docutils literal notranslate"><span class="pre">scalar_op</span></code> are offset by the segment field index (<code class="docutils literal notranslate"><span class="pre">segment_cnt_q</span></code>)</p></li>
+</ul>
+</li>
+<li><p>For unit-stride segments (<code class="docutils literal notranslate"><span class="pre">VLE</span></code>, <code class="docutils literal notranslate"><span class="pre">VSE</span></code>): <code class="docutils literal notranslate"><span class="pre">op</span></code> is changed to <code class="docutils literal notranslate"><span class="pre">VLSE</span></code>, <code class="docutils literal notranslate"><span class="pre">VSSE</span></code> and a <code class="docutils literal notranslate"><span class="pre">stride</span></code> is computed.</p></li>
+</ul>
+</section>
+<section id="control-logic">
+<h3>Control Logic<a class="headerlink" href="#control-logic" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Two counters are used:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">segment_cnt_q</span></code> tracks the number of fields processed</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vstart_cnt_q</span></code> increments for each segment</p></li>
+</ul>
+</li>
+<li><p>Response (<code class="docutils literal notranslate"><span class="pre">ara_resp_q</span></code>) is delayed until the full operation finishes and Ara is idle.</p></li>
+</ul>
+</section>
+</section>
+<section id="disabled-mode-segsupport-0">
+<h2>Disabled Mode (SegSupport == 0)<a class="headerlink" href="#disabled-mode-segsupport-0" title="Permalink to this heading"></a></h2>
+<p>In this case, the module becomes a passthrough between Ara’s frontend and backend, with no internal FSM or micro-operation handling.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ara_dispatcher.html" class="btn btn-neutral float-left" title="ara_dispatcher — Vector Instruction Decoder and Issuer" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ara_sequencer.html" class="btn btn-neutral float-right" title="ara_sequencer — Instruction sequencer and macro dependency check" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

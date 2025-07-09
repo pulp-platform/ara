@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ara_dispatcher — Vector Instruction Decoder and Issuer &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="segment_sequencer - Split segment memory operations into multiple micro-ops" href="segment_sequencer.html" />
+    <link rel="prev" title="ara: Top-Level Vector Unit" href="ara.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#role-in-ara">Role in Ara</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface">Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#input-ports">Input Ports</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#output-ports">Output Ports</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#fsm-states">FSM States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-concepts">Internal Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#csr-registers">CSR Registers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#eew-tracking">EEW Tracking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reshuffling">Reshuffling</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-with-cva6">Interface with CVA6</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#instruction-decoding">Instruction Decoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory-operation-handling">Memory Operation Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#illegal-instruction-checks">Illegal Instruction Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reshuffling-flow">Reshuffling Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#csr-handling">CSR Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zero-vl-behavior">Zero VL Behavior</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/ara_dispatcher.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ara-dispatcher-vector-instruction-decoder-and-issuer">
+<h1><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer<a class="headerlink" href="#ara-dispatcher-vector-instruction-decoder-and-issuer" title="Permalink to this heading"></a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> is the central instruction decoder and legality checker for Ara’s RISC-V vector unit. It receives instructions from the scalar core (CVA6) via the <code class="docutils literal notranslate"><span class="pre">acc_req_i</span></code> interface and dispatches well-formed vector requests to Ara’s backend using the <code class="docutils literal notranslate"><span class="pre">ara_req_o</span></code> interface.</p>
+<hr class="docutils" />
+<section id="role-in-ara">
+<h2>Role in Ara<a class="headerlink" href="#role-in-ara" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Decodes <strong>RISC-V vector instructions (RVV)</strong> from scalar core</p></li>
+<li><p>Validates legality based on LMUL, SEW, CSR, segment loads/stores, and support fflags</p></li>
+<li><p>Manages <strong>control and status registers (CSRs)</strong> for VL, VTYPE, VSTART, VXRM, and VXSAT</p></li>
+<li><p>Handles <strong>load/store reshuffling</strong> to maintain consistent EEW across register groups</p></li>
+<li><p>Issues vector requests via <code class="docutils literal notranslate"><span class="pre">ara_req_o</span></code> and coordinates responses via <code class="docutils literal notranslate"><span class="pre">ara_resp_valid</span></code></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="interface">
+<h2>Interface<a class="headerlink" href="#interface" title="Permalink to this heading"></a></h2>
+<section id="input-ports">
+<h3>Input Ports<a class="headerlink" href="#input-ports" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Width</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Clock input</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Active-low reset</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">acc_req_i</span></code></p></td>
+<td><p>struct</p></td>
+<td><p>Incoming request from scalar core</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ara_req_ready_i</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Back-end ready to receive vector request</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ara_resp_valid</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Back-end has completed a request</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ara_resp</span></code></p></td>
+<td><p>struct</p></td>
+<td><p>Response metadata from Ara</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ara_idle_i</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Ara is idle, ready to accept new instructions</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">load_complete_i</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Vector load completed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">store_complete_i</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Vector store completed</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="output-ports">
+<h3>Output Ports<a class="headerlink" href="#output-ports" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Width</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">acc_resp_o</span></code></p></td>
+<td><p>struct</p></td>
+<td><p>Response back to scalar core</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ara_req_valid_o</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Ara request is valid</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ara_req_o</span></code></p></td>
+<td><p>struct</p></td>
+<td><p>Decoded vector request</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pending_seg_mem_op_o</span></code></p></td>
+<td><p>1</p></td>
+<td><p>Pending segment memory operation tracker</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="fsm-states">
+<h2>FSM States<a class="headerlink" href="#fsm-states" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">IDLE</span></code> — Waiting for valid vector instructions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WAIT_IDLE</span></code> — Waiting for Ara to become idle (CSR ops)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WAIT_IDLE_FLUSH</span></code> — Flushes vector state after exceptions</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RESHUFFLE</span></code> — Triggers register reshuffling before execution</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="internal-concepts">
+<h2>Internal Concepts<a class="headerlink" href="#internal-concepts" title="Permalink to this heading"></a></h2>
+<section id="csr-registers">
+<h3>CSR Registers<a class="headerlink" href="#csr-registers" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">csr_vl_q</span></code>, <code class="docutils literal notranslate"><span class="pre">csr_vtype_q</span></code>, <code class="docutils literal notranslate"><span class="pre">csr_vstart_q</span></code> — Active state of vector CSRs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">csr_vxrm_q</span></code>, <code class="docutils literal notranslate"><span class="pre">csr_vxsat_q</span></code> — Fixed-point rounding/saturation</p></li>
+</ul>
+</section>
+<section id="eew-tracking">
+<h3>EEW Tracking<a class="headerlink" href="#eew-tracking" title="Permalink to this heading"></a></h3>
+<p>In Ara, every vector register is encoded with a byte layout that forces consecutive vector elements into consecutive lanes (i.e., element 0 in lane 0, element 1 in lane 1, end so on).
+This means that a vector interpreted with a different element width will require a byte layout reshuffling to enforce consecutive vector elements in consecutive lanes.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">eew_q[0..31]</span></code> stores Element Effective Width for each vreg. This is basically the byte layout encoding of every vector register</p></li>
+<li><p>Updated upon successful dispatch of instructions</p></li>
+</ul>
+</section>
+<section id="reshuffling">
+<h3>Reshuffling<a class="headerlink" href="#reshuffling" title="Permalink to this heading"></a></h3>
+<p>When a vector register needs to be re-interpreted with a different byte encoding, the Ara’s Dispatcher injects slide micro-operations to reshuffle the vector register’s byte layout.</p>
+<ul class="simple">
+<li><p>Needed if same register used with different EEW</p></li>
+<li><p>Controlled by <code class="docutils literal notranslate"><span class="pre">reshuffle_req_d[2:0]</span></code> for <code class="docutils literal notranslate"><span class="pre">vs1</span></code>, <code class="docutils literal notranslate"><span class="pre">vs2</span></code>, <code class="docutils literal notranslate"><span class="pre">vd</span></code></p></li>
+<li><p>Buffering via <code class="docutils literal notranslate"><span class="pre">eew_old_buffer_d</span></code>, <code class="docutils literal notranslate"><span class="pre">eew_new_buffer_d</span></code>, etc.</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="interface-with-cva6">
+<h2>Interface with CVA6<a class="headerlink" href="#interface-with-cva6" title="Permalink to this heading"></a></h2>
+<p>Vector instructions are dispatched from CVA6 to Ara when they have reached the top of CVA6’s scoreboard, i.e., when they are no more speculative and can be committed from CVA6’s perspective.</p>
+<p>Ara’s dispatcher handshakes the request (and returns a response) if exceptions cannot happen for that instruction or if exceptions are immediately raised during decoding.</p>
+<p>For example, arithmetic instructions can raise exceptions only during decoding. Thus, the answer to CVA6 is really fast (1 cycle).</p>
+<p>Memory operations can raise errors on the memory bus or exceptions during virtual-to-physical translation. Therefore, memory instructions freeze the dispatcher until the VLSU has reported back an exception or the absence of it.
+This process requires more than 1 cycle.</p>
+</section>
+<hr class="docutils" />
+<section id="instruction-decoding">
+<h2>Instruction Decoding<a class="headerlink" href="#instruction-decoding" title="Permalink to this heading"></a></h2>
+<p>Instructions are decoded based on RVV encoding using extracted fields:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vmem_type</span></code>, <code class="docutils literal notranslate"><span class="pre">varith_type</span></code>, etc.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mop</span></code>, <code class="docutils literal notranslate"><span class="pre">nf</span></code>, <code class="docutils literal notranslate"><span class="pre">vm</span></code>, <code class="docutils literal notranslate"><span class="pre">rs1</span></code>, <code class="docutils literal notranslate"><span class="pre">rs2</span></code>, <code class="docutils literal notranslate"><span class="pre">rd</span></code>, <code class="docutils literal notranslate"><span class="pre">mew</span></code>, <code class="docutils literal notranslate"><span class="pre">width</span></code></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="memory-operation-handling">
+<h2>Memory Operation Handling<a class="headerlink" href="#memory-operation-handling" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Load Types</strong>: VLE, VLSE, VLXE, VLVX</p></li>
+<li><p><strong>Store Types</strong>: VSE, VSSE, VSXE, VSVX</p></li>
+<li><p>Unit-stride, strided, indexed, and whole-register</p></li>
+<li><p>Segment operations detected if <code class="docutils literal notranslate"><span class="pre">nf</span> <span class="pre">!=</span> <span class="pre">0</span></code></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="illegal-instruction-checks">
+<h2>Illegal Instruction Checks<a class="headerlink" href="#illegal-instruction-checks" title="Permalink to this heading"></a></h2>
+<p>Illegal cases include:</p>
+<ul class="simple">
+<li><p>Illegal operand registers given the current SEW, LMUL state</p></li>
+<li><p>EMUL × NF &gt; 8</p></li>
+<li><p>Access beyond register 31</p></li>
+<li><p>Inconsistent EEW across a register group</p></li>
+<li><p>Disallowed CSR writes or invalid opcodes</p></li>
+<li><p>Fixed-point ops without hardware support</p></li>
+<li><p>Floating-point ops (e.g., <code class="docutils literal notranslate"><span class="pre">VFREC7</span></code>) without FPExt support</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="reshuffling-flow">
+<h2>Reshuffling Flow<a class="headerlink" href="#reshuffling-flow" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Triggered by EEW mismatch for reused vector registers</p></li>
+<li><p>Masked out if same register appears in multiple operand slots</p></li>
+<li><p>FSM state switches to <code class="docutils literal notranslate"><span class="pre">RESHUFFLE</span></code>, issues internal reshuffle ops</p></li>
+<li><p>Once reshuffling is complete, instruction is re-issued</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="csr-handling">
+<h2>CSR Handling<a class="headerlink" href="#csr-handling" title="Permalink to this heading"></a></h2>
+<p>All CSR access instructions (e.g., <code class="docutils literal notranslate"><span class="pre">csrrw</span></code>, <code class="docutils literal notranslate"><span class="pre">csrrs</span></code>, <code class="docutils literal notranslate"><span class="pre">csrrc</span></code>, and immediate variants) are handled.</p>
+<ul class="simple">
+<li><p>Only <code class="docutils literal notranslate"><span class="pre">vstart</span></code>, <code class="docutils literal notranslate"><span class="pre">vxrm</span></code>, <code class="docutils literal notranslate"><span class="pre">vxsat</span></code> are writable</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vl</span></code>, <code class="docutils literal notranslate"><span class="pre">vtype</span></code>, <code class="docutils literal notranslate"><span class="pre">vlenb</span></code> are read-only</p></li>
+<li><p>Illegal accesses cause exception</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="zero-vl-behavior">
+<h2>Zero VL Behavior<a class="headerlink" href="#zero-vl-behavior" title="Permalink to this heading"></a></h2>
+<p>If <code class="docutils literal notranslate"><span class="pre">vl</span> <span class="pre">=</span> <span class="pre">0</span></code>, most instructions are treated as NOPs.</p>
+<ul class="simple">
+<li><p>Some exceptions (whole-reg ops, special instructions)</p></li>
+<li><p>Response is generated with <code class="docutils literal notranslate"><span class="pre">req_ready</span></code> and <code class="docutils literal notranslate"><span class="pre">resp_valid</span></code> set</p></li>
+<li><p>Ensures scalar pipeline doesn’t stall</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ara.html" class="btn btn-neutral float-left" title="ara: Top-Level Vector Unit" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="segment_sequencer.html" class="btn btn-neutral float-right" title="segment_sequencer - Split segment memory operations into multiple micro-ops" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

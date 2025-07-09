@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>masku — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="vlsu - Vector Load/Store Unit" href="../vlsu/vlsu.html" />
+    <link rel="prev" title="sldu — Ara’s slide unit, for permutations, shuffles, and slides" href="../sldu/sldu.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#working-principles">Working principles:</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#a">A</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#b">B</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#c">C</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#key-interface-signals">Key Interface Signals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#key-internal-logic-and-structure">Key Internal Logic and Structure</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#operand-handling-via-masku-operands">1. <strong>Operand Handling (via <code class="docutils literal notranslate"><span class="pre">masku_operands</span></code>)</strong></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shuffling-and-de-shuffling">2. <strong>Shuffling and De-shuffling</strong></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#functional-unit-arbitration">3. <strong>Functional Unit Arbitration</strong></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tail-and-mask-handling">4. <strong>Tail and Mask Handling</strong></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#spill-registers">5. <strong>Spill Registers</strong></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-masku-operands">Module: <code class="docutils literal notranslate"><span class="pre">masku_operands</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#purpose">Purpose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operand-extraction">Operand Extraction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#output-data-formats">Output Data Formats</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bit-enable-mask-logic">Bit Enable Mask Logic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#alu-fpu-result-compression">ALU/FPU Result Compression</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/masku/masku.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="masku-ara-s-mask-unit-for-mask-bits-dispatch-mask-operations-bits-handling">
+<h1><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling<a class="headerlink" href="#masku-ara-s-mask-unit-for-mask-bits-dispatch-mask-operations-bits-handling" title="Permalink to this heading"></a></h1>
+<p>The Mask Unit (MASKU) handles the mask-layout vectors in Ara.
+The MASKU is connected to all the lanes directly, through dedicated result queues, and through the VALU/VMFPU.</p>
+<p>The mask unit can:</p>
+<ol class="arabic simple">
+<li><p>Create mask predication bits and distribute them to the other computational units.</p></li>
+<li><p>Completely or partially process instructions that use mask-layout vectors (e.g., <code class="docutils literal notranslate"><span class="pre">vmsof</span></code>, <code class="docutils literal notranslate"><span class="pre">viota</span></code>, <code class="docutils literal notranslate"><span class="pre">vcompress</span></code>, <code class="docutils literal notranslate"><span class="pre">vmand</span></code>, <code class="docutils literal notranslate"><span class="pre">vmseq</span></code>).</p></li>
+<li><p>Execute <code class="docutils literal notranslate"><span class="pre">vrgather</span></code> instructions.</p></li>
+</ol>
+<p>The instructions executed in the MASKU can be either fully handled by the MASKU, i.e., their execution is completely done in the MASKU, or partially handled by the MASKU when part of the computation also happens in a different unit.</p>
+<p>Fully handle:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vrgather</span></code>, <code class="docutils literal notranslate"><span class="pre">vrgatherei16</span></code>, <code class="docutils literal notranslate"><span class="pre">vcompress</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vcpop</span></code>, <code class="docutils literal notranslate"><span class="pre">vfirst</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">viota</span></code>, <code class="docutils literal notranslate"><span class="pre">vid</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vmsbf</span></code>, <code class="docutils literal notranslate"><span class="pre">vmsif</span></code>, <code class="docutils literal notranslate"><span class="pre">vmsof</span></code></p></li>
+</ul>
+<p>Partially handle:</p>
+<ul class="simple">
+<li><p>Masked instructions (predication)</p></li>
+<li><p>Mask logical instructions (e.g., <code class="docutils literal notranslate"><span class="pre">vmand</span></code>)</p></li>
+<li><p>Comparison instructions (e.g., <code class="docutils literal notranslate"><span class="pre">vmseq</span></code>, <code class="docutils literal notranslate"><span class="pre">vmfeq</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vmadc</span></code>, <code class="docutils literal notranslate"><span class="pre">vmsbc</span></code></p></li>
+</ul>
+<section id="working-principles">
+<h2>Working principles:<a class="headerlink" href="#working-principles" title="Permalink to this heading"></a></h2>
+<p>The mask unit receives an instruction broadcasted by the main sequencer and saves it in its instruction queue.</p>
+<p>Depending on the instruction type, the MASKU will initialize the related state (e.g., counters) and start the execution.</p>
+<p>There are mainly four types of instructions that use different control signals in the mask unit:
+A) Masked instructions (predication)
+B) Vector gather instructions
+C) All the other instructions supported by the MASKU</p>
+<p>The MASKU receives source operands from the lanes and the received payload is always balanced, e.g., every MASKU will receive multiple <code class="docutils literal notranslate"><span class="pre">NrLanes</span> <span class="pre">*</span> <span class="pre">64</span></code> balanced payloads.</p>
+<section id="a">
+<h3>A<a class="headerlink" href="#a" title="Permalink to this heading"></a></h3>
+<p>All the masked instructions executed outside of the MASKU are type-A.
+When a masked instruction is executed outside of the MASKU, the units responsible to handle the instruction stall until receiveing the predication mask bits from the MASKU.</p>
+<p>The lane sequencers of each lane will always enable the <code class="docutils literal notranslate"><span class="pre">MaskM</span></code> operand requester and queue to fetch the <code class="docutils literal notranslate"><span class="pre">v0</span></code> mask vector and send it to the MASKU.
+The MASKU can receive <code class="docutils literal notranslate"><span class="pre">NrLanes</span> <span class="pre">*</span> <span class="pre">64</span></code> bits of <code class="docutils literal notranslate"><span class="pre">v0</span></code> vector from the lanes every cycle.</p>
+<p>Upon reception of a chunk of the <code class="docutils literal notranslate"><span class="pre">v0</span></code> operand, the MASKU processes it (mask source) to create <code class="docutils literal notranslate"><span class="pre">NrLanes</span></code> 8-bit byte strobes, one per lane. The mask strobes are saved in the mask queue, connected to all the other Ara units directly.
+The MASKU handshaked the input <code class="docutils literal notranslate"><span class="pre">v0</span></code> chunk once it is fully processed, to get the next chunk if needed.</p>
+<p>Each bit of each mask strobe corresponds to a byte of the data bus. If the mask strobe bit is at <code class="docutils literal notranslate"><span class="pre">1</span></code>, the corresponding byte on the data bus is active and will be written. Otherwise, the corresponding byte is not active and will not be written.</p>
+<p>Note: the strobe creation happens in the MASKU since the mask bits are not always saved sequentially in <code class="docutils literal notranslate"><span class="pre">v0</span></code> and are never saved with a EW1 encoding. Instead, the content of <code class="docutils literal notranslate"><span class="pre">v0</span></code> can be encoded with EW8, EW16, EW32, or EW64 byte-layout encoding. This implies that, even for in-lane operations, the <code class="docutils literal notranslate"><span class="pre">i</span></code>th mask bit is never saved in the <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">%</span> <span class="pre">NrLanes</span></code>th lane’s VRF chunk.
+EW1 is avoided when possible since it would require a more complex reshuffling stage. Only the MASKU can handle bit-level reshuffling.</p>
+</section>
+<section id="b">
+<h3>B<a class="headerlink" href="#b" title="Permalink to this heading"></a></h3>
+<p>Vector gather instructions (<code class="docutils literal notranslate"><span class="pre">vrgather</span></code>, <code class="docutils literal notranslate"><span class="pre">vcompress</span></code>) are completely executed by the MASKU in two stages.</p>
+<p>First, the lane sequencers of each lane will enable the <code class="docutils literal notranslate"><span class="pre">AluA</span></code> operand requester and queue to inject the index operand (<code class="docutils literal notranslate"><span class="pre">vs1</span></code>) into the <code class="docutils literal notranslate"><span class="pre">MASKU</span></code> through the ALU.</p>
+<p>The MASKU processes the incoming source operands from <code class="docutils literal notranslate"><span class="pre">vs1</span></code> to create the indices used for the vector gather operation. These indices are used to 1) create a request to the <code class="docutils literal notranslate"><span class="pre">MaskB</span></code> opqueue of each lane</p>
+<p>Note: since <code class="docutils literal notranslate"><span class="pre">vrgather</span></code> can be masked, it needs three input sources to the MASKU at full operations. We inject the indexes through the ALU to re-use the already-existing connections from the ALU to the MASKU. On the other hand, we use the <code class="docutils literal notranslate"><span class="pre">vd</span></code> operand queue to forward the source operand register elements (<code class="docutils literal notranslate"><span class="pre">vs2</span></code>) through the <code class="docutils literal notranslate"><span class="pre">MaskB</span></code> since this request is non-standard (i.e., it does not come from the main sequencer) and the <code class="docutils literal notranslate"><span class="pre">MaskB</span></code> is not connected to further units (e.g., the ALU), simplifying the control.</p>
+</section>
+<section id="c">
+<h3>C<a class="headerlink" href="#c" title="Permalink to this heading"></a></h3>
+<p>Vector instructions that do not belong to A) and B) categories belong to C).</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vcpop</span></code>, <code class="docutils literal notranslate"><span class="pre">vfirst</span></code>: these instructions process a mask input vector, accumulate a result, and returns it as a scalar element to the main sequencer (and then, to CVA6)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">viota</span></code>, <code class="docutils literal notranslate"><span class="pre">vid</span></code>: these instructions write back a non-mask vector into the VRF. <code class="docutils literal notranslate"><span class="pre">viota</span></code> requires a mask-vector as a source operand.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vmsbf</span></code>, <code class="docutils literal notranslate"><span class="pre">vmsif</span></code>, <code class="docutils literal notranslate"><span class="pre">vmsof</span></code>: these instructions take mask-vector as inputs and write back mask vectors into the VRF.</p></li>
+<li><p>Mask logical instructions (e.g., <code class="docutils literal notranslate"><span class="pre">vmand</span></code>): these instructions are executed by the ALU/FPU. The resulting mask vector is filtered and written back by the MASKU.</p></li>
+<li><p>Comparison instructions (e.g., <code class="docutils literal notranslate"><span class="pre">vmseq</span></code>, <code class="docutils literal notranslate"><span class="pre">vmfeq</span></code>): these instructions are executed by the ALU/FPU. The resulting mask vector is shuffled and written back by the MASKU.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vmadc</span></code>, <code class="docutils literal notranslate"><span class="pre">vmsbc</span></code>: these instructions are executed by the ALU/FPU. The resulting mask vector is filtered and written back by the MASKU.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="key-interface-signals">
+<h3>Key Interface Signals<a class="headerlink" href="#key-interface-signals" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fu_req_i</span></code> / <code class="docutils literal notranslate"><span class="pre">fu_resp_o</span></code></p></td>
+<td><p>Input/Output</p></td>
+<td><p>Generic functional unit interface used across Ara</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mask_req_o</span></code> / <code class="docutils literal notranslate"><span class="pre">mask_resp_i</span></code></p></td>
+<td><p>Output/Input</p></td>
+<td><p>Internal point-to-point interface between mask unit and back-end</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">masku_operands_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Composite of {{mask, vd, ALU result, FPU result}} per lane</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bit_enable_mask_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>Final per-bit mask after <code class="docutils literal notranslate"><span class="pre">vm</span></code> and mask logic</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">alu_result_compressed_seq_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>Per-lane ALU results compressed to 1-bit per element for mask construction</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="key-internal-logic-and-structure">
+<h3>Key Internal Logic and Structure<a class="headerlink" href="#key-internal-logic-and-structure" title="Permalink to this heading"></a></h3>
+<section id="operand-handling-via-masku-operands">
+<h4>1. <strong>Operand Handling (via <code class="docutils literal notranslate"><span class="pre">masku_operands</span></code>)</strong><a class="headerlink" href="#operand-handling-via-masku-operands" title="Permalink to this heading"></a></h4>
+<p>The submodule <code class="docutils literal notranslate"><span class="pre">masku_operands</span></code> takes inputs from multiple sources, extracts and deshuffles data from the lanes, and prepares it for mask instruction processing. The unpacked operands include:</p>
+<ul class="simple">
+<li><p><strong>ALU/FPU results:</strong> used to build comparison masks</p></li>
+<li><p><strong>Mask Register (v0.m):</strong> used for <code class="docutils literal notranslate"><span class="pre">vm=0</span></code> operations or as a source for special instructions like <code class="docutils literal notranslate"><span class="pre">vmsbc</span></code></p></li>
+<li><p><strong>Destination Register (vd):</strong> included to support tail undisturbed/agnostic policy</p></li>
+</ul>
+</section>
+<section id="shuffling-and-de-shuffling">
+<h4>2. <strong>Shuffling and De-shuffling</strong><a class="headerlink" href="#shuffling-and-de-shuffling" title="Permalink to this heading"></a></h4>
+<p>All inputs from lanes arrive in “shuffled” format (i.e., interleaved across lanes). These are deshuffled into linear vectors using the <code class="docutils literal notranslate"><span class="pre">deshuffle_index()</span></code> function depending on:</p>
+<ul class="simple">
+<li><p>Vector element width (EEW)</p></li>
+<li><p>Operand type (source, mask, etc.)</p></li>
+</ul>
+<p>The reverse happens for outgoing data, especially for constructing results such as:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bit_enable_mask_o</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">alu_result_compressed_seq_o</span></code></p></li>
+</ul>
+</section>
+<section id="functional-unit-arbitration">
+<h4>3. <strong>Functional Unit Arbitration</strong><a class="headerlink" href="#functional-unit-arbitration" title="Permalink to this heading"></a></h4>
+<p>The mask unit selects the relevant result from the functional units (ALU or FPU), using the <code class="docutils literal notranslate"><span class="pre">masku_fu_i</span></code> signal. A dynamic multiplexer is created to forward the right result stream to the processing pipeline.</p>
+</section>
+<section id="tail-and-mask-handling">
+<h4>4. <strong>Tail and Mask Handling</strong><a class="headerlink" href="#tail-and-mask-handling" title="Permalink to this heading"></a></h4>
+<p>The output mask construction is modified based on:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vm</span></code> flag: if disabled, <code class="docutils literal notranslate"><span class="pre">v0.m</span></code> is used to mask off elements</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vl</span></code>: vector length to restrict valid lanes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vtype.vsew</span></code> vs. <code class="docutils literal notranslate"><span class="pre">eew</span></code>: to determine stride and alignment</p></li>
+</ul>
+</section>
+<section id="spill-registers">
+<h4>5. <strong>Spill Registers</strong><a class="headerlink" href="#spill-registers" title="Permalink to this heading"></a></h4>
+<p>To tolerate back-pressure from consuming stages (e.g., the mask functional unit or output logic), spill registers decouple lane input valid/ready from downstream ready signals.</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="module-masku-operands">
+<h2>Module: <code class="docutils literal notranslate"><span class="pre">masku_operands</span></code><a class="headerlink" href="#module-masku-operands" title="Permalink to this heading"></a></h2>
+<section id="purpose">
+<h3>Purpose<a class="headerlink" href="#purpose" title="Permalink to this heading"></a></h3>
+<p>This module prepares operands for mask instructions by:</p>
+<ul class="simple">
+<li><p>Unpacking incoming composite operand vectors per lane</p></li>
+<li><p>De-shuffling them into sequential formats</p></li>
+<li><p>Constructing masks that control lane execution</p></li>
+<li><p>Compressing ALU/FPU results into 1-bit-per-element output for Boolean ops</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="operand-extraction">
+<h3>Operand Extraction<a class="headerlink" href="#operand-extraction" title="Permalink to this heading"></a></h3>
+<p>Input:
+<code class="docutils literal notranslate"><span class="pre">masku_operands_i[lane][{mask,</span> <span class="pre">vd,</span> <span class="pre">alu,</span> <span class="pre">fpu}]</span></code></p>
+<p>Each lane provides:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mask</span> <span class="pre">(v0.m)</span></code> in index 0</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vd</span></code> in index 1</p></li>
+<li><p>ALU and FPU results in indices 2+</p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">masku_fu_i</span></code> decides which result to select (ALU or FPU) dynamically per instruction.</p>
+</section>
+<hr class="docutils" />
+<section id="output-data-formats">
+<h3>Output Data Formats<a class="headerlink" href="#output-data-formats" title="Permalink to this heading"></a></h3>
+<p>The module produces both:</p>
+<ul class="simple">
+<li><p><strong>Shuffled (lane-local) outputs</strong>: suitable for vector-wide operation</p></li>
+<li><p><strong>Sequential (deshuffled) outputs</strong>: for scalarized control and masking</p></li>
+</ul>
+<p>Both <code class="docutils literal notranslate"><span class="pre">vd</span></code>, <code class="docutils literal notranslate"><span class="pre">mask</span></code>, and selected result are handled this way, with:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">*_o</span></code> – per-lane outputs</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*_seq_o</span></code> – sequential, deshuffled formats</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*_compressed_seq_o</span></code> – compressed ALU result for Boolean ops</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="bit-enable-mask-logic">
+<h3>Bit Enable Mask Logic<a class="headerlink" href="#bit-enable-mask-logic" title="Permalink to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">bit_enable_mask_o</span></code> signal is key for determining per-element enablement:</p>
+<ul class="simple">
+<li><p>Starts from a pure <code class="docutils literal notranslate"><span class="pre">vl</span></code> bitmask (optional via <code class="docutils literal notranslate"><span class="pre">VlBitMaskEnable</span></code>)</p></li>
+<li><p>Combined with mask register <code class="docutils literal notranslate"><span class="pre">v0</span></code> (unless <code class="docutils literal notranslate"><span class="pre">vm=1</span></code>)</p></li>
+<li><p>Element-size-aligned using <code class="docutils literal notranslate"><span class="pre">shuffle_index()</span></code> for precise control</p></li>
+</ul>
+<p>Instructions like <code class="docutils literal notranslate"><span class="pre">vmsbc</span></code>, <code class="docutils literal notranslate"><span class="pre">vmadc</span></code> bypass this logic and use <code class="docutils literal notranslate"><span class="pre">v0</span></code> as a true source, not a mask.</p>
+</section>
+<hr class="docutils" />
+<section id="alu-fpu-result-compression">
+<h3>ALU/FPU Result Compression<a class="headerlink" href="#alu-fpu-result-compression" title="Permalink to this heading"></a></h3>
+<p>The ALU or FPU result is compressed into a Boolean vector:</p>
+<ul class="simple">
+<li><p>For every element, MSB of its result is selected</p></li>
+<li><p>Stored in <code class="docutils literal notranslate"><span class="pre">alu_result_compressed_seq_o</span></code> using logic:
+<code class="docutils literal notranslate"><span class="pre">alu_result_compressed_seq_o[bit_index]</span> <span class="pre">=</span> <span class="pre">masku_operand_alu_o[lane][bit_offset];</span></code></p></li>
+</ul>
+<p>This compression is needed for e.g., <code class="docutils literal notranslate"><span class="pre">vmsgt</span></code>, <code class="docutils literal notranslate"><span class="pre">vmfeq</span></code>.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../sldu/sldu.html" class="btn btn-neutral float-left" title="sldu — Ara’s slide unit, for permutations, shuffles, and slides" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../vlsu/vlsu.html" class="btn btn-neutral float-right" title="vlsu - Vector Load/Store Unit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

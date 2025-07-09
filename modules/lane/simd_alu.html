@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>simd_alu - Ara’s in-lane SIMD ALU (simd_alu) &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="fixed_p_rounding - Set up fixed-point arithmetic rounding information" href="fixed_p_rounding.html" />
+    <link rel="prev" title="valu - Instantiate the in-lane SIMD ALU (unpipelined)" href="valu.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inputs">Inputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#outputs">Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-types">Internal Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#main-features-and-functionality">Main Features and Functionality</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vector-element-width-awareness">1. <strong>Vector Element Width Awareness</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#alu-operation-decoding">2. <strong>ALU Operation Decoding</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#saturation-and-fixed-point-handling">3. <strong>Saturation and Fixed-Point Handling</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mask-logic-merging">4. <strong>Mask Logic &amp; Merging</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#shift-narrowing-operations">5. <strong>Shift &amp; Narrowing Operations</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rounding-modes-vxrm">6. <strong>Rounding Modes (VXRM)</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#assertions">Assertions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#instruction-categories">Instruction Categories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#design-considerations">Design Considerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-behavior-pseudocode">Example Behavior (Pseudocode)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/simd_alu.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="simd-alu-ara-s-in-lane-simd-alu-simd-alu">
+<h1><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)<a class="headerlink" href="#simd-alu-ara-s-in-lane-simd-alu-simd-alu" title="Permalink to this heading"></a></h1>
+<p>This document provides an in-depth technical explanation of the <code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> module in the Ara vector processor. The <code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> (Single Instruction, Multiple Data Arithmetic Logic Unit) is responsible for element-wise ALU operations on 64-bit vector elements. It supports fixed-point arithmetic, saturating arithmetic, logical and comparison operations, shift instructions, and narrowing/rounding/merge instructions.</p>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Module Name:</strong> <code class="docutils literal notranslate"><span class="pre">simd_alu</span></code></p></li>
+<li><p><strong>Source:</strong> <code class="docutils literal notranslate"><span class="pre">simd_alu.sv</span></code></p></li>
+<li><p><strong>Author:</strong> Matheus Cavalcante</p></li>
+<li><p><strong>License:</strong> Solderpad Hardware License, Version 0.51</p></li>
+<li><p><strong>Purpose:</strong> Implements vector ALU functionality supporting element-wise operations, fixed-point saturation, rounding, comparisons, and shifts for Ara’s 64-bit SIMD vector datapath.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="inputs">
+<h2>Inputs<a class="headerlink" href="#inputs" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_a_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t</span></code> (64-bit)</p></td>
+<td><p>First operand for the ALU operation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_b_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t</span></code> (64-bit)</p></td>
+<td><p>Second operand</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">valid_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Enables processing of a new instruction</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vm_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Vector mask enable</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mask_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">strb_t</span></code> (byte-wide mask)</p></td>
+<td><p>Byte-level mask controlling predicate effects</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">narrowing_select_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Select for narrowing results</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">op_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ara_op_e</span></code></p></td>
+<td><p>ALU operation code</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vew_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vew_e</span></code></p></td>
+<td><p>Vector element width selector (EW8, EW16, etc.)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rm</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">strb_t</span></code></p></td>
+<td><p>Rounding mode (used in fixed-point ops)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vxrm_t</span></code></p></td>
+<td><p>Fixed-point rounding mode (VXRM)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="outputs">
+<h2>Outputs<a class="headerlink" href="#outputs" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_o</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t</span></code></p></td>
+<td><p>Final result after SIMD ALU computation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vxsat_o</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vxsat_t</span></code></p></td>
+<td><p>Overflow saturation flags per lane</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="internal-types">
+<h2>Internal Types<a class="headerlink" href="#internal-types" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">alu_operand_t</span></code>: Unions allowing the interpretation of a 64-bit value as 8/16/32/64-bit elements.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">alu_sat_operand_t</span></code>: Extended width unions for saturation detection.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="main-features-and-functionality">
+<h2>Main Features and Functionality<a class="headerlink" href="#main-features-and-functionality" title="Permalink to this heading"></a></h2>
+<section id="vector-element-width-awareness">
+<h3>1. <strong>Vector Element Width Awareness</strong><a class="headerlink" href="#vector-element-width-awareness" title="Permalink to this heading"></a></h3>
+<p>Operations are performed on lanes as defined by <code class="docutils literal notranslate"><span class="pre">vew_i</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EW8</span></code>: 8x 8-bit operations</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EW16</span></code>: 4x 16-bit</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EW32</span></code>: 2x 32-bit</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EW64</span></code>: 1x 64-bit</p></li>
+</ul>
+<p>Each operation adapts to the selected width via unpacking the input operands accordingly.</p>
+</section>
+<section id="alu-operation-decoding">
+<h3>2. <strong>ALU Operation Decoding</strong><a class="headerlink" href="#alu-operation-decoding" title="Permalink to this heading"></a></h3>
+<p>The module uses a large <code class="docutils literal notranslate"><span class="pre">case</span></code> statement on <code class="docutils literal notranslate"><span class="pre">op_i</span></code> to implement logic/arithmetic/comparison instructions. Many instructions use nested <code class="docutils literal notranslate"><span class="pre">case</span></code> statements based on <code class="docutils literal notranslate"><span class="pre">vew_i</span></code>.</p>
+</section>
+<section id="saturation-and-fixed-point-handling">
+<h3>3. <strong>Saturation and Fixed-Point Handling</strong><a class="headerlink" href="#saturation-and-fixed-point-handling" title="Permalink to this heading"></a></h3>
+<p>Fixed-point operations (e.g., <code class="docutils literal notranslate"><span class="pre">VSADD</span></code>, <code class="docutils literal notranslate"><span class="pre">VASUB</span></code>, <code class="docutils literal notranslate"><span class="pre">VNCLIP</span></code>) are handled conditionally using <code class="docutils literal notranslate"><span class="pre">FixPtSupport</span></code>. Overflow checks are done by checking high bits and flags are set in <code class="docutils literal notranslate"><span class="pre">vxsat</span></code>.</p>
+</section>
+<section id="mask-logic-merging">
+<h3>4. <strong>Mask Logic &amp; Merging</strong><a class="headerlink" href="#mask-logic-merging" title="Permalink to this heading"></a></h3>
+<p>The mask signal (<code class="docutils literal notranslate"><span class="pre">mask_i</span></code>) interacts with <code class="docutils literal notranslate"><span class="pre">vm_i</span></code> and is embedded in certain instruction results (e.g., comparisons). Merge and scalar move operations use the mask to choose between operands.</p>
+</section>
+<section id="shift-narrowing-operations">
+<h3>5. <strong>Shift &amp; Narrowing Operations</strong><a class="headerlink" href="#shift-narrowing-operations" title="Permalink to this heading"></a></h3>
+<p>Includes support for:</p>
+<ul class="simple">
+<li><p>Logical/arithmetic shifts (<code class="docutils literal notranslate"><span class="pre">VSLL</span></code>, <code class="docutils literal notranslate"><span class="pre">VSRL</span></code>, <code class="docutils literal notranslate"><span class="pre">VSRA</span></code>)</p></li>
+<li><p>Narrowing shift with optional rounding (<code class="docutils literal notranslate"><span class="pre">VNSRL</span></code>, <code class="docutils literal notranslate"><span class="pre">VNSRA</span></code>)</p></li>
+<li><p>Clip instructions (<code class="docutils literal notranslate"><span class="pre">VNCLIP</span></code>, <code class="docutils literal notranslate"><span class="pre">VNCLIPU</span></code>) with saturation</p></li>
+</ul>
+</section>
+<section id="rounding-modes-vxrm">
+<h3>6. <strong>Rounding Modes (VXRM)</strong><a class="headerlink" href="#rounding-modes-vxrm" title="Permalink to this heading"></a></h3>
+<p>Rounding behavior for fixed-point arithmetic and narrowing instructions is selected via <code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code>, using 4 defined rounding modes (e.g., round to nearest even, zero, etc.).</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="assertions">
+<h2>Assertions<a class="headerlink" href="#assertions" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>The final assertion checks that <code class="docutils literal notranslate"><span class="pre">DataWidth</span> <span class="pre">==</span> <span class="pre">$bits(alu_operand_t)</span></code> to ensure 64-bit operation compatibility.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="instruction-categories">
+<h2>Instruction Categories<a class="headerlink" href="#instruction-categories" title="Permalink to this heading"></a></h2>
+<p>Instructions include but are not limited to:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Category</p></th>
+<th class="head"><p>Examples</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Logical</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VAND</span></code>, <code class="docutils literal notranslate"><span class="pre">VOR</span></code>, <code class="docutils literal notranslate"><span class="pre">VXOR</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Arithmetic</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VADD</span></code>, <code class="docutils literal notranslate"><span class="pre">VSUB</span></code>, <code class="docutils literal notranslate"><span class="pre">VSADDU</span></code>, <code class="docutils literal notranslate"><span class="pre">VSADD</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Comparison</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VMSEQ</span></code>, <code class="docutils literal notranslate"><span class="pre">VMSLT</span></code>, <code class="docutils literal notranslate"><span class="pre">VMAX</span></code>, <code class="docutils literal notranslate"><span class="pre">VMIN</span></code>, etc.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Saturating</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VSSUB</span></code>, <code class="docutils literal notranslate"><span class="pre">VSSUBU</span></code>, <code class="docutils literal notranslate"><span class="pre">VSADDU</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Fixed-point</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VASUB</span></code>, <code class="docutils literal notranslate"><span class="pre">VNCLIP</span></code>, <code class="docutils literal notranslate"><span class="pre">VSSRA</span></code>, <code class="docutils literal notranslate"><span class="pre">VSSRL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Merging/Masking</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VMERGE</span></code>, <code class="docutils literal notranslate"><span class="pre">VMXOR</span></code>, <code class="docutils literal notranslate"><span class="pre">VMXNOR</span></code>, etc.</p></td>
+</tr>
+<tr class="row-even"><td><p>Shift Operations</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VSLL</span></code>, <code class="docutils literal notranslate"><span class="pre">VSRA</span></code>, <code class="docutils literal notranslate"><span class="pre">VNSRA</span></code>, etc.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="design-considerations">
+<h2>Design Considerations<a class="headerlink" href="#design-considerations" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Efficiency:</strong> Optimized for combinational output with modular per-lane calculations.</p></li>
+<li><p><strong>Flexibility:</strong> Supports varied element widths and rounding behavior.</p></li>
+<li><p><strong>Masking Support:</strong> Integrated mask control for conditional computation.</p></li>
+<li><p><strong>Saturation Awareness:</strong> vxsat flags make it suitable for overflow-sensitive ops.</p></li>
+<li><p><strong>RISC-V RVV Compatible:</strong> Aligns with vector instruction format and control conventions.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="example-behavior-pseudocode">
+<h2>Example Behavior (Pseudocode)<a class="headerlink" href="#example-behavior-pseudocode" title="Permalink to this heading"></a></h2>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="c1">// VADD with EW16 and two operands</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">res</span><span class="p">.</span><span class="n">w16</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opa</span><span class="p">.</span><span class="n">w16</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">opb</span><span class="p">.</span><span class="n">w16</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="valu.html" class="btn btn-neutral float-left" title="valu - Instantiate the in-lane SIMD ALU (unpipelined)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="fixed_p_rounding.html" class="btn btn-neutral float-right" title="fixed_p_rounding - Set up fixed-point arithmetic rounding information" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

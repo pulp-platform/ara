@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>operand_requester Module Documentation &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="operand_queues_stage — Instantiate the in-lane operand queues" href="operand_queues_stage.html" />
+    <link rel="prev" title="vrf — Ara’s Vector Register File (VRF)" href="vrf.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-description">Interface Description</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#inputs">Inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#outputs">Outputs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-mechanisms">Internal Mechanisms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#stream-registers">Stream Registers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hazard-management">Hazard Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operand-fetch-state-machine">Operand Fetch State Machine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#arbitration">Arbitration</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#exception-flushing">Exception Flushing</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/operand_requester.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="operand-requester-module-documentation">
+<h1><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation<a class="headerlink" href="#operand-requester-module-documentation" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> module orchestrates operand fetches from the Vector Register File (VRF) and delivers them to operand queues. It supports:</p>
+<ul class="simple">
+<li><p><strong>VRF access arbitration</strong> across multiple operand queues and functional units</p></li>
+<li><p><strong>Hazard tracking</strong> to prevent data hazards between instructions</p></li>
+<li><p><strong>Per-bank grant handling</strong> for load/store, ALU, mask, slide units, etc.</p></li>
+<li><p><strong>VRF write-backs</strong> from functional units</p></li>
+<li><p><strong>Exception flushing</strong> for store-related hazards</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="interface-description">
+<h2>Interface Description<a class="headerlink" href="#interface-description" title="Permalink to this heading"></a></h2>
+<section id="inputs">
+<h3>Inputs<a class="headerlink" href="#inputs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code>, <code class="docutils literal notranslate"><span class="pre">rst_ni</span></code>: Clock and active-low reset.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">global_hazard_table_i</span></code>: Tracks instruction dependencies across vector instructions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_request_i</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_request_valid_i</span></code>: Requests from operand queues.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lsu_ex_flush_i</span></code>: Flush signal for store exceptions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_queue_ready_i</span></code>: Queue ready status for issued operands.</p></li>
+<li><p>Functional unit write-back inputs (<code class="docutils literal notranslate"><span class="pre">*_result_*_i</span></code>): ALU, MFPU, Mask, Slide, Load.</p></li>
+</ul>
+</section>
+<section id="outputs">
+<h3>Outputs<a class="headerlink" href="#outputs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_request_ready_o</span></code>: Ready to accept new requests.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lsu_ex_flush_o</span></code>: Acknowledge exception flush.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vrf_*_o</span></code>: Outputs for accessing the VRF (read/write).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_queue_*_o</span></code>: Commands and valid signals for operand queues.</p></li>
+<li><p>Functional unit grant outputs (<code class="docutils literal notranslate"><span class="pre">*_result_*_gnt_o</span></code>, <code class="docutils literal notranslate"><span class="pre">*_result_final_gnt_o</span></code>)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="internal-mechanisms">
+<h2>Internal Mechanisms<a class="headerlink" href="#internal-mechanisms" title="Permalink to this heading"></a></h2>
+<section id="stream-registers">
+<h3>Stream Registers<a class="headerlink" href="#stream-registers" title="Permalink to this heading"></a></h3>
+<p>For results written back from VLDU, Slide, and Mask units, <strong>stream registers</strong> are used to buffer incoming data and synchronize write-backs. These wrap ID, address, data, and byte-enable.</p>
+<p>Each stream register:</p>
+<ul class="simple">
+<li><p>Buffers a result from a VFU</p></li>
+<li><p>Issues a valid signal</p></li>
+<li><p>Acknowledges with a grant signal</p></li>
+</ul>
+<p>Final grants are issued when data is truly committed to VRF to avoid releasing hazards prematurely.</p>
+</section>
+<hr class="docutils" />
+<section id="hazard-management">
+<h3>Hazard Management<a class="headerlink" href="#hazard-management" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Each operand requester tracks hazards using <code class="docutils literal notranslate"><span class="pre">requester_metadata_t</span></code>.</p></li>
+<li><p>Hazards are checked against a global hazard table.</p></li>
+<li><p>Stalls are inserted if a dependency is not resolved.</p></li>
+</ul>
+<p>Hazards specifically handled:</p>
+<ul class="simple">
+<li><p><strong>Write-after-read (WAR)</strong> and <strong>write-after-write (WAW)</strong></p></li>
+<li><p><strong>Widening operations</strong> (doubling vector width) use toggling counters to synchronize requests.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="operand-fetch-state-machine">
+<h3>Operand Fetch State Machine<a class="headerlink" href="#operand-fetch-state-machine" title="Permalink to this heading"></a></h3>
+<p>Each operand requester has a <strong>2-state FSM</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">IDLE</span></code>: Wait for a new request.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REQUESTING</span></code>: Issue operand accesses to the VRF.</p></li>
+</ul>
+<p>On receiving a valid request:</p>
+<ul class="simple">
+<li><p>VRF address is computed</p></li>
+<li><p>Metadata is initialized</p></li>
+<li><p>Commands are sent to the operand queue</p></li>
+<li><p>Transition to <code class="docutils literal notranslate"><span class="pre">REQUESTING</span></code></p></li>
+</ul>
+<p>In <code class="docutils literal notranslate"><span class="pre">REQUESTING</span></code>:</p>
+<ul class="simple">
+<li><p>Stall if hazard unresolved</p></li>
+<li><p>Issue bank-aligned requests</p></li>
+<li><p>Update address and element counters</p></li>
+<li><p>Transition to <code class="docutils literal notranslate"><span class="pre">IDLE</span></code> once all elements are read</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="arbitration">
+<h3>Arbitration<a class="headerlink" href="#arbitration" title="Permalink to this heading"></a></h3>
+<p>Each VRF bank instantiates:</p>
+<ol class="arabic simple">
+<li><p><strong>High-Priority Arbiter</strong>:</p>
+<ul class="simple">
+<li><p>ALU</p></li>
+<li><p>MFPU</p></li>
+<li><p>Mask Unit</p></li>
+</ul>
+</li>
+<li><p><strong>Low-Priority Arbiter</strong>:</p>
+<ul class="simple">
+<li><p>Slide Address Generator</p></li>
+<li><p>Load Unit</p></li>
+<li><p>Store-Related Operand Queues</p></li>
+</ul>
+</li>
+<li><p><strong>Top-Level Arbiter</strong>:</p>
+<ul class="simple">
+<li><p>Selects between high and low priority</p></li>
+<li><p>Drives VRF signals: <code class="docutils literal notranslate"><span class="pre">vrf_req_o</span></code>, <code class="docutils literal notranslate"><span class="pre">vrf_addr_o</span></code>, <code class="docutils literal notranslate"><span class="pre">vrf_wen_o</span></code>, etc.</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="exception-flushing">
+<h2>Exception Flushing<a class="headerlink" href="#exception-flushing" title="Permalink to this heading"></a></h2>
+<p>On store-related exceptions (<code class="docutils literal notranslate"><span class="pre">lsu_ex_flush_i</span></code>), operand requests associated with:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">StA</span></code> (Store Address)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SlideAddrGenA</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MaskM</span></code></p></li>
+</ul>
+<p>are <strong>aborted</strong> immediately. Metadata is reset, and the FSM transitions back to <code class="docutils literal notranslate"><span class="pre">IDLE</span></code>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="vrf.html" class="btn btn-neutral float-left" title="vrf — Ara’s Vector Register File (VRF)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="operand_queues_stage.html" class="btn btn-neutral float-right" title="operand_queues_stage — Instantiate the in-lane operand queues" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ara_system: Integration of CVA6 and Ara &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ara: Top-Level Vector Unit" href="ara.html" />
+    <link rel="prev" title="ara_soc: Top-Level Dummy SoC for Ara" href="ara_soc.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory-coherence-and-consistency">Memory Coherence and Consistency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#virtual-memory-support">Virtual memory support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ara-rvv-parameters">Ara + RVV Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cva6-and-axi-interface">CVA6 and AXI Interface</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ports">Ports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-blocks">Internal Blocks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cva6-core">1. <strong>CVA6 Core</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ara-accelerator">2. <strong>Ara Accelerator</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#axi-width-converter">3. <strong>AXI Width Converter</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#axi-invalidation-filter">4. <strong>AXI Invalidation Filter</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#axi-multiplexer">5. <strong>AXI Multiplexer</strong></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#vector-interface-handling">Vector Interface Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#alternative-configuration-ideal-dispatcher">Alternative Configuration: <code class="docutils literal notranslate"><span class="pre">IDEAL_DISPATCHER</span></code></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane/simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/modules/ara_system.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ara-system-integration-of-cva6-and-ara">
+<h1><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara<a class="headerlink" href="#ara-system-integration-of-cva6-and-ara" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ara_system</span></code> instantiates and connects the scalar core <strong>CVA6</strong> with the <strong>Ara vector accelerator</strong>. It builds the system-level interface between the two, handles AXI width conversion, invalidation signaling, and merges AXI traffic into a unified master port.</p>
+<p>This module is the core of Ara’s architectural integration, enabling:</p>
+<ul class="simple">
+<li><p>Vector instruction dispatch from CVA6 to Ara</p></li>
+<li><p>Shared AXI access arbitration</p></li>
+<li><p>Coherent invalidation handling for vector memory stores</p></li>
+<li><p>Flexible benchmarking configurations through parameterization</p></li>
+</ul>
+<p>CVA6 is a RV64GC RISC-V Linux-ready core. It features one L1 instruction cache and one L1 data cache connecting to the L2 memory.</p>
+<p>CVA6 is the only “RISC-V core” properly speaking, meaning that it is the only one accessing the program’s instruction flow.</p>
+<p>Ara is a tighlty-coupled accelerator plugged into CVA6, and receives vector instructions from CVA6.</p>
+<p>Both Ara and CVA6 have a private AXI4-compliant Load-Store unit. Ara’s one directly connects to the L2 memory, bypassing CVA6’s L1 data cache.</p>
+<p>This allows for potential coherence and memory operation ordering issues.</p>
+</section>
+<hr class="docutils" />
+<section id="memory-coherence-and-consistency">
+<h2>Memory Coherence and Consistency<a class="headerlink" href="#memory-coherence-and-consistency" title="Permalink to this heading"></a></h2>
+<p>Memory coherence is enforced through three main mechanisms:</p>
+<ul class="simple">
+<li><p>Memory writes are serialized through a single memory bus.</p></li>
+<li><p>CVA6 L1-D$ is write-through.</p></li>
+<li><p>An invalidation filter snoops on Ara’s AXI AW memory bus and invalidates the potentially-stale sets in CVA6’s L1-D$.</p></li>
+</ul>
+<p>Memory ordering is enforced by CVA6 and control signals between CVA6 and Ara. No memory operations are issued or started until it’s safe to do so.
+For example, pending vector stores prevent CVA6 from issuing scalar memory operations, and vector memory operations are not dispatched to Ara if there is a pending scalar store.</p>
+</section>
+<hr class="docutils" />
+<section id="virtual-memory-support">
+<h2>Virtual memory support<a class="headerlink" href="#virtual-memory-support" title="Permalink to this heading"></a></h2>
+<p>Ara uses CVA6’s MMU to translate virtual addresses into physical ones. This is done through the MMU interface.</p>
+</section>
+<hr class="docutils" />
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading"></a></h2>
+<section id="ara-rvv-parameters">
+<h3>Ara + RVV Parameters<a class="headerlink" href="#ara-rvv-parameters" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NrLanes</span></code></p></td>
+<td><p>Number of vector lanes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">VLEN</span></code></p></td>
+<td><p>Vector register length (in bits)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OSSupport</span></code></p></td>
+<td><p>Enables OS features</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FPUSupport</span></code></p></td>
+<td><p>Enabled FP precisions</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FPExtSupport</span></code></p></td>
+<td><p>Support for <code class="docutils literal notranslate"><span class="pre">vfrec7</span></code>, <code class="docutils literal notranslate"><span class="pre">vfrsqrt7</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FixPtSupport</span></code></p></td>
+<td><p>Enable fixed-point ops</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SegSupport</span></code></p></td>
+<td><p>Support for segmented memory ops</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="cva6-and-axi-interface">
+<h3>CVA6 and AXI Interface<a class="headerlink" href="#cva6-and-axi-interface" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CVA6Cfg</span></code></p></td>
+<td><p>CVA6 configuration record</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">exception_t</span></code></p></td>
+<td><p>CVA6 exception type</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">accelerator_req_t</span></code></p></td>
+<td><p>Accelerator interface (CVA6 → Ara)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">accelerator_resp_t</span></code></p></td>
+<td><p>Accelerator interface (Ara → CVA6)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">acc_mmu_{req,resp}</span></code></p></td>
+<td><p>MMU interface</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cva6_to_acc_t</span></code></p></td>
+<td><p>Packed request interface</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">acc_to_cva6_t</span></code></p></td>
+<td><p>Packed response interface</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Axi*Width</span></code></p></td>
+<td><p>AXI bus widths</p></td>
+</tr>
+<tr class="row-even"><td><p>AXI typedefs</p></td>
+<td><p>All channel and request/response types</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="ports">
+<h2>Ports<a class="headerlink" href="#ports" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Port</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Clock signal</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Active-low reset</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">boot_addr_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Initial fetch address for CVA6</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hart_id_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Hardware thread ID</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scan_*</span></code></p></td>
+<td><p>In/Out</p></td>
+<td><p>Scan chain (test)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">axi_req_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>AXI master request (merged)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">axi_resp_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>AXI master response (merged)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="internal-blocks">
+<h2>Internal Blocks<a class="headerlink" href="#internal-blocks" title="Permalink to this heading"></a></h2>
+<section id="cva6-core">
+<h3>1. <strong>CVA6 Core</strong><a class="headerlink" href="#cva6-core" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Scalar processor core</p></li>
+<li><p>Interfaces to Ara via a dedicated accelerator port</p></li>
+<li><p>Outputs standard AXI (<code class="docutils literal notranslate"><span class="pre">ariane_axi_req_t</span></code>) at narrow data width to L2 memory</p></li>
+</ul>
+</section>
+<section id="ara-accelerator">
+<h3>2. <strong>Ara Accelerator</strong><a class="headerlink" href="#ara-accelerator" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Fully parameterized vector unit</p></li>
+<li><p>Receives CVA6 requests, returns results and exceptions</p></li>
+<li><p>AXI master interface at wide data width (<code class="docutils literal notranslate"><span class="pre">32</span> <span class="pre">*</span> <span class="pre">#Lanes</span></code> data width)</p></li>
+</ul>
+</section>
+<section id="axi-width-converter">
+<h3>3. <strong>AXI Width Converter</strong><a class="headerlink" href="#axi-width-converter" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">axi_dw_converter</span></code> adjusts CVA6’s narrow AXI (e.g., 64-bit) to match Ara/system-wide bus width</p></li>
+</ul>
+</section>
+<section id="axi-invalidation-filter">
+<h3>4. <strong>AXI Invalidation Filter</strong><a class="headerlink" href="#axi-invalidation-filter" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Detects vector memory stores and emits invalidation signals</p></li>
+<li><p>Ensures cache coherence with CVA6</p></li>
+<li><p>Integrated with Ara’s AXI path</p></li>
+</ul>
+</section>
+<section id="axi-multiplexer">
+<h3>5. <strong>AXI Multiplexer</strong><a class="headerlink" href="#axi-multiplexer" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Merges CVA6 and Ara AXI requests</p></li>
+<li><p>Handles arbitration, backpressure, and spill registers</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="vector-interface-handling">
+<h2>Vector Interface Handling<a class="headerlink" href="#vector-interface-handling" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">acc_to_cva6_t</span></code> signal is extended to include <code class="docutils literal notranslate"><span class="pre">inval_valid</span></code> and <code class="docutils literal notranslate"><span class="pre">inval_addr</span></code>, enabling memory coherence notification from Ara back to CVA6.</p></li>
+<li><p>Ara can assert <code class="docutils literal notranslate"><span class="pre">inval_valid</span></code> when performing stores that require CVA6 cache line invalidation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">acc_cons_en</span></code> gate controls the invalidation path.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="alternative-configuration-ideal-dispatcher">
+<h2>Alternative Configuration: <code class="docutils literal notranslate"><span class="pre">IDEAL_DISPATCHER</span></code><a class="headerlink" href="#alternative-configuration-ideal-dispatcher" title="Permalink to this heading"></a></h2>
+<p>The ideal dispatcher is just a tool to benchmark Ara’s performance with an ideal vector instruction dispatcher instantiated INSTEAD OF CVA6.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">IDEAL_DISPATCHER</span></code> is defined:</p>
+<ul class="simple">
+<li><p>CVA6 is replaced with a perfect dispatcher (<code class="docutils literal notranslate"><span class="pre">accel_dispatcher_ideal</span></code>), i.e., a FIFO containing the dynamic instruction trace of the program plus the correct register file values</p></li>
+<li><p>Useful for functional validation/benchmarking or micro-benchmarking Ara in isolation</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ara_soc.html" class="btn btn-neutral float-left" title="ara_soc: Top-Level Dummy SoC for Ara" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ara.html" class="btn btn-neutral float-right" title="ara: Top-Level Vector Unit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

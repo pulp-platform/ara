@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>valu - Instantiate the in-lane SIMD ALU (unpipelined) &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="simd_alu - Ara’s in-lane SIMD ALU (simd_alu)" href="simd_alu.html" />
+    <link rel="prev" title="vector_fus_stage Module Documentation" href="vector_fus_stage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#table-of-contents">Table of Contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-parameters">Module Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#top-level-interface">Top-Level Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#vector-instruction-queue">Vector Instruction Queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#result-queue">Result Queue</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#scalar-operand-processing">Scalar Operand Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mask-operand-handling">Mask Operand Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reduction-support">Reduction Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#narrowing-instructions">Narrowing Instructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#simd-alu-execution">SIMD ALU Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fixed-point-rounding-and-saturation">Fixed-Point Rounding and Saturation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#control-and-state-machines">Control and State Machines</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#alu-state-alu-state-q">ALU State (<code class="docutils literal notranslate"><span class="pre">alu_state_q</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#instruction-lifecycle">Instruction Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#commit-and-writeback">Commit and Writeback</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/valu.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="valu-instantiate-the-in-lane-simd-alu-unpipelined">
+<h1><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)<a class="headerlink" href="#valu-instantiate-the-in-lane-simd-alu-unpipelined" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">valu</span></code> module is a central component of Ara’s vector processing pipeline. It acts as a SIMD (Single Instruction, Multiple Data) integer Arithmetic Logic Unit, capable of executing vector instructions over 64-bit wide data lanes. Its primary role is to execute integer operations across multiple vector lanes in parallel and to manage operations including fixed-point arithmetic, scalar replication, vector reductions, narrowing operations, and interaction with the mask unit and slide unit.</p>
+<p>This documentation serves as a <strong>golden reference</strong>, explaining every functional aspect of the <code class="docutils literal notranslate"><span class="pre">valu</span></code> module in detail.</p>
+</section>
+<hr class="docutils" />
+<section id="table-of-contents">
+<h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="#module-parameters"><span class="xref myst">Module Parameters</span></a></p></li>
+<li><p><a class="reference internal" href="#top-level-interface"><span class="xref myst">Top-Level Interface</span></a></p></li>
+<li><p><a class="reference internal" href="#vector-instruction-queue"><span class="xref myst">Vector Instruction Queue</span></a></p></li>
+<li><p><a class="reference internal" href="#result-queue"><span class="xref myst">Result Queue</span></a></p></li>
+<li><p><a class="reference internal" href="#scalar-operand-processing"><span class="xref myst">Scalar Operand Processing</span></a></p></li>
+<li><p><a class="reference internal" href="#mask-operand-handling"><span class="xref myst">Mask Operand Handling</span></a></p></li>
+<li><p><a class="reference internal" href="#reduction-support"><span class="xref myst">Reduction Support</span></a></p></li>
+<li><p><a class="reference internal" href="#narrowing-instructions"><span class="xref myst">Narrowing Instructions</span></a></p></li>
+<li><p><a class="reference internal" href="#simd-alu-execution"><span class="xref myst">SIMD ALU Execution</span></a></p></li>
+<li><p><a class="reference internal" href="#fixed-point-rounding-and-saturation"><span class="xref myst">Fixed-Point Rounding and Saturation</span></a></p></li>
+<li><p><a class="reference internal" href="#control-and-state-machines"><span class="xref myst">Control and State Machines</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-lifecycle"><span class="xref myst">Instruction Lifecycle</span></a></p></li>
+<li><p><a class="reference internal" href="#commit-and-writeback"><span class="xref myst">Commit and Writeback</span></a></p></li>
+<li><p><a class="reference internal" href="#summary"><span class="xref myst">Summary</span></a></p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="module-parameters">
+<h2>Module Parameters<a class="headerlink" href="#module-parameters" title="Permalink to this heading"></a></h2>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="n">NrLanes</span><span class="p">;</span>
+<span class="k">parameter</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="kt">unsigned</span><span class="w"> </span><span class="n">VLEN</span><span class="p">;</span>
+<span class="k">parameter</span><span class="w"> </span><span class="n">fixpt_support_e</span><span class="w"> </span><span class="n">FixPtSupport</span><span class="p">;</span>
+<span class="k">parameter</span><span class="w"> </span><span class="kt">type</span><span class="w"> </span><span class="n">vaddr_t</span><span class="p">;</span>
+<span class="k">parameter</span><span class="w"> </span><span class="kt">type</span><span class="w"> </span><span class="n">vfu_operation_t</span><span class="p">;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">NrLanes</span></code>: Number of vector lanes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VLEN</span></code>: Vector register length.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FixPtSupport</span></code>: Enable or disable fixed-point support.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vaddr_t</span></code>, <code class="docutils literal notranslate"><span class="pre">vfu_operation_t</span></code>: Type definitions for vector addresses and operations.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="top-level-interface">
+<h2>Top-Level Interface<a class="headerlink" href="#top-level-interface" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">valu</span></code> module interfaces with several components:</p>
+<ul class="simple">
+<li><p><strong>Dispatcher</strong>: Provides new vector operations (<code class="docutils literal notranslate"><span class="pre">vfu_operation_i</span></code>) and receives <code class="docutils literal notranslate"><span class="pre">vxsat_flag_o</span></code>.</p></li>
+<li><p><strong>Lane sequencer</strong>: Coordinates the execution flow.</p></li>
+<li><p><strong>Operand queues</strong>: Deliver source operands (<code class="docutils literal notranslate"><span class="pre">alu_operand_i</span></code>).</p></li>
+<li><p><strong>VRF</strong>: Accepts results for writeback.</p></li>
+<li><p><strong>Slide Unit</strong>: Exchanges operands and results for inter-lane reduction.</p></li>
+<li><p><strong>Mask Unit</strong>: Manages masking for selective operations.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="vector-instruction-queue">
+<h2>Vector Instruction Queue<a class="headerlink" href="#vector-instruction-queue" title="Permalink to this heading"></a></h2>
+<p>The queue tracks in-flight instructions and separates their execution phases:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">accept_pnt</span></code>: Points to the next free entry for acceptance.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">issue_pnt</span></code>: Instruction to be executed next.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">commit_pnt</span></code>: Instruction whose results are being written back.</p></li>
+</ul>
+<p>Each instruction is described by a <code class="docutils literal notranslate"><span class="pre">vfu_operation_t</span></code> struct and includes the vector operation, destination ID, and control fields like <code class="docutils literal notranslate"><span class="pre">vm</span></code> and <code class="docutils literal notranslate"><span class="pre">vsew</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="result-queue">
+<h2>Result Queue<a class="headerlink" href="#result-queue" title="Permalink to this heading"></a></h2>
+<p>This FIFO queue temporarily stores computation results, including:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">wdata</span></code>: Resulting word.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">id</span></code>: Instruction ID.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">addr</span></code>: Target vector address.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">be</span></code>: Byte enable.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mask</span></code>: Whether this result is to be forwarded to the mask unit.</p></li>
+</ul>
+<p>Two pointers (<code class="docutils literal notranslate"><span class="pre">write_pnt</span></code>, <code class="docutils literal notranslate"><span class="pre">read_pnt</span></code>) and a count (<code class="docutils literal notranslate"><span class="pre">result_queue_cnt_q</span></code>) track the queue status.</p>
+</section>
+<hr class="docutils" />
+<section id="scalar-operand-processing">
+<h2>Scalar Operand Processing<a class="headerlink" href="#scalar-operand-processing" title="Permalink to this heading"></a></h2>
+<p>Scalar values from instructions are <strong>replicated</strong> to 64-bit words depending on <code class="docutils literal notranslate"><span class="pre">vsew</span></code>. For instance:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EW8</span></code>: replicated 8×</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EW16</span></code>: replicated 4×</p></li>
+<li><p>etc.</p></li>
+</ul>
+<p>This ensures compatibility with SIMD-wide operations.</p>
+</section>
+<hr class="docutils" />
+<section id="mask-operand-handling">
+<h2>Mask Operand Handling<a class="headerlink" href="#mask-operand-handling" title="Permalink to this heading"></a></h2>
+<p>When vector masking is enabled (<code class="docutils literal notranslate"><span class="pre">vm</span> <span class="pre">==</span> <span class="pre">0</span></code>), a <code class="docutils literal notranslate"><span class="pre">spill_register</span></code> sends result data to the mask unit, filtered via the <code class="docutils literal notranslate"><span class="pre">mask_operand_ready_i</span></code> signal.</p>
+</section>
+<hr class="docutils" />
+<section id="reduction-support">
+<h2>Reduction Support<a class="headerlink" href="#reduction-support" title="Permalink to this heading"></a></h2>
+<p>Reduction operations are divided into:</p>
+<ul class="simple">
+<li><p><strong>Intra-lane</strong>: Sequential accumulation within a single lane.</p></li>
+<li><p><strong>Inter-lane</strong>: Exchange of partial sums between lanes via the Slide Unit.</p></li>
+</ul>
+<p>The ALU manages:</p>
+<ul class="simple">
+<li><p>Internal counters (<code class="docutils literal notranslate"><span class="pre">reduction_rx_cnt_q</span></code>)</p></li>
+<li><p>Inter-lane state transitions (e.g., <code class="docutils literal notranslate"><span class="pre">INTER_LANES_REDUCTION_TX</span></code>)</p></li>
+<li><p>Final SIMD reduction in lane 0</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="narrowing-instructions">
+<h2>Narrowing Instructions<a class="headerlink" href="#narrowing-instructions" title="Permalink to this heading"></a></h2>
+<p>Instructions like <code class="docutils literal notranslate"><span class="pre">VNSRA</span></code>, <code class="docutils literal notranslate"><span class="pre">VNCLIP</span></code> produce only <strong>half the normal element width per cycle</strong>. The module uses a toggle (<code class="docutils literal notranslate"><span class="pre">narrowing_select_q</span></code>) to alternate writing high/low halves.</p>
+</section>
+<hr class="docutils" />
+<section id="simd-alu-execution">
+<h2>SIMD ALU Execution<a class="headerlink" href="#simd-alu-execution" title="Permalink to this heading"></a></h2>
+<p>The core computation is handled by <code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>, parameterized by fixed-point support and rounding. It takes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">alu_operand_a</span></code> and <code class="docutils literal notranslate"><span class="pre">alu_operand_b</span></code></p></li>
+<li><p>The operation (<code class="docutils literal notranslate"><span class="pre">op_i</span></code>)</p></li>
+<li><p>The mask (<code class="docutils literal notranslate"><span class="pre">mask_i</span></code>)</p></li>
+<li><p>A rounding modifier (<code class="docutils literal notranslate"><span class="pre">rm</span></code>)</p></li>
+</ul>
+<p>Results are fed to the result queue and selectively masked.</p>
+</section>
+<hr class="docutils" />
+<section id="fixed-point-rounding-and-saturation">
+<h2>Fixed-Point Rounding and Saturation<a class="headerlink" href="#fixed-point-rounding-and-saturation" title="Permalink to this heading"></a></h2>
+<p>When enabled, rounding and saturation are implemented via <code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> and internal saturation flags (<code class="docutils literal notranslate"><span class="pre">alu_vxsat_q</span></code>). The saturation flag <code class="docutils literal notranslate"><span class="pre">vxsat_flag_o</span></code> is updated during commit.</p>
+</section>
+<hr class="docutils" />
+<section id="control-and-state-machines">
+<h2>Control and State Machines<a class="headerlink" href="#control-and-state-machines" title="Permalink to this heading"></a></h2>
+<section id="alu-state-alu-state-q">
+<h3>ALU State (<code class="docutils literal notranslate"><span class="pre">alu_state_q</span></code>)<a class="headerlink" href="#alu-state-alu-state-q" title="Permalink to this heading"></a></h3>
+<p>Defines execution phase:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">NO_REDUCTION</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">INTRA_LANE_REDUCTION</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">INTER_LANES_REDUCTION_TX</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">INTER_LANES_REDUCTION_RX</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SIMD_REDUCTION</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LN0_REDUCTION_COMMIT</span></code></p></li>
+</ul>
+<p>The FSM governs transitions based on instruction type, operand readiness, and SLDU handshake.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="instruction-lifecycle">
+<h2>Instruction Lifecycle<a class="headerlink" href="#instruction-lifecycle" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Acceptance</strong>: New vector instructions are stored in the queue.</p></li>
+<li><p><strong>Issue</strong>: Instructions are fetched and executed if operands are valid.</p></li>
+<li><p><strong>Execution</strong>: Results are generated (immediately or over multiple cycles).</p></li>
+<li><p><strong>Commit</strong>: Data is written to the vector register file or sent to the mask unit.</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="commit-and-writeback">
+<h2>Commit and Writeback<a class="headerlink" href="#commit-and-writeback" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Writeback to VRF is gated by <code class="docutils literal notranslate"><span class="pre">alu_result_gnt_i</span></code>.</p></li>
+<li><p>Results for masking go through <code class="docutils literal notranslate"><span class="pre">mask_operand_o</span></code>.</p></li>
+<li><p>Queue counters and state pointers are updated accordingly.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="vector_fus_stage.html" class="btn btn-neutral float-left" title="vector_fus_stage Module Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="simd_alu.html" class="btn btn-neutral float-right" title="simd_alu - Ara’s in-lane SIMD ALU (simd_alu)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

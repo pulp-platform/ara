@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vmfpu — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle) &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="simd_mul — Ara’s in-lane SIMD multiplier" href="simd_mul.html" />
+    <link rel="prev" title="fixed_p_rounding - Set up fixed-point arithmetic rounding information" href="fixed_p_rounding.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-description">Interface Description</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#clocking-and-reset">Clocking and Reset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operand-queue-interface">Operand Queue Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#result-interface">Result Interface</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#functional-blocks-overview">Functional Blocks Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#operand-queue-decoding">1. Operand Queue Decoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fsm-finite-state-machine-control-logic">2. FSM (Finite State Machine) Control Logic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#backend-compute-unit-selection">3. Backend Compute Unit Selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stream-registers">4. Stream Registers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#code-walkthrough">Code Walkthrough</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-declaration-and-parameters">Module Declaration and Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#registers-and-internal-signals">Registers and Internal Signals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operand-gathering-and-arbitration">Operand Gathering and Arbitration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#computation-dispatch">Computation Dispatch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#result-capture-and-output">Result Capture and Output</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/vmfpu.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="vmfpu-instantiate-in-lane-simd-fpu-simd-multiplier-and-simd-divider-pipelined-or-multi-cycle">
+<h1><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)<a class="headerlink" href="#vmfpu-instantiate-in-lane-simd-fpu-simd-multiplier-and-simd-divider-pipelined-or-multi-cycle" title="Permalink to this heading"></a></h1>
+<p><strong>Module Name:</strong> <code class="docutils literal notranslate"><span class="pre">vmfpu</span></code></p>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> module is part of the Ara RISC-V vector processor and implements the Vector Multiply and Floating Point Unit (VFPU) responsible for executing arithmetic operations that include multiplication and floating point computation. It supports operations over elements coming from the vector register file, controlled by the vector instruction sequencer and interconnected via operand queues.</p>
+<p>This module receives instructions, manages multiple operand queues, schedules operations on sub-units (like FP multipliers and ALUs), and routes results back to the operand dispatcher. It plays a key role in exploiting vector-level parallelism in floating point and multiplication domains.</p>
+</section>
+<hr class="docutils" />
+<section id="interface-description">
+<h2>Interface Description<a class="headerlink" href="#interface-description" title="Permalink to this heading"></a></h2>
+<section id="clocking-and-reset">
+<h3>Clocking and Reset<a class="headerlink" href="#clocking-and-reset" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Clock signal</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Active-low synchronous reset</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="operand-queue-interface">
+<h3>Operand Queue Interface<a class="headerlink" href="#operand-queue-interface" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_valid_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>One-hot encoding for operand queue validity</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Operands input from the vector register file</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_ready_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>Ready handshake for each operand queue</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="result-interface">
+<h3>Result Interface<a class="headerlink" href="#result-interface" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Signal</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_req_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>Valid signal to request writing result</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">result_id_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>ID of the instruction producing the result</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_addr_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>VRF write address</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">result_wdata_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>Result data to be written</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_be_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p>Byte enable signal</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">result_gnt_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Grant from operand requester</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_final_gnt_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p>Final commit acknowledgment from operand requester</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="functional-blocks-overview">
+<h2>Functional Blocks Overview<a class="headerlink" href="#functional-blocks-overview" title="Permalink to this heading"></a></h2>
+<section id="operand-queue-decoding">
+<h3>1. Operand Queue Decoding<a class="headerlink" href="#operand-queue-decoding" title="Permalink to this heading"></a></h3>
+<p>The module reads from several operand queues concurrently and decodes operand availability. A <code class="docutils literal notranslate"><span class="pre">onehot</span></code> signal (<code class="docutils literal notranslate"><span class="pre">operand_valid_i</span></code>) triggers internal FSMs to accept and latch operand data into internal registers.</p>
+<p>This mechanism ensures that the pipeline only proceeds when all necessary operands are ready.</p>
+</section>
+<section id="fsm-finite-state-machine-control-logic">
+<h3>2. FSM (Finite State Machine) Control Logic<a class="headerlink" href="#fsm-finite-state-machine-control-logic" title="Permalink to this heading"></a></h3>
+<p>The FSM implements several states:</p>
+<ul class="simple">
+<li><p><strong>IDLE</strong>: Waits for operands to be valid.</p></li>
+<li><p><strong>WAIT</strong>: Waits for all operands to be latched and for a backend (like FPU/MUL) to be free.</p></li>
+<li><p><strong>EXECUTE</strong>: Passes the operands to the compute unit and asserts a <code class="docutils literal notranslate"><span class="pre">valid</span></code> signal.</p></li>
+<li><p><strong>DONE</strong>: Waits for the result grant handshake.</p></li>
+</ul>
+<p>Transitions occur on the basis of operand readiness, backend availability, and completion handshakes. This careful control ensures precise handling of instruction lifecycle.</p>
+</section>
+<section id="backend-compute-unit-selection">
+<h3>3. Backend Compute Unit Selection<a class="headerlink" href="#backend-compute-unit-selection" title="Permalink to this heading"></a></h3>
+<p>Depending on the instruction:</p>
+<ul class="simple">
+<li><p>Integer multiplication might be routed to the <code class="docutils literal notranslate"><span class="pre">Mul</span></code> unit.</p></li>
+<li><p>Floating point computation might use FP ALU, FP MUL, or FP FMA.</p></li>
+</ul>
+<p>These units are external to the <code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> module and are connected via operand and result interfaces. The correct selection depends on the <code class="docutils literal notranslate"><span class="pre">target_fu</span></code> and operation code embedded in the vector instruction.</p>
+</section>
+<section id="stream-registers">
+<h3>4. Stream Registers<a class="headerlink" href="#stream-registers" title="Permalink to this heading"></a></h3>
+<p>Each result-producing unit feeds into a <strong>stream register</strong>, which buffers results until downstream units acknowledge the result (<code class="docutils literal notranslate"><span class="pre">result_gnt_i</span></code>), avoiding backpressure to the compute units.</p>
+<p>These registers decouple execution and result storage, facilitating pipeline throughput.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="code-walkthrough">
+<h2>Code Walkthrough<a class="headerlink" href="#code-walkthrough" title="Permalink to this heading"></a></h2>
+<section id="module-declaration-and-parameters">
+<h3>Module Declaration and Parameters<a class="headerlink" href="#module-declaration-and-parameters" title="Permalink to this heading"></a></h3>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">module</span><span class="w"> </span><span class="n">vmfpu</span><span class="w"> </span><span class="k">import</span><span class="w"> </span><span class="n">ara_pkg</span><span class="o">::*</span><span class="p">;</span><span class="w"> </span><span class="p">...</span>
+</pre></div>
+</div>
+<p>The module imports Ara and RVV packages, ensuring access to operand types, configuration constants, and hardware definitions.</p>
+<p>It uses several type parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">NrLanes</span></code>, <code class="docutils literal notranslate"><span class="pre">VLEN</span></code>, <code class="docutils literal notranslate"><span class="pre">vaddr_t</span></code>: define structural hardware constraints.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_t</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_request_cmd_t</span></code>: encapsulate control signals between scheduler and operand queues.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="registers-and-internal-signals">
+<h3>Registers and Internal Signals<a class="headerlink" href="#registers-and-internal-signals" title="Permalink to this heading"></a></h3>
+<p>Internal signals such as <code class="docutils literal notranslate"><span class="pre">fsm_state_q</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_valid</span></code>, and <code class="docutils literal notranslate"><span class="pre">stream_reg_payload</span></code> track FSM state, operand readiness, and result data, respectively.</p>
+<p>These are updated in sequential logic blocks and control combinational data paths.</p>
+</section>
+<hr class="docutils" />
+<section id="operand-gathering-and-arbitration">
+<h3>Operand Gathering and Arbitration<a class="headerlink" href="#operand-gathering-and-arbitration" title="Permalink to this heading"></a></h3>
+<p>Each operand queue’s validity is polled, and the module arbitrates between them using one-hot logic.</p>
+<p>When valid operands are detected, the FSM transitions into WAIT and EXECUTE states.</p>
+</section>
+<hr class="docutils" />
+<section id="computation-dispatch">
+<h3>Computation Dispatch<a class="headerlink" href="#computation-dispatch" title="Permalink to this heading"></a></h3>
+<p>Operations are dispatched to the correct backend depending on instruction decoding logic:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="k">case</span><span class="w"> </span><span class="p">(</span><span class="n">target_fu</span><span class="p">)</span>
+<span class="w">  </span><span class="nl">FPU:</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="w">  </span><span class="nl">MUL:</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">endcase</span>
+</pre></div>
+</div>
+<p>Here, <code class="docutils literal notranslate"><span class="pre">target_fu</span></code> determines which functional unit receives the operands.</p>
+</section>
+<hr class="docutils" />
+<section id="result-capture-and-output">
+<h3>Result Capture and Output<a class="headerlink" href="#result-capture-and-output" title="Permalink to this heading"></a></h3>
+<p>Results are written to output ports using stream registers:</p>
+<div class="highlight-systemverilog notranslate"><div class="highlight"><pre><span></span><span class="n">stream_register</span><span class="w"> </span><span class="p">#(...)</span><span class="w"> </span><span class="n">i_fpu_stream_reg</span><span class="w"> </span><span class="p">(</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="w">  </span><span class="p">.</span><span class="n">valid_i</span><span class="w">   </span><span class="p">(</span><span class="n">fpu_result_valid</span><span class="p">),</span>
+<span class="w">  </span><span class="p">.</span><span class="n">data_i</span><span class="w">    </span><span class="p">({</span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">addr</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">}),</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>Once the result is accepted by the downstream module, the FSM returns to IDLE.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="fixed_p_rounding.html" class="btn btn-neutral float-left" title="fixed_p_rounding - Set up fixed-point arithmetic rounding information" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="simd_mul.html" class="btn btn-neutral float-right" title="simd_mul — Ara’s in-lane SIMD multiplier" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

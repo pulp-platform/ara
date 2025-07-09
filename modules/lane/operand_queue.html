@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>operand_queue — Buffer between the VRF and the functional units &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="vector_fus_stage Module Documentation" href="vector_fus_stage.html" />
+    <link rel="prev" title="operand_queues_stage — Instantiate the in-lane operand queues" href="operand_queues_stage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#table-of-contents">Table of Contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-overview">Interface Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#inputs">Inputs:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#outputs">Outputs:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#parameterization">Parameterization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#command-fifo">Command FIFO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data-buffer-input-fifo">Data Buffer (Input FIFO)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#credit-based-flow-control">Credit-Based Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#floating-point-leading-zero-count">Floating-Point Leading Zero Count</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#type-conversion-logic">Type Conversion Logic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#neutral-value-padding-for-reductions">Neutral Value Padding for Reductions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#operand-output-control">Operand Output Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#state-management">State Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/operand_queue.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="operand-queue-buffer-between-the-vrf-and-the-functional-units">
+<h1><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units<a class="headerlink" href="#operand-queue-buffer-between-the-vrf-and-the-functional-units" title="Permalink to this heading"></a></h1>
+<p><strong>Module Path</strong>: <code class="docutils literal notranslate"><span class="pre">operand_queue.sv</span></code>
+<strong>Description</strong>:
+This module implements a configurable operand queue used to buffer and manipulate elements from the Vector Register File (VRF) before they are consumed by Functional Units (FUs). It includes support for type conversion, data widening, floating-point normalization, and reduction operations. It is a key part of Ara’s vector execution pipeline.</p>
+<hr class="docutils" />
+<section id="table-of-contents">
+<h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Permalink to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="#interface-overview"><span class="xref myst">Interface Overview</span></a></p></li>
+<li><p><a class="reference internal" href="#parameterization"><span class="xref myst">Parameterization</span></a></p></li>
+<li><p><a class="reference internal" href="#command-fifo"><span class="xref myst">Command FIFO</span></a></p></li>
+<li><p><a class="reference internal" href="#data-buffer-input-fifo"><span class="xref myst">Data Buffer (Input FIFO)</span></a></p></li>
+<li><p><a class="reference internal" href="#credit-based-flow-control"><span class="xref myst">Credit-Based Flow Control</span></a></p></li>
+<li><p><a class="reference internal" href="#floating-point-leading-zero-count"><span class="xref myst">Floating-Point Leading Zero Count</span></a></p></li>
+<li><p><a class="reference internal" href="#type-conversion-logic"><span class="xref myst">Type Conversion Logic</span></a></p></li>
+<li><p><a class="reference internal" href="#neutral-value-padding-for-reductions"><span class="xref myst">Neutral Value Padding for Reductions</span></a></p></li>
+<li><p><a class="reference internal" href="#operand-output-control"><span class="xref myst">Operand Output Control</span></a></p></li>
+<li><p><a class="reference internal" href="#state-management"><span class="xref myst">State Management</span></a></p></li>
+<li><p><a class="reference internal" href="#conclusion"><span class="xref myst">Conclusion</span></a></p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="interface-overview">
+<h2>Interface Overview<a class="headerlink" href="#interface-overview" title="Permalink to this heading"></a></h2>
+<section id="inputs">
+<h3>Inputs:<a class="headerlink" href="#inputs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code>, <code class="docutils literal notranslate"><span class="pre">rst_ni</span></code>: Clock and active-low reset.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">flush_i</span></code>: Flushes internal state (used during exception recovery or pipeline flush).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lane_id_i</span></code>: Identifier for the lane this operand queue belongs to.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_i</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_valid_i</span></code>: Command inputs that define the behavior for each operand.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_i</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_valid_i</span></code>: Operand data from the VRF.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_issued_i</span></code>: Tracks how many operands were issued.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_ready_i</span></code>: One-hot vector indicating readiness of connected FU ports.</p></li>
+</ul>
+</section>
+<section id="outputs">
+<h3>Outputs:<a class="headerlink" href="#outputs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cmd_pop_o</span></code>: Optional indication that command has been popped (only if <code class="docutils literal notranslate"><span class="pre">AccessCmdPop</span></code> is enabled).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_queue_ready_o</span></code>: Signals readiness to accept new operands.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">operand_o</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_valid_o</span></code>, <code class="docutils literal notranslate"><span class="pre">operand_target_fu_o</span></code>: Operand data sent to FU, with valid and target signals.</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="parameterization">
+<h2>Parameterization<a class="headerlink" href="#parameterization" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CmdBufDepth</span></code>, <code class="docutils literal notranslate"><span class="pre">DataBufDepth</span></code>: FIFO depths for commands and data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FPUSupport</span></code>: Enum to control which FP formats (Half, Single, Double) are supported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SupportIntExt[2|4|8]</span></code>: Enable widening integer operations.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SupportReduct</span></code>, <code class="docutils literal notranslate"><span class="pre">SupportNtrVal</span></code>: Support for reductions and neutral padding.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AccessCmdPop</span></code>: Enables external visibility into command buffer pops.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="command-fifo">
+<h2>Command FIFO<a class="headerlink" href="#command-fifo" title="Permalink to this heading"></a></h2>
+<p>The command buffer stores upcoming operand operations as defined by the scheduler. These determine how operands are transformed. The <code class="docutils literal notranslate"><span class="pre">fifo_v3</span></code> module ensures in-order delivery and tracks usage internally. Commands are consumed only when enough operands are emitted.</p>
+</section>
+<hr class="docutils" />
+<section id="data-buffer-input-fifo">
+<h2>Data Buffer (Input FIFO)<a class="headerlink" href="#data-buffer-input-fifo" title="Permalink to this heading"></a></h2>
+<p>An operand input FIFO buffers incoming VRF values until they are needed. Each cycle, values may be pushed (if valid) and popped (when used). Internally, a credit-based system ensures no overflows and supports simultaneous push/pop.</p>
+</section>
+<hr class="docutils" />
+<section id="credit-based-flow-control">
+<h2>Credit-Based Flow Control<a class="headerlink" href="#credit-based-flow-control" title="Permalink to this heading"></a></h2>
+<p>The signal <code class="docutils literal notranslate"><span class="pre">operand_queue_ready_o</span></code> is driven by comparing current FIFO usage (<code class="docutils literal notranslate"><span class="pre">ibuf_usage_q</span></code>) with capacity. The usage counter is updated based on:</p>
+<ul class="simple">
+<li><p>Operand issued → increment</p></li>
+<li><p>Operand consumed → decrement</p></li>
+</ul>
+<p>Flush logic resets the usage tracker.</p>
+</section>
+<hr class="docutils" />
+<section id="floating-point-leading-zero-count">
+<h2>Floating-Point Leading Zero Count<a class="headerlink" href="#floating-point-leading-zero-count" title="Permalink to this heading"></a></h2>
+<p>The module optionally instantiates LZC (Leading Zero Counter) logic to normalize subnormal FP inputs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">fp8_m_lzc</span></code>, <code class="docutils literal notranslate"><span class="pre">fp16_m_lzc</span></code>, <code class="docutils literal notranslate"><span class="pre">fp32_m_lzc</span></code>: Count zeros in mantissas of FP formats.</p></li>
+<li><p>Used for wide FP conversions (e.g., fp8→fp16, fp16→fp32, etc.)</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="type-conversion-logic">
+<h2>Type Conversion Logic<a class="headerlink" href="#type-conversion-logic" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">type_conversion</span></code> block:</p>
+<ul class="simple">
+<li><p>Handles all widening cases (sign/zero-extension for int8→int16/32/64).</p></li>
+<li><p>Supports floating-point widening with exponent/mantissa adjustment.</p></li>
+<li><p>Applies neutral padding for inactive lanes during reductions.</p></li>
+<li><p>Includes element reordering logic for FP conversions and <code class="docutils literal notranslate"><span class="pre">shuffle_index</span></code>.</p></li>
+</ul>
+<p>Conversion modes supported:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">OpQueueConversionSExt*</span></code>, <code class="docutils literal notranslate"><span class="pre">ZExt*</span></code>, <code class="docutils literal notranslate"><span class="pre">WideFP2</span></code>, <code class="docutils literal notranslate"><span class="pre">AdjustFPCvt</span></code></p></li>
+<li><p>Neutral-padding via <code class="docutils literal notranslate"><span class="pre">OpQueueReductionZExt</span></code> or default padding for final packet</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="neutral-value-padding-for-reductions">
+<h2>Neutral Value Padding for Reductions<a class="headerlink" href="#neutral-value-padding-for-reductions" title="Permalink to this heading"></a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">SupportNtrVal</span></code> is set and reduction is active:</p>
+<ul class="simple">
+<li><p>MSBs are padded with harmless neutral values to avoid altering result.</p></li>
+<li><p>Based on EEW (element width) and command-provided <code class="docutils literal notranslate"><span class="pre">ntr_red</span></code>.</p></li>
+</ul>
+<p>Neutral values vary per target (ALU, MFPU) and FP format, with special encoding:</p>
+<ul class="simple">
+<li><p>e.g., <code class="docutils literal notranslate"><span class="pre">0x7ff0000000000000</span></code> for FP64 max</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="operand-output-control">
+<h2>Operand Output Control<a class="headerlink" href="#operand-output-control" title="Permalink to this heading"></a></h2>
+<p>Output logic in <code class="docutils literal notranslate"><span class="pre">obuf_control</span></code> block:</p>
+<ul class="simple">
+<li><p>Tracks how many operands have been emitted (<code class="docutils literal notranslate"><span class="pre">elem_count_q</span></code>)</p></li>
+<li><p>Selects sub-operands in packet (<code class="docutils literal notranslate"><span class="pre">select_q</span></code>)</p></li>
+<li><p>Pops from FIFO when all elements of an operand are consumed</p></li>
+<li><p>Updates target FU routing info</p></li>
+<li><p>Resets state on flush or command completion</p></li>
+</ul>
+<p>Operand conversion and sequencing are tightly controlled to maintain data integrity across pipeline stages.</p>
+</section>
+<hr class="docutils" />
+<section id="state-management">
+<h2>State Management<a class="headerlink" href="#state-management" title="Permalink to this heading"></a></h2>
+<p>Sequential registers:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">select_q</span></code>, <code class="docutils literal notranslate"><span class="pre">elem_count_q</span></code>: Maintain operand fragment selection and element counter.</p></li>
+<li><p>Updated on each operand emission or reset on flush.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> module is a sophisticated component handling:</p>
+<ul class="simple">
+<li><p>Pipelined operand buffering</p></li>
+<li><p>Element-wise manipulation (conversion, widening, neutral fill)</p></li>
+<li><p>Intelligent control of operand delivery timing</p></li>
+<li><p>Support for multiple vector formats, FP pipelines, and reduction ops</p></li>
+</ul>
+<p>It ensures high flexibility and correctness in vector operand preparation before execution in Ara’s VFUs.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="operand_queues_stage.html" class="btn btn-neutral float-left" title="operand_queues_stage — Instantiate the in-lane operand queues" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="vector_fus_stage.html" class="btn btn-neutral float-right" title="vector_fus_stage Module Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

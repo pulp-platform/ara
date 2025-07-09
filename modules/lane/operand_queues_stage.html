@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>operand_queues_stage — Instantiate the in-lane operand queues &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="operand_queue — Buffer between the VRF and the functional units" href="operand_queue.html" />
+    <link rel="prev" title="operand_requester Module Documentation" href="operand_requester.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-parameters">Module Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ports">Ports</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#clock-and-reset">Clock and Reset</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lane-identification">Lane Identification</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vrf-interface">VRF Interface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#operand-requester">Operand Requester</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#store-exception-flush-support">Store Exception Flush Support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lane-sequencer">Lane Sequencer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#functional-units-outputs">Functional Units Outputs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/operand_queues_stage.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="operand-queues-stage-instantiate-the-in-lane-operand-queues">
+<h1><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues<a class="headerlink" href="#operand-queues-stage-instantiate-the-in-lane-operand-queues" title="Permalink to this heading"></a></h1>
+<p><strong>Author</strong>: Matheus Cavalcante
+<strong>License</strong>: Solderpad Hardware License v0.51
+<strong>Description</strong>: This module contains the operand queues used in Ara’s vector lanes. It manages operand buffering and dispatching to the appropriate functional units (VFUs) such as ALU, MFPU, STU, SLDU, and Mask Unit. Each operand queue is a parameterized instance of <code class="docutils literal notranslate"><span class="pre">operand_queue</span></code>.</p>
+<hr class="docutils" />
+<section id="module-parameters">
+<h2>Module Parameters<a class="headerlink" href="#module-parameters" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NrLanes</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">unsigned</span></code></p></td>
+<td><p>Number of vector lanes</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">VLEN</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">unsigned</span></code></p></td>
+<td><p>Vector length in bits</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FPUSupport</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fpu_support_e</span></code></p></td>
+<td><p>FPU support configuration</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_t</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">type</span></code></p></td>
+<td><p>Type used for operand queue commands</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="ports">
+<h2>Ports<a class="headerlink" href="#ports" title="Permalink to this heading"></a></h2>
+<section id="clock-and-reset">
+<h3>Clock and Reset<a class="headerlink" href="#clock-and-reset" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Clock signal</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Asynchronous active-low reset</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="lane-identification">
+<h3>Lane Identification<a class="headerlink" href="#lane-identification" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lane_id_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic[idx_width(NrLanes)-1:0]</span></code></p></td>
+<td><p>Lane identifier</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="vrf-interface">
+<h3>VRF Interface<a class="headerlink" href="#vrf-interface" title="Permalink to this heading"></a></h3>
+<p>Inputs from the Vector Register File.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t[NrOperandQueues-1:0]</span></code></p></td>
+<td><p>Operands</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_valid_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic[NrOperandQueues-1:0]</span></code></p></td>
+<td><p>Valid bits per operand</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="operand-requester">
+<h3>Operand Requester<a class="headerlink" href="#operand-requester" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_issued_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic[NrOperandQueues-1:0]</span></code></p></td>
+<td><p>Which operands are issued</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_queue_ready_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic[NrOperandQueues-1:0]</span></code></p></td>
+<td><p>Readiness flags for operands</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_t[NrOperandQueues-1:0]</span></code></p></td>
+<td><p>Operand queue commands</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_queue_cmd_valid_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic[NrOperandQueues-1:0]</span></code></p></td>
+<td><p>Valid bits for queue commands</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="store-exception-flush-support">
+<h3>Store Exception Flush Support<a class="headerlink" href="#store-exception-flush-support" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lsu_ex_flush_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Flush input signal</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lsu_ex_flush_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Flush output signal</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="lane-sequencer">
+<h3>Lane Sequencer<a class="headerlink" href="#lane-sequencer" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mask_b_cmd_pop_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Command pop signal for mask B</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sldu_addrgen_cmd_pop_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Pop command for slide/address generation unit</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functional-units-outputs">
+<h3>Functional Units Outputs<a class="headerlink" href="#functional-units-outputs" title="Permalink to this heading"></a></h3>
+<p>Documentation continues with full elaboration of each operand_queue instance across VFUs (ALU, MFPU, STU, SLDU, Mask Unit), flushing behavior, and parameter checks…</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="operand_requester.html" class="btn btn-neutral float-left" title="operand_requester Module Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="operand_queue.html" class="btn btn-neutral float-right" title="operand_queue — Buffer between the VRF and the functional units" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

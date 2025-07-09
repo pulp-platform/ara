@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>simd_mul — Ara’s in-lane SIMD multiplier &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="simd_div — Ara’s in-lane SIMD divider" href="simd_div.html" />
+    <link rel="prev" title="vmfpu — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)" href="vmfpu.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fixed_p_rounding.html"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface">Interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#key-internal-structures">Key Internal Structures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#operand-packing-mul-operand-t">Operand Packing (<code class="docutils literal notranslate"><span class="pre">mul_operand_t</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pipeline-buffers">Pipeline Buffers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ready-valid-interface">Ready Valid Interface</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#functional-description">Functional Description</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#multiply-logic">Multiply Logic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#signedness">Signedness</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#result-rounding">Result Rounding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#saturation-vxsat">Saturation (<code class="docutils literal notranslate"><span class="pre">vxsat</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#element-width-handling">Element Width Handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ew64">EW64</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ew32">EW32</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ew16">EW16</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ew8">EW8</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/simd_mul.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="simd-mul-ara-s-in-lane-simd-multiplier">
+<h1><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier<a class="headerlink" href="#simd-mul-ara-s-in-lane-simd-multiplier" title="Permalink to this heading"></a></h1>
+<p><strong>Module Name:</strong> <code class="docutils literal notranslate"><span class="pre">simd_mul</span></code>
+<strong>Function:</strong> This module implements a SIMD vector multiplier for Ara.</p>
+<hr class="docutils" />
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> module is Ara’s SIMD multiplier, supporting 8/16/32/64-bit elements and fixed-point multiplication with rounding and saturation. It operates in a pipelined manner and can produce one 64-bit result per cycle when fully utilized. It supports several RISC-V vector arithmetic operations (<code class="docutils literal notranslate"><span class="pre">VMUL</span></code>, <code class="docutils literal notranslate"><span class="pre">VMULH</span></code>, <code class="docutils literal notranslate"><span class="pre">VMULHU</span></code>, <code class="docutils literal notranslate"><span class="pre">VSMUL</span></code>, <code class="docutils literal notranslate"><span class="pre">VMADD</span></code>, <code class="docutils literal notranslate"><span class="pre">VMACC</span></code>, etc.).</p>
+</section>
+<hr class="docutils" />
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FixPtSupport</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fixpt_support_e</span></code></p></td>
+<td><p>Enables fixed-point support and saturation logic.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NumPipeRegs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">unsigned</span></code></p></td>
+<td><p>Number of pipeline stages.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ElementWidth</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vew_e</span></code></p></td>
+<td><p>Specifies element width (EW8, EW16, EW32, EW64).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="interface">
+<h2>Interface<a class="headerlink" href="#interface" title="Permalink to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Port</p></th>
+<th class="head"><p>Direction</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clk_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Clock.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rst_ni</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Active-low reset.</p></td>
+</tr>
+<tr class="row-even"><td><p>`operand_[a</p></td>
+<td><p>b</p></td>
+<td><p>c]_i`</p></td>
+<td><p>Input</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mask_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">strb_t</span></code></p></td>
+<td><p>Element-level mask.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">op_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ara_op_e</span></code></p></td>
+<td><p>Operation selector.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vxrm_t</span></code></p></td>
+<td><p>Rounding mode.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">valid_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Input valid handshake.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ready_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Input ready.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">result_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t</span></code></p></td>
+<td><p>Computed result.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mask_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">strb_t</span></code></p></td>
+<td><p>Mask forwarded to next stage.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">vxsat_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vxsat_t</span></code></p></td>
+<td><p>Saturation flags.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">valid_o</span></code></p></td>
+<td><p>Output</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Output valid.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ready_i</span></code></p></td>
+<td><p>Input</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Output ready handshake.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="key-internal-structures">
+<h2>Key Internal Structures<a class="headerlink" href="#key-internal-structures" title="Permalink to this heading"></a></h2>
+<section id="operand-packing-mul-operand-t">
+<h3>Operand Packing (<code class="docutils literal notranslate"><span class="pre">mul_operand_t</span></code>)<a class="headerlink" href="#operand-packing-mul-operand-t" title="Permalink to this heading"></a></h3>
+<p>Unions the operand into multiple views (64, 32, 16, or 8-bit chunks) for ease of SIMD processing.</p>
+</section>
+<section id="pipeline-buffers">
+<h3>Pipeline Buffers<a class="headerlink" href="#pipeline-buffers" title="Permalink to this heading"></a></h3>
+<p>Multi-stage pipeline implemented using shift-register logic, enabled via <code class="docutils literal notranslate"><span class="pre">NumPipeRegs</span></code>. All operands, opcodes, masks, and valid bits are pipelined.</p>
+</section>
+<section id="ready-valid-interface">
+<h3>Ready Valid Interface<a class="headerlink" href="#ready-valid-interface" title="Permalink to this heading"></a></h3>
+<p>Flow control logic supports handshake-based data propagation through the pipeline.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="functional-description">
+<h2>Functional Description<a class="headerlink" href="#functional-description" title="Permalink to this heading"></a></h2>
+<section id="multiply-logic">
+<h3>Multiply Logic<a class="headerlink" href="#multiply-logic" title="Permalink to this heading"></a></h3>
+<p>Supports various operations:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">VMUL</span></code>, <code class="docutils literal notranslate"><span class="pre">VMULHU</span></code>, <code class="docutils literal notranslate"><span class="pre">VMULHSU</span></code>, <code class="docutils literal notranslate"><span class="pre">VMULH</span></code> → Integer multiply</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VSMUL</span></code> → Fixed-point multiply with rounding/saturation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VMACC</span></code>, <code class="docutils literal notranslate"><span class="pre">VMADD</span></code>, <code class="docutils literal notranslate"><span class="pre">VNMSAC</span></code>, <code class="docutils literal notranslate"><span class="pre">VNMSUB</span></code> → Multiply-accumulate &amp; multiply-subtract</p></li>
+</ul>
+</section>
+<section id="signedness">
+<h3>Signedness<a class="headerlink" href="#signedness" title="Permalink to this heading"></a></h3>
+<p>Sign control logic dynamically selects signed/unsigned behavior based on opcode (<code class="docutils literal notranslate"><span class="pre">signed_a</span></code>, <code class="docutils literal notranslate"><span class="pre">signed_b</span></code>).</p>
+</section>
+<section id="result-rounding">
+<h3>Result Rounding<a class="headerlink" href="#result-rounding" title="Permalink to this heading"></a></h3>
+<p>Rounding logic for <code class="docutils literal notranslate"><span class="pre">VSMUL</span></code> is driven by <code class="docutils literal notranslate"><span class="pre">vxrm</span></code> mode:</p>
+<ul class="simple">
+<li><p>00: round to nearest even</p></li>
+<li><p>01: round to nearest, tie to max magnitude</p></li>
+<li><p>10: truncate</p></li>
+<li><p>11: ceiling</p></li>
+</ul>
+</section>
+<section id="saturation-vxsat">
+<h3>Saturation (<code class="docutils literal notranslate"><span class="pre">vxsat</span></code>)<a class="headerlink" href="#saturation-vxsat" title="Permalink to this heading"></a></h3>
+<p>When enabled (<code class="docutils literal notranslate"><span class="pre">FixedPointEnable</span></code>), detects overflow and sets corresponding saturation bits.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="element-width-handling">
+<h2>Element Width Handling<a class="headerlink" href="#element-width-handling" title="Permalink to this heading"></a></h2>
+<p>For each supported width, dedicated combinational blocks handle:</p>
+<ul class="simple">
+<li><p>Partial multiplications</p></li>
+<li><p>Optional fixed-point rounding/saturation</p></li>
+<li><p>Result assembly and output formatting</p></li>
+</ul>
+<section id="ew64">
+<h3>EW64<a class="headerlink" href="#ew64" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>1 × 64-bit operation</p></li>
+<li><p>Uses full 128-bit product</p></li>
+</ul>
+</section>
+<section id="ew32">
+<h3>EW32<a class="headerlink" href="#ew32" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>2 × 32-bit elements</p></li>
+<li><p>Operates on upper/lower halves</p></li>
+</ul>
+</section>
+<section id="ew16">
+<h3>EW16<a class="headerlink" href="#ew16" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>4 × 16-bit elements</p></li>
+<li><p>Operates on 16-bit lanes</p></li>
+</ul>
+</section>
+<section id="ew8">
+<h3>EW8<a class="headerlink" href="#ew8" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>8 × 8-bit elements</p></li>
+<li><p>Operates on each byte independently</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="vmfpu.html" class="btn btn-neutral float-left" title="vmfpu — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="simd_div.html" class="btn btn-neutral float-right" title="simd_div — Ara’s in-lane SIMD divider" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fixed_p_rounding - Set up fixed-point arithmetic rounding information &mdash; Ara 1.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=359c27e9"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="vmfpu — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)" href="vmfpu.html" />
+    <link rel="prev" title="simd_alu - Ara’s in-lane SIMD ALU (simd_alu)" href="simd_alu.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> Ara
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SoC:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara_soc.html"><code class="docutils literal notranslate"><span class="pre">ara_soc</span></code>: Top-Level Dummy SoC for Ara</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_system.html"><code class="docutils literal notranslate"><span class="pre">ara_system</span></code>: Integration of CVA6 and Ara</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Ara:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../ara.html"><code class="docutils literal notranslate"><span class="pre">ara</span></code>: Top-Level Vector Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_dispatcher.html"><code class="docutils literal notranslate"><span class="pre">ara_dispatcher</span></code> — Vector Instruction Decoder and Issuer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../segment_sequencer.html"><code class="docutils literal notranslate"><span class="pre">segment_sequencer</span></code> - Split segment memory operations into multiple micro-ops</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ara_sequencer.html"><code class="docutils literal notranslate"><span class="pre">ara_sequencer</span></code> — Instruction sequencer and macro dependency check</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">SLDU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../sldu/sldu.html"><code class="docutils literal notranslate"><span class="pre">sldu</span></code> — Ara’s slide unit, for permutations, shuffles, and slides</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">MASKU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../masku/masku.html"><code class="docutils literal notranslate"><span class="pre">masku</span></code> — Ara’s mask unit, for mask bits dispatch, mask operations, bits handling</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">VLSU</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vlsu.html"><code class="docutils literal notranslate"><span class="pre">vlsu</span></code> - Vector Load/Store Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/addrgen.html"><code class="docutils literal notranslate"><span class="pre">addrgen</span></code>: Ara Vector Address Generation Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vldu.html"><code class="docutils literal notranslate"><span class="pre">vldu</span></code>: Ara’s Vector Load Unit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vlsu/vstu.html"><code class="docutils literal notranslate"><span class="pre">vstu</span></code>: Ara Vector Store Unit</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Lane</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="lane.html"><code class="docutils literal notranslate"><span class="pre">lane</span></code> — Ara’s lane, hosting a vector register file slice and functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lane_sequencer.html"><code class="docutils literal notranslate"><span class="pre">lane_sequencer</span></code> — Set up the in-lane operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vrf.html"><code class="docutils literal notranslate"><span class="pre">vrf</span></code> — Ara’s Vector Register File (VRF)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_requester.html"><code class="docutils literal notranslate"><span class="pre">operand_requester</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queues_stage.html"><code class="docutils literal notranslate"><span class="pre">operand_queues_stage</span></code> — Instantiate the in-lane operand queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operand_queue.html"><code class="docutils literal notranslate"><span class="pre">operand_queue</span></code> — Buffer between the VRF and the functional units</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vector_fus_stage.html"><code class="docutils literal notranslate"><span class="pre">vector_fus_stage</span></code> Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="valu.html"><code class="docutils literal notranslate"><span class="pre">valu</span></code> - Instantiate the in-lane SIMD ALU (unpipelined)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_alu.html"><code class="docutils literal notranslate"><span class="pre">simd_alu</span></code> - Ara’s in-lane SIMD ALU (<code class="docutils literal notranslate"><span class="pre">simd_alu</span></code>)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ports">Ports</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#inputs">Inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#output">Output</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#internal-structures">Internal Structures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#rounding-args"><code class="docutils literal notranslate"><span class="pre">rounding_args</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#functional-behavior">Functional Behavior</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#rounding-modes-vxrm-i">Rounding Modes (<code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#element-width-handling">Element Width Handling</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#example-for-ew8-vxrm-00">Example for <code class="docutils literal notranslate"><span class="pre">EW8</span></code>, <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">00</span></code>:</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#example-for-ew32-vxrm-01">Example for <code class="docutils literal notranslate"><span class="pre">EW32</span></code>, <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">01</span></code>:</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#for-vxrm-10-no-rounding-is-performed">For <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">10</span></code>, no rounding is performed:</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#for-vxrm-11-rod-more-logic-is-applied">For <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">11</span></code> (ROD), more logic is applied:</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#lookup-table-bit-select">Lookup Table: <code class="docutils literal notranslate"><span class="pre">bit_select</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="vmfpu.html"><code class="docutils literal notranslate"><span class="pre">vmfpu</span></code> — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_mul.html"><code class="docutils literal notranslate"><span class="pre">simd_mul</span></code> — Ara’s in-lane SIMD multiplier</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simd_div.html"><code class="docutils literal notranslate"><span class="pre">simd_div</span></code> — Ara’s in-lane SIMD divider</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Ara</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/lane/fixed_p_rounding.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="fixed-p-rounding-set-up-fixed-point-arithmetic-rounding-information">
+<h1><code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> - Set up fixed-point arithmetic rounding information<a class="headerlink" href="#fixed-p-rounding-set-up-fixed-point-arithmetic-rounding-information" title="Permalink to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">fixed_p_rounding</span></code> module implements fixed-point rounding logic for Ara’s vector execution stage. It operates on 64-bit wide elements and generates rounding result bits for each element stream based on the rounding mode and vector element width (VEW).</p>
+</section>
+<hr class="docutils" />
+<section id="ports">
+<h2>Ports<a class="headerlink" href="#ports" title="Permalink to this heading"></a></h2>
+<section id="inputs">
+<h3>Inputs<a class="headerlink" href="#inputs" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">operand_a_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t</span></code></p></td>
+<td><p>Encodes the shift amount <code class="docutils literal notranslate"><span class="pre">j</span></code> for each sub-element.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">operand_b_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elen_t</span></code></p></td>
+<td><p>Source operand to extract rounding bits from.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">valid_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logic</span></code></p></td>
+<td><p>Enables rounding logic when high.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">op_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ara_op_e</span></code></p></td>
+<td><p>Operation type; rounding occurs only on selected operations.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">vew_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vew_e</span></code></p></td>
+<td><p>Specifies the vector element width: <code class="docutils literal notranslate"><span class="pre">EW8</span></code>, <code class="docutils literal notranslate"><span class="pre">EW16</span></code>, <code class="docutils literal notranslate"><span class="pre">EW32</span></code>, or <code class="docutils literal notranslate"><span class="pre">EW64</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vxrm_t</span></code></p></td>
+<td><p>RISC-V vector rounding mode: <code class="docutils literal notranslate"><span class="pre">00</span></code>, <code class="docutils literal notranslate"><span class="pre">01</span></code>, <code class="docutils literal notranslate"><span class="pre">10</span></code>, or <code class="docutils literal notranslate"><span class="pre">11</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="output">
+<h3>Output<a class="headerlink" href="#output" title="Permalink to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Name</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">r_o</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">strb_t</span></code></p></td>
+<td><p>Output rounding bits for each element.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="internal-structures">
+<h2>Internal Structures<a class="headerlink" href="#internal-structures" title="Permalink to this heading"></a></h2>
+<section id="rounding-args">
+<h3><code class="docutils literal notranslate"><span class="pre">rounding_args</span></code><a class="headerlink" href="#rounding-args" title="Permalink to this heading"></a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">union</span> <span class="pre">packed</span></code> type that allows simultaneous interpretation of a 64-bit value as:</p>
+<ul class="simple">
+<li><p>8 x 8-bit (<code class="docutils literal notranslate"><span class="pre">w8</span></code>)</p></li>
+<li><p>4 x 16-bit (<code class="docutils literal notranslate"><span class="pre">w16</span></code>)</p></li>
+<li><p>2 x 32-bit (<code class="docutils literal notranslate"><span class="pre">w32</span></code>)</p></li>
+<li><p>1 x 64-bit (<code class="docutils literal notranslate"><span class="pre">w64</span></code>)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="functional-behavior">
+<h2>Functional Behavior<a class="headerlink" href="#functional-behavior" title="Permalink to this heading"></a></h2>
+<p>Rounding logic is triggered only when <code class="docutils literal notranslate"><span class="pre">valid_i</span></code> is high and <code class="docutils literal notranslate"><span class="pre">op_i</span></code> matches one of:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">VSSRA</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VSSRL</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VNCLIP</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VNCLIPU</span></code></p></li>
+</ul>
+<p>Depending on <code class="docutils literal notranslate"><span class="pre">vew_i</span></code> and <code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code>, different rounding strategies are selected.</p>
+<section id="rounding-modes-vxrm-i">
+<h3>Rounding Modes (<code class="docutils literal notranslate"><span class="pre">vxrm_i</span></code>)<a class="headerlink" href="#rounding-modes-vxrm-i" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">00</span></code> (RNU): Round to Nearest, Up.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">01</span></code> (RNE): Round to Nearest, ties to Even.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">10</span></code> (RTZ): Round Towards Zero (no rounding).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">11</span></code> (ROD): Round towards -∞ for negative and +∞ for positive.</p></li>
+</ul>
+</section>
+<section id="element-width-handling">
+<h3>Element Width Handling<a class="headerlink" href="#element-width-handling" title="Permalink to this heading"></a></h3>
+<p>Each <code class="docutils literal notranslate"><span class="pre">vew_i</span></code> type (<code class="docutils literal notranslate"><span class="pre">EW8</span></code>, <code class="docutils literal notranslate"><span class="pre">EW16</span></code>, etc.) leads to different slicing of input operands.</p>
+<section id="example-for-ew8-vxrm-00">
+<h4>Example for <code class="docutils literal notranslate"><span class="pre">EW8</span></code>, <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">00</span></code>:<a class="headerlink" href="#example-for-ew8-vxrm-00" title="Permalink to this heading"></a></h4>
+<div class="highlight-verilog notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mh">8</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">  </span><span class="n">j</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="n">opa</span><span class="p">.</span><span class="n">w8</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">  </span><span class="n">r_o</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opb</span><span class="p">.</span><span class="n">w8</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="o">-</span><span class="mh">1</span><span class="p">];</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+</section>
+<section id="example-for-ew32-vxrm-01">
+<h4>Example for <code class="docutils literal notranslate"><span class="pre">EW32</span></code>, <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">01</span></code>:<a class="headerlink" href="#example-for-ew32-vxrm-01" title="Permalink to this heading"></a></h4>
+<div class="highlight-verilog notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mh">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mh">2</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="k">begin</span>
+<span class="w">  </span><span class="n">j</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="n">opa</span><span class="p">.</span><span class="n">w32</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">  </span><span class="n">r_o</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">opb</span><span class="p">.</span><span class="n">w32</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="o">-</span><span class="mh">1</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">opb</span><span class="p">.</span><span class="n">w32</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">];</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+</section>
+<section id="for-vxrm-10-no-rounding-is-performed">
+<h4>For <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">10</span></code>, no rounding is performed:<a class="headerlink" href="#for-vxrm-10-no-rounding-is-performed" title="Permalink to this heading"></a></h4>
+<div class="highlight-verilog notranslate"><div class="highlight"><pre><span></span><span class="n">r_o</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">&#39;0</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+<section id="for-vxrm-11-rod-more-logic-is-applied">
+<h4>For <code class="docutils literal notranslate"><span class="pre">vxrm</span> <span class="pre">=</span> <span class="pre">11</span></code> (ROD), more logic is applied:<a class="headerlink" href="#for-vxrm-11-rod-more-logic-is-applied" title="Permalink to this heading"></a></h4>
+<ul class="simple">
+<li><p>Negates the <code class="docutils literal notranslate"><span class="pre">j</span></code>th bit</p></li>
+<li><p>ORs the masked remaining bits using a lookup from <code class="docutils literal notranslate"><span class="pre">bit_select</span></code></p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="lookup-table-bit-select">
+<h2>Lookup Table: <code class="docutils literal notranslate"><span class="pre">bit_select</span></code><a class="headerlink" href="#lookup-table-bit-select" title="Permalink to this heading"></a></h2>
+<p>This is a constant table used to mask and check lower bits for rounding:</p>
+<div class="highlight-verilog notranslate"><div class="highlight"><pre><span></span><span class="n">bit_select</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="mh">64&#39;h0000000000000000</span><span class="p">,</span>
+<span class="w">  </span><span class="mh">64&#39;h0000000000000001</span><span class="p">,</span>
+<span class="w">  </span><span class="mh">64&#39;h0000000000000003</span><span class="p">,</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="w">  </span><span class="mh">64&#39;h7FFFFFFFFFFFFFFF</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>Each index <code class="docutils literal notranslate"><span class="pre">j</span></code> selects <code class="docutils literal notranslate"><span class="pre">bit_select[j]</span></code> to help evaluate whether remaining bits are non-zero.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="simd_alu.html" class="btn btn-neutral float-left" title="simd_alu - Ara’s in-lane SIMD ALU (simd_alu)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="vmfpu.html" class="btn btn-neutral float-right" title="vmfpu — Instantiate in-lane SIMD FPU, SIMD multiplier, and SIMD divider (pipelined or multi-cycle)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
