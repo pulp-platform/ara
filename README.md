@@ -5,6 +5,8 @@
 Ara is a vector unit working as a coprocessor for the CVA6 core.
 It supports the RISC-V Vector Extension, [version 1.0](https://github.com/riscv/riscv-v-spec/releases/tag/v1.0).
 
+Prototypical documentation can be found at https://pulp-platform.github.io/ara
+
 ## Dependencies
 
 Check `DEPENDENCIES.md` for a list of hardware and software dependencies of Ara.
