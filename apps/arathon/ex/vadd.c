@@ -21,6 +21,12 @@
 #include <stdint.h>
 #include <riscv_vector.h>
 
+#define N 8
+
+uint64_t a[N];
+uint64_t b[N];
+uint64_t c[N];
+
 void vadd_scalar() {
 
 }
