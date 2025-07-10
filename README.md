@@ -269,3 +269,73 @@ If you want to use Ara, you can cite us:
   keywords={Vectors;Registers;Computer architecture;Vector processors;Multicore processing;Microarchitecture;Kernel;RISC-V;vector;ISA;RVV;processor;efficiency;multi-core},
   doi={10.1109/TC.2024.3388896}}
 ```
+
+# Arathon SPECIAL
+
+RISC-V + RISC-V V specifications:
+https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8tFtkp/view?usp=drive_link
+
+## For internal IIS people
+
+### Dependencies
+
+Soft-link all the tools from our internal server super-secret location.
+
+```bash
+TOOL_DIR=/usr/scratch2/tokyo/mperotti/tools/arathon/install
+mkdir install
+cp -Lr ${TOOL_DIR}/riscv-gcc install
+cp -Lr ${TOOL_DIR}/riscv-llvm install
+cp -Lr ${TOOL_DIR}/riscv-isa-sim install
+cp -Lr ${TOOL_DIR}/verilator install
+```
+
+Get the HW dependencies.
+
+```bash
+make -C hardware checkout
+make -C hardware apply-patches
+```
+
+IMPORTANT: If you are external or just want to use Verilator, verilate Ara by following this Readme from the very beginning.
+
+### Compile, inspect, and simulate an application
+
+Run the `arathon` app by defining the name of the exercise to include (in capital letters).
+
+Exercises: [vadd.c, vadd_stripmine, chaining, mask, scratch]
+
+For example, to compile the exercise vadd.c, execute:
+
+```bash
+ex_name=VADD
+make -C apps bin/arathon ENV_DEFINES="-DEX_${ex_name}"
+```
+
+To inspect the (dis)assembly code of your compiled application:
+
+```bash
+emacs apps/bin/arathon.dump
+# Remember, the dump is always called "arathon.dump"!
+```
+
+If you don't use emacs, you are free to use your favorite text editor (just for today!).
+
+To simulate your beautiful binary:
+
+```bash
+# QuestaSim, with GUI
+make -C hardware sim app=arathon
+# QuestaSim, with CLI
+make -C hardware simc app=arathon
+# Verilator (if you have a verilated model already)
+make -C hardware simv app=arathon
+```
+
+If you just want to play around with some code, do as explained above using:
+
+```bash
+ex_name=SCRATCH
+```
+
+You can modify the code of the function in `apps/arathon/ex/scratch.c`.
