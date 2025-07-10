@@ -13,5 +13,17 @@ void chaining();
 void mask_scalar();
 void mask_vector();
 
+// vsetvli.
+void vsetvli();
+
+// vsetvli.
+void reshuffle();
+
+// vrf.
+void vrf();
+
+// simd.
+void simd();
+
 // scratch.
 void scratch();

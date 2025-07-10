@@ -17,37 +17,52 @@
 // Author: Matteo Perotti, ETH Zurich
 
 // Add two vectors with N elements on 64 bits
+#ifdef SOL_CHAINING
 
-#ifdef SOL_VADD
-
+#include "printf.h"
 #include <stdint.h>
 #include <riscv_vector.h>
 
-#define N 8
+#define N 256
 
 uint64_t a[N];
 uint64_t b[N];
 uint64_t c[N];
 
-void vadd_scalar() {
+void vadd_stripmine_scalar() {
   for (int i = 0; i < N; ++i) {
     c[i] = a[i] + b[i];
   }
 }
 
-void vadd_vector() {
-  // Setup vector length
-  asm volatile ("vsetvli x0, %0, e64, m1, ta, ma" :: "r"(N));
+void vadd_stripmine_vector() {
 
-  // Load vector a and b into the Vector Register File (VRF)
-  asm volatile ("vle64.v v0, (%0)" :: "r"(a));
-  asm volatile ("vle64.v v1, (%0)" :: "r"(b));
+  size_t avl = N;
+  size_t vl = 0;
 
-  // Perform "c = a + b" and save result into the VRF
-  asm volatile ("vadd.vv v2, v0, v1");
+  uint64_t *a_ = a;
+  uint64_t *b_ = b;
+  uint64_t *c_ = c;
 
-  // Store c into memory
-  asm volatile ("vse64.v v2, (%0)" :: "r"(c));
+  for (; avl > 0; avl -= vl) {
+    // Setup vector length
+    asm volatile ("vsetvli %0, %1, e64, m1, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load vector a and b into the Vector Register File (VRF)
+    asm volatile ("vle64.v v0, (%0)" :: "r"(a_));
+    asm volatile ("vle64.v v1, (%0)" :: "r"(b_));
+
+    // Perform "c = a + b" and save result into the VRF
+    asm volatile ("vadd.vv v2, v0, v1");
+
+    // Store c into memory
+    asm volatile ("vse64.v v1, (%0)" :: "r"(c_));
+
+    // Bump pointers
+    a_ += vl;
+    b_ += vl;
+    c_ += vl;
+  }
 }
 
 #endif

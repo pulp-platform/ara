@@ -56,7 +56,7 @@ void vadd_stripmine_vector() {
     asm volatile ("vadd.vv v2, v0, v1");
 
     // Store c into memory
-    asm volatile ("vse64.v v1, (%0)" :: "r"(c_));
+    asm volatile ("vse64.v v2, (%0)" :: "r"(c_));
 
     // Bump pointers
     a_ += vl;

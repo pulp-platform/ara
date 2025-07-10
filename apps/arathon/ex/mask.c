@@ -16,38 +16,18 @@
 
 // Author: Matteo Perotti, ETH Zurich
 
-// Add two vectors with N elements on 64 bits
+#ifdef EX_MASK
 
-#ifdef SOL_VADD
-
+#include "printf.h"
 #include <stdint.h>
 #include <riscv_vector.h>
 
-#define N 8
+void mask_scalar() {
 
-uint64_t a[N];
-uint64_t b[N];
-uint64_t c[N];
-
-void vadd_scalar() {
-  for (int i = 0; i < N; ++i) {
-    c[i] = a[i] + b[i];
-  }
 }
 
-void vadd_vector() {
-  // Setup vector length
-  asm volatile ("vsetvli x0, %0, e64, m1, ta, ma" :: "r"(N));
+void mask_vector() {
 
-  // Load vector a and b into the Vector Register File (VRF)
-  asm volatile ("vle64.v v0, (%0)" :: "r"(a));
-  asm volatile ("vle64.v v1, (%0)" :: "r"(b));
-
-  // Perform "c = a + b" and save result into the VRF
-  asm volatile ("vadd.vv v2, v0, v1");
-
-  // Store c into memory
-  asm volatile ("vse64.v v2, (%0)" :: "r"(c));
 }
 
 #endif

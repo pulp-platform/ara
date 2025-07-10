@@ -88,6 +88,54 @@ int main() {
   mask_scalar();
   mask_vector();
 
+#elif defined (EX_VSETVLI) || defined (SOL_VSETVLI)
+
+  /////////////
+  // VSETVLI //
+  /////////////
+
+  printf("\n");
+  printf("Play around with the vsetvli configuration instruction.\n");
+  printf("\n");
+
+  vsetvli();
+
+#elif defined (EX_RESHUFFLE) || defined (SOL_RESHUFFLE)
+
+  ///////////////
+  // RESHUFFLE //
+  ///////////////
+
+  printf("\n");
+  printf("Have a look at how data is reshuffled in Ara. Try to trigger a reshuffle!\n");
+  printf("\n");
+
+  reshuffle();
+
+#elif defined (EX_VRF) || defined (SOL_VRF)
+
+  /////////
+  // VRF //
+  /////////
+
+  printf("\n");
+  printf("Load some data, perform some additions, and observe how the data layout changes from the AXI bus of the load unit to the in-lane shuffled encoding!\n");
+  printf("\n");
+
+  vrf();
+
+#elif defined (EX_SIMD) || defined (SOL_SIMD)
+
+  //////////
+  // SIMD //
+  //////////
+
+  printf("\n");
+  printf("Try to perform an addition in SIMD on 64-bit and 8-bit!\n");
+  printf("\n");
+
+  simd();
+
 #elif defined (EX_SCRATCH)
 
   /////////////

@@ -17,11 +17,13 @@
 // Author: Matteo Perotti, ETH Zurich
 
 // Add two vectors with N elements on 64 bits
+#ifdef SOL_VSETVLI
 
-#ifdef SOL_VADD
-
+#include "printf.h"
 #include <stdint.h>
 #include <riscv_vector.h>
+
+//#define PRINTF
 
 #define N 8
 
@@ -29,25 +31,21 @@ uint64_t a[N];
 uint64_t b[N];
 uint64_t c[N];
 
-void vadd_scalar() {
-  for (int i = 0; i < N; ++i) {
-    c[i] = a[i] + b[i];
-  }
-}
+void vsetvli() {
 
-void vadd_vector() {
-  // Setup vector length
-  asm volatile ("vsetvli x0, %0, e64, m1, ta, ma" :: "r"(N));
+  size_t avl = N;
+  size_t vl;
 
-  // Load vector a and b into the Vector Register File (VRF)
-  asm volatile ("vle64.v v0, (%0)" :: "r"(a));
-  asm volatile ("vle64.v v1, (%0)" :: "r"(b));
+  // VLEN
+  asm volatile ("vsetvli %0, %1, e64, m1, ta, ma" : "=r"(vl) : "r"(-1));
+  uint64_t vlen = vl * 64;
 
-  // Perform "c = a + b" and save result into the VRF
-  asm volatile ("vadd.vv v2, v0, v1");
+  // Max vl (LMUL = 1 and SEW = 64)
+  asm volatile ("vsetvli %0, %1, e64, m1, ta, ma" : "=r"(vl) : "r"(-1));
 
-  // Store c into memory
-  asm volatile ("vse64.v v2, (%0)" :: "r"(c));
+
+  // Max vl (with LMUL > 1 and SEW = 8)
+  asm volatile ("vsetvli %0, %1, e8, m8, ta, ma" : "=r"(vl) : "r"(-1));
 }
 
 #endif

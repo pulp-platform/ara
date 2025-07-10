@@ -18,7 +18,7 @@
 
 // Add two vectors with N elements on 64 bits
 
-#ifdef SOL_VADD
+#ifdef SOL_SIMD
 
 #include <stdint.h>
 #include <riscv_vector.h>
@@ -29,13 +29,11 @@ uint64_t a[N];
 uint64_t b[N];
 uint64_t c[N];
 
-void vadd_scalar() {
-  for (int i = 0; i < N; ++i) {
-    c[i] = a[i] + b[i];
-  }
-}
+uint8_t d[8*N];
+uint8_t e[8*N];
+uint8_t f[8*N];
 
-void vadd_vector() {
+void simd() {
   // Setup vector length
   asm volatile ("vsetvli x0, %0, e64, m1, ta, ma" :: "r"(N));
 
@@ -48,6 +46,25 @@ void vadd_vector() {
 
   // Store c into memory
   asm volatile ("vse64.v v2, (%0)" :: "r"(c));
+
+  // Init vectors
+  for (int i = 0; i < 8*N; ++i) {
+    d[i] = i;
+    e[i] = 8*N-i;
+  }
+
+  // Setup vector length
+  asm volatile ("vsetvli x0, %0, e8, m1, ta, ma" :: "r"(8*N));
+
+  // Load vector a and b into the Vector Register File (VRF)
+  asm volatile ("vle8.v v31, (%0)" :: "r"(d));
+  asm volatile ("vle8.v v30, (%0)" :: "r"(e));
+
+  // Perform "c = a + b" and save result into the VRF
+  asm volatile ("vadd.vv v29, v31, v30");
+
+  // Store c into memory
+  asm volatile ("vse8.v v29, (%0)" :: "r"(f));
 }
 
 #endif

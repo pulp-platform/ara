@@ -275,7 +275,15 @@ If you want to use Ara, you can cite us:
 RISC-V + RISC-V V specifications:
 https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8tFtkp/view?usp=drive_link
 
+## For externals (non-IIS people)
+
+You need to install the toolchains, spike, and verilator first, as described in this Readme.
+
+Then, you have to verilate Ara to be able to use `simv`.
+
 ## For internal IIS people
+
+For you, it will be easy.
 
 ### Dependencies
 
@@ -297,18 +305,17 @@ make -C hardware checkout
 make -C hardware apply-patches
 ```
 
-IMPORTANT: If you are external or just want to use Verilator, verilate Ara by following this Readme from the very beginning.
-
 ### Compile, inspect, and simulate an application
 
 Run the `arathon` app by defining the name of the exercise to include (in capital letters).
 
-Exercises: [vadd.c, vadd_stripmine, chaining, mask, scratch]
+Exercises: [vadd, vadd_stripmine, chaining, mask, vsetvli, reshuffle, simd, vrf, scratch]
 
 For example, to compile the exercise vadd.c, execute:
 
 ```bash
 ex_name=VADD
+make -C apps clean
 make -C apps bin/arathon ENV_DEFINES="-DEX_${ex_name}"
 ```
 
@@ -339,3 +346,11 @@ ex_name=SCRATCH
 ```
 
 You can modify the code of the function in `apps/arathon/ex/scratch.c`.
+
+If you want to run the same code on a different number of lanes, compile and simulate specifying the number of lanes:
+
+```bash
+config=${L}_lanes make # the rest of make options
+
+# For example: config=2_lanes make -C hardware sim app=arathon
+```

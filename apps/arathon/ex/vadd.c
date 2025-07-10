@@ -16,23 +16,13 @@
 
 // Author: Matteo Perotti, ETH Zurich
 
-// Add two vectors with N elements on 64 bits
-
-#ifdef SOL_VADD
+#ifdef EX_VADD
 
 #include <stdint.h>
 #include <riscv_vector.h>
 
-#define N 8
-
-uint64_t a[N];
-uint64_t b[N];
-uint64_t c[N];
-
 void vadd_scalar() {
-  for (int i = 0; i < N; ++i) {
-    c[i] = a[i] + b[i];
-  }
+
 }
 
 void vadd_vector() {
