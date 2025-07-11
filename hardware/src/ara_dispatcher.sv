@@ -165,12 +165,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // If the reg was not written, the content is unknown. No need to reshuffle
   // when writing with != EEW
   logic [31:0] eew_valid_d, eew_valid_q;
+  // Help for reshuffling
+  rvv_pkg::vlmul_e emul_vs1_d, emul_vs1_q, emul_vs2_d, emul_vs2_q;
   // Save eew information before reshuffling
   rvv_pkg::vew_e eew_old_buffer_d, eew_old_buffer_q, eew_new_buffer_d, eew_new_buffer_q;
   // Helpers to handle reshuffling with LMUL > 1
-  logic [2:0] rs_lmul_cnt_d, rs_lmul_cnt_q;
-  logic [2:0] rs_lmul_cnt_limit_d, rs_lmul_cnt_limit_q;
-  logic rs_mask_request_d, rs_mask_request_q;
+  logic [2:0] reg_lmul_cnt_d, reg_lmul_cnt_q;
+  logic [2:0] reg_lmul_cnt_limit_d, reg_lmul_cnt_limit_q;
+  logic reg_mask_request_d, reg_mask_request_q;
   // Save vreg to be reshuffled before reshuffling
   logic [4:0] vs_buffer_d, vs_buffer_q;
   // Keep track of the registers to be reshuffled |vs1|vs2|vd|
@@ -191,13 +193,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_new_buffer_q     <= rvv_pkg::EW8;
       vs_buffer_q          <= '0;
       reshuffle_req_q      <= '0;
-      rs_lmul_cnt_q        <= '0;
-      rs_lmul_cnt_limit_q  <= '0;
-      rs_mask_request_q    <= 1'b0;
+      reg_lmul_cnt_q       <= '0;
+      reg_lmul_cnt_limit_q <= '0;
+      reg_mask_request_q   <= 1'b0;
       reshuffle_eew_vs1_q  <= rvv_pkg::EW8;
       reshuffle_eew_vs2_q  <= rvv_pkg::EW8;
       reshuffle_eew_vd_q   <= rvv_pkg::EW8;
       pending_seg_mem_op_q <= 1'b0;
+      emul_vs1_q           <= LMUL_1;
+      emul_vs2_q           <= LMUL_1;
     end else begin
       state_q              <= state_d;
       state_qq             <= state_q;
@@ -207,13 +211,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_new_buffer_q     <= eew_new_buffer_d;
       vs_buffer_q          <= vs_buffer_d;
       reshuffle_req_q      <= reshuffle_req_d;
-      rs_lmul_cnt_q        <= rs_lmul_cnt_d;
-      rs_lmul_cnt_limit_q  <= rs_lmul_cnt_limit_d;
-      rs_mask_request_q    <= rs_mask_request_d;
+      reg_lmul_cnt_q       <= reg_lmul_cnt_d;
+      reg_lmul_cnt_limit_q <= reg_lmul_cnt_limit_d;
+      reg_mask_request_q   <= reg_mask_request_d;
       reshuffle_eew_vs1_q  <= reshuffle_eew_vs1_d;
       reshuffle_eew_vs2_q  <= reshuffle_eew_vs2_d;
       reshuffle_eew_vd_q   <= reshuffle_eew_vd_d;
       pending_seg_mem_op_q <= pending_seg_mem_op_d;
+      emul_vs1_q           <= emul_vs1_d;
+      emul_vs2_q           <= emul_vs2_d;
     end
   end
 
@@ -222,7 +228,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   rvv_pkg::vlmul_e lmul_vs2, lmul_vs1;
 
   // Helper signals to discriminate between config/csr, load/store instructions and the others
-  logic is_config, is_vload, is_vstore;
+  logic is_config, is_vload, is_vstore, is_vmvnrr;
   // Whole-register memory-ops / move should be executed even when vl == 0
   logic ignore_zero_vl_check;
   // Helper signals to identify memory operations with vl == 0. They must acknoledge Ariane to update
@@ -243,7 +249,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // If the vslideup offset is greater than csr_vl_q, the vslideup has no effects
   logic null_vslideup;
   // Does the selected reg group for the selected EMUL have same EEW encoding?
-  logic is_same_eew;
+  logic vs1_is_same_eew;
+  logic vs2_is_same_eew;
+  logic vd_is_same_eew;
+  logic vs1_some_is_valid;
+  logic vs2_some_is_valid;
+  logic vd_some_is_valid;
+  // EMUL for vs1, vs2, and vd. Useful for shuffling
+  rvv_pkg::vlmul_e emul_vs1, emul_vs2;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete, load_complete_q;
@@ -378,9 +391,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     pending_seg_mem_op_d = pending_seg_mem_op_q;
 
-    rs_lmul_cnt_d       = '0;
-    rs_lmul_cnt_limit_d = '0;
-    rs_mask_request_d   = 1'b0;
+    reg_lmul_cnt_d       = '0;
+    reg_lmul_cnt_limit_d = '0;
+    reg_mask_request_d   = 1'b0;
 
     illegal_insn = 1'b0;
     illegal_insn_load  = 1'b0;
@@ -392,6 +405,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     is_vstore     = 1'b0;
     load_zero_vl  = 1'b0;
     store_zero_vl = 1'b0;
+
+    is_vmvnrr = 1'b0;
 
     skip_lmul_checks     = 1'b0;
 
@@ -428,6 +443,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       eew_vs1      : csr_vtype_q.vsew,
       old_eew_vs1  : csr_vtype_q.vsew,
       eew_vs2      : csr_vtype_q.vsew,
+      old_eew_vs2  : csr_vtype_q.vsew,
       eew_vd_op    : csr_vtype_q.vsew,
       eew_vmask    : eew_q[VMASK],
       cvt_resize   : CVT_SAME,
@@ -441,6 +457,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     is_config            = 1'b0;
     ignore_zero_vl_check = 1'b0;
+
+    emul_vs1 = ara_req.emul;
+    emul_vs2 = ara_req.emul;
+    emul_vs1_d = emul_vs1_q;
+    emul_vs2_d = emul_vs2_q;
 
     // Saturation in any lane will raise vxsat flag
     csr_vxsat_d |= |vxsat_flag_i;
@@ -478,9 +499,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.resp_valid = 1'b0;
 
         // Handle LMUL > 1
-        rs_lmul_cnt_d       = rs_lmul_cnt_q;
-        rs_lmul_cnt_limit_d = rs_lmul_cnt_limit_q;
-        rs_mask_request_d   = 1'b0;
+        reg_lmul_cnt_d       = reg_lmul_cnt_q;
+        reg_lmul_cnt_limit_d = reg_lmul_cnt_limit_q;
+        reg_mask_request_d   = 1'b0;
 
         // Every single reshuffle request refers to LMUL == 1
         ara_req.emul = LMUL_1;
@@ -491,7 +512,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // These generate a reshuffle request to Ara's backend
         // When LMUL > 1, not all the regs that compose a large
         // register should always be reshuffled
-        ara_req_valid         = ~rs_mask_request_q;
+        ara_req_valid         = ~reg_mask_request_q;
         ara_req.use_scalar_op = 1'b1;
         ara_req.vs2           = vs_buffer_q;
         ara_req.eew_vs2       = eew_old_buffer_q;
@@ -514,8 +535,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Backend ready - Decide what to do next
         if (ara_req_ready_i) begin
           // Register completely reshuffled
-          if (rs_lmul_cnt_q == rs_lmul_cnt_limit_q) begin
-            rs_lmul_cnt_d = 0;
+          if (reg_lmul_cnt_q == reg_lmul_cnt_limit_q) begin
+            reg_lmul_cnt_d = 0;
 
             // Delete the already processed vector register from the notebook -> |vs1|vs2|vd|
             unique casez (reshuffle_req_q)
@@ -533,11 +554,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 eew_old_buffer_d = eew_q[insn.vmem_type.rs2];
                 eew_new_buffer_d = reshuffle_eew_vs2_q;
                 vs_buffer_d      = insn.varith_type.rs2;
+                reg_lmul_cnt_limit_d = emul_vs2_q;
               end
               3'b100: begin
                 eew_old_buffer_d = eew_q[insn.vmem_type.rs1];
                 eew_new_buffer_d = reshuffle_eew_vs1_q;
                 vs_buffer_d      = insn.varith_type.rs1;
+                reg_lmul_cnt_limit_d = emul_vs1_q;
               end
               default:;
             endcase
@@ -559,7 +582,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           // The register is not completely reshuffled (LMUL > 1)
           end else begin
             // Count up
-            rs_lmul_cnt_d = rs_lmul_cnt_q + 1;
+            reg_lmul_cnt_d = reg_lmul_cnt_q + 1;
 
             // Prepare the information to reshuffle the vector registers during the next cycles
             // Since LMUL > 1, we should go on and check if the next register needs a reshuffle
@@ -584,7 +607,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             endcase
 
             // Mask the next request if we don't need to reshuffle the next reg
-            if (eew_new_buffer_d == eew_old_buffer_d) rs_mask_request_d = 1'b1;
+            if (eew_new_buffer_d == eew_old_buffer_d) reg_mask_request_d = 1'b1;
           end
         end
       end
@@ -731,6 +754,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req.op        = ara_pkg::VMADC;
+                    ara_req.emul      = LMUL_1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req.emul)
@@ -760,6 +784,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010011: begin
                     ara_req.op        = ara_pkg::VMSBC;
+                    ara_req.emul      = LMUL_1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req.emul)
@@ -787,6 +812,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011001: begin
                     ara_req.op        = ara_pkg::VMSNE;
@@ -795,6 +821,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011010: begin
                     ara_req.op        = ara_pkg::VMSLTU;
@@ -803,6 +830,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011011: begin
                     ara_req.op        = ara_pkg::VMSLT;
@@ -811,6 +839,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011100: begin
                     ara_req.op        = ara_pkg::VMSLEU;
@@ -819,6 +848,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011101: begin
                     ara_req.op        = ara_pkg::VMSLE;
@@ -827,6 +857,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -999,6 +1030,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req.op        = ara_pkg::VMADC;
+                    ara_req.emul      = LMUL_1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req.emul)
@@ -1025,6 +1057,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010011: begin
                     ara_req.op        = ara_pkg::VMSBC;
+                    ara_req.emul      = LMUL_1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req.emul)
@@ -1047,6 +1080,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011001: begin
                     ara_req.op        = ara_pkg::VMSNE;
@@ -1055,6 +1089,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011010: begin
                     ara_req.op        = ara_pkg::VMSLTU;
@@ -1063,6 +1098,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011011: begin
                     ara_req.op        = ara_pkg::VMSLT;
@@ -1071,6 +1107,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011100: begin
                     ara_req.op        = ara_pkg::VMSLEU;
@@ -1079,6 +1116,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011101: begin
                     ara_req.op        = ara_pkg::VMSLE;
@@ -1087,6 +1125,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011110: begin
                     ara_req.op        = ara_pkg::VMSGTU;
@@ -1095,6 +1134,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011111: begin
                     ara_req.op        = ara_pkg::VMSGT;
@@ -1103,6 +1143,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -1241,6 +1282,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req.op        = ara_pkg::VMADC;
+                    ara_req.emul      = LMUL_1;
 
                     // Check whether we can access vs1 and vs2
                     unique case (ara_req.emul)
@@ -1263,6 +1305,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011001: begin
                     ara_req.op        = ara_pkg::VMSNE;
@@ -1271,6 +1314,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011100: begin
                     ara_req.op        = ara_pkg::VMSLEU;
@@ -1279,6 +1323,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011101: begin
                     ara_req.op        = ara_pkg::VMSLE;
@@ -1287,6 +1332,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011110: begin
                     ara_req.op        = ara_pkg::VMSGTU;
@@ -1295,6 +1341,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b011111: begin
                     ara_req.op        = ara_pkg::VMSGT;
@@ -1303,6 +1350,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    ara_req.emul       = LMUL_1;
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -1322,18 +1370,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     unique case (insn.varith_type.rs1[17:15])
                       3'd0 : begin
                         vlmax <<= 0;
+                        emul_vs1     = LMUL_1;
                         ara_req.emul = LMUL_1;
                       end
                       3'd1 : begin
                         vlmax <<= 1;
+                        emul_vs1     = LMUL_2;
                         ara_req.emul = LMUL_2;
                       end
                       3'd3 : begin
                         vlmax <<= 2;
+                        emul_vs1     = LMUL_4;
                         ara_req.emul = LMUL_4;
                       end
                       3'd7 : begin
                         vlmax <<= 3;
+                        emul_vs1     = LMUL_8;
                         ara_req.emul = LMUL_8;
                       end
                       default: begin
@@ -1349,6 +1401,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.use_vs2       = 1'b0;
                     ara_req.vs1           = insn.varith_type.rs2;
                     ara_req.eew_vs1       = eew_q[insn.varith_type.rs2];
+                    // Special treatment during reshuffle because vs1 is read from rs2
+                    is_vmvnrr = 1'b1;
                     // Copy the encoding information to the new register
                     ara_req.vtype.vsew    = eew_q[insn.varith_type.rs2];
                     ara_req.vl            = vlmax; // whole register move
@@ -1431,9 +1485,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 ara_req.vm      = insn.varith_type.vm;
                 ara_req_valid   = 1'b1;
 
-                // Assume an effective EMUL = LMUL1 by default (for the mask operations)
-                ara_req.emul = LMUL_1;
-
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
                   // Encode, for each reduction, the bits of the neutral
@@ -1442,59 +1493,79 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.op             = ara_pkg::VREDSUM;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b00);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000001: begin
                     ara_req.op             = ara_pkg::VREDAND;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b11);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000010: begin
                     ara_req.op             = ara_pkg::VREDOR;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b00);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000011: begin
                     ara_req.op             = ara_pkg::VREDXOR;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b00);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000100: begin
                     ara_req.op             = ara_pkg::VREDMINU;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b11);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000101: begin
                     ara_req.op             = ara_pkg::VREDMIN;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b01);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000110: begin
                     ara_req.op             = ara_pkg::VREDMAXU;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b00);
+                    ara_req.emul           = LMUL_1;
                   end
                   6'b000111: begin
                     ara_req.op             = ara_pkg::VREDMAX;
                     ara_req.conversion_vs1 = OpQueueReductionZExt;
                     ara_req.cvt_resize     = resize_e'(2'b10);
+                    ara_req.emul           = LMUL_1;
                   end
+                  6'b001000: ara_req.op = ara_pkg::VAADDU;
+                  6'b001001: ara_req.op = ara_pkg::VAADD;
+                  6'b001010: ara_req.op = ara_pkg::VASUBU;
+                  6'b001011: ara_req.op = ara_pkg::VASUB;
                   6'b010000: begin // VWXUNARY0
                     // vmv.x.s
                     // Stall the interface until we get the result
                     acc_resp_o.req_ready  = 1'b0;
                     acc_resp_o.resp_valid = 1'b0;
+                    // Scalar result
+                    ara_req.emul = LMUL_1;
 
                     case (insn.varith_type.rs1)
                       5'b00000: begin
                         ara_req.op      = ara_pkg::VMVXS;
+                        ara_req.use_vs1 = 1'b0;
                         ara_req.vl      = 1;
+                        // Scalar source
+                        emul_vs2        = LMUL_1;
+                        ara_req.emul    = LMUL_1;
                       end
                       5'b10000: begin
                         ara_req.op      = ara_pkg::VCPOP;
+                        ara_req.use_vs1 = 1'b0;
                         ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
                       5'b10001: begin
                         ara_req.op      = ara_pkg::VFIRST;
+                        ara_req.use_vs1 = 1'b0;
                         ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
                       default :;
@@ -1541,34 +1612,46 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         // This is a mask-to-mask operation, vsew does not have any meaning
                         // So, avoid reshuffling
                         ara_req.vtype.vsew = eew_q[ara_req.vd];
+                        // All mask vectors
+                        emul_vs1     = LMUL_1;
+                        emul_vs2     = LMUL_1;
+                        ara_req.emul = LMUL_1;
                       end
                       5'b00010: begin
                         ara_req.op = ara_pkg::VMSOF;
                         // This is a mask-to-mask operation, vsew does not have any meaning
                         // So, avoid reshuffling
                         ara_req.vtype.vsew = eew_q[ara_req.vd];
+                        // All mask vectors
+                        emul_vs1     = LMUL_1;
+                        emul_vs2     = LMUL_1;
+                        ara_req.emul = LMUL_1;
                       end
                       5'b00011: begin
                         ara_req.op = ara_pkg::VMSIF;
                         // This is a mask-to-mask operation, vsew does not have any meaning
                         // So, avoid reshuffling
                         ara_req.vtype.vsew = eew_q[ara_req.vd];
+                        // All mask vectors
+                        emul_vs1     = LMUL_1;
+                        emul_vs2     = LMUL_1;
+                        ara_req.emul = LMUL_1;
                       end
                       5'b10000: begin
                         ara_req.op = ara_pkg::VIOTA;
                         ara_req.use_vd_op  = 1'b0;
+                        // Source is mask vector!
+                        emul_vs2     = LMUL_1;
+                        ara_req.emul = ara_req.vtype.vlmul;
                       end
                       5'b10001: begin
                         ara_req.op = ara_pkg::VID;
                         ara_req.use_vd_op  = 1'b0;
                         ara_req.use_vs2 = 1'b0;
+                        ara_req.emul = ara_req.vtype.vlmul;
                       end
                     endcase
                   end
-                  6'b001000: ara_req.op = ara_pkg::VAADDU;
-                  6'b001001: ara_req.op = ara_pkg::VAADD;
-                  6'b001010: ara_req.op = ara_pkg::VASUBU;
-                  6'b001011: ara_req.op = ara_pkg::VASUB;
                   6'b010111: begin
                     ara_req.op = ara_pkg::VCOMPRESS;
                     // Correctly deshuffle vs1 (it gets deshuffled with eew_vs2)
@@ -1576,6 +1659,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     // The MASKU will ask for elements from vs2 through the MaskB opqueue
                     // and deshuffle them with eew_vd_op encoding
                     ara_req.eew_vd_op = eew_q[ara_req.vs2];
+                    // EMUL is key for reshuffling! (especially if EMUL > 1)
+                    emul_vs1 = LMUL_1; // Mask vector
                     // Encoding corresponding to unmasked operations are reserved
                     if (!insn.varith_type.vm) illegal_insn = 1'b1;
                   end
@@ -1587,6 +1672,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011001: begin
                     ara_req.op         = ara_pkg::VMAND;
@@ -1594,6 +1683,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011010: begin
                     ara_req.op         = ara_pkg::VMOR;
@@ -1601,6 +1694,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011011: begin
                     ara_req.op         = ara_pkg::VMXOR;
@@ -1608,6 +1705,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011100: begin
                     ara_req.op         = ara_pkg::VMORNOT;
@@ -1615,6 +1716,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011101: begin
                     ara_req.op         = ara_pkg::VMNAND;
@@ -1622,6 +1727,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011110: begin
                     ara_req.op         = ara_pkg::VMNOR;
@@ -1629,12 +1738,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b011111: begin
                     ara_req.op         = ara_pkg::VMXNOR;
                     ara_req.eew_vs1    = eew_q[ara_req.vs1];
                     ara_req.eew_vs2    = eew_q[ara_req.vs1]; // Force reshuffle
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                    // All mask vectors
+                    emul_vs1     = LMUL_1;
+                    emul_vs2     = LMUL_1;
+                    ara_req.emul = LMUL_1;
                   end
                   6'b010010: begin // VXUNARY0
                     // These instructions do not use vs1
@@ -1935,6 +2052,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.vl      = |csr_vl_q ? 1 : '0;
                     // This instruction ignores LMUL checks
                     skip_lmul_checks  = 1'b1;
+                    ara_req.emul      = LMUL_1;
                   end
                   // Divide instructions
                   6'b100000: ara_req.op = ara_pkg::VDIVU;
@@ -2193,6 +2311,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.vstart     = '0;
                       skip_lmul_checks     = 1'b1;
                       ignore_zero_vl_check = 1'b1;
+                      emul_vs2           = LMUL_1;
+                      ara_req.emul       = LMUL_1;
 
                       // Zero-extend operands
                       unique case (csr_vtype_q.vsew)
@@ -2234,6 +2354,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011001: begin
                       ara_req.op = ara_pkg::VMFLE;
@@ -2242,6 +2363,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011011: begin
                       ara_req.op = ara_pkg::VMFLT;
@@ -2250,6 +2372,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011100: begin
                       ara_req.op = ara_pkg::VMFNE;
@@ -2258,6 +2381,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b010010: begin // VFUNARY0
                       // These instructions do not use vs1
@@ -2631,6 +2755,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.vl      = |csr_vl_q ? 1 : '0;
                       // This instruction ignores LMUL checks
                       skip_lmul_checks  = 1'b1;
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b010111: ara_req.op = ara_pkg::VMERGE;
                     6'b011000: begin
@@ -2640,6 +2765,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011001: begin
                       ara_req.op = ara_pkg::VMFLE;
@@ -2648,6 +2774,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011011: begin
                       ara_req.op = ara_pkg::VMFLT;
@@ -2656,6 +2783,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011100: begin
                       ara_req.op = ara_pkg::VMFNE;
@@ -2664,6 +2792,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011101: begin
                       ara_req.op = ara_pkg::VMFGT;
@@ -2672,6 +2801,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b011111: begin
                       ara_req.op = ara_pkg::VMFGE;
@@ -2680,6 +2810,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.eew_vs2    = csr_vtype_q.vsew;
                       ara_req.eew_vd_op  = eew_q[ara_req.vd];
                       ara_req.vtype.vsew = eew_q[ara_req.vd];
+                      ara_req.emul       = LMUL_1;
                     end
                     6'b100100: ara_req.op = ara_pkg::VFMUL;
                     6'b100000: ara_req.op = ara_pkg::VFDIV;
@@ -2960,6 +3091,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // These also read vs2
                 ara_req.vs2     = insn.vmem_type.rs2;
                 ara_req.use_vs2 = 1'b1;
+                ara_req.old_eew_vs2 = eew_q[ara_req.vs2]; // This is the old vs2 EEW;
               end
               default:;
             endcase
@@ -2967,6 +3099,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // For memory operations: EMUL = LMUL * (EEW / SEW)
             // EEW is encoded in the instruction
             ara_req.emul = vlmul_e'(csr_vtype_q.vlmul + (ara_req.vtype.vsew - csr_vtype_q.vsew));
+            emul_vs2     = vlmul_e'(csr_vtype_q.vlmul + (ara_req.eew_vs2 - csr_vtype_q.vsew));
 
             // Exception if EMUL > 8 or < 1/8
             unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
@@ -3204,6 +3337,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // These also read vs2
                 ara_req.vs2     = insn.vmem_type.rs2;
                 ara_req.use_vs2 = 1'b1;
+                ara_req.old_eew_vs2 = eew_q[ara_req.vs2]; // This is the old vs2 EEW;
               end
               default:;
             endcase
@@ -3211,6 +3345,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // For memory operations: EMUL = LMUL * (EEW / SEW)
             // EEW is encoded in the instruction
             ara_req.emul = vlmul_e'(csr_vtype_q.vlmul + (ara_req.vtype.vsew - csr_vtype_q.vsew));
+            emul_vs2     = vlmul_e'(csr_vtype_q.vlmul + (ara_req.eew_vs2 - csr_vtype_q.vsew));
 
             // Exception if EMUL > 8 or < 1/8
             unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
@@ -3334,6 +3469,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               end
             end
             ara_req.eew_vs1 = ara_req.vtype.vsew; // This is the new vs1 EEW
+            emul_vs1 = vlmul_e'(csr_vtype_q.vlmul + (ara_req.eew_vs1 - csr_vtype_q.vsew));
           end
 
           ////////////////////////////
@@ -3611,15 +3747,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
         // During a vstore, if vstart > 0, reshuffle immediately not to complicate operand fetch stage
-        // During a vstore with EMUL > 1, reshuffle immediately if the register group's EEW is not the
-        // same for every reg.
-        reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && ((csr_vstart_q != '0) || !is_same_eew))),
-                           ara_req.use_vs2 && (ara_req.eew_vs2    != eew_q[ara_req.vs2]) && eew_valid_q[ara_req.vs2] && in_lane_op,
-                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
+        // If EMUL > 1, reshuffle if the register group's EEW is not the same for every reg.
+        reshuffle_req_d = {ara_req.use_vs1 && vs1_some_is_valid && !(vs1_is_same_eew && ((!in_lane_op && !is_vstore) || (in_lane_op && (ara_req.eew_vs1 == eew_q[ara_req.vs1])) || (is_vstore && (csr_vstart_q == '0)))),
+                           ara_req.use_vs2 && vs2_some_is_valid && !(vs2_is_same_eew && (!in_lane_op || (ara_req.eew_vs2 == eew_q[ara_req.vs2]))),
+                           ara_req.use_vd  && vd_some_is_valid  && !(vd_is_same_eew && (ara_req.vtype.vsew == eew_q[ara_req.vd])) && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
         // Mask out requests if they refer to the same register!
         reshuffle_req_d &= {
-          (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
-          (insn.varith_type.rs2 != insn.varith_type.rd),
+          !(((insn.varith_type.rs1 == insn.varith_type.rd) && reshuffle_req_d[0]) || ((insn.varith_type.rs1 == insn.varith_type.rs2) && reshuffle_req_d[1])),
+          !((insn.varith_type.rs2 == insn.varith_type.rd) && reshuffle_req_d[0]),
           1'b1};
 
         // Prepare the information to reshuffle the vector registers during the next cycles
@@ -3638,16 +3773,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           3'b100: begin
             eew_old_buffer_d = is_vstore ? eew_q[insn.vmem_type.rd] : eew_q[insn.vmem_type.rs1];
             eew_new_buffer_d = ara_req.eew_vs1;
-            vs_buffer_d      = is_vstore ? insn.vmem_type.rd : insn.varith_type.rs1;
+            vs_buffer_d      = is_vstore ? insn.vmem_type.rd : (is_vmvnrr ? insn.varith_type.rs2 : insn.varith_type.rs1);
           end
           default:;
         endcase
+
+        // Mask the next request if we don't need to reshuffle the next reg
+        if (eew_new_buffer_d == eew_old_buffer_d) reg_mask_request_d = 1'b1;
       end
 
       // Reshuffle if at least one of the three registers needs a reshuffle
       if (|reshuffle_req_d) begin
         // Instruction is of one of the RVV types
         automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
+        automatic rvv_pkg::vlmul_e reshuffle_emul;
 
         // Stall the interface, and inject a reshuffling instruction
         acc_resp_o.req_ready  = 1'b0;
@@ -3655,12 +3794,22 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         ara_req_valid  = 1'b0;
 
         // Initialize the reshuffle counter limit to handle LMUL > 1
-        unique case (ara_req.emul)
-          LMUL_2:  rs_lmul_cnt_limit_d = 1;
-          LMUL_4:  rs_lmul_cnt_limit_d = 3;
-          LMUL_8:  rs_lmul_cnt_limit_d = 7;
-          default: rs_lmul_cnt_limit_d = 0;
+        unique casez (reshuffle_req_d)
+          3'b??1: reshuffle_emul = ara_req.emul;
+          3'b?10: reshuffle_emul = emul_vs2;
+          3'b100: reshuffle_emul = emul_vs1;
         endcase
+
+        unique case (reshuffle_emul)
+          LMUL_2:  reg_lmul_cnt_limit_d = 1;
+          LMUL_4:  reg_lmul_cnt_limit_d = 3;
+          LMUL_8:  reg_lmul_cnt_limit_d = 7;
+          default: reg_lmul_cnt_limit_d = 0;
+        endcase
+
+        // Save vs1 and vs2 emul for reshuffling. vd, if needed, has been saved already.
+        emul_vs1_d = emul_vs1;
+        emul_vs2_d = emul_vs2;
 
         // Save info for next reshuffles
         reshuffle_eew_vs1_d = ara_req.eew_vs1;
@@ -3746,7 +3895,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     logic [15:0] same_eew_m2;
     logic [7:0]  same_eew_m4;
     logic [3:0]  same_eew_m8;
-    logic [3:0]  same_eew_by_lmul;
+    logic [3:0]  vs1_same_eew_by_lmul;
+    logic [3:0]  vs2_same_eew_by_lmul;
+    logic [3:0]  vd_same_eew_by_lmul;
 
     // LMUL = 2: group of 2 registers
     for (int i = 0; i < 16; i++) begin
@@ -3766,13 +3917,73 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     end
 
     // Final selection per LMUL
-    same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
-    same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs1[4:1]];
-    same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs1[4:2]];
-    same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs1[4:3]];
+    vs1_same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    vs1_same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs1[4:1]];
+    vs1_same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs1[4:2]];
+    vs1_same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs1[4:3]];
+
+    vs2_same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    vs2_same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vs2[4:1]];
+    vs2_same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vs2[4:2]];
+    vs2_same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vs2[4:3]];
+
+    vd_same_eew_by_lmul[LMUL_1] = 1'b1; // always same EEW with 1 register
+    vd_same_eew_by_lmul[LMUL_2] = same_eew_m2[ara_req.vd[4:1]];
+    vd_same_eew_by_lmul[LMUL_4] = same_eew_m4[ara_req.vd[4:2]];
+    vd_same_eew_by_lmul[LMUL_8] = same_eew_m8[ara_req.vd[4:3]];
 
     // If EMUL is fractional (emul[2] == 1), EEW is considered uniform
-    is_same_eew = same_eew_by_lmul[ara_req.emul[1:0]] | ara_req.emul[2];
+    vs1_is_same_eew = vs1_same_eew_by_lmul[emul_vs1[1:0]] | emul_vs1[2];
+    vs2_is_same_eew = vs2_same_eew_by_lmul[emul_vs2[1:0]] | emul_vs2[2];
+    vd_is_same_eew = vd_same_eew_by_lmul[ara_req.emul[1:0]] | ara_req.emul[2];
+  end
+
+  // Check if the selected register groups have at least one register with valid data in it
+  always_comb begin
+    logic [15:0] some_valid_m2;
+    logic [7:0]  some_valid_m4;
+    logic [3:0]  some_valid_m8;
+    logic [3:0]  vs1_some_is_valid_by_lmul;
+    logic [3:0]  vs2_some_is_valid_by_lmul;
+    logic [3:0]  vd_some_is_valid_by_lmul;
+
+    // LMUL = 2: group of 2 registers
+    for (int i = 0; i < 16; i++) begin
+      some_valid_m2[i] = (eew_valid_q[2*i] | eew_valid_q[2*i+1]);
+    end
+
+    // LMUL = 4: group of 4 registers (2 LMUL=2 groups + mid-pair check)
+    for (int i = 0; i < 8; i++) begin
+      some_valid_m4[i] = (eew_valid_q[4*i+1] | eew_valid_q[4*i+2]) ||
+                         (some_valid_m2[2*i] | some_valid_m2[2*i+1]);
+    end
+
+    // LMUL = 8: group of 8 registers (2 LMUL=4 groups + mid-pair check)
+    for (int i = 0; i < 4; i++) begin
+      some_valid_m8[i] = (eew_valid_q[8*i+3] | eew_valid_q[8*i+4]) ||
+                         (some_valid_m4[2*i] | some_valid_m4[2*i+1]);
+    end
+
+    // Final selection per LMUL
+    vs1_some_is_valid_by_lmul[LMUL_1] = eew_valid_q[ara_req.vs1];
+    vs1_some_is_valid_by_lmul[LMUL_2] = some_valid_m2[ara_req.vs1[4:1]];
+    vs1_some_is_valid_by_lmul[LMUL_4] = some_valid_m4[ara_req.vs1[4:2]];
+    vs1_some_is_valid_by_lmul[LMUL_8] = some_valid_m8[ara_req.vs1[4:3]];
+
+    vs2_some_is_valid_by_lmul[LMUL_1] = eew_valid_q[ara_req.vs2];
+    vs2_some_is_valid_by_lmul[LMUL_2] = some_valid_m2[ara_req.vs2[4:1]];
+    vs2_some_is_valid_by_lmul[LMUL_4] = some_valid_m4[ara_req.vs2[4:2]];
+    vs2_some_is_valid_by_lmul[LMUL_8] = some_valid_m8[ara_req.vs2[4:3]];
+
+    vd_some_is_valid_by_lmul[LMUL_1] = eew_valid_q[ara_req.vd];
+    vd_some_is_valid_by_lmul[LMUL_2] = some_valid_m2[ara_req.vd[4:1]];
+    vd_some_is_valid_by_lmul[LMUL_4] = some_valid_m4[ara_req.vd[4:2]];
+    vd_some_is_valid_by_lmul[LMUL_8] = some_valid_m8[ara_req.vd[4:3]];
+
+    // If EMUL is fractional (emul[2] == 1), EEW is considered one
+    vs1_some_is_valid = vs1_some_is_valid_by_lmul[emul_vs1[1:0] & {2{~emul_vs1[2]}}];
+    vs2_some_is_valid = vs2_some_is_valid_by_lmul[emul_vs2[1:0] & {2{~emul_vs2[2]}}];
+    vd_some_is_valid = vd_some_is_valid_by_lmul[ara_req.emul[1:0] & {2{~ara_req.emul[2]}}];
   end
 
 endmodule : ara_dispatcher

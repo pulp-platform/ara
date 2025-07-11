@@ -38,6 +38,7 @@ typedef struct packed {
   logic use_vs2;
   opqueue_conversion_e conversion_vs2;
   rvv_pkg::vew_e eew_vs2;
+  rvv_pkg::vew_e old_eew_vs2;
 
   // Use vd as an operand as well (e.g., vmacc)
   logic use_vd_op;
