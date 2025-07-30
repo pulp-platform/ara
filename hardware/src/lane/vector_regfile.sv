@@ -41,7 +41,7 @@ module vector_regfile import ara_pkg::*; #(
   //  Signals  //
   ///////////////
 
-  elen_t    [NrBanks-1:0] rdata;
+  elen_t    [NrBanks-1:0] rdata, rdata_q;
   logic     [NrBanks-1:0] rdata_valid_q;
   opqueue_e [NrBanks-1:0] tgt_opqueue_q;
 
@@ -50,9 +50,11 @@ module vector_regfile import ara_pkg::*; #(
     if (!rst_ni) begin
       rdata_valid_q <= '0;
       tgt_opqueue_q <= '0;
+      rdata_q       <= '0;
     end else begin
       rdata_valid_q <= req_i & ~wen_i;
       tgt_opqueue_q <= tgt_opqueue_i;
+      rdata_q       <= rdata;
     end
   end
 
@@ -79,6 +81,7 @@ module vector_regfile import ara_pkg::*; #(
     assign vrf_clk = clk_i;
 `endif
 
+`ifndef LATCH_VRF
     tc_sram #(
       .NumWords (NumWords ),
       .DataWidth(DataWidth),
@@ -93,6 +96,24 @@ module vector_regfile import ara_pkg::*; #(
       .be_i   (be_i[bank]                        ),
       .addr_i (addr_i[bank][$clog2(NumWords)-1:0])
     );
+`else
+    vregfile #(
+      .NrReadPorts(1         ),
+      .NrWords    (NumWords  ),
+      .WordWidth  (DataWidth )
+    ) data_latch (
+      .clk_i     (vrf_clk                            ),
+      .rst_ni    (rst_ni                             ),
+      .testmode_i(1'b0                               ),
+      .raddr_i   (addr_i[bank][$clog2(NumWords)-1:0] ),
+      .waddr_i   (addr_i[bank][$clog2(NumWords)-1:0] ),
+      .wdata_i   (wdata_i[bank]                      ),
+      .we_i      (wen_i[bank]                        ),
+      .wbe_i     (be_i[bank]                         ),
+      .rdata_o   (rdata[bank]                        )
+    );
+`endif
+
   end : gen_banks
 
   ///////////////////
@@ -109,7 +130,11 @@ module vector_regfile import ara_pkg::*; #(
     .rst_ni (rst_ni         ),
     .flush_i(1'b0           ),
     .rr_i   ('0             ),
+`ifndef LATCH_VRF
     .data_i (rdata          ),
+`else
+    .data_i (rdata_q        ),
+`endif
     .valid_i(rdata_valid_q  ),
     .ready_o(/* Unused */   ),
     .sel_i  (tgt_opqueue_q  ),

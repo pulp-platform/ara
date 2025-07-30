@@ -72,6 +72,10 @@ ifeq ($(ideal_dispatcher), 1)
   ideal        = "_ideal"
 endif
 
+ifeq ($(latch_vrf), 1)
+  bender_defs += -DLATCH_VRF
+endif
+
 ifeq ($(vcd_dump), 1)
   vcd_path    ?= ../vcd/$(app).vcd
   bender_defs += --define VCD_DUMP=1 --define VCD_PATH=$(vcd_path)

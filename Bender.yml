@@ -44,6 +44,7 @@ sources:
     - hardware/src/lane/simd_alu.sv
     - hardware/src/lane/simd_div.sv
     - hardware/src/lane/simd_mul.sv
+    - hardware/src/lane/vregfile.sv
     - hardware/src/lane/vector_regfile.sv
     - hardware/src/lane/power_gating_generic.sv
     - hardware/src/masku/masku_operands.sv
