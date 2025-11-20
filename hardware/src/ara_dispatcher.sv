@@ -110,6 +110,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   endfunction : next_lmul
 
+  // Calculates prev(lmul)
+  function automatic vlmul_e prev_lmul(vlmul_e lmul);
+    unique case (lmul)
+      LMUL_1_4: prev_lmul = LMUL_1_8;
+      LMUL_1_2: prev_lmul = LMUL_1_4;
+      LMUL_1  : prev_lmul = LMUL_1_2;
+      LMUL_2  : prev_lmul = LMUL_1;
+      LMUL_4  : prev_lmul = LMUL_2;
+      LMUL_8  : prev_lmul = LMUL_4;
+      default : prev_lmul = LMUL_RSVD;
+    endcase
+  endfunction : prev_lmul
+
   // Calculates prev(prev(ew))
   function automatic vew_e prev_prev_ew(vew_e ew);
     unique case (ew)
@@ -1649,6 +1662,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.conversion_vs2 = OpQueueConversionZExt8;
                         ara_req.eew_vs2        = eew_q[insn.varith_type.rs2];
                         ara_req.cvt_resize     = CVT_WIDE;
+                        lmul_vs2               = prev_lmul(prev_lmul(prev_lmul(csr_vtype_q.vlmul)));
 
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW64) ||
@@ -1659,6 +1673,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.conversion_vs2 = OpQueueConversionSExt8;
                         ara_req.eew_vs2        = eew_q[insn.varith_type.rs2];
                         ara_req.cvt_resize     = CVT_WIDE;
+                        lmul_vs2               = prev_lmul(prev_lmul(prev_lmul(csr_vtype_q.vlmul)));
 
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW64) ||
@@ -1669,6 +1684,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.conversion_vs2 = OpQueueConversionZExt4;
                         ara_req.eew_vs2        = prev_prev_ew(csr_vtype_q.vsew);
                         ara_req.cvt_resize     = CVT_WIDE;
+                        lmul_vs2               = prev_lmul(prev_lmul(csr_vtype_q.vlmul));
 
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW32) ||
@@ -1678,6 +1694,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.conversion_vs2 = OpQueueConversionSExt4;
                         ara_req.eew_vs2        = prev_prev_ew(csr_vtype_q.vsew);
                         ara_req.cvt_resize     = CVT_WIDE;
+                        lmul_vs2               = prev_lmul(prev_lmul(csr_vtype_q.vlmul));
 
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW32) ||
@@ -1687,6 +1704,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.conversion_vs2 = OpQueueConversionZExt2;
                         ara_req.eew_vs2        = csr_vtype_q.vsew.prev();
                         ara_req.cvt_resize     = CVT_WIDE;
+                        lmul_vs2               = prev_lmul(csr_vtype_q.vlmul);
 
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW16) || int'(csr_vtype_q.vlmul) inside {LMUL_1_8})
@@ -1696,6 +1714,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.conversion_vs2 = OpQueueConversionSExt2;
                         ara_req.eew_vs2        = csr_vtype_q.vsew.prev();
                         ara_req.cvt_resize     = CVT_WIDE;
+                        lmul_vs2               = prev_lmul(csr_vtype_q.vlmul);
 
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW16) || int'(csr_vtype_q.vlmul) inside {LMUL_1_8})
