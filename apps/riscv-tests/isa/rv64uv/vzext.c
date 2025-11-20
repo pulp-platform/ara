@@ -100,6 +100,26 @@ void TEST_CASE6(void) {
   VCMP_U64(12, v2, 0, 2, 0, 252, 0, 6, 0, 248, 0, 254, 0, 4, 0, 250, 0, 8);
 }
 
+void TEST_CASE7(void) {
+  VSET(16, e16, m2);
+  VLOAD_8(v1, 1, 2, -3, -4, 5, 6, -7, -8, -1, -2, 3, 4, -5, -6, 7, 8);
+  asm volatile("vzext.vf2 v2, v1");
+  VCMP_U16(13, v2, 1, 2, 253, 252, 5, 6, 249, 248, 255, 254, 3, 4, 251, 250, 7,
+           8);
+
+  VSET(16, e32, m4);
+  VLOAD_8(v3, 1, 2, -3, -4, 5, 6, -7, -8, -1, -2, 3, 4, -5, -6, 7, 8);
+  asm volatile("vzext.vf4 v4, v3");
+  VCMP_U32(14, v4, 1, 2, 253, 252, 5, 6, 249, 248, 255, 254, 3, 4, 251, 250, 7,
+           8);
+
+  VSET(16, e64, m8);
+  VLOAD_8(v1, 1, 2, -3, -4, 5, 6, -7, -8, -1, -2, 3, 4, -5, -6, 7, 8);
+  asm volatile("vzext.vf8 v8, v1");
+  VCMP_U64(15, v8, 1, 2, 253, 252, 5, 6, 249, 248, 255, 254, 3, 4, 251, 250, 7,
+           8);
+}
+
 int main(void) {
   INIT_CHECK();
   enable_vec();
@@ -110,6 +130,7 @@ int main(void) {
   TEST_CASE4();
   TEST_CASE5();
   TEST_CASE6();
+  TEST_CASE7();
 
   EXIT_CHECK();
 }
