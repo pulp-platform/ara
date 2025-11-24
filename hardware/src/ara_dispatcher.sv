@@ -3631,7 +3631,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
         in_lane_op = ara_req.op inside {[VADD:VMERGE]} || ara_req.op inside {[VREDSUM:VMSBC]} ||
-                     ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {VSLIDEUP, VSLIDEDOWN};
+                     ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {[VMVXS:VSLIDEDOWN]};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
