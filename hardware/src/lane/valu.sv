@@ -708,9 +708,6 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               if (vinsn_queue_d.issue_cnt != 0)
                 issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
 
-              // Commit and give the done to the main sequencer
-              commit_cnt_d = '0;
-
               // Bump pointers and counters of the result queue
               result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
               result_queue_cnt_d += 1;
@@ -718,6 +715,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
                 result_queue_write_pnt_d = 0;
               else
                 result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+
+              // finish reduction
+              alu_state_d = NO_REDUCTION;
             end
           end
         end
@@ -762,6 +762,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         automatic logic [6:0] element_cnt = element_cnt_commit;
           commit_cnt_d = commit_cnt_q - element_cnt;
         if (commit_cnt_q < element_cnt) commit_cnt_d = '0;
+      end else begin
+        // Reduction result committed
+        commit_cnt_d = '0;
       end
     end
 
