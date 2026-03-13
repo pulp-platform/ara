@@ -838,7 +838,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
 
         // Trim vector elements which are not written by the slide unit
-        if (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op == VSLIDEUP)
+        if (vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op == VSLIDEUP && 
+            !vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].use_scalar_op)
           commit_cnt_d -= vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].stride[$bits(commit_cnt_d)-1:0];
       end
     end
