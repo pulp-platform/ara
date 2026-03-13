@@ -1623,7 +1623,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_queue_d.commit_cnt == '0) begin
         commit_cnt_d = pe_req_i.vl;
         // Trim skipped words
-        if (pe_req_i.op == VSLIDEUP)
+        if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op)
           commit_cnt_d -= vlen_t'(trimmed_stride);
       end
 
