@@ -11,7 +11,7 @@ INSTALL_DIR := $(abspath $(ROOT_DIR)/../install)
 VERILATOR_INCLUDE := $(INSTALL_DIR)/verilator/share/verilator/include/vltstd
 
 BENDER         := $(ROOT_DIR)/../hardware/bender
-BENDER_VERSION := 0.27.3
+BENDER_VERSION := 0.31.0
 
 # Choose Ara's configuration
 ifndef config
@@ -111,7 +111,7 @@ bender_defs_veril := $(bender_defs) --define COMMON_CELLS_ASSERTS_OFF
 # Targets
 bender_common_targs := -t rtl -t cv64a6_imafdcv_sv39 -t tech_cells_generic_include_tc_sram -t tech_cells_generic_include_tc_clk -t exclude_first_pass_decoder
 bender_targs_simc     := $(bender_common_targs) -t ara_test -t cva6_test
-bender_targs_veril    := $(bender_common_targs) -t ara_test -t cva6_test -t verilator
+bender_targs_veril    := $(bender_common_targs) -t ara_test -t cva6_test -t verilator  -t tech_cells_generic_exclude_deprecated
 bender_targs_spyglass := $(bender_common_targs) -t spyglass
 
 # Default target
@@ -184,7 +184,7 @@ verilate: $(buildpath) bender $(veril_library)/V$(veril_top)
 
 $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell find src -type f) $(shell find ../config -type f) $(shell find include -type f) $(shell find tb -type f) $(shell find deps -type f)
 	rm -rf $(veril_library); mkdir -p $(veril_library)
-	$(BENDER) script verilator $(bender_targs_veril) $(bender_defs_veril) > $(veril_library)/bender_script_$(config)
+	$(BENDER) script flist-plus $(bender_targs_veril) $(bender_defs_veril) > $(veril_library)/bender_script_$(config)
 # Verilate the design
 	$(veril_path)/verilator -f $(veril_library)/bender_script_$(config)           \
   -GNrLanes=$(nr_lanes)                                                         \
@@ -247,7 +247,7 @@ lint: spyglass/tmp/files spyglass/sdc/func.sdc spyglass/scripts/run_lint.tcl
 
 spyglass/tmp/files: $(bender)
 	mkdir -p spyglass/tmp
-	$(BENDER) script verilator $(bender_targs_spyglass) $(bender_defs) --define SPYGLASS > spyglass/tmp/files
+	$(BENDER) script flist-plus $(bender_targs_spyglass) $(bender_defs) --define SPYGLASS > spyglass/tmp/files
 
 # DPIs
 .PHONY: dpi
