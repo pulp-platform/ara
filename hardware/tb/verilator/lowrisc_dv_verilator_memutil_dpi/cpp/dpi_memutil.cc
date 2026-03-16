@@ -230,7 +230,7 @@ static std::vector<uint8_t> FlattenElfFile(const std::string &filepath) {
 
     uint64_t off = phdr.p_paddr - low;
     uint64_t dst_len = phdr.p_memsz;
-    uint64_t src_len = std::min(phdr.p_filesz, dst_len);
+    uint64_t src_len = std::min(static_cast<uint64_t>(phdr.p_filesz), dst_len);
 
     if (!dst_len)
       continue;
