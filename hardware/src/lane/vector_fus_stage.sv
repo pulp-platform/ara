@@ -17,6 +17,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     parameter  fpext_support_e        FPExtSupport    = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport    = FixedPointEnable,
+    // Support for crypto extension
+    parameter  crypto_support_e       CryptoSupport   = CryptoSupportNone,
     // Type used to address vector register file elements
     parameter  type                   vaddr_t         = logic,
     parameter  type                   vfu_operation_t = logic,
@@ -108,6 +110,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .NrLanes        (NrLanes        ),
     .VLEN           (VLEN           ),
     .FixPtSupport   (FixPtSupport   ),
+    .CryptoSupport  (CryptoSupport  ),
     .vaddr_t        (vaddr_t        ),
     .vfu_operation_t(vfu_operation_t)
   ) i_valu (

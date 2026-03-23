@@ -79,6 +79,16 @@ package ara_pkg;
     return e[0];
   endfunction : RVVBA
 
+  // 16 bits correspond to {Zvbb, Zvbc, Zvkb, Zvkg, Zvkned, Zvknha, Zvknhb, Zvksed, Zvksh, Zvkn, Zvknc, Zvkng, Zvks, Zvksc, Zvksg, Zvkt}
+  typedef enum bit [15:0] {
+    CryptoSupportNone = 16'h0000,
+    CryptoSupportAES  = 16'h0800
+  } crypto_support_e;
+
+  function automatic bit Zvkned(crypto_support_e e);
+    return e[11];
+  endfunction
+
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;
@@ -136,6 +146,12 @@ package ara_pkg;
     VMVSX, VFMVSF,
     // Integer Reductions
     VREDSUM, VREDAND, VREDOR, VREDXOR, VREDMINU, VREDMIN, VREDMAXU, VREDMAX, VWREDSUMU, VWREDSUM,
+    // Vector Crypto AES instructions (Zvkned)
+    // .vv round ops (need both ALU + SlideUnit for multi-phase execution)
+    VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV,
+    // .vs round ops, key schedule, round zero (ALU only for now)
+    VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS,
+    VAESKF1, VAESKF2, VAESZ_VS,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Fixed point multiplication

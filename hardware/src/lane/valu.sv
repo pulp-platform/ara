@@ -12,6 +12,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     parameter  int    unsigned VLEN            = 0,
     // Support for fixed-point data types
     parameter  fixpt_support_e FixPtSupport    = FixedPointEnable,
+    // Support for crypto extension
+    parameter  crypto_support_e CryptoSupport  = CryptoSupportNone,
     // Type used to address vector register file elements
     parameter  type            vaddr_t         = logic,
     parameter  type            vfu_operation_t = logic,
@@ -236,6 +238,20 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   // output EEW word we are producing.
   logic narrowing_select_d, narrowing_select_q;
 
+  ///////////////////////
+  //  AES Operations   //
+  ///////////////////////
+
+  // Returns 1'b1 if `op` is any AES instruction handled by the VALU
+  function automatic logic is_aes_valu(ara_op_e op);
+    is_aes_valu = op inside {[VAESDM_VV:VAESEF_VS], VAESZ_VS};
+  endfunction : is_aes_valu
+
+  // Returns 1'b1 if `op` is an AES .vv round op (multi-phase ALU->SLDU->ALU)
+  function automatic logic is_aes_round(ara_op_e op);
+    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV]};
+  endfunction : is_aes_round
+
   //////////////////
   //  Reductions  //
   //////////////////
@@ -320,7 +336,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   `FF(alu_red_complete_o, alu_red_complete_d, 1'b0, clk_i, rst_ni);
 
   // Signal to indicate the state of the ALU
-  typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_RX, INTER_LANES_REDUCTION_TX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION} alu_state_e;
+  typedef enum logic [3:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_RX, INTER_LANES_REDUCTION_TX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION, AES_SUBBYTES, AES_TX, AES_RX} alu_state_e;
   alu_state_e alu_state_d, alu_state_q;
 
   // Reductions commit by zeroing the commit counter
@@ -396,6 +412,35 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     .result_o          (valu_result                                                     )
   );
 
+  ///////////////////////////
+  //  SIMD AES (per-lane)  //
+  ///////////////////////////
+
+  elen_t aes_lane_result;
+  // AES phase: 0 = SubBytes (Phase 1), 1 = MixColumns+AddRoundKey (Phase 2)
+  logic aes_phase;
+
+  if (Zvkned(CryptoSupport)) begin : gen_aes_lane
+    // In Phase 2 (AES_RX), operand_a comes from SLDU (post-ShiftRows data)
+    // In Phase 1 or single-phase ops, operand_a comes from ALU operand queue
+    elen_t aes_operand_a;
+    assign aes_operand_a = (alu_state_q == AES_RX) ? sldu_operand_q : alu_operand_a;
+
+    simd_aes_lane i_simd_aes_lane (
+      .operand_a_i(aes_operand_a    ),
+      .operand_b_i(alu_operand_b    ),
+      .op_i       (vinsn_issue_q.op ),
+      .phase_i    (aes_phase        ),
+      .result_o   (aes_lane_result  )
+    );
+  end else begin : gen_no_aes_lane
+    assign aes_lane_result = '0;
+  end
+
+  // Mux between normal ALU result and AES result
+  elen_t vfu_result;
+  assign vfu_result = is_aes_valu(vinsn_issue_q.op) ? aes_lane_result : valu_result;
+
   ///////////////
   //  Control  //
   ///////////////
@@ -454,6 +499,10 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     // Don't prevent commit by default
     prevent_commit = 1'b0;
 
+    // AES phase: 0 = SubBytes (Phase 1), 1 = MixColumns+AddRoundKey (Phase 2)
+    aes_phase = 1'b0;
+
+
     // How many elements are we processing this cycle?
     issue_effective_eew = vinsn_issue_q.op == VRGATHEREI16 ? 1 : unsigned'(vinsn_issue_q.vtype.vsew[1:0]);
     element_cnt_buf_issue = 1 << (unsigned'(EW64) - issue_effective_eew);
@@ -470,11 +519,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       case (alu_state_q)
         NO_REDUCTION: begin
           // Do not accept operands if the result queue is full!
-          // Do not accept operands from this state if the current instruction is a reduction
-          if (!result_queue_full && !is_reduction(vinsn_issue_q.op)) begin
+          // Do not accept operands from this state if the current instruction is a reduction or AES round
+          if (!result_queue_full && !is_reduction(vinsn_issue_q.op) && !is_aes_round(vinsn_issue_q.op)) begin
             // Do we have all the operands necessary for this instruction?
+            // AluA carries vs1, or vd_op when use_vd_op && !use_vs1 (e.g., AES)
+            automatic logic need_alu_a = vinsn_issue_q.use_vs1 || (vinsn_issue_q.use_vd_op && !vinsn_issue_q.use_vs1);
             if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
-                (alu_operand_valid_i[0] || !vinsn_issue_q.use_vs1) &&
+                (alu_operand_valid_i[0] || !need_alu_a) &&
                 (mask_valid_i || vinsn_issue_q.vm)) begin
               // How many elements are we committing with this word?
               automatic logic [6:0] element_cnt = element_cnt_issue;
@@ -486,14 +537,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
               valu_valid = 1'b1;
 
               // Acknowledge the operands of this instruction
-              alu_operand_ready_o = {vinsn_issue_q.use_vs2, vinsn_issue_q.use_vs1};
+              alu_operand_ready_o = {vinsn_issue_q.use_vs2, need_alu_a};
               // Narrowing instructions might need an extra cycle before acknowledging the mask operands
               // If the results are being sent to the Mask Unit, it is up to it to acknowledge the operands.
               if (!narrowing(vinsn_issue_q.op))
                 mask_ready_o = !vinsn_issue_q.vm;
 
               // Store the result in the result queue
-              result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | valu_result;
+              result_queue_d[result_queue_write_pnt_q].wdata = result_queue_q[result_queue_write_pnt_q].wdata | vfu_result;
               result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + ((vinsn_issue_q.vl - issue_cnt_q) >> (unsigned'(EW64) - unsigned'(vinsn_issue_q.vtype.vsew)));
               result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
               result_queue_d[result_queue_write_pnt_q].mask  = vinsn_issue_q.vfu == VFU_MaskUnit;
@@ -721,6 +772,89 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             end
           end
         end
+        ////////////////////////////
+        //  AES Multi-phase FSM  //
+        ////////////////////////////
+
+        // Phase 1: SubBytes (per-lane) on vd_op data
+        AES_SUBBYTES: begin
+          prevent_commit = 1'b1;
+          aes_phase = 1'b0;
+          // Need both operands: AluA (vd_op/state) and AluB (vs2/round key)
+          // We consume AluA now but keep AluB for Phase 2
+          if (alu_operand_valid_i[0] && alu_operand_valid_i[1]) begin
+            // Compute SubBytes via simd_aes_lane (phase=0)
+            // Buffer SubBytes'd result in result queue entry (don't bump pointers yet —
+            // same pattern as reductions, the entry is reused as a buffer)
+            result_queue_d[result_queue_write_pnt_q].wdata = aes_lane_result;
+            result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + ((vinsn_issue_q.vl - issue_cnt_q) >> (unsigned'(EW64) - unsigned'(vinsn_issue_q.vtype.vsew)));
+            result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
+            result_queue_d[result_queue_write_pnt_q].be    = be(issue_cnt_q < element_cnt_issue ? issue_cnt_q[6:0] : element_cnt_issue, vinsn_issue_q.vtype.vsew);
+
+            // Acknowledge only AluA (vd_op), keep AluB (round key) for Phase 2
+            alu_operand_ready_o = 2'b01;
+
+            // Transition to TX: send SubBytes'd data to SLDU
+            alu_state_d = AES_TX;
+          end
+        end
+
+        // Send SubBytes'd result to SLDU for ShiftRows
+        AES_TX: begin
+          prevent_commit = 1'b1;
+          // Assert alu_red_valid_o to send result_queue data to SLDU
+          // alu_result_wdata_o always outputs result_queue_q[read_pnt].wdata
+          // Since we haven't bumped the pointers, read_pnt == write_pnt (same entry)
+          alu_red_valid_o = 1'b1;
+          if (alu_red_ready_i)
+            alu_state_d = AES_RX;
+        end
+
+        // Receive ShiftRows'd data from SLDU, apply MixColumns + AddRoundKey
+        AES_RX: begin
+          prevent_commit = 1'b1;
+          aes_phase = 1'b1;
+          if (sldu_alu_valid_q) begin
+            // Handshake the SLDU
+            sldu_alu_ready_d = 1'b1;
+            // Compute MixColumns + AddRoundKey via simd_aes_lane (phase=1)
+            // operand_a = sldu_operand_q (post-ShiftRows), operand_b = alu_operand_b (round key)
+
+            // Overwrite the same result queue entry with the final result
+            // NOW mark it valid and bump pointers (ready for VRF write-back)
+            result_queue_d[result_queue_write_pnt_q].wdata = aes_lane_result;
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+            result_queue_cnt_d += 1;
+            if (result_queue_write_pnt_q == ResultQueueDepth-1)
+              result_queue_write_pnt_d = 0;
+            else
+              result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+
+            // Acknowledge AluB (round key) now
+            alu_operand_ready_o = 2'b10;
+
+            // Account for issued elements
+            issue_cnt_d = issue_cnt_q - element_cnt_issue;
+
+            // Finished issuing the micro-operations of this vector instruction
+            if (vinsn_issue_valid && issue_cnt_d == '0) begin
+              vinsn_queue_d.issue_cnt -= 1;
+              if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                vinsn_queue_d.issue_pnt = '0;
+              else
+                vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+              if (vinsn_queue_d.issue_cnt != 0)
+                issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+
+              alu_state_d = NO_REDUCTION;
+            end else begin
+              // More element groups to process: go back to SubBytes phase
+              alu_state_d = AES_SUBBYTES;
+            end
+          end
+        end
+
         default:;
       endcase
     end
@@ -782,8 +916,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       if (vinsn_queue_d.commit_cnt != '0)
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
 
-      // If this was a reduction, clean the Lane SLDU/ADDRGEN arbiter
-      if (is_reduction(vinsn_commit.op)) alu_red_complete_d = 1'b1;
+      // If this was a reduction or AES round, clean the Lane SLDU/ADDRGEN arbiter
+      if (is_reduction(vinsn_commit.op) || is_aes_round(vinsn_commit.op)) alu_red_complete_d = 1'b1;
 
       // Initialize counters and alu state if needed by the next instruction
       // After a reduction, the next instructions starts after the reduction commits
@@ -794,6 +928,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         sldu_transactions_cnt_d = $clog2(NrLanes) + 1;
 
         alu_state_d = INTRA_LANE_REDUCTION;
+      end else if (is_aes_round(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
+        alu_state_d = AES_SUBBYTES;
       end else begin
         alu_state_d = NO_REDUCTION;
       end
@@ -817,9 +953,14 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       // Initialize counters and alu state if the instruction queue was empty
       // and the lane is not reducing
       if ((vinsn_queue_d.issue_cnt == '0) && !prevent_commit) begin
-        // INTRA_LANE_REDUCTION state needs the result queue
-        // Start the reduction only if the commit queue (so, the result queue, too) is empty
-        alu_state_d = is_reduction(vfu_operation_i.op) && (vinsn_queue_d.commit_cnt == '0) ? INTRA_LANE_REDUCTION : NO_REDUCTION;
+        // INTRA_LANE_REDUCTION / AES_SUBBYTES states need the result queue
+        // Start the reduction/AES only if the commit queue (so, the result queue, too) is empty
+        if (is_reduction(vfu_operation_i.op) && (vinsn_queue_d.commit_cnt == '0))
+          alu_state_d = INTRA_LANE_REDUCTION;
+        else if (is_aes_round(vfu_operation_i.op) && (vinsn_queue_d.commit_cnt == '0))
+          alu_state_d = AES_SUBBYTES;
+        else
+          alu_state_d = NO_REDUCTION;
         // The next will be the first operation of this instruction
         // This information is useful for reduction operation
         // Initialize reduction-related sequential elements

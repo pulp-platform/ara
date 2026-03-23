@@ -80,6 +80,13 @@ module cva6_accel_first_pass_decoder import rvv_pkg::*; import ariane_pkg::*; #(
         endcase
       end
 
+      // Vector crypto operations (OP-VE, opcode 0x77)
+      // Zvkned instructions (vaes*, vaeskf*) use this opcode.
+      // They operate purely on vector registers with no scalar GPR/FPR operands.
+      riscv::OpcodeRsrvd3: begin
+        is_accel_o = 1'b1;
+      end
+
       // Memory vector operations
       riscv::OpcodeLoadFp,
       riscv::OpcodeStoreFp: begin

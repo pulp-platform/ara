@@ -381,8 +381,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         VFU_Alu: begin
           operand_request[AluA] = '{
             id         : pe_req.id,
-            vs         : pe_req.vs1,
-            eew        : pe_req.eew_vs1,
+            // For AES ops: vd_op goes through AluA (vs1 is unused, rs1 is sub-opcode)
+            vs         : (pe_req.use_vd_op && !pe_req.use_vs1) ? pe_req.vd  : pe_req.vs1,
+            eew        : (pe_req.use_vd_op && !pe_req.use_vs1) ? pe_req.eew_vd_op : pe_req.eew_vs1,
             // If reductions and vl == 0, we must replace with neutral values
             conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs1,
             scale_vl   : pe_req.scale_vl,
@@ -396,7 +397,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             target_fu  : ALU_SLDU,
             default    : '0
           };
-          operand_request_push[AluA] = pe_req.use_vs1;
+          operand_request_push[AluA] = pe_req.use_vs1 || (pe_req.use_vd_op && !pe_req.use_vs1);
 
           operand_request[AluB] = '{
             id         : pe_req.id,

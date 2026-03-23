@@ -19,6 +19,8 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Support for segment memory operations
     parameter  seg_support_e          SegSupport   = SegSupportEnable,
+    // Support for crypto extension
+    parameter  crypto_support_e       CryptoSupport = CryptoSupportNone,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
@@ -503,6 +505,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     .FPExtSupport      (FPExtSupport         ),
     .FixPtSupport      (FixPtSupport         ),
     .SegSupport        (SegSupport           ),
+    .CryptoSupport     (CryptoSupport        ),
     .CVA6Cfg           (CVA6AraConfig        ),
     .exception_t       (exception_t          ),
     .accelerator_req_t (accelerator_req_t    ),

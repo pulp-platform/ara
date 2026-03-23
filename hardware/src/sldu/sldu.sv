@@ -295,13 +295,17 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
-  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu);
+  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV]});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
+  // AES .vv round ops routed through the SLDU for ShiftRows
+  logic is_issue_aes;
+  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV]});
+
   always_comb begin
     sldu_mux_sel_o = NO_RED;
-    if ((is_issue_alu_reduction && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
+    if (((is_issue_alu_reduction || is_issue_aes) && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
       sldu_mux_sel_o = ALU_RED;
     end else if ((is_issue_vmfpu_reduction && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_MFpu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_MFpu)) begin
       sldu_mux_sel_o = MFPU_RED;
@@ -378,6 +382,52 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Remaining bytes of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
+
+  /////////////////////////////
+  //  AES ShiftRows (SLDU)   //
+  /////////////////////////////
+
+  // ShiftRows / InvShiftRows byte permutation across lanes.
+  // With NrLanes >= 4 and SEW=32: each group of 4 consecutive lanes holds
+  // one 128-bit AES element group. Columns are striped across lanes,
+  // so ShiftRows permutes bytes across 4 lanes within each group.
+  //
+  // Column layout within a 32-bit word: [7:0]=row0, [15:8]=row1, [23:16]=row2, [31:24]=row3
+  //
+  // ShiftRows:    row r shifts LEFT  by r across columns
+  // InvShiftRows: row r shifts RIGHT by r across columns
+
+  elen_t [NrLanes-1:0] aes_shift_result;
+
+  always_comb begin
+    aes_shift_result = '0;
+
+    for (int unsigned l = 0; l < NrLanes; l++) begin
+      // Position within the group of 4 lanes
+      automatic int unsigned p = l % 4;
+      // Base lane of this group
+      automatic int unsigned g = (l / 4) * 4;
+
+      // Process lower 32 bits and upper 32 bits independently (two EGs per beat)
+      for (int unsigned half = 0; half < 2; half++) begin
+        automatic int unsigned bit_base = half * 32;
+
+        if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV}) begin
+          // ShiftRows (encrypt): row r shifts left by r
+          aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[g + (p + 0) % 4][bit_base +  0 +: 8]; // Row 0: no shift
+          aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[g + (p + 1) % 4][bit_base +  8 +: 8]; // Row 1: shift 1
+          aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[g + (p + 2) % 4][bit_base + 16 +: 8]; // Row 2: shift 2
+          aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[g + (p + 3) % 4][bit_base + 24 +: 8]; // Row 3: shift 3
+        end else begin
+          // InvShiftRows (decrypt): row r shifts right by r
+          aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[g + (p + 0) % 4][bit_base +  0 +: 8]; // Row 0: no shift
+          aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[g + (p + 3) % 4][bit_base +  8 +: 8]; // Row 1: shift right 1
+          aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[g + (p + 2) % 4][bit_base + 16 +: 8]; // Row 2: shift 2
+          aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[g + (p + 1) % 4][bit_base + 24 +: 8]; // Row 3: shift right 3
+        end
+      end
+    end
+  end
 
   always_comb begin: p_sldu
     // Maintain state
@@ -498,6 +548,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
               state_d = SLIDE_RUN_OSUM;
             end
+            // AES round ops (ShiftRows only, one pass through all lanes)
+            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV: begin
+              in_pnt_d  = '0;
+              out_pnt_d = '0;
+              // One beat: NrLanes * 8 bytes
+              issue_cnt_d = NrLanes * 8;
+            end
             // Unordered reductions
             default: begin
               // Unordered redsum instructions doesn't need in/out_pnt
@@ -541,7 +598,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           for (int lane = 0; lane < NrLanes; lane++)
             for (int b = 0; b < 8; b++)
               if (out_en[lane][b]) begin
-                result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = sld_op_dst[lane][8*b +: 8];
+                // For AES ops, use ShiftRows'd data instead of slide datapath
+                if (is_issue_aes)
+                  result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = aes_shift_result[lane][8*b +: 8];
+                else
+                  result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = sld_op_dst[lane][8*b +: 8];
                 result_queue_d[result_queue_write_pnt_q][lane].be[b]           = 1'b1;
               end
 
@@ -849,7 +910,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
-      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]})) begin
+      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -862,9 +923,12 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vtype.vsew = EW64;
 
       if (vinsn_queue_d.commit_cnt == '0) begin
-        commit_cnt_d = pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN}
-                     ? pe_req_i.vl << int'(pe_req_i.vtype.vsew)
-                     : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
+        if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
+          commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
+        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV]})
+          commit_cnt_d = NrLanes * 8; // One beat through all lanes
+        else
+          commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
         // Trim vector elements which are not written by the slide unit
         // VSLIDE1UP always writes at least 1 element
         if (pe_req_i.op == VSLIDEUP && !pe_req_i.use_scalar_op) begin
