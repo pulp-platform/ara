@@ -26,6 +26,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Support for segment memory operations
     parameter seg_support_e          SegSupport   = SegSupportEnable,
+    // Support for crypto extension
+    parameter crypto_support_e       CryptoSupport = CryptoSupportNone,
     // Dependent parameters: DO NOT CHANGE
     localparam type                  vlen_t       = logic[$clog2(VLEN+1)-1:0],
     localparam int          unsigned VLENB        = VLEN / 8
@@ -3598,6 +3600,158 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             end
           end
 
+          riscv::OpcodeRsrvd3: begin // OP-VE -> vector crypto except Zvbb and Zvbc
+            if (|(CryptoSupport & 16'h3FFF)) begin
+              // Instruction is of one of the RVV types
+              automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
+              ara_req.vs2           = insn.varith_type.rs2;
+              ara_req.vd            = insn.varith_type.rd;
+
+              if (insn.varith_type.func3 == OPMVV && insn.varith_type.vm == 1'b1) begin
+                unique case (insn.varith_type.func6)
+                  6'b100010: begin // vaeskf1.vi
+                    if (Zvkned(CryptoSupport)) begin
+                      ara_req.op            = ara_pkg::VAESKF1;
+                      ara_req.use_vs2       = 1'b1;
+                      ara_req.use_vd        = 1'b1;
+                      ara_req.use_vd_op     = 1'b1;
+                      ara_req.eew_vd_op     = EW32;
+                      // Round number immediate in rs1 field
+                      ara_req.scalar_op     = {{ELEN-5{1'b0}}, insn.varith_type.rs1};
+                      ara_req.use_scalar_op = 1'b1;
+                      ara_req_valid         = 1'b1;
+                      // Enforce vsew == EW32
+                      if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                    end else begin
+                      illegal_insn = 1'b1;
+                    end
+                  end
+                  6'b101010: begin // vaeskf2.vi
+                    if (Zvkned(CryptoSupport)) begin
+                      ara_req.op            = ara_pkg::VAESKF2;
+                      ara_req.use_vs2       = 1'b1;
+                      ara_req.use_vd        = 1'b1;
+                      ara_req.use_vd_op     = 1'b1;
+                      ara_req.eew_vd_op     = EW32;
+                      // Round number immediate in rs1 field
+                      ara_req.scalar_op     = {{ELEN-5{1'b0}}, insn.varith_type.rs1};
+                      ara_req.use_scalar_op = 1'b1;
+                      ara_req_valid         = 1'b1;
+                      // Enforce vsew == EW32
+                      if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                    end else begin
+                      illegal_insn = 1'b1;
+                    end
+                  end
+                  6'b101000: begin // vector-vector: vd = AES_op(vd, vs2)
+                    unique case (insn.varith_type.rs1)
+                      5'b00000: begin // vaesdm.vv
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESDM_VV;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00001: begin // vaesdf.vv
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESDF_VV;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00010: begin // vaesem.vv
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESEM_VV;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00011: begin // vaesef.vv
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESEF_VV;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      default: begin
+                        illegal_insn = 1'b1;
+                      end
+                    endcase
+                    // Common fields for all .vv variants
+                    if (!illegal_insn) begin
+                      ara_req.use_vs2   = 1'b1;
+                      ara_req.use_vd    = 1'b1;
+                      ara_req.use_vd_op = 1'b1;
+                      ara_req.eew_vd_op = EW32;
+                      ara_req_valid     = 1'b1;
+                      // Enforce vsew == EW32
+                      if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                    end
+                  end
+                  6'b101001: begin // vector-scalar: vd = AES_op(vd, vs2[3:0])
+                    unique case (insn.varith_type.rs1)
+                      5'b00000: begin // vaesdm.vs
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESDM_VS;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00001: begin // vaesdf.vs
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESDF_VS;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00010: begin // vaesem.vs
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESEM_VS;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00011: begin // vaesef.vs
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESEF_VS;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      5'b00111: begin // vaesz.vs
+                        if (Zvkned(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VAESZ_VS;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
+                      default: begin
+                        illegal_insn = 1'b1;
+                      end
+                    endcase
+                    // Common fields for all .vs variants
+                    if (!illegal_insn) begin
+                      ara_req.use_vs2   = 1'b1;
+                      ara_req.use_vd    = 1'b1;
+                      ara_req.use_vd_op = 1'b1;
+                      ara_req.eew_vd_op = EW32;
+                      ara_req_valid     = 1'b1;
+                      // Enforce vsew == EW32
+                      if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                    end
+                  end
+                  default: begin
+                    illegal_insn = 1'b1;
+                  end
+                endcase
+              end else begin
+                illegal_insn = 1'b1;
+              end
+            end else begin
+              illegal_insn = 1'b1;
+            end
+          end
+
           default: begin
             // Trigger an illegal instruction
             illegal_insn = 1'b1;
@@ -3631,7 +3785,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
         in_lane_op = ara_req.op inside {[VADD:VMERGE]} || ara_req.op inside {[VREDSUM:VMSBC]} ||
-                     ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {[VMVXS:VSLIDEDOWN]};
+                     ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {[VMVXS:VSLIDEDOWN]} ||
+                     ara_req.op inside {[VAESDM_VV:VAESZ_VS]};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!

@@ -239,7 +239,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   // This function determines the VFU responsible for handling this operation.
   function automatic vfu_e vfu(ara_op_e op`ifndef SYNTHESIS = VADD `endif);
     unique case (op) inside
-      [VADD:VWREDSUM]      : vfu = VFU_Alu;
+      [VADD:VAESZ_VS]      : vfu = VFU_Alu;
       [VMUL:VFWREDOSUM]    : vfu = VFU_MFpu;
       [VMFEQ:VCOMPRESS]    : vfu = VFU_MaskUnit;
       [VLE:VLXE]           : vfu = VFU_LoadUnit;
@@ -262,6 +262,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VREDSUM:VWREDSUM]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
+      [VAESDM_VV:VAESEF_VV]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
+      [VAESDM_VS:VAESZ_VS]:
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu) target_vfus[i] = 1'b1;
       [VFREDUSUM:VFWREDOSUM]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_MFpu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
