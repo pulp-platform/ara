@@ -25,7 +25,7 @@ LLVM_INSTALL_DIR        ?= ${INSTALL_DIR}/riscv-llvm
 ISA_SIM_INSTALL_DIR     ?= ${INSTALL_DIR}/riscv-isa-sim
 ISA_SIM_MOD_INSTALL_DIR ?= ${INSTALL_DIR}/riscv-isa-sim-mod
 VERIL_INSTALL_DIR       ?= ${INSTALL_DIR}/verilator
-VERIL_VERSION           ?= v5.012
+VERIL_VERSION           ?= 06263ec724e7bf1fb0a0366b3aec54cd431c51d6
 DTC_COMMIT              ?= b6910bec11614980a21e46fbccc35934b671bd81
 
 CMAKE ?= cmake
