@@ -404,12 +404,12 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
     for (int unsigned l = 0; l < NrLanes; l++) begin
       // Position within the group of 4 lanes
-      automatic int unsigned p = l % 4;
+      automatic int unsigned p = l % NrLanes;
       // Base lane of this group
-      automatic int unsigned g = (l / 4) * 4;
+      automatic int unsigned g = (l / NrLanes) * NrLanes;
 
       // Process lower 32 bits and upper 32 bits independently (two EGs per beat)
-      for (int unsigned half = 0; half < 2; half++) begin
+      for (int unsigned half = 0; half < DataWidth/32; half++) begin
         automatic int unsigned bit_base = half * 32;
 
         if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV}) begin

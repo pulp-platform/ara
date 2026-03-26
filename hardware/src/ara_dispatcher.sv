@@ -3601,6 +3601,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           riscv::OpcodeRsrvd3: begin // OP-VE -> vector crypto except Zvbb and Zvbc
+            // These respond at the same cycle, like OpcodeVec arithmetic
+            acc_resp_o.resp_valid = 1'b1;
+
             if (|(CryptoSupport & 16'h3FFF)) begin
               // Instruction is of one of the RVV types
               automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);

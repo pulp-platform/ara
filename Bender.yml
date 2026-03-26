@@ -41,7 +41,6 @@ sources:
     - hardware/src/lane/lane_sequencer.sv
     - hardware/src/lane/operand_queue.sv
     - hardware/src/lane/operand_requester.sv
-    - hardware/src/lane/simd_aes.sv
     - hardware/src/lane/simd_aes_lane.sv
     - hardware/src/lane/simd_alu.sv
     - hardware/src/lane/simd_div.sv
