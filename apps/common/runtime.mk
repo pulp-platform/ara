@@ -79,8 +79,8 @@ RISCV_SIM     ?= $(ISA_SIM_INSTALL_DIR)/bin/spike
 RISCV_SIM_MOD ?= $(ISA_SIM_MOD_INSTALL_DIR)/bin/spike
 # VLEN should be lower or equal than 4096 because of spike restrictions
 vlen_spike := $(shell vlen=$$(grep vlen $(ARA_DIR)/config/$(config).mk | cut -d" " -f3) && echo "$$(( $$vlen < 4096 ? $$vlen : 4096 ))")
-RISCV_SIM_OPT ?= --isa=rv64gcv_zfh --varch="vlen:$(vlen_spike),elen:64"
-RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh --varch="vlen:$(vlen_spike),elen:64" -d
+RISCV_SIM_OPT ?= --isa=rv64gcv_zfh_zvl$(vlen_spike)b
+RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh_zvl$(vlen_spike)b -d
 
 # Python
 PYTHON ?= python3

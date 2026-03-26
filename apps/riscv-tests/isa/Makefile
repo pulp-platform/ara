@@ -58,13 +58,13 @@ vpath %.S $(src_dir)
 	$(RISCV_OBJDUMP) $< > $@
 
 %.out: %
-	$(RISCV_SIM) --isa=rv64gcv --varch="vlen:4096,elen:64" $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv_zvl4096b $< 2> $@
 
 %.out32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
 
 %.cout: %
-	$(RISCV_SIM) --isa=rv64gcv_zfh --varch="vlen:4096,elen:64" $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv_zfh_zvl4096b $< 2> $@
 
 %.cout32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
