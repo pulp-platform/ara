@@ -255,17 +255,19 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; #(
     aes_result = '0;
 
     // Process each 32-bit column within the 64-bit word
-    for (int c = 0; c < 2; c++) begin
+    for (int c = 0; c < DataWidth/32; c++) begin
       automatic logic [31:0] state_col = operand_a_i[c*32 +: 32];
       automatic logic [31:0] rkey_col  = operand_b_i[c*32 +: 32];
 
       unique case (op_i)
         // Encrypt middle round
-        VAESEM_VV, VAESEM_VS:
-          if (!phase_i)
+        VAESEM_VV, VAESEM_VS: begin
+          if (!phase_i) begin
             aes_result[c*32 +: 32] = sub_bytes_col(state_col);
-          else
+          end else begin
             aes_result[c*32 +: 32] = mix_columns_col(state_col) ^ rkey_col;
+          end
+        end
 
         // Encrypt final round (no MixColumns)
         VAESEF_VV, VAESEF_VS:

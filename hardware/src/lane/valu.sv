@@ -455,6 +455,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   logic [1:0] issue_effective_eew, commit_effective_eew;
   logic [6:0] element_cnt_issue;
   logic [6:0] element_cnt_commit;
+  logic [6:0] aes_element_cnt;
 
   always_comb begin: p_valu
     // Maintain state
@@ -511,6 +512,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     commit_effective_eew = vinsn_commit.op == VRGATHEREI16 ? 1 : unsigned'(vinsn_commit.vtype.vsew[1:0]);
     element_cnt_buf_commit = 1 << (unsigned'(EW64) - commit_effective_eew);
     element_cnt_commit = vinsn_commit.op inside {[VMSBF:VMXNOR], VCOMPRESS} ? ELEN : {2'b0, element_cnt_buf_commit};
+
+    aes_element_cnt = '0;
 
     ////////////////////////////////////////
     //  Write data into the result queue  //
@@ -833,8 +836,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             // Acknowledge AluB (round key) now
             alu_operand_ready_o = 2'b10;
 
-            // Account for issued elements
-            issue_cnt_d = issue_cnt_q - element_cnt_issue;
+            // Account for issued elements (clamp to avoid underflow)
+            aes_element_cnt = (element_cnt_issue > issue_cnt_q) ? issue_cnt_q[6:0] : element_cnt_issue;
+            issue_cnt_d = issue_cnt_q - aes_element_cnt;
 
             // Finished issuing the micro-operations of this vector instruction
             if (vinsn_issue_valid && issue_cnt_d == '0) begin
