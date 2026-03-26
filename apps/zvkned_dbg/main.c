@@ -1,9 +1,12 @@
 // Zvkned single-instruction debug test
 // Select which instruction to test by defining exactly one of:
-//   TEST_VAESZ, TEST_VAESEM, TEST_VAESEF, TEST_VAESDM, TEST_VAESDF, TEST_VAESKF1
+//   TEST_VAESZ, TEST_VAESEM, TEST_VAESEM_VS, TEST_VAESEF, TEST_VAESEF_VS,
+//   TEST_VAESDM, TEST_VAESDM_VS, TEST_VAESDF, TEST_VAESDF_VS,
+//   TEST_VAESKF1, TEST_VAESKF2_EVEN, TEST_VAESKF2_ODD
 // Default: TEST_VAESZ
 //
-// All vectors from NIST FIPS 197 Appendix B (AES-128), verified by gen_test_vectors.py
+// AES-128 vectors from NIST FIPS 197 Appendix B, verified by gen_test_vectors.py
+// AES-256 vectors from NIST FIPS 197 Appendix A.3 (vaeskf2 tests)
 
 #include <stdint.h>
 
@@ -15,8 +18,12 @@
 #endif
 
 // Default to TEST_VAESZ if nothing is defined
-#if !defined(TEST_VAESZ)   && !defined(TEST_VAESEM)  && !defined(TEST_VAESEF) && \
-    !defined(TEST_VAESDM)  && !defined(TEST_VAESDF)  && !defined(TEST_VAESKF1)
+#if !defined(TEST_VAESZ)      && !defined(TEST_VAESEM)     && \
+    !defined(TEST_VAESEM_VS)  && !defined(TEST_VAESEF)     && \
+    !defined(TEST_VAESEF_VS)  && !defined(TEST_VAESDM)     && \
+    !defined(TEST_VAESDM_VS)  && !defined(TEST_VAESDF)     && \
+    !defined(TEST_VAESDF_VS)  && !defined(TEST_VAESKF1)    && \
+    !defined(TEST_VAESKF2_EVEN) && !defined(TEST_VAESKF2_ODD)
 #define TEST_VAESZ
 #endif
 
@@ -64,59 +71,75 @@ static uint32_t expected[4] __attribute__((aligned(16))) = {
 static const char *test_name = "vaesz.vs";
 #endif
 
-#ifdef TEST_VAESEM
-// vaesem.vv: vd = state_after_rk0, vs2 = RK1 → round 1 state
+#if defined(TEST_VAESEM) || defined(TEST_VAESEM_VS)
+// vaesem: vd = state_after_rk0, vs2 = RK1 → round 1 state
 #define VD_DATA state_after_rk0
 #define VS2_DATA rk1
 static uint32_t expected[4] __attribute__((aligned(16))) = {
     0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02
 };
+#ifdef TEST_VAESEM
 static const char *test_name = "vaesem.vv";
+#else
+static const char *test_name = "vaesem.vs";
+#endif
 #endif
 
-#ifdef TEST_VAESEF
+#if defined(TEST_VAESEF) || defined(TEST_VAESEF_VS)
 // State after encrypt round 9.
 static uint32_t state_after_round9[4] __attribute__((aligned(16))) = {
     0x1ef240eb, 0x84382e59, 0xe713a18b, 0xd242c31b
 };
 
-// vaesef.vv: vd = state after round 9, vs2 = RK10
+// vaesef: vd = state after round 9, vs2 = RK10
 #define VD_DATA state_after_round9
 #define VS2_DATA rk10
 static uint32_t expected[4] __attribute__((aligned(16))) = {
     0x1d842539, 0xfb09dc02, 0x978511dc, 0x320b6a19
 };
+#ifdef TEST_VAESEF
 static const char *test_name = "vaesef.vv";
+#else
+static const char *test_name = "vaesef.vs";
+#endif
 #endif
 
-#ifdef TEST_VAESDM
+#if defined(TEST_VAESDM) || defined(TEST_VAESDM_VS)
 // State after ciphertext xor RK10, matching the first decrypt middle round.
 static uint32_t state_after_ct_rk10[4] __attribute__((aligned(16))) = {
     0xb57d31e9, 0x722c32cb, 0x5f892e3d, 0x940709af
 };
 
-// vaesdm.vv: vd = ciphertext xor RK10, vs2 = RK9
+// vaesdm: vd = ciphertext xor RK10, vs2 = RK9
 #define VD_DATA state_after_ct_rk10
 #define VS2_DATA rk9
 static uint32_t expected[4] __attribute__((aligned(16))) = {
     0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97
 };
+#ifdef TEST_VAESDM
 static const char *test_name = "vaesdm.vv";
+#else
+static const char *test_name = "vaesdm.vs";
+#endif
 #endif
 
-#ifdef TEST_VAESDF
+#if defined(TEST_VAESDF) || defined(TEST_VAESDF_VS)
 // State after inverse round 1, matching the final decrypt round.
 static uint32_t state_before_final_decrypt[4] __attribute__((aligned(16))) = {
     0x305dbfd4, 0xae52b4e0, 0xf11141b8, 0xe598271e
 };
 
-// vaesdf.vv: vd = state after inverse round 1, vs2 = RK0
+// vaesdf: vd = state after inverse round 1, vs2 = RK0
 #define VD_DATA state_before_final_decrypt
 #define VS2_DATA rk0
 static uint32_t expected[4] __attribute__((aligned(16))) = {
     0xa8f64332, 0x8d305a88, 0xa2983131, 0x340737e0
 };
+#ifdef TEST_VAESDF
 static const char *test_name = "vaesdf.vv";
+#else
+static const char *test_name = "vaesdf.vs";
+#endif
 #endif
 
 #ifdef TEST_VAESKF1
@@ -127,6 +150,48 @@ static uint32_t expected[4] __attribute__((aligned(16))) = {
     0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a
 };
 static const char *test_name = "vaeskf1.vi";
+#endif
+
+#if defined(TEST_VAESKF2_EVEN) || defined(TEST_VAESKF2_ODD)
+// ── AES-256 key schedule test data (FIPS 197 Appendix A.3) ───────────────────
+// Key: 603deb10 15ca71be 2b73aef0 857d7781 1f352c07 3b6108d7 2d9810a3 0914dff4
+
+// AES-256 RK0 (key bits 0-127)
+static uint32_t rk256_0[4] __attribute__((aligned(16))) = {
+    0x10eb3d60, 0xbe71ca15, 0xf0ae732b, 0x81777d85
+};
+// AES-256 RK1 (key bits 128-255)
+static uint32_t rk256_1[4] __attribute__((aligned(16))) = {
+    0x072c351f, 0xd708613b, 0xa310982d, 0xf4df1409
+};
+// AES-256 RK2 (vaeskf2 rnum=2, even round)
+static uint32_t rk256_2[4] __attribute__((aligned(16))) = {
+    0x1154a39b, 0xaf25698e, 0x5f8b1aa5, 0xdefc6720
+};
+// AES-256 RK3 (vaeskf2 rnum=3, odd round)
+static uint32_t rk256_3[4] __attribute__((aligned(16))) = {
+    0x1a9cb0a8, 0xcd94d193, 0x6e8449be, 0x9a5b5db7
+};
+#endif
+
+#ifdef TEST_VAESKF2_EVEN
+// vaeskf2.vi rnum=2 (even): vd = RK0, vs2 = RK1 → RK2
+#define VD_DATA rk256_0
+#define VS2_DATA rk256_1
+static uint32_t expected[4] __attribute__((aligned(16))) = {
+    0x1154a39b, 0xaf25698e, 0x5f8b1aa5, 0xdefc6720
+};
+static const char *test_name = "vaeskf2.vi rnum=2 (even)";
+#endif
+
+#ifdef TEST_VAESKF2_ODD
+// vaeskf2.vi rnum=3 (odd): vd = RK1, vs2 = RK2 → RK3
+#define VD_DATA rk256_1
+#define VS2_DATA rk256_2
+static uint32_t expected[4] __attribute__((aligned(16))) = {
+    0x1a9cb0a8, 0xcd94d193, 0x6e8449be, 0x9a5b5db7
+};
+static const char *test_name = "vaeskf2.vi rnum=3 (odd)";
 #endif
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -175,14 +240,26 @@ int main(void) {
     asm volatile("vaesz.vs v4, v2");
 #elif defined(TEST_VAESEM)
     asm volatile("vaesem.vv v4, v2");
+#elif defined(TEST_VAESEM_VS)
+    asm volatile("vaesem.vs v4, v2");
 #elif defined(TEST_VAESEF)
     asm volatile("vaesef.vv v4, v2");
+#elif defined(TEST_VAESEF_VS)
+    asm volatile("vaesef.vs v4, v2");
 #elif defined(TEST_VAESDM)
     asm volatile("vaesdm.vv v4, v2");
+#elif defined(TEST_VAESDM_VS)
+    asm volatile("vaesdm.vs v4, v2");
 #elif defined(TEST_VAESDF)
     asm volatile("vaesdf.vv v4, v2");
+#elif defined(TEST_VAESDF_VS)
+    asm volatile("vaesdf.vs v4, v2");
 #elif defined(TEST_VAESKF1)
     asm volatile("vaeskf1.vi v4, v2, 1");
+#elif defined(TEST_VAESKF2_EVEN)
+    asm volatile("vaeskf2.vi v4, v2, 2");
+#elif defined(TEST_VAESKF2_ODD)
+    asm volatile("vaeskf2.vi v4, v2, 3");
 #endif
 
     // Store result
