@@ -1,55 +1,49 @@
 diff --git a/riscv/execute.cc b/riscv/execute.cc
-index f0bb9463..8d31a51c 100644
+index 97c90de1..8417c3c1 100644
 --- a/riscv/execute.cc
 +++ b/riscv/execute.cc
-@@ -273,6 +273,10 @@ void processor_t::step(size_t n)
+@@ -282,8 +282,12 @@ void processor_t::step(size_t n)
  
+           in_wfi = false;
            insn_fetch_t fetch = mmu->load_insn(pc);
-           if (debug && !state.serialized)
+-          if (debug && !state.serialized)
++          if (debug && !state.serialized) {
 +            // mp-17: check if the instruction is a vector one
-+            if ((disassembler->disassemble(fetch.insn))[0] == 'v') {
++            if ((disassembler->disassemble(fetch.insn))[0] == 'v')
 +              is_vec_insn = 1;
-+            }
              disasm(fetch.insn);
-           pc = execute_insn(this, pc, fetch);
++          }
+           pc = execute_insn_logged(this, pc, fetch);
            advance_pc();
+ 
 diff --git a/riscv/interactive.cc b/riscv/interactive.cc
-index ffc706bd..95b391a6 100644
+index 55406b82..1cddc445 100644
 --- a/riscv/interactive.cc
 +++ b/riscv/interactive.cc
-@@ -274,7 +274,7 @@ std::string sim_t::rin(boost::asio::streambuf *bout_ptr) {
-     // output goes to socket
-     sout_.rdbuf(bout_ptr);
-   } else { // if we are not listening on a socket, get commands from terminal
--    s = readline(2); // 2 is stderr, but when doing reads it reverts to stdin
-+    s = readline(0); // 2 is stderr, but when doing reads it reverts to stdin
-     // output goes to stderr
-     sout_.rdbuf(std::cerr.rdbuf());
-   }
-@@ -343,7 +343,7 @@ void sim_t::interactive()
- #ifdef HAVE_BOOST_ASIO
-       s = rin(&bout); // get command string from socket or terminal
- #else
--      s = readline(2); // 2 is stderr, but when doing reads it reverts to stdin
-+      s = readline(0); // 2 is stderr, but when doing reads it reverts to stdin
+@@ -315,7 +315,7 @@ void sim_t::interactive()
+       else
  #endif
+       {
+-        s = readline(2); // 2 is stderr, but when doing reads it reverts to stdin
++        s = readline(0); // 2 is stderr, but when doing reads it reverts to stdin
+       }
      }
  
-@@ -432,8 +432,23 @@ void sim_t::interactive_run(const std::string& cmd, const std::vector<std::strin
+@@ -417,9 +417,23 @@ void sim_t::interactive_run(const std::string& cmd, const std::vector<std::strin
    size_t steps = args.size() ? atoll(args[0].c_str()) : -1;
-   ctrlc_pressed = false;
    set_procs_debug(noisy);
--  for (size_t i = 0; i < steps && !ctrlc_pressed && !done(); i++)
-+
+ 
 +  // This is a hack, but we are always using core 0
 +  processor_t *p = get_core("0");
 +
-+  for (size_t i = 0; i < steps && !ctrlc_pressed && !done(); i++) {
+   const size_t actual_steps = std::min(INTERLEAVE, steps);
+-  for (size_t i = 0; i < actual_steps && !ctrlc_pressed && !done(); i++)
++  for (size_t i = 0; i < actual_steps && !ctrlc_pressed && !done(); i++) {
 +    // Step forward
      step(1);
 +    // Check if the fetched instruction was a vector one
 +    if (p->is_vec_insn) {
-+      // Print the whole F regfile
++      // Print the whole X regfile
 +      interactive_reg(cmd, {"0"});
 +      // Print the whole F regfile
 +      interactive_fregd_all(cmd, {"0"});
@@ -58,10 +52,10 @@ index ffc706bd..95b391a6 100644
 +    }
 +  }
  
-   std::ostream out(sout_.rdbuf());
-   if (!noisy) out << ":" << std::endl;
-@@ -614,6 +629,30 @@ void sim_t::interactive_freg(const std::string& cmd, const std::vector<std::stri
-   out << std::hex << "0x" << std::setfill ('0') << std::setw(16) << r.v[1] << std::setw(16) << r.v[0] << std::endl;
+   if (actual_steps < steps) {
+     next_interactive_action = [=, this](){ interactive_run(cmd, {std::to_string(steps - actual_steps)}, noisy); };
+@@ -673,6 +687,30 @@ void sim_t::interactive_fregd(const std::string& cmd, const std::vector<std::str
+   out << (isBoxedF64(f.r) ? f.d : NAN) << std::endl;
  }
  
 +// mp-17: modified function to print all the scalar registers
@@ -88,24 +82,24 @@ index ffc706bd..95b391a6 100644
 +  }
 +}
 +
- void sim_t::interactive_fregh(const std::string& cmd, const std::vector<std::string>& args)
+ reg_t sim_t::get_mem(const std::vector<std::string>& args)
  {
-   fpr f;
+   if (args.size() != 1 && args.size() != 2)
 diff --git a/riscv/processor.h b/riscv/processor.h
-index fc80914e..d43bc96f 100644
+index bf234d17..e36aaa40 100644
 --- a/riscv/processor.h
 +++ b/riscv/processor.h
-@@ -239,6 +239,8 @@ public:
- 
-   const isa_parser_t &get_isa() { return *isa; }
+@@ -235,6 +235,8 @@ public:
+   const isa_parser_t &get_isa() const & { return isa; }
+   const cfg_t &get_cfg() const & { return *cfg; }
  
 +  // mp-17: register a vector instruction
 +  int is_vec_insn = 0;
    void set_debug(bool value);
    void set_histogram(bool value);
- #ifdef RISCV_ENABLE_COMMITLOG
+   void enable_log_commits();
 diff --git a/riscv/sim.h b/riscv/sim.h
-index 5787d5d7..48d6e40b 100644
+index fd2f993f..ac51176c 100644
 --- a/riscv/sim.h
 +++ b/riscv/sim.h
 @@ -133,6 +133,8 @@ private:
@@ -115,5 +109,5 @@ index 5787d5d7..48d6e40b 100644
 +  // mp-17: print all the scalar registers
 +  void interactive_fregd_all(const std::string& cmd, const std::vector<std::string>& args);
    void interactive_pc(const std::string& cmd, const std::vector<std::string>& args);
-   void interactive_mem(const std::string& cmd, const std::vector<std::string>& args);
-   void interactive_str(const std::string& cmd, const std::vector<std::string>& args);
+   void interactive_insn(const std::string& cmd, const std::vector<std::string>& args);
+   void interactive_priv(const std::string& cmd, const std::vector<std::string>& args);
