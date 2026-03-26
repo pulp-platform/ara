@@ -28,22 +28,6 @@ jobs:
   tc-llvm:
     runs-on: ubuntu-22.04
     steps:
-    # LLVM and GCC installations require plenty of disk space
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
-
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
     - uses: actions/checkout@v6
     - name: Recover the submodule commit hash
       id: recover_hash
@@ -60,6 +44,23 @@ jobs:
         key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
         restore-keys:
           ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-llvm-hash }}
+    # LLVM and GCC installations require plenty of disk space
+    - name: Free Disk Space (Ubuntu)
+      if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
     - name: Download the LLVM toolchain
       if: steps.tc-llvm-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive --checkout -- toolchain/riscv-llvm
@@ -83,22 +84,6 @@ jobs:
   tc-gcc:
     runs-on: ubuntu-22.04
     steps:
-    # LLVM and GCC installations require plenty of disk space
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: false
-
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
     - uses: actions/checkout@v6
     - name: Recover the submodule commit hash
       id: recover_hash
@@ -115,6 +100,23 @@ jobs:
         key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
         restore-keys:
           ${{ runner.os }}-build-${{ env.cache-name }}-${{ env.tc-gcc-hash }}
+    # LLVM and GCC installations require plenty of disk space
+    - name: Free Disk Space (Ubuntu)
+      if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
     - name: Download the GCC toolchain
       if: steps.tc-gcc-cache.outputs.cache-hit != 'true'
       run: git submodule update --init --recursive --checkout -- toolchain/riscv-gnu-toolchain
