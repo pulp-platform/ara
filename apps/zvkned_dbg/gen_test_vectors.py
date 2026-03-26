@@ -1009,6 +1009,50 @@ def main():
             vaesdf(state_before_final, rks[0]),
         ),
         ("vaeskf1.vi", "vs2 = RK0, rnum = 1 → RK1", rks[0], None, rks[1]),
+        # .vs variants (same vectors as .vv with single element group)
+        (
+            "vaesem.vs",
+            "vd = state after RK0, vs2 = RK1",
+            mid_state,
+            rks[1],
+            vaesem(mid_state, rks[1]),
+        ),
+        (
+            "vaesef.vs",
+            "vd = state after round 9, vs2 = RK10",
+            encrypt_round9,
+            rks[10],
+            vaesef(encrypt_round9, rks[10]),
+        ),
+        (
+            "vaesdm.vs",
+            "vd = ciphertext xor RK10, vs2 = RK9",
+            decrypt_start,
+            rks[9],
+            decrypt_round9,
+        ),
+        (
+            "vaesdf.vs",
+            "vd = state after inverse round 1, vs2 = RK0",
+            state_before_final,
+            rks[0],
+            vaesdf(state_before_final, rks[0]),
+        ),
+        # AES-256 key schedule
+        (
+            "vaeskf2.vi rnum=2 (even)",
+            "vd = RK256[0], vs2 = RK256[1] → RK256[2]",
+            rks256[0],
+            rks256[1],
+            rks256[2],
+        ),
+        (
+            "vaeskf2.vi rnum=3 (odd)",
+            "vd = RK256[1], vs2 = RK256[2] → RK256[3]",
+            rks256[1],
+            rks256[2],
+            rks256[3],
+        ),
     ]
 
     for name, desc, vd, vs2, expected in tests:
