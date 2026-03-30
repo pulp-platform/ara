@@ -51,6 +51,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   import cf_math_pkg::idx_width;
 
+  localparam int unsigned AesColsPerLane  = DataWidth / 32;
+  localparam int unsigned AesColsPerGroup = 4;
+
   ////////////////////////////////
   //  Vector instruction queue  //
   ////////////////////////////////
@@ -387,10 +390,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   //  AES ShiftRows (SLDU)   //
   /////////////////////////////
 
-  // ShiftRows / InvShiftRows byte permutation across lanes.
-  // With NrLanes >= 4 and SEW=32: each group of 4 consecutive lanes holds
-  // one 128-bit AES element group. Columns are striped across lanes,
-  // so ShiftRows permutes bytes across 4 lanes within each group.
+  // ShiftRows / InvShiftRows byte permutation across AES columns.
+  // With SEW=32, each AES element group is 128 bits = 4x32-bit columns.
+  // Each 64-bit lane carries AesColsPerLane columns, so a beat may contain
+  // multiple AES groups depending on NrLanes. The permutation must therefore
+  // be defined over column indices, not lane indices.
   //
   // Column layout within a 32-bit word: [7:0]=row0, [15:8]=row1, [23:16]=row2, [31:24]=row3
   //
@@ -403,28 +407,44 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     aes_shift_result = '0;
 
     for (int unsigned l = 0; l < NrLanes; l++) begin
-      // Position within the group of 4 lanes
-      automatic int unsigned p = l % NrLanes;
-      // Base lane of this group
-      automatic int unsigned g = (l / NrLanes) * NrLanes;
-
-      // Process lower 32 bits and upper 32 bits independently (two EGs per beat)
-      for (int unsigned half = 0; half < DataWidth/32; half++) begin
-        automatic int unsigned bit_base = half * 32;
+      for (int unsigned half = 0; half < AesColsPerLane; half++) begin
+        // EW32 elements are striped across lanes first, then across the second
+        // 32-bit half of each 64-bit lane word.
+        automatic int unsigned out_col_idx   = half * NrLanes + l;
+        automatic int unsigned group_base    = (out_col_idx / AesColsPerGroup) * AesColsPerGroup;
+        automatic int unsigned col_in_group  = out_col_idx % AesColsPerGroup;
+        automatic int unsigned bit_base      = half * 32;
+        automatic int unsigned row1_src_col;
+        automatic int unsigned row2_src_col;
+        automatic int unsigned row3_src_col;
+        automatic int unsigned row1_src_lane;
+        automatic int unsigned row2_src_lane;
+        automatic int unsigned row3_src_lane;
+        automatic int unsigned row1_src_half;
+        automatic int unsigned row2_src_half;
+        automatic int unsigned row3_src_half;
 
         if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV}) begin
-          // ShiftRows (encrypt): row r shifts left by r
-          aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[g + (p + 0) % 4][bit_base +  0 +: 8]; // Row 0: no shift
-          aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[g + (p + 1) % 4][bit_base +  8 +: 8]; // Row 1: shift 1
-          aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[g + (p + 2) % 4][bit_base + 16 +: 8]; // Row 2: shift 2
-          aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[g + (p + 3) % 4][bit_base + 24 +: 8]; // Row 3: shift 3
+          row1_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
+          row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
+          row3_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
         end else begin
-          // InvShiftRows (decrypt): row r shifts right by r
-          aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[g + (p + 0) % 4][bit_base +  0 +: 8]; // Row 0: no shift
-          aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[g + (p + 3) % 4][bit_base +  8 +: 8]; // Row 1: shift right 1
-          aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[g + (p + 2) % 4][bit_base + 16 +: 8]; // Row 2: shift 2
-          aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[g + (p + 1) % 4][bit_base + 24 +: 8]; // Row 3: shift right 3
+          row1_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
+          row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
+          row3_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
         end
+
+        row1_src_lane = row1_src_col % NrLanes;
+        row2_src_lane = row2_src_col % NrLanes;
+        row3_src_lane = row3_src_col % NrLanes;
+        row1_src_half = row1_src_col / NrLanes;
+        row2_src_half = row2_src_col / NrLanes;
+        row3_src_half = row3_src_col / NrLanes;
+
+        aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[l            ][bit_base              +  0 +: 8];
+        aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[row1_src_lane][row1_src_half * 32 +  8 +: 8];
+        aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[row2_src_lane][row2_src_half * 32 + 16 +: 8];
+        aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[row3_src_lane][row3_src_half * 32 + 24 +: 8];
       end
     end
   end
