@@ -298,13 +298,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
-  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV]});
+  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
-  // AES .vv round ops routed through the SLDU for ShiftRows
+  // AES round ops routed through the SLDU for ShiftRows
   logic is_issue_aes;
-  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV]});
+  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]});
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
@@ -424,7 +424,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         automatic int unsigned row2_src_half;
         automatic int unsigned row3_src_half;
 
-        if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV}) begin
+        if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV, VAESEM_VS, VAESEF_VS}) begin
           row1_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
           row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
           row3_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
@@ -569,7 +569,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               state_d = SLIDE_RUN_OSUM;
             end
             // AES round ops (ShiftRows only, one pass through all lanes)
-            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV: begin
+            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS: begin
               in_pnt_d  = '0;
               out_pnt_d = '0;
               // One beat: NrLanes * 8 bytes
@@ -930,7 +930,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
-      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV]})) begin
+      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -945,7 +945,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_queue_d.commit_cnt == '0) begin
         if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
-        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV]})
+        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]})
           commit_cnt_d = NrLanes * 8; // One beat through all lanes
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;

@@ -247,9 +247,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     is_aes_valu = op inside {[VAESDM_VV:VAESEF_VS], VAESZ_VS};
   endfunction : is_aes_valu
 
-  // Returns 1'b1 if `op` is an AES .vv round op (multi-phase ALU->SLDU->ALU)
+  // Returns 1'b1 if `op` is an AES round op requiring ShiftRows in the SLDU.
   function automatic logic is_aes_round(ara_op_e op);
-    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV]};
+    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]};
   endfunction : is_aes_round
 
   //////////////////
