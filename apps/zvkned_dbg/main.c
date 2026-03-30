@@ -1,7 +1,10 @@
 // Zvkned single-instruction debug test
 // Select which instruction to test by defining exactly one of:
-//   TEST_VAESZ, TEST_VAESEM, TEST_VAESEM_VS, TEST_VAESEF, TEST_VAESEF_VS,
-//   TEST_VAESDM, TEST_VAESDM_VS, TEST_VAESDF, TEST_VAESDF_VS,
+//   TEST_VAESZ, TEST_VAESZ_2G,
+//   TEST_VAESEM, TEST_VAESEM_2G, TEST_VAESEM_VS, TEST_VAESEM_VS_2G,
+//   TEST_VAESEF, TEST_VAESEF_2G, TEST_VAESEF_VS, TEST_VAESEF_VS_2G,
+//   TEST_VAESDM, TEST_VAESDM_2G, TEST_VAESDM_VS, TEST_VAESDM_VS_2G,
+//   TEST_VAESDF, TEST_VAESDF_2G, TEST_VAESDF_VS, TEST_VAESDF_VS_2G,
 //   TEST_VAESKF1, TEST_VAESKF2_EVEN, TEST_VAESKF2_ODD
 // Default: TEST_VAESZ
 //
@@ -18,11 +21,16 @@
 #endif
 
 // Default to TEST_VAESZ if nothing is defined
-#if !defined(TEST_VAESZ)      && !defined(TEST_VAESEM)     && \
-    !defined(TEST_VAESEM_VS)  && !defined(TEST_VAESEF)     && \
-    !defined(TEST_VAESEF_VS)  && !defined(TEST_VAESDM)     && \
-    !defined(TEST_VAESDM_VS)  && !defined(TEST_VAESDF)     && \
-    !defined(TEST_VAESDF_VS)  && !defined(TEST_VAESKF1)    && \
+#if !defined(TEST_VAESZ)      && !defined(TEST_VAESZ_2G)   && \
+    !defined(TEST_VAESEM)     && !defined(TEST_VAESEM_2G)  && \
+    !defined(TEST_VAESEM_VS)  && !defined(TEST_VAESEM_VS_2G) && \
+    !defined(TEST_VAESEF)     && !defined(TEST_VAESEF_2G)  && \
+    !defined(TEST_VAESEF_VS)  && !defined(TEST_VAESEF_VS_2G) && \
+    !defined(TEST_VAESDM)     && !defined(TEST_VAESDM_2G)  && \
+    !defined(TEST_VAESDM_VS)  && !defined(TEST_VAESDM_VS_2G) && \
+    !defined(TEST_VAESDF)     && !defined(TEST_VAESDF_2G)  && \
+    !defined(TEST_VAESDF_VS)  && !defined(TEST_VAESDF_VS_2G) && \
+    !defined(TEST_VAESKF1)    && \
     !defined(TEST_VAESKF2_EVEN) && !defined(TEST_VAESKF2_ODD)
 #define TEST_VAESZ
 #endif
@@ -59,6 +67,62 @@ static uint32_t state_after_rk0[4] __attribute__((aligned(16))) = {
     0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9
 };
 
+static uint32_t rk2[4] __attribute__((aligned(16))) = {
+    0xf295c2f2, 0x43b9967a, 0x7a803559, 0x7ff65973
+};
+
+static uint32_t rk8[4] __attribute__((aligned(16))) = {
+    0x2173d2ea, 0xd2ba8db5, 0x60f52b31, 0x2f298d7f
+};
+
+static uint32_t state_after_round1[4] __attribute__((aligned(16))) = {
+    0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02
+};
+
+static uint32_t state_after_round2[4] __attribute__((aligned(16))) = {
+    0x035f8faa, 0xefe3dd61, 0xd24ad282, 0x9a463268
+};
+
+static uint32_t state_after_round8[4] __attribute__((aligned(16))) = {
+    0xf05c83ea, 0x2d334504, 0xad985d65, 0xc5b09685
+};
+
+static uint32_t vaesz_state_after_round9_rk0[4] __attribute__((aligned(16))) = {
+    0x08e73ec0, 0x22ea8071, 0x6f065620, 0xee0d0c12
+};
+
+static uint32_t vaesem_round1_with_rk1[4] __attribute__((aligned(16))) = {
+    0xe634b7f8, 0x1d761f93, 0x91f344f8, 0xe0c60731
+};
+
+static uint32_t vaesef_state_after_rk0_rk1[4] __attribute__((aligned(16))) = {
+    0x27a34574, 0x1f7ee068, 0xc828e29b, 0xe0ee4b34
+};
+
+static uint32_t vaesef_state_after_rk0_rk10[4] __attribute__((aligned(16))) = {
+    0x98a4ab04, 0x27775a29, 0x391d7e59, 0x439444a8
+};
+
+static uint32_t vaesdm_round1_with_rk9[4] __attribute__((aligned(16))) = {
+    0xc71c3d6d, 0xaba89ad8, 0x3ec67d19, 0xdd0eba6a
+};
+
+static uint32_t vaesdf_round1_with_rk1[4] __attribute__((aligned(16))) = {
+    0xe7a2794a, 0x9c1f118c, 0x94a1fe46, 0xc0c6faaf
+};
+
+static uint32_t vaesdf_round1_with_rk0[4] __attribute__((aligned(16))) = {
+    0xe649fdc1, 0x8be1eb2c, 0x258daace, 0xf9ff598c
+};
+
+#if defined(TEST_VAESZ_2G) || defined(TEST_VAESEM_2G) || defined(TEST_VAESEM_VS_2G) || \
+    defined(TEST_VAESEF_2G) || defined(TEST_VAESEF_VS_2G) || defined(TEST_VAESDM_2G) || \
+    defined(TEST_VAESDM_VS_2G) || defined(TEST_VAESDF_2G) || defined(TEST_VAESDF_VS_2G)
+#define TEST_WORDS 8
+#else
+#define TEST_WORDS 4
+#endif
+
 // ── Per-instruction test data ────────────────────────────────────────────────
 
 #ifdef TEST_VAESZ
@@ -69,6 +133,24 @@ static uint32_t expected[4] __attribute__((aligned(16))) = {
     0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9
 };
 static const char *test_name = "vaesz.vs";
+#endif
+
+#ifdef TEST_VAESZ_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0xa8f64332, 0x8d305a88, 0xa2983131, 0x340737e0,
+    0x1ef240eb, 0x84382e59, 0xe713a18b, 0xd242c31b
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09,
+    0xa8f914d0, 0x8925eec9, 0xc80c3fe1, 0xa60c63b6
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9,
+    0x08e73ec0, 0x22ea8071, 0x6f065620, 0xee0d0c12
+};
+static const char *test_name = "vaesz.vs (2 groups)";
 #endif
 
 #if defined(TEST_VAESEM) || defined(TEST_VAESEM_VS)
@@ -83,6 +165,42 @@ static const char *test_name = "vaesem.vv";
 #else
 static const char *test_name = "vaesem.vs";
 #endif
+#endif
+
+#ifdef TEST_VAESEM_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9,
+    0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a,
+    0xf295c2f2, 0x43b9967a, 0x7a803559, 0x7ff65973
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02,
+    0x035f8faa, 0xefe3dd61, 0xd24ad282, 0x9a463268
+};
+static const char *test_name = "vaesem.vv (2 groups)";
+#endif
+
+#ifdef TEST_VAESEM_VS_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9,
+    0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a,
+    0xf295c2f2, 0x43b9967a, 0x7a803559, 0x7ff65973
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02,
+    0xe634b7f8, 0x1d761f93, 0x91f344f8, 0xe0c60731
+};
+static const char *test_name = "vaesem.vs (2 groups)";
 #endif
 
 #if defined(TEST_VAESEF) || defined(TEST_VAESEF_VS)
@@ -104,6 +222,42 @@ static const char *test_name = "vaesef.vs";
 #endif
 #endif
 
+#ifdef TEST_VAESEF_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0x1ef240eb, 0x84382e59, 0xe713a18b, 0xd242c31b,
+    0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0xa8f914d0, 0x8925eec9, 0xc80c3fe1, 0xa60c63b6,
+    0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0x1d842539, 0xfb09dc02, 0x978511dc, 0x320b6a19,
+    0x27a34574, 0x1f7ee068, 0xc828e29b, 0xe0ee4b34
+};
+static const char *test_name = "vaesef.vv (2 groups)";
+#endif
+
+#ifdef TEST_VAESEF_VS_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0x1ef240eb, 0x84382e59, 0xe713a18b, 0xd242c31b,
+    0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0xa8f914d0, 0x8925eec9, 0xc80c3fe1, 0xa60c63b6,
+    0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0x1d842539, 0xfb09dc02, 0x978511dc, 0x320b6a19,
+    0x98a4ab04, 0x27775a29, 0x391d7e59, 0x439444a8
+};
+static const char *test_name = "vaesef.vs (2 groups)";
+#endif
+
 #if defined(TEST_VAESDM) || defined(TEST_VAESDM_VS)
 // State after ciphertext xor RK10, matching the first decrypt middle round.
 static uint32_t state_after_ct_rk10[4] __attribute__((aligned(16))) = {
@@ -123,6 +277,42 @@ static const char *test_name = "vaesdm.vs";
 #endif
 #endif
 
+#ifdef TEST_VAESDM_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0xb57d31e9, 0x722c32cb, 0x5f892e3d, 0x940709af,
+    0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0xf36677ac, 0x21dcfa19, 0x4129d128, 0x6e005c57,
+    0x2173d2ea, 0xd2ba8db5, 0x60f52b31, 0x2f298d7f
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97,
+    0xfed43bbe, 0xc8f2e1d4, 0xc02c640a, 0x4d8683da
+};
+static const char *test_name = "vaesdm.vv (2 groups)";
+#endif
+
+#ifdef TEST_VAESDM_VS_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0xb57d31e9, 0x722c32cb, 0x5f892e3d, 0x940709af,
+    0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0xf36677ac, 0x21dcfa19, 0x4129d128, 0x6e005c57,
+    0x2173d2ea, 0xd2ba8db5, 0x60f52b31, 0x2f298d7f
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97,
+    0xc71c3d6d, 0xaba89ad8, 0x3ec67d19, 0xdd0eba6a
+};
+static const char *test_name = "vaesdm.vs (2 groups)";
+#endif
+
 #if defined(TEST_VAESDF) || defined(TEST_VAESDF_VS)
 // State after inverse round 1, matching the final decrypt round.
 static uint32_t state_before_final_decrypt[4] __attribute__((aligned(16))) = {
@@ -140,6 +330,42 @@ static const char *test_name = "vaesdf.vv";
 #else
 static const char *test_name = "vaesdf.vs";
 #endif
+#endif
+
+#ifdef TEST_VAESDF_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0x305dbfd4, 0xae52b4e0, 0xf11141b8, 0xe598271e,
+    0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09,
+    0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xa8f64332, 0x8d305a88, 0xa2983131, 0x340737e0,
+    0xe7a2794a, 0x9c1f118c, 0x94a1fe46, 0xc0c6faaf
+};
+static const char *test_name = "vaesdf.vv (2 groups)";
+#endif
+
+#ifdef TEST_VAESDF_VS_2G
+static uint32_t vd_data[8] __attribute__((aligned(16))) = {
+    0x305dbfd4, 0xae52b4e0, 0xf11141b8, 0xe598271e,
+    0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97
+};
+static uint32_t vs2_data[8] __attribute__((aligned(16))) = {
+    0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09,
+    0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a
+};
+#define VD_DATA vd_data
+#define VS2_DATA vs2_data
+static uint32_t expected[8] __attribute__((aligned(16))) = {
+    0xa8f64332, 0x8d305a88, 0xa2983131, 0x340737e0,
+    0xe649fdc1, 0x8be1eb2c, 0x258daace, 0xf9ff598c
+};
+static const char *test_name = "vaesdf.vs (2 groups)";
 #endif
 
 #ifdef TEST_VAESKF1
@@ -196,13 +422,21 @@ static const char *test_name = "vaeskf2.vi rnum=3 (odd)";
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-int main(void) {
-    uint32_t vd_words[4];
-    uint32_t vs2_words[4];
-    uint32_t expected_words[4];
-    uint32_t result_words[4];
+static void print_words(const char *label, const uint32_t *words, int count) {
+    printf("%s", label);
+    for (int i = 0; i < count; i++) {
+        printf("%s%08x", i ? " " : "", (unsigned)words[i]);
+    }
+    printf("\n");
+}
 
-    for (int i = 0; i < 4; i++) {
+int main(void) {
+    uint32_t vd_words[TEST_WORDS];
+    uint32_t vs2_words[TEST_WORDS];
+    uint32_t expected_words[TEST_WORDS];
+    uint32_t result_words[TEST_WORDS];
+
+    for (int i = 0; i < TEST_WORDS; i++) {
         vd_words[i] = VD_DATA[i];
         vs2_words[i] = VS2_DATA[i];
         expected_words[i] = expected[i];
@@ -211,14 +445,10 @@ int main(void) {
     printf("Zvkned debug: %s\n", test_name);
 
     unsigned long vl;
-    asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(4));
+    asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(TEST_WORDS));
     printf("VL = %ld\n", (long)vl);
-    printf("scalar vd:  %08x %08x %08x %08x\n",
-           (unsigned)vd_words[0], (unsigned)vd_words[1],
-           (unsigned)vd_words[2], (unsigned)vd_words[3]);
-    printf("scalar vs2: %08x %08x %08x %08x\n",
-           (unsigned)vs2_words[0], (unsigned)vs2_words[1],
-           (unsigned)vs2_words[2], (unsigned)vs2_words[3]);
+    print_words("scalar vd:  ", vd_words, TEST_WORDS);
+    print_words("scalar vs2: ", vs2_words, TEST_WORDS);
 
     // Load operands: v4 = vd, v2 = vs2
     asm volatile("vle32.v v4, (%0)" :: "r"(vd_words));
@@ -226,33 +456,29 @@ int main(void) {
 
     // Verify loads
     asm volatile("vse32.v v4, (%0)" :: "r"(result_words) : "memory");
-    printf("v4 (vd):  %08x %08x %08x %08x\n",
-           (unsigned)result_words[0], (unsigned)result_words[1],
-           (unsigned)result_words[2], (unsigned)result_words[3]);
+    print_words("v4 (vd):  ", result_words, TEST_WORDS);
     asm volatile("vse32.v v2, (%0)" :: "r"(result_words) : "memory");
-    printf("v2 (vs2): %08x %08x %08x %08x\n",
-           (unsigned)result_words[0], (unsigned)result_words[1],
-           (unsigned)result_words[2], (unsigned)result_words[3]);
+    print_words("v2 (vs2): ", result_words, TEST_WORDS);
 
     // Execute the instruction under test
     printf("executing %s...\n", test_name);
-#ifdef TEST_VAESZ
+#if defined(TEST_VAESZ) || defined(TEST_VAESZ_2G)
     asm volatile("vaesz.vs v4, v2");
-#elif defined(TEST_VAESEM)
+#elif defined(TEST_VAESEM) || defined(TEST_VAESEM_2G)
     asm volatile("vaesem.vv v4, v2");
-#elif defined(TEST_VAESEM_VS)
+#elif defined(TEST_VAESEM_VS) || defined(TEST_VAESEM_VS_2G)
     asm volatile("vaesem.vs v4, v2");
-#elif defined(TEST_VAESEF)
+#elif defined(TEST_VAESEF) || defined(TEST_VAESEF_2G)
     asm volatile("vaesef.vv v4, v2");
-#elif defined(TEST_VAESEF_VS)
+#elif defined(TEST_VAESEF_VS) || defined(TEST_VAESEF_VS_2G)
     asm volatile("vaesef.vs v4, v2");
-#elif defined(TEST_VAESDM)
+#elif defined(TEST_VAESDM) || defined(TEST_VAESDM_2G)
     asm volatile("vaesdm.vv v4, v2");
-#elif defined(TEST_VAESDM_VS)
+#elif defined(TEST_VAESDM_VS) || defined(TEST_VAESDM_VS_2G)
     asm volatile("vaesdm.vs v4, v2");
-#elif defined(TEST_VAESDF)
+#elif defined(TEST_VAESDF) || defined(TEST_VAESDF_2G)
     asm volatile("vaesdf.vv v4, v2");
-#elif defined(TEST_VAESDF_VS)
+#elif defined(TEST_VAESDF_VS) || defined(TEST_VAESDF_VS_2G)
     asm volatile("vaesdf.vs v4, v2");
 #elif defined(TEST_VAESKF1)
     asm volatile("vaeskf1.vi v4, v2, 1");
@@ -265,17 +491,16 @@ int main(void) {
     // Store result
     asm volatile("vse32.v v4, (%0)" :: "r"(result_words) : "memory");
 
-    printf("result:   %08x %08x %08x %08x\n",
-           (unsigned)result_words[0], (unsigned)result_words[1],
-           (unsigned)result_words[2], (unsigned)result_words[3]);
-    printf("expected: %08x %08x %08x %08x\n",
-           (unsigned)expected_words[0], (unsigned)expected_words[1],
-           (unsigned)expected_words[2], (unsigned)expected_words[3]);
+    print_words("result:   ", result_words, TEST_WORDS);
+    print_words("expected: ", expected_words, TEST_WORDS);
 
-    int ok = (result_words[0] == expected_words[0] &&
-              result_words[1] == expected_words[1] &&
-              result_words[2] == expected_words[2] &&
-              result_words[3] == expected_words[3]);
+    int ok = 1;
+    for (int i = 0; i < TEST_WORDS; i++) {
+        if (result_words[i] != expected_words[i]) {
+            ok = 0;
+            break;
+        }
+    }
 
     printf("%s\n", ok ? "PASS" : "FAIL");
     return ok ? 0 : 1;
