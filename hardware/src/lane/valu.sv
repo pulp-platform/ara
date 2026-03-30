@@ -244,12 +244,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   // Returns 1'b1 if `op` is any AES instruction handled by the VALU
   function automatic logic is_aes_valu(ara_op_e op);
-    is_aes_valu = op inside {[VAESDM_VV:VAESEF_VS], VAESZ_VS};
+    is_aes_valu = op inside {[VAESDM_VV:VAESEF_VS], VAESKF1, VAESZ_VS};
   endfunction : is_aes_valu
 
-  // Returns 1'b1 if `op` is an AES round op requiring ShiftRows in the SLDU.
+  // Returns 1'b1 if `op` is an AES op requiring the SLDU (multi-phase execution).
   function automatic logic is_aes_round(ara_op_e op);
-    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]};
+    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1};
   endfunction : is_aes_round
 
   //////////////////
@@ -426,12 +426,16 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     elen_t aes_operand_a;
     assign aes_operand_a = (alu_state_q == AES_RX) ? sldu_operand_q : alu_operand_a;
 
-    simd_aes_lane i_simd_aes_lane (
-      .operand_a_i(aes_operand_a    ),
-      .operand_b_i(alu_operand_b    ),
-      .op_i       (vinsn_issue_q.op ),
-      .phase_i    (aes_phase        ),
-      .result_o   (aes_lane_result  )
+    simd_aes_lane #(
+      .NrLanes(NrLanes)
+    ) i_simd_aes_lane (
+      .operand_a_i(aes_operand_a                ),
+      .operand_b_i(alu_operand_b                ),
+      .op_i       (vinsn_issue_q.op             ),
+      .phase_i    (aes_phase                    ),
+      .lane_id_i  (lane_id_i                    ),
+      .rnum_i     (vinsn_issue_q.scalar_op[3:0] ),
+      .result_o   (aes_lane_result              )
     );
   end else begin : gen_no_aes_lane
     assign aes_lane_result = '0;

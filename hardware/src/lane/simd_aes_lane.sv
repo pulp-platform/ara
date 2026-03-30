@@ -11,7 +11,8 @@
 // All operations here are per-column (per-32-bit-word), so no cross-lane
 // communication is needed.
 
-module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; #(
+module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
+    parameter  int unsigned NrLanes  = 0,
     localparam int unsigned DataWidth = $bits(elen_t),
     localparam int unsigned StrbWidth = DataWidth / 8,
     localparam type         strb_t    = logic [StrbWidth-1:0]
@@ -26,6 +27,10 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; #(
     // Phase select: 0 = SubBytes only, 1 = MixColumns+AddRoundKey
     // For vaesz.vs: phase is ignored (always XOR)
     input  logic    phase_i,
+    // Lane identification (for vaeskf1: identifies which column holds w3)
+    input  logic [idx_width(NrLanes)-1:0] lane_id_i,
+    // Round number for key schedule (from scalar_op)
+    input  logic [3:0]                    rnum_i,
     output elen_t   result_o
   );
 
@@ -199,6 +204,34 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; #(
   //  Per-column AES operations     //
   ////////////////////////////////////
 
+  // AES round constants for key schedule (indexed by rnum-1, rnum in [1..10])
+  function automatic logic [7:0] aes_rcon(input logic [3:0] rnum);
+    unique case (rnum)
+      4'd1:    aes_rcon = 8'h01;
+      4'd2:    aes_rcon = 8'h02;
+      4'd3:    aes_rcon = 8'h04;
+      4'd4:    aes_rcon = 8'h08;
+      4'd5:    aes_rcon = 8'h10;
+      4'd6:    aes_rcon = 8'h20;
+      4'd7:    aes_rcon = 8'h40;
+      4'd8:    aes_rcon = 8'h80;
+      4'd9:    aes_rcon = 8'h1b;
+      4'd10:   aes_rcon = 8'h36;
+      default: aes_rcon = 8'h00;
+    endcase
+  endfunction
+
+  // RotWord: rotate right by 8 bits (byte rotate)
+  function automatic logic [31:0] rot_word(input logic [31:0] w);
+    rot_word = {w[7:0], w[31:8]};
+  endfunction
+
+  // SubWord: apply forward S-box to each byte of a 32-bit word
+  function automatic logic [31:0] sub_word(input logic [31:0] w);
+    for (int i = 0; i < 4; i++)
+      sub_word[i*8 +: 8] = sbox_fwd(w[i*8 +: 8]);
+  endfunction
+
   // SubBytes on a single 32-bit column (4 bytes)
   function automatic logic [31:0] sub_bytes_col(input logic [31:0] col);
     for (int i = 0; i < 4; i++)
@@ -293,6 +326,30 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; #(
         // Round zero: just AddRoundKey (single-phase, phase_i ignored)
         VAESZ_VS:
           aes_result[c*32 +: 32] = state_col ^ rkey_col;
+
+        // AES-128 key schedule (vaeskf1.vi)
+        // Phase 0: operand_b = vs2 (current key). W3 position computes
+        //          SubWord(RotWord(w3)) ^ Rcon. Others pass through vs2.
+        // Phase 1: operand_a = SLDU result (prefix-XOR'd). operand_b = vs2.
+        //          W3 position computes w3 ^ nw2. Others pass through SLDU result.
+        VAESKF1: begin
+          // Column position within 4-word element group
+          automatic logic [31:0] col_in_group = (c * NrLanes + lane_id_i) % 4;
+          automatic logic is_w3 = (col_in_group == 3);
+          if (!phase_i) begin
+            // Phase 0: preprocessing
+            if (is_w3)
+              aes_result[c*32 +: 32] = sub_word(rot_word(rkey_col)) ^ {24'b0, aes_rcon(rnum_i)};
+            else
+              aes_result[c*32 +: 32] = rkey_col; // pass through vs2 word
+          end else begin
+            // Phase 1: postprocessing
+            if (is_w3)
+              aes_result[c*32 +: 32] = rkey_col ^ state_col; // w3 ^ nw2 (from SLDU)
+            else
+              aes_result[c*32 +: 32] = state_col; // pass through SLDU result (nw0/nw1/nw2)
+          end
+        end
 
         default:
           aes_result[c*32 +: 32] = '0;
