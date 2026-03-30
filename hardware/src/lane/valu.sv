@@ -252,6 +252,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]};
   endfunction : is_aes_round
 
+  // Returns 1'b1 if `op` uses a single 128-bit vs2 group broadcast across the vector.
+  function automatic logic is_aes_vs(ara_op_e op);
+    is_aes_vs = op inside {[VAESDM_VS:VAESEF_VS], VAESZ_VS};
+  endfunction : is_aes_vs
+
   //////////////////
   //  Reductions  //
   //////////////////
@@ -417,8 +422,40 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   ///////////////////////////
 
   elen_t aes_lane_result;
+  elen_t aes_operand_b;
+  elen_t aes_vs_key_d, aes_vs_key_q;
   // AES phase: 0 = SubBytes (Phase 1), 1 = MixColumns+AddRoundKey (Phase 2)
   logic aes_phase;
+
+  // `_vs` AES instructions reuse the first 128-bit key group across the entire vector.
+  // With Ara's current 64-bit lane datapath, this can be reconstructed lane-locally for
+  // the supported 2-lane and 4-lane configurations.
+  always_comb begin
+    aes_vs_key_d  = aes_vs_key_q;
+    aes_operand_b = alu_operand_b;
+
+    if (is_aes_vs(vinsn_issue_q.op)) begin
+      automatic elen_t aes_vs_key_current = alu_operand_b;
+
+      if (NrLanes == 4)
+        aes_vs_key_current = {alu_operand_b[31:0], alu_operand_b[31:0]};
+
+      if (issue_cnt_q == vinsn_issue_q.vl) begin
+        aes_operand_b = aes_vs_key_current;
+        aes_vs_key_d  = aes_vs_key_current;
+      end else begin
+        aes_operand_b = aes_vs_key_q;
+      end
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      aes_vs_key_q <= '0;
+    end else begin
+      aes_vs_key_q <= aes_vs_key_d;
+    end
+  end
 
   if (Zvkned(CryptoSupport)) begin : gen_aes_lane
     // In Phase 2 (AES_RX), operand_a comes from SLDU (post-ShiftRows data)
@@ -428,7 +465,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
     simd_aes_lane i_simd_aes_lane (
       .operand_a_i(aes_operand_a    ),
-      .operand_b_i(alu_operand_b    ),
+      .operand_b_i(aes_operand_b    ),
       .op_i       (vinsn_issue_q.op ),
       .phase_i    (aes_phase        ),
       .result_o   (aes_lane_result  )
