@@ -3609,6 +3609,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
               ara_req.vs2           = insn.varith_type.rs2;
               ara_req.vd            = insn.varith_type.rd;
+              ara_req.vm            = insn.varith_type.vm;
 
               if (insn.varith_type.func3 == OPMVV && insn.varith_type.vm == 1'b1) begin
                 unique case (insn.varith_type.func6)
