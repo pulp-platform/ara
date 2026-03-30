@@ -333,7 +333,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         // vrgather/vcompress request vs2 in a non-conventional way from MaskB, not ALU
         use_vs2        : pe_req.use_vs2 && !(pe_req.op inside {[VRGATHER:VCOMPRESS]}),
         use_vd_op      : pe_req.use_vd_op,
-        aes_key_broadcast: pe_req.op inside {[VAESDM_VS:VAESEF_VS]},
+        aes_key_broadcast: pe_req.op inside {[VAESDM_VS:VAESEF_VS], VAESZ_VS},
         scalar_op      : pe_req.scalar_op,
         use_scalar_op  : pe_req.use_scalar_op,
         vd             : pe_req.vd,
