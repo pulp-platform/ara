@@ -298,13 +298,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
-  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]});
+  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
-  // AES round ops routed through the SLDU for ShiftRows
+  // AES ops routed through the SLDU (ShiftRows for round ops, prefix-XOR for key schedule)
   logic is_issue_aes;
-  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]});
+  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1});
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
@@ -449,6 +449,59 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     end
   end
 
+  /////////////////////////////////////
+  //  AES Key Schedule XOR (SLDU)   //
+  /////////////////////////////////////
+
+  // vaeskf1 prefix-XOR chain across element group words.
+  // Input from VALU: [w0, w1, w2, temp] where temp = SubWord(RotWord(w3)) ^ Rcon
+  // Output to VALU:  [nw0, nw1, nw2, nw2] where nwi = wi ^ nw(i-1), nw(-1) = temp
+  // The w3 position gets nw2 so the VALU can compute nw3 = w3 ^ nw2.
+
+  localparam int unsigned AesGroupsPerBeat = (NrLanes * AesColsPerLane) / AesColsPerGroup;
+
+  elen_t [NrLanes-1:0] aes_kf1_result;
+
+  // Helper: extract a 32-bit word from lane/half position given a column index
+  function automatic logic [31:0] kf1_extract(
+    input elen_t [NrLanes-1:0] data,
+    input int unsigned col
+  );
+    kf1_extract = data[col % NrLanes][(col / NrLanes) * 32 +: 32];
+  endfunction
+
+  always_comb begin
+    aes_kf1_result = '0;
+
+    for (int unsigned grp = 0; grp < AesGroupsPerBeat; grp++) begin
+      // Extract the 4 words of this element group
+      automatic logic [31:0] w0   = kf1_extract(sldu_operand, grp * 4 + 0);
+      automatic logic [31:0] w1   = kf1_extract(sldu_operand, grp * 4 + 1);
+      automatic logic [31:0] w2   = kf1_extract(sldu_operand, grp * 4 + 2);
+      automatic logic [31:0] temp = kf1_extract(sldu_operand, grp * 4 + 3);
+
+      // Prefix-XOR chain
+      automatic logic [31:0] nw0 = w0 ^ temp;
+      automatic logic [31:0] nw1 = w1 ^ nw0;
+      automatic logic [31:0] nw2 = w2 ^ nw1;
+
+      // Pack results back; w3 position gets nw2 (for VALU postprocessing)
+      automatic int unsigned c0_lane = (grp * 4 + 0) % NrLanes;
+      automatic int unsigned c0_half = (grp * 4 + 0) / NrLanes;
+      automatic int unsigned c1_lane = (grp * 4 + 1) % NrLanes;
+      automatic int unsigned c1_half = (grp * 4 + 1) / NrLanes;
+      automatic int unsigned c2_lane = (grp * 4 + 2) % NrLanes;
+      automatic int unsigned c2_half = (grp * 4 + 2) / NrLanes;
+      automatic int unsigned c3_lane = (grp * 4 + 3) % NrLanes;
+      automatic int unsigned c3_half = (grp * 4 + 3) / NrLanes;
+
+      aes_kf1_result[c0_lane][c0_half * 32 +: 32] = nw0;
+      aes_kf1_result[c1_lane][c1_half * 32 +: 32] = nw1;
+      aes_kf1_result[c2_lane][c2_half * 32 +: 32] = nw2;
+      aes_kf1_result[c3_lane][c3_half * 32 +: 32] = nw2; // w3 position gets nw2
+    end
+  end
+
   always_comb begin: p_sldu
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;
@@ -568,8 +621,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
               state_d = SLIDE_RUN_OSUM;
             end
-            // AES round ops (ShiftRows only, one pass through all lanes)
-            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS: begin
+            // AES ops (one pass through all lanes: ShiftRows for round ops, prefix-XOR for key schedule)
+            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS, VAESKF1: begin
               in_pnt_d  = '0;
               out_pnt_d = '0;
               // One beat: NrLanes * 8 bytes
@@ -618,8 +671,10 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           for (int lane = 0; lane < NrLanes; lane++)
             for (int b = 0; b < 8; b++)
               if (out_en[lane][b]) begin
-                // For AES ops, use ShiftRows'd data instead of slide datapath
-                if (is_issue_aes)
+                // For AES ops, use transformed data instead of slide datapath
+                if (is_issue_aes && vinsn_issue_q.op == VAESKF1)
+                  result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = aes_kf1_result[lane][8*b +: 8];
+                else if (is_issue_aes)
                   result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = aes_shift_result[lane][8*b +: 8];
                 else
                   result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = sld_op_dst[lane][8*b +: 8];
@@ -930,7 +985,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
-      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]})) begin
+      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -945,7 +1000,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_queue_d.commit_cnt == '0) begin
         if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
-        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS]})
+        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1})
           commit_cnt_d = NrLanes * 8; // One beat through all lanes
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
