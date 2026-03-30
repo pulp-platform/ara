@@ -281,7 +281,7 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; #(
           if (!phase_i)
             aes_result[c*32 +: 32] = inv_sub_bytes_col(state_col);
           else
-            aes_result[c*32 +: 32] = inv_mix_columns_col(state_col) ^ rkey_col;
+            aes_result[c*32 +: 32] = inv_mix_columns_col(state_col ^ rkey_col);
 
         // Decrypt final round (no InvMixColumns)
         VAESDF_VV, VAESDF_VS:
