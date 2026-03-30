@@ -490,8 +490,14 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     select_d = select_q;
     elem_count_d     = elem_count_q;
 
-    // Send the operand
+    // Send the operand. AES _vs uses the first 128-bit key group for the full
+    // instruction. With 4 lanes, one 64-bit packet already contains both AES
+    // groups in its low/high 32-bit halves, so broadcast by duplicating the
+    // first-group half locally. With 2 lanes, the whole first packet belongs to
+    // the first AES group and can be replayed unchanged.
     operand_o       = conv_operand;
+    if (cmd.broadcast_first_group && cmd.eew == EW32 && NrLanes == 4)
+      operand_o = {conv_operand[31:0], conv_operand[31:0]};
     operand_valid_o = ibuf_operand_valid;
     // Encode the target functional unit when it is not clear
     // Default encoding: SLDU == 1'b0, ADDRGEN == 1'b1
@@ -527,7 +533,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       endcase
 
       // Finished using an operand
-      if ((select_q != '0 && select_d == '0) || cmd.conv == OpQueueConversionNone) ibuf_pop = 1'b1;
+      if (!cmd.broadcast_first_group && ((select_q != '0 && select_d == '0) || cmd.conv == OpQueueConversionNone))
+        ibuf_pop = 1'b1;
 
       // Finished execution
       if (elem_count_d >= cmd.elem_count) begin : finished_elems
