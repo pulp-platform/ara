@@ -26,6 +26,8 @@ TESTS=(
   TEST_VAESKF2_ODD
 )
 
+declare -a test_results=()
+
 pass=0
 fail=0
 timeout_count=0
@@ -39,6 +41,7 @@ for test in "${TESTS[@]}"; do
   # Rebuild bin/zvkned_dbg with the test define
   if ! make -C "$APPS_DIR" bin/zvkned_dbg ENV_DEFINES="-D$test" 2>&1 | tail -3; then
     echo "  COMPILE ERROR"
+    test_results+=("$test COMPILE_ERROR")
     ((fail++))
     echo ""
     continue
@@ -53,6 +56,7 @@ for test in "${TESTS[@]}"; do
   if [ "$sim_exit" -eq 124 ]; then
     echo "$output" | sed 's/^/  /'
     echo "  >>> TIMEOUT after ${SIM_TIMEOUT}s (possible stall) <<<"
+    test_results+=("$test TIMEOUT")
     ((fail++))
     ((timeout_count++))
     echo ""
@@ -65,9 +69,11 @@ for test in "${TESTS[@]}"; do
   # Check result
   result=$(echo "$output" | grep -E "^(PASS|FAIL)$" | tail -1 || echo "")
   if [ "$result" = "PASS" ]; then
+    test_results+=("$test PASS")
     ((pass++))
   else
     echo "  >>> FAIL (exit=$sim_exit) <<<"
+    test_results+=("$test FAIL")
     ((fail++))
   fi
   echo ""
@@ -79,5 +85,12 @@ rm -f "$APPS_DIR/zvkned_dbg/main.c.o"
 echo "========================================"
 echo "Results: $pass passed, $fail failed ($timeout_count timeouts) out of ${#TESTS[@]}"
 echo "========================================"
+echo "Test                      Result"
+echo "------------------------  ------------"
+for entry in "${test_results[@]}"; do
+  # shellcheck disable=SC2086
+  set -- $entry
+  printf "%-24s  %s\n" "$1" "$2"
+done
 
 [ "$fail" -eq 0 ]

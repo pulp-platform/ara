@@ -82,6 +82,22 @@ module ara import ara_pkg::*; #(
   localparam int unsigned DataWidth = $bits(elen_t);
   localparam int unsigned StrbWidth = DataWidth / 8;
   typedef logic [StrbWidth-1:0] strb_t;
+  localparam int unsigned AesColsPerLane = ELEN / 32;
+  localparam int unsigned AesColsPerGroup = 4;
+
+  if (Zvkned(CryptoSupport)) begin : gen_zvkned_cfg_checks
+    initial begin
+      if ((NrLanes * AesColsPerLane < AesColsPerGroup) ||
+          (((NrLanes * AesColsPerLane) % AesColsPerGroup) != 0))
+        $fatal(1,
+               "Ara Zvkned requires NrLanes*(ELEN/32) to be a multiple of 4 and at least 4 AES columns per beat; got NrLanes=%0d, ELEN=%0d",
+               NrLanes, ELEN);
+      if (MaxVLenPerLane < ELEN)
+        $fatal(1,
+               "Ara Zvkned requires VLEN/NrLanes >= %0d bits so each lane can hold one 64-bit beat; got VLEN=%0d, NrLanes=%0d",
+               ELEN, VLEN, NrLanes);
+    end
+  end
 
   // Interfaces between Ara's dispatcher and Ara's backend
   typedef struct packed {
