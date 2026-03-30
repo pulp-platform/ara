@@ -333,6 +333,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         // vrgather/vcompress request vs2 in a non-conventional way from MaskB, not ALU
         use_vs2        : pe_req.use_vs2 && !(pe_req.op inside {[VRGATHER:VCOMPRESS]}),
         use_vd_op      : pe_req.use_vd_op,
+        aes_key_broadcast: pe_req.op inside {[VAESDM_VS:VAESEF_VS]},
         scalar_op      : pe_req.scalar_op,
         use_scalar_op  : pe_req.use_scalar_op,
         vd             : pe_req.vd,
@@ -383,6 +384,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             id         : pe_req.id,
             // For AES ops: vd_op goes through AluA (vs1 is unused, rs1 is sub-opcode)
             vs         : (pe_req.use_vd_op && !pe_req.use_vs1) ? pe_req.vd  : pe_req.vs1,
+            broadcast_first_group : 1'b0,
             eew        : (pe_req.use_vd_op && !pe_req.use_vs1) ? pe_req.eew_vd_op : pe_req.eew_vs1,
             // If reductions and vl == 0, we must replace with neutral values
             conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs1,
@@ -402,6 +404,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           operand_request[AluB] = '{
             id         : pe_req.id,
             vs         : pe_req.vs2,
+            broadcast_first_group : vfu_operation_d.aes_key_broadcast,
             eew        : pe_req.eew_vs2,
             // If reductions and vl == 0, we must replace with neutral values
             conv       : (vfu_operation_d.vl == '0) ? OpQueueReductionZExt : pe_req.conversion_vs2,
@@ -424,6 +427,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           operand_request[MaskM] = '{
             id     : pe_req.id,
             vs     : VMASK,
+            broadcast_first_group : 1'b0,
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,

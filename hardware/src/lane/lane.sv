@@ -125,6 +125,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
     logic [4:0] vs; // Vector register operand
 
+    logic broadcast_first_group; // Reuse first fetched AES group for the full instruction
+
     logic scale_vl; // Rescale vl taking into account the new and old EEW
 
     resize_e cvt_resize;    // Resizing of FP conversions
@@ -149,6 +151,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   typedef struct packed {
     rvv_pkg::vew_e eew;        // Effective element width
     vlen_t elem_count;         // Vector body length
+    logic broadcast_first_group; // Reuse the first fetched packet across the full instruction
     opqueue_conversion_e conv; // Type conversion
     logic [1:0] ntr_red;       // Neutral type for reductions
     logic is_reduct;           // Is this a reduction?
@@ -165,6 +168,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     logic use_vs1;   // This operation uses vs1
     logic use_vs2;   // This operation uses vs1
     logic use_vd_op; // This operation uses vd as an operand as well
+    logic aes_key_broadcast; // AES _vs uses the first 128-bit vs2 group for the full instruction
 
     elen_t scalar_op;    // Scalar operand
     logic use_scalar_op; // This operation uses the scalar operand

@@ -350,11 +350,18 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       operand_queue_cmd_tmp = '{
         eew       : operand_request_i[requester_index].eew,
         elem_count: effective_vector_body_length,
+        broadcast_first_group: operand_request_i[requester_index].broadcast_first_group,
         conv      : operand_request_i[requester_index].conv,
         ntr_red   : operand_request_i[requester_index].cvt_resize,
         target_fu : operand_request_i[requester_index].target_fu,
         is_reduct : operand_request_i[requester_index].is_reduct
       };
+
+      // AES _vs reads only the first local packet of vs2, which is then replayed by the
+      // operand queue across the full instruction length.
+      if (operand_request_i[requester_index].broadcast_first_group) begin
+        requester_metadata_tmp.len = 1 << (unsigned'(EW64) - unsigned'(operand_request_i[requester_index].eew));
+      end
 
       case (state_q)
         IDLE: begin : state_q_IDLE
