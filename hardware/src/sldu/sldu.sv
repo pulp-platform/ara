@@ -8,11 +8,12 @@
 // instructions, which need access to the whole Vector Register File.
 
 module sldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes   = 0,
-    parameter  int  unsigned VLEN      = 0,
-    parameter  type          vaddr_t   = logic, // Type used to address vector register file elements,
-    parameter  type          pe_req_t  = logic,
-    parameter  type          pe_resp_t = logic,
+    parameter  int  unsigned NrLanes        = 0,
+    parameter  int  unsigned VLEN           = 0,
+    parameter  crypto_support_e CryptoSupport = CryptoSupportNone,
+    parameter  type          vaddr_t        = logic, // Type used to address vector register file elements,
+    parameter  type          pe_req_t       = logic,
+    parameter  type          pe_resp_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam int  unsigned DataWidth = $bits(elen_t), // Width of the lane datapath
     localparam int  unsigned StrbWidth = DataWidth/8,
@@ -298,13 +299,18 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
-  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2});
+  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu)
+                                  & !(Zvkned(CryptoSupport) && vinsn_issue_q.op inside {[VAESDM_VV:VAESKF2]});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
   // AES ops routed through the SLDU (ShiftRows for round ops, prefix-XOR for key schedule)
   logic is_issue_aes;
-  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2});
+  if (Zvkned(CryptoSupport)) begin : gen_aes_issue
+    assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESKF2]});
+  end else begin : gen_no_aes_issue
+    assign is_issue_aes = 1'b0;
+  end
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
@@ -386,120 +392,115 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   // Remaining bytes of the current instruction in the commit phase
   vlen_t commit_cnt_d, commit_cnt_q;
 
-  /////////////////////////////
-  //  AES ShiftRows (SLDU)   //
-  /////////////////////////////
-
-  // ShiftRows / InvShiftRows byte permutation across AES columns.
-  // With SEW=32, each AES element group is 128 bits = 4x32-bit columns.
-  // Each 64-bit lane carries AesColsPerLane columns, so a beat may contain
-  // multiple AES groups depending on NrLanes. The permutation must therefore
-  // be defined over column indices, not lane indices.
-  //
-  // Column layout within a 32-bit word: [7:0]=row0, [15:8]=row1, [23:16]=row2, [31:24]=row3
-  //
-  // ShiftRows:    row r shifts LEFT  by r across columns
-  // InvShiftRows: row r shifts RIGHT by r across columns
+  /////////////////////////////////////
+  //  AES Datapath (SLDU, gated)     //
+  /////////////////////////////////////
 
   elen_t [NrLanes-1:0] aes_shift_result;
-
-  always_comb begin
-    aes_shift_result = '0;
-
-    for (int unsigned l = 0; l < NrLanes; l++) begin
-      for (int unsigned half = 0; half < AesColsPerLane; half++) begin
-        // EW32 elements are striped across lanes first, then across the second
-        // 32-bit half of each 64-bit lane word.
-        automatic int unsigned out_col_idx   = half * NrLanes + l;
-        automatic int unsigned group_base    = (out_col_idx / AesColsPerGroup) * AesColsPerGroup;
-        automatic int unsigned col_in_group  = out_col_idx % AesColsPerGroup;
-        automatic int unsigned bit_base      = half * 32;
-        automatic int unsigned row1_src_col;
-        automatic int unsigned row2_src_col;
-        automatic int unsigned row3_src_col;
-        automatic int unsigned row1_src_lane;
-        automatic int unsigned row2_src_lane;
-        automatic int unsigned row3_src_lane;
-        automatic int unsigned row1_src_half;
-        automatic int unsigned row2_src_half;
-        automatic int unsigned row3_src_half;
-
-        if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV, VAESEM_VS, VAESEF_VS}) begin
-          row1_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
-          row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
-          row3_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
-        end else begin
-          row1_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
-          row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
-          row3_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
-        end
-
-        row1_src_lane = row1_src_col % NrLanes;
-        row2_src_lane = row2_src_col % NrLanes;
-        row3_src_lane = row3_src_col % NrLanes;
-        row1_src_half = row1_src_col / NrLanes;
-        row2_src_half = row2_src_col / NrLanes;
-        row3_src_half = row3_src_col / NrLanes;
-
-        aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[l            ][bit_base              +  0 +: 8];
-        aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[row1_src_lane][row1_src_half * 32 +  8 +: 8];
-        aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[row2_src_lane][row2_src_half * 32 + 16 +: 8];
-        aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[row3_src_lane][row3_src_half * 32 + 24 +: 8];
-      end
-    end
-  end
-
-  /////////////////////////////////////
-  //  AES Key Schedule XOR (SLDU)   //
-  /////////////////////////////////////
-
-  // vaeskf1 prefix-XOR chain across element group words.
-  // Input from VALU: [w0, w1, w2, temp] where temp = SubWord(RotWord(w3)) ^ Rcon
-  // Output to VALU:  [nw0, nw1, nw2, nw2] where nwi = wi ^ nw(i-1), nw(-1) = temp
-  // The w3 position gets nw2 so the VALU can compute nw3 = w3 ^ nw2.
-
-  localparam int unsigned AesGroupsPerBeat = (NrLanes * AesColsPerLane) / AesColsPerGroup;
-
   elen_t [NrLanes-1:0] aes_kf1_result;
 
-  // Helper: extract a 32-bit word from lane/half position given a column index
-  function automatic logic [31:0] kf1_extract(
-    input elen_t [NrLanes-1:0] data,
-    input int unsigned col
-  );
-    kf1_extract = data[col % NrLanes][(col / NrLanes) * 32 +: 32];
-  endfunction
+  if (Zvkned(CryptoSupport)) begin : gen_aes_sldu
 
-  always_comb begin
-    aes_kf1_result = '0;
+    // ShiftRows / InvShiftRows byte permutation across AES columns.
+    // With SEW=32, each AES element group is 128 bits = 4x32-bit columns.
+    // Each 64-bit lane carries AesColsPerLane columns, so a beat may contain
+    // multiple AES groups depending on NrLanes.
+    //
+    // Column layout within a 32-bit word: [7:0]=row0, [15:8]=row1, [23:16]=row2, [31:24]=row3
+    //
+    // ShiftRows:    row r shifts LEFT  by r across columns
+    // InvShiftRows: row r shifts RIGHT by r across columns
 
-    for (int unsigned grp = 0; grp < AesGroupsPerBeat; grp++) begin
-      // Extract the 4 words of this element group
-      automatic logic [31:0] w0   = kf1_extract(sldu_operand, grp * 4 + 0);
-      automatic logic [31:0] w1   = kf1_extract(sldu_operand, grp * 4 + 1);
-      automatic logic [31:0] w2   = kf1_extract(sldu_operand, grp * 4 + 2);
-      automatic logic [31:0] temp = kf1_extract(sldu_operand, grp * 4 + 3);
+    always_comb begin
+      aes_shift_result = '0;
 
-      // Prefix-XOR chain
-      automatic logic [31:0] nw0 = w0 ^ temp;
-      automatic logic [31:0] nw1 = w1 ^ nw0;
-      automatic logic [31:0] nw2 = w2 ^ nw1;
+      for (int unsigned l = 0; l < NrLanes; l++) begin
+        for (int unsigned half = 0; half < AesColsPerLane; half++) begin
+          automatic int unsigned out_col_idx   = half * NrLanes + l;
+          automatic int unsigned group_base    = (out_col_idx / AesColsPerGroup) * AesColsPerGroup;
+          automatic int unsigned col_in_group  = out_col_idx % AesColsPerGroup;
+          automatic int unsigned bit_base      = half * 32;
+          automatic int unsigned row1_src_col;
+          automatic int unsigned row2_src_col;
+          automatic int unsigned row3_src_col;
+          automatic int unsigned row1_src_lane;
+          automatic int unsigned row2_src_lane;
+          automatic int unsigned row3_src_lane;
+          automatic int unsigned row1_src_half;
+          automatic int unsigned row2_src_half;
+          automatic int unsigned row3_src_half;
 
-      // Pack results back; w3 position gets nw2 (for VALU postprocessing)
-      automatic int unsigned c0_lane = (grp * 4 + 0) % NrLanes;
-      automatic int unsigned c0_half = (grp * 4 + 0) / NrLanes;
-      automatic int unsigned c1_lane = (grp * 4 + 1) % NrLanes;
-      automatic int unsigned c1_half = (grp * 4 + 1) / NrLanes;
-      automatic int unsigned c2_lane = (grp * 4 + 2) % NrLanes;
-      automatic int unsigned c2_half = (grp * 4 + 2) / NrLanes;
-      automatic int unsigned c3_lane = (grp * 4 + 3) % NrLanes;
-      automatic int unsigned c3_half = (grp * 4 + 3) / NrLanes;
+          if (vinsn_issue_q.op inside {VAESEM_VV, VAESEF_VV, VAESEM_VS, VAESEF_VS}) begin
+            row1_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
+            row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
+            row3_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
+          end else begin
+            row1_src_col = group_base + ((col_in_group + 3) % AesColsPerGroup);
+            row2_src_col = group_base + ((col_in_group + 2) % AesColsPerGroup);
+            row3_src_col = group_base + ((col_in_group + 1) % AesColsPerGroup);
+          end
 
-      aes_kf1_result[c0_lane][c0_half * 32 +: 32] = nw0;
-      aes_kf1_result[c1_lane][c1_half * 32 +: 32] = nw1;
-      aes_kf1_result[c2_lane][c2_half * 32 +: 32] = nw2;
-      aes_kf1_result[c3_lane][c3_half * 32 +: 32] = nw2; // w3 position gets nw2
+          row1_src_lane = row1_src_col % NrLanes;
+          row2_src_lane = row2_src_col % NrLanes;
+          row3_src_lane = row3_src_col % NrLanes;
+          row1_src_half = row1_src_col / NrLanes;
+          row2_src_half = row2_src_col / NrLanes;
+          row3_src_half = row3_src_col / NrLanes;
+
+          aes_shift_result[l][bit_base +  0 +: 8] = sldu_operand[l            ][bit_base              +  0 +: 8];
+          aes_shift_result[l][bit_base +  8 +: 8] = sldu_operand[row1_src_lane][row1_src_half * 32 +  8 +: 8];
+          aes_shift_result[l][bit_base + 16 +: 8] = sldu_operand[row2_src_lane][row2_src_half * 32 + 16 +: 8];
+          aes_shift_result[l][bit_base + 24 +: 8] = sldu_operand[row3_src_lane][row3_src_half * 32 + 24 +: 8];
+        end
+      end
     end
+
+    // Key schedule prefix-XOR chain (shared by vaeskf1 and vaeskf2).
+    // Input from VALU: [w0, w1, w2, temp] where temp = SubWord(RotWord(w3)) ^ Rcon
+    // Output to VALU:  [nw0, nw1, nw2, nw2] where nwi = wi ^ nw(i-1), nw(-1) = temp
+    // The w3 position gets nw2 so the VALU can compute nw3 = w3 ^ nw2.
+
+    localparam int unsigned AesGroupsPerBeat = (NrLanes * AesColsPerLane) / AesColsPerGroup;
+
+    function automatic logic [31:0] kf1_extract(
+      input elen_t [NrLanes-1:0] data,
+      input int unsigned col
+    );
+      kf1_extract = data[col % NrLanes][(col / NrLanes) * 32 +: 32];
+    endfunction
+
+    always_comb begin
+      aes_kf1_result = '0;
+
+      for (int unsigned grp = 0; grp < AesGroupsPerBeat; grp++) begin
+        automatic logic [31:0] w0   = kf1_extract(sldu_operand, grp * 4 + 0);
+        automatic logic [31:0] w1   = kf1_extract(sldu_operand, grp * 4 + 1);
+        automatic logic [31:0] w2   = kf1_extract(sldu_operand, grp * 4 + 2);
+        automatic logic [31:0] temp = kf1_extract(sldu_operand, grp * 4 + 3);
+
+        automatic logic [31:0] nw0 = w0 ^ temp;
+        automatic logic [31:0] nw1 = w1 ^ nw0;
+        automatic logic [31:0] nw2 = w2 ^ nw1;
+
+        automatic int unsigned c0_lane = (grp * 4 + 0) % NrLanes;
+        automatic int unsigned c0_half = (grp * 4 + 0) / NrLanes;
+        automatic int unsigned c1_lane = (grp * 4 + 1) % NrLanes;
+        automatic int unsigned c1_half = (grp * 4 + 1) / NrLanes;
+        automatic int unsigned c2_lane = (grp * 4 + 2) % NrLanes;
+        automatic int unsigned c2_half = (grp * 4 + 2) / NrLanes;
+        automatic int unsigned c3_lane = (grp * 4 + 3) % NrLanes;
+        automatic int unsigned c3_half = (grp * 4 + 3) / NrLanes;
+
+        aes_kf1_result[c0_lane][c0_half * 32 +: 32] = nw0;
+        aes_kf1_result[c1_lane][c1_half * 32 +: 32] = nw1;
+        aes_kf1_result[c2_lane][c2_half * 32 +: 32] = nw2;
+        aes_kf1_result[c3_lane][c3_half * 32 +: 32] = nw2; // w3 position gets nw2
+      end
+    end
+
+  end else begin : gen_no_aes_sldu
+    assign aes_shift_result = '0;
+    assign aes_kf1_result   = '0;
   end
 
   always_comb begin: p_sldu
@@ -622,7 +623,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               state_d = SLIDE_RUN_OSUM;
             end
             // AES ops (one pass through all lanes: ShiftRows for round ops, prefix-XOR for key schedule)
-            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS, VAESKF1, VAESKF2: begin
+            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS, VAESKF1, VAESKF2:  if (Zvkned(CryptoSupport)) begin
               in_pnt_d  = '0;
               out_pnt_d = '0;
               // One beat: NrLanes * 8 bytes
@@ -672,6 +673,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             for (int b = 0; b < 8; b++)
               if (out_en[lane][b]) begin
                 // For AES ops, use transformed data instead of slide datapath
+                // (is_issue_aes is constant 1'b0 when CryptoSupport=None)
                 if (is_issue_aes && vinsn_issue_q.op inside {VAESKF1, VAESKF2})
                   result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = aes_kf1_result[lane][8*b +: 8];
                 else if (is_issue_aes)
@@ -985,7 +987,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
-      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2})) begin
+      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]}
+        || (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]}))) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -1000,7 +1003,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_queue_d.commit_cnt == '0) begin
         if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
-        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2})
+        else if (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]})
           commit_cnt_d = NrLanes * 8; // One beat through all lanes
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;

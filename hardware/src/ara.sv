@@ -292,13 +292,14 @@ module ara import ara_pkg::*; #(
   logic      result_scalar_valid;
 
   ara_sequencer #(
-    .NrLanes    (NrLanes   ),
-    .VLEN       (VLEN      ),
-    .ara_req_t  (ara_req_t ),
-    .ara_resp_t (ara_resp_t),
-    .pe_req_t   (pe_req_t  ),
-    .pe_resp_t  (pe_resp_t ),
-    .exception_t(exception_t)
+    .NrLanes      (NrLanes      ),
+    .VLEN         (VLEN         ),
+    .CryptoSupport(CryptoSupport),
+    .ara_req_t    (ara_req_t    ),
+    .ara_resp_t   (ara_resp_t   ),
+    .pe_req_t     (pe_req_t     ),
+    .pe_resp_t    (pe_resp_t    ),
+    .exception_t  (exception_t  )
   ) i_sequencer (
     .clk_i                 (clk_i                    ),
     .rst_ni                (rst_ni                   ),
@@ -599,11 +600,12 @@ module ara import ara_pkg::*; #(
   logic sldu_mask_ready;
 
   sldu #(
-    .NrLanes  (NrLanes  ),
-    .VLEN     (VLEN     ),
-    .vaddr_t  (vaddr_t  ),
-    .pe_req_t (pe_req_t ),
-    .pe_resp_t(pe_resp_t)
+    .NrLanes      (NrLanes      ),
+    .VLEN         (VLEN         ),
+    .CryptoSupport(CryptoSupport),
+    .vaddr_t      (vaddr_t      ),
+    .pe_req_t     (pe_req_t     ),
+    .pe_resp_t    (pe_resp_t    )
   ) i_sldu (
     .clk_i                   (clk_i                            ),
     .rst_ni                  (rst_ni                           ),

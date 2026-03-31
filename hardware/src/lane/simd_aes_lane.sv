@@ -327,58 +327,40 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         VAESZ_VS:
           aes_result[c*32 +: 32] = state_col ^ rkey_col;
 
-        // AES-128 key schedule (vaeskf1.vi)
-        // Phase 0: operand_b = vs2 (current key). W3 position computes
-        //          SubWord(RotWord(w3)) ^ Rcon. Others pass through vs2.
-        // Phase 1: operand_a = SLDU result (prefix-XOR'd). operand_b = vs2.
-        //          W3 position computes w3 ^ nw2. Others pass through SLDU result.
-        VAESKF1: begin
-          // Column position within 4-word element group
-          automatic logic [31:0] col_in_group = (c * NrLanes + lane_id_i) % 4;
-          automatic logic is_w3 = (col_in_group == 3);
-          if (!phase_i) begin
-            // Phase 0: preprocessing
-            if (is_w3)
-              aes_result[c*32 +: 32] = sub_word(rot_word(rkey_col)) ^ {24'b0, aes_rcon(rnum_i)};
-            else
-              aes_result[c*32 +: 32] = rkey_col; // pass through vs2 word
-          end else begin
-            // Phase 1: postprocessing
-            if (is_w3)
-              aes_result[c*32 +: 32] = rkey_col ^ state_col; // w3 ^ nw2 (from SLDU)
-            else
-              aes_result[c*32 +: 32] = state_col; // pass through SLDU result (nw0/nw1/nw2)
-          end
-        end
-
-        // AES-256 key schedule (vaeskf2.vi)
-        // Like vaeskf1 but: temp comes from vs2[3], old words come from vd (operand_a).
-        // Even rounds: RotWord + SubWord + Rcon. Odd rounds: SubWord only.
-        // Round number is normalized to [2,14] from the 5-bit immediate.
-        VAESKF2: begin
-          automatic logic [31:0] col_in_group = (c * NrLanes + lane_id_i) % 4;
-          automatic logic is_w3 = (col_in_group == 3);
-          // Normalize round: clamp to [2,14] by toggling bit 3 if out of range
-          automatic logic [3:0] rnd = rnum_i[3:0];
+        // AES key schedule (vaeskf1.vi / vaeskf2.vi)
+        // Phase 0: W3 position computes SubWord(RotWord(w3)) ^ Rcon (vaeskf1 always;
+        //          vaeskf2 even rounds only — odd rounds skip RotWord and Rcon).
+        //          Other positions pass through the "old" key words.
+        //          vaeskf1: old words = vs2 (operand_b). vaeskf2: old words = vd (operand_a).
+        // Phase 1: W3 computes old_w3 ^ nw2. Others pass through SLDU result.
+        VAESKF1, VAESKF2: begin
+          automatic logic [1:0] col_in_group = (c * NrLanes + lane_id_i) % 4;
+          automatic logic is_w3 = (col_in_group == 2'd3);
+          automatic logic is_kf2 = (op_i == VAESKF2);
+          // vaeskf2 round normalization: clamp to [2,14] by toggling bit 3
+          automatic logic [3:0] rnd = rnum_i;
           automatic logic [3:0] rnd_norm = (rnd >= 4'd2 && rnd <= 4'd14) ? rnd : (rnd ^ 4'd8);
-          automatic logic is_even = ~rnd_norm[0];
+          // vaeskf2 even rounds use RotWord+Rcon; odd rounds use SubWord only
+          automatic logic kf2_even = is_kf2 & ~rnd_norm[0];
           if (!phase_i) begin
-            // Phase 0: preprocessing
             if (is_w3) begin
-              // temp = vs2[3] (rkey_col since operand_b = vs2)
-              if (is_even)
-                aes_result[c*32 +: 32] = sub_word(rot_word(rkey_col)) ^ {24'b0, aes_rcon(rnd_norm >> 1)};
+              // W3: compute temp from vs2[3] (rkey_col = operand_b)
+              if (!is_kf2 || kf2_even)
+                aes_result[c*32 +: 32] = sub_word(rot_word(rkey_col))
+                                       ^ {24'b0, aes_rcon(is_kf2 ? rnd_norm >> 1 : rnum_i)};
               else
                 aes_result[c*32 +: 32] = sub_word(rkey_col);
             end else begin
-              aes_result[c*32 +: 32] = state_col; // pass through vd word (operand_a)
+              // Others: pass through old key word
+              // vaeskf1: vs2 (rkey_col), vaeskf2: vd (state_col)
+              aes_result[c*32 +: 32] = is_kf2 ? state_col : rkey_col;
             end
           end else begin
-            // Phase 1: postprocessing (same as vaeskf1)
+            // Phase 1: postprocessing (identical for both)
             if (is_w3)
-              aes_result[c*32 +: 32] = state_col ^ rkey_col; // vd[3] ^ nw2 (from SLDU via operand_a, vs2 via operand_b... )
+              aes_result[c*32 +: 32] = rkey_col ^ state_col;
             else
-              aes_result[c*32 +: 32] = state_col; // pass through SLDU result
+              aes_result[c*32 +: 32] = state_col;
           end
         end
 

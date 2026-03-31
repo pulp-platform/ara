@@ -249,7 +249,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   // Returns 1'b1 if `op` is an AES op requiring the SLDU (multi-phase execution).
   function automatic logic is_aes_round(ara_op_e op);
-    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2};
+    is_aes_round = op inside {[VAESDM_VV:VAESKF2]};
   endfunction : is_aes_round
 
   //////////////////
@@ -832,8 +832,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           if (sldu_alu_valid_q) begin
             // Handshake the SLDU
             sldu_alu_ready_d = 1'b1;
-            // Compute MixColumns + AddRoundKey via simd_aes_lane (phase=1)
-            // operand_a = sldu_operand_q (post-ShiftRows), operand_b = alu_operand_b (round key)
+            // Compute phase=1 via simd_aes_lane
+            // operand_a = sldu_operand_q; operand_b = vs2 (or vd for vaeskf2)
 
             // Overwrite the same result queue entry with the final result
             // NOW mark it valid and bump pointers (ready for VRF write-back)
