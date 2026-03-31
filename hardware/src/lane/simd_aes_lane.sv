@@ -351,6 +351,37 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           end
         end
 
+        // AES-256 key schedule (vaeskf2.vi)
+        // Like vaeskf1 but: temp comes from vs2[3], old words come from vd (operand_a).
+        // Even rounds: RotWord + SubWord + Rcon. Odd rounds: SubWord only.
+        // Round number is normalized to [2,14] from the 5-bit immediate.
+        VAESKF2: begin
+          automatic logic [31:0] col_in_group = (c * NrLanes + lane_id_i) % 4;
+          automatic logic is_w3 = (col_in_group == 3);
+          // Normalize round: clamp to [2,14] by toggling bit 3 if out of range
+          automatic logic [3:0] rnd = rnum_i[3:0];
+          automatic logic [3:0] rnd_norm = (rnd >= 4'd2 && rnd <= 4'd14) ? rnd : (rnd ^ 4'd8);
+          automatic logic is_even = ~rnd_norm[0];
+          if (!phase_i) begin
+            // Phase 0: preprocessing
+            if (is_w3) begin
+              // temp = vs2[3] (rkey_col since operand_b = vs2)
+              if (is_even)
+                aes_result[c*32 +: 32] = sub_word(rot_word(rkey_col)) ^ {24'b0, aes_rcon(rnd_norm >> 1)};
+              else
+                aes_result[c*32 +: 32] = sub_word(rkey_col);
+            end else begin
+              aes_result[c*32 +: 32] = state_col; // pass through vd word (operand_a)
+            end
+          end else begin
+            // Phase 1: postprocessing (same as vaeskf1)
+            if (is_w3)
+              aes_result[c*32 +: 32] = state_col ^ rkey_col; // vd[3] ^ nw2 (from SLDU via operand_a, vs2 via operand_b... )
+            else
+              aes_result[c*32 +: 32] = state_col; // pass through SLDU result
+          end
+        end
+
         default:
           aes_result[c*32 +: 32] = '0;
       endcase

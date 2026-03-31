@@ -298,13 +298,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
-  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1});
+  assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu) & !(vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
   // AES ops routed through the SLDU (ShiftRows for round ops, prefix-XOR for key schedule)
   logic is_issue_aes;
-  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1});
+  assign is_issue_aes = vinsn_issue_valid_q & (vinsn_issue_q.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2});
 
   always_comb begin
     sldu_mux_sel_o = NO_RED;
@@ -622,7 +622,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               state_d = SLIDE_RUN_OSUM;
             end
             // AES ops (one pass through all lanes: ShiftRows for round ops, prefix-XOR for key schedule)
-            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS, VAESKF1: begin
+            VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS, VAESKF1, VAESKF2: begin
               in_pnt_d  = '0;
               out_pnt_d = '0;
               // One beat: NrLanes * 8 bytes
@@ -672,7 +672,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
             for (int b = 0; b < 8; b++)
               if (out_en[lane][b]) begin
                 // For AES ops, use transformed data instead of slide datapath
-                if (is_issue_aes && vinsn_issue_q.op == VAESKF1)
+                if (is_issue_aes && vinsn_issue_q.op inside {VAESKF1, VAESKF2})
                   result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = aes_kf1_result[lane][8*b +: 8];
                 else if (is_issue_aes)
                   result_queue_d[result_queue_write_pnt_q][lane].wdata[8*b +: 8] = aes_shift_result[lane][8*b +: 8];
@@ -985,7 +985,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
-      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1})) begin
+      (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2})) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -1000,7 +1000,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       if (vinsn_queue_d.commit_cnt == '0) begin
         if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
-        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1})
+        else if (pe_req_i.op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2})
           commit_cnt_d = NrLanes * 8; // One beat through all lanes
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
