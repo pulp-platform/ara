@@ -636,7 +636,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
           sldu_addrgen_sel_d = ADDRGEN_SEL;
           sldu_addrgen_arbiter_push = 1'b1;
         end
-        [VREDSUM:VWREDSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1: begin
+        [VREDSUM:VWREDSUM], [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2: begin
           sldu_addrgen_sel_d = ALU_RED_SEL;
           sldu_addrgen_arbiter_push = 1'b1;
         end

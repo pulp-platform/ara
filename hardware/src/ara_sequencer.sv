@@ -262,7 +262,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VREDSUM:VWREDSUM]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
-      [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1:
+      [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
       VAESZ_VS:

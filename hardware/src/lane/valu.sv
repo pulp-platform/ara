@@ -244,12 +244,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   // Returns 1'b1 if `op` is any AES instruction handled by the VALU
   function automatic logic is_aes_valu(ara_op_e op);
-    is_aes_valu = op inside {[VAESDM_VV:VAESEF_VS], VAESKF1, VAESZ_VS};
+    is_aes_valu = op inside {[VAESDM_VV:VAESEF_VS], VAESKF1, VAESKF2, VAESZ_VS};
   endfunction : is_aes_valu
 
   // Returns 1'b1 if `op` is an AES op requiring the SLDU (multi-phase execution).
   function automatic logic is_aes_round(ara_op_e op);
-    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1};
+    is_aes_round = op inside {[VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2};
   endfunction : is_aes_round
 
   //////////////////
@@ -426,11 +426,18 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     elen_t aes_operand_a;
     assign aes_operand_a = (alu_state_q == AES_RX) ? sldu_operand_q : alu_operand_a;
 
+    // For vaeskf2 Phase 1, operand_b must be vd (alu_operand_i[0]) instead of vs2,
+    // so the w3 lane can compute nw3 = vd[3] ^ nw2 (SLDU result).
+    elen_t aes_operand_b;
+    assign aes_operand_b = (alu_state_q == AES_RX && vinsn_issue_q.op == VAESKF2)
+                         ? alu_operand_i[0]   // vd (key[i-1])
+                         : alu_operand_b;     // vs2 (default)
+
     simd_aes_lane #(
       .NrLanes(NrLanes)
     ) i_simd_aes_lane (
       .operand_a_i(aes_operand_a                ),
-      .operand_b_i(alu_operand_b                ),
+      .operand_b_i(aes_operand_b                ),
       .op_i       (vinsn_issue_q.op             ),
       .phase_i    (aes_phase                    ),
       .lane_id_i  (lane_id_i                    ),
@@ -798,8 +805,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
             result_queue_d[result_queue_write_pnt_q].be    = be(issue_cnt_q < element_cnt_issue ? issue_cnt_q[6:0] : element_cnt_issue, vinsn_issue_q.vtype.vsew);
 
-            // Acknowledge only AluA (vd_op), keep AluB (round key) for Phase 2
-            alu_operand_ready_o = 2'b01;
+            // For vaeskf2: ack AluB (vs2) now, keep AluA (vd) for Phase 2
+            // For all others: ack AluA (vd_op) now, keep AluB (round key) for Phase 2
+            alu_operand_ready_o = (vinsn_issue_q.op == VAESKF2) ? 2'b10 : 2'b01;
 
             // Transition to TX: send SubBytes'd data to SLDU
             alu_state_d = AES_TX;
@@ -837,8 +845,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             else
               result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
 
-            // Acknowledge AluB (round key) now
-            alu_operand_ready_o = 2'b10;
+            // For vaeskf2: ack AluA (vd) now (vs2 was acked in Phase 0)
+            // For all others: ack AluB (round key) now
+            alu_operand_ready_o = (vinsn_issue_q.op == VAESKF2) ? 2'b01 : 2'b10;
 
             // Account for issued elements (clamp to avoid underflow)
             aes_element_cnt = (element_cnt_issue > issue_cnt_q) ? issue_cnt_q[6:0] : element_cnt_issue;
