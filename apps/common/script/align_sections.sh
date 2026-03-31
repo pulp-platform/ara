@@ -4,4 +4,5 @@
 # Align the sections by AxiWideBeWidth
 # NB: this script modify ALL the ALIGN directives
 let ALIGNMENT=4*$1;
-sed -i "s/ALIGNMENT/$ALIGNMENT/g" $2
+tmp=$(mktemp)
+sed "s/ALIGNMENT/$ALIGNMENT/g" "$2" > "$tmp" && mv "$tmp" "$2"
