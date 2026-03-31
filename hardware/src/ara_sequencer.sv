@@ -9,13 +9,14 @@
 
 module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     // RVV Parameters
-    parameter  int unsigned NrLanes     = 1,          // Number of parallel vector lanes
-    parameter  int unsigned VLEN        = 0,
-    parameter  type         ara_req_t   = logic,
-    parameter  type         ara_resp_t  = logic,
-    parameter  type         pe_req_t    = logic,
-    parameter  type         pe_resp_t   = logic,
-    parameter  type         exception_t = logic,
+    parameter  int unsigned NrLanes          = 1,          // Number of parallel vector lanes
+    parameter  int unsigned VLEN             = 0,
+    parameter  crypto_support_e CryptoSupport = CryptoSupportNone,
+    parameter  type         ara_req_t        = logic,
+    parameter  type         ara_resp_t       = logic,
+    parameter  type         pe_req_t         = logic,
+    parameter  type         pe_resp_t        = logic,
+    parameter  type         exception_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
@@ -262,12 +263,14 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       [VREDSUM:VWREDSUM]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
-      [VAESDM_VV:VAESEF_VV], [VAESDM_VS:VAESEF_VS], VAESKF1, VAESKF2:
+      [VAESDM_VV:VAESKF2]: if (Zvkned(CryptoSupport)) begin
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
-      VAESZ_VS:
+      end
+      VAESZ_VS: if (Zvkned(CryptoSupport)) begin
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu) target_vfus[i] = 1'b1;
+      end
       [VFREDUSUM:VFWREDOSUM]:
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_MFpu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
