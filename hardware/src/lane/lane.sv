@@ -19,6 +19,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport          = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport          = FixedPointEnable,
+    // AXI Interface parameters
+    parameter  int           unsigned AxiDataWidth          = 0,
     // To please Verilator
     parameter  int           unsigned pe_req_t_bits         = 0,
     parameter  int           unsigned pe_resp_t_bits        = 0,
@@ -31,10 +33,11 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     localparam int           unsigned VRFBSizePerLane = MaxVLenBPerLane * 32, // In bytes
     // Address of an element in the lane's VRF
     localparam type                   vaddr_t         = logic [$clog2(VRFBSizePerLane)-1:0],
-    localparam int           unsigned DataWidth       = $bits(elen_t), // Width of the lane datapath
-    localparam type                   strb_t          = logic [DataWidth/8-1:0], // Byte-strobe type
+    localparam int           unsigned DataWidth         = $bits(elen_t), // Width of the lane datapath
+    localparam int           unsigned NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * DataWidth),
+    localparam type                   strb_t            = logic [DataWidth/8-1:0], // Byte-strobe type
     // vl_csr type
-    localparam type                   vlen_t          = logic [$clog2(VLEN+1)-1:0]
+    localparam type                   vlen_t            = logic [$clog2(VLEN+1)-1:0]
   ) (
     input  logic                                           clk_i,
     input  logic                                           rst_ni,
@@ -62,9 +65,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     output logic                                           mfpu_vinsn_done_o,
     input  logic                [NrVInsn-1:0][NrVInsn-1:0] global_hazard_table_i,
     // Interface with the Store unit
-    output elen_t                                          stu_operand_o,
-    output logic                                           stu_operand_valid_o,
-    input  logic                                           stu_operand_ready_i,
+    output elen_t               [NrVRFWordsPerBeat-1:0]   stu_operand_o,
+    output logic                [NrVRFWordsPerBeat-1:0]   stu_operand_valid_o,
+    input  logic                [NrVRFWordsPerBeat-1:0]   stu_operand_ready_i,
     // Interface with the Slide/Address Generation unit
     output elen_t                                          sldu_addrgen_operand_o,
     output logic                                           sldu_operand_valid_o,
@@ -82,13 +85,13 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  logic                                           sldu_red_valid_i,
     output logic                                           sldu_result_final_gnt_o,
     // Interface with the Load unit
-    input  logic                                           ldu_result_req_i,
-    input  vid_t                                           ldu_result_id_i,
-    input  vaddr_t                                         ldu_result_addr_i,
-    input  elen_t                                          ldu_result_wdata_i,
-    input  strb_t                                          ldu_result_be_i,
-    output logic                                           ldu_result_gnt_o,
-    output logic                                           ldu_result_final_gnt_o,
+    input  logic                [NrVRFWordsPerBeat-1:0]   ldu_result_req_i,
+    input  vid_t                [NrVRFWordsPerBeat-1:0]   ldu_result_id_i,
+    input  vaddr_t              [NrVRFWordsPerBeat-1:0]   ldu_result_addr_i,
+    input  elen_t               [NrVRFWordsPerBeat-1:0]   ldu_result_wdata_i,
+    input  strb_t               [NrVRFWordsPerBeat-1:0]   ldu_result_be_i,
+    output logic                [NrVRFWordsPerBeat-1:0]   ldu_result_gnt_o,
+    output logic                [NrVRFWordsPerBeat-1:0]   ldu_result_final_gnt_o,
     // Interface with the Mask unit
     output `STRUCT_VECT(elen_t, [NrMaskFUnits+2-1:0])      mask_operand_o,
     output logic                [NrMaskFUnits+2-1:0]       mask_operand_valid_o,
@@ -237,6 +240,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   lane_sequencer #(
     .NrLanes              (NrLanes              ),
+    .AxiDataWidth         (AxiDataWidth         ),
     .pe_req_t             (pe_req_t             ),
     .pe_resp_t            (pe_resp_t            ),
     .operand_request_cmd_t(operand_request_cmd_t),
@@ -316,6 +320,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes              (NrLanes              ),
     .VLEN                 (VLEN                 ),
     .NrBanks              (NrVRFBanksPerLane    ),
+    .AxiDataWidth         (AxiDataWidth         ),
     .vaddr_t              (vaddr_t              ),
     .operand_request_cmd_t(operand_request_cmd_t),
     .operand_queue_cmd_t  (operand_queue_cmd_t  )
@@ -435,6 +440,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   operand_queues_stage #(
     .NrLanes            (NrLanes            ),
     .VLEN               (VLEN               ),
+    .AxiDataWidth       (AxiDataWidth       ),
     .FPUSupport         (FPUSupport         ),
     .operand_queue_cmd_t(operand_queue_cmd_t)
   ) i_operand_queues (

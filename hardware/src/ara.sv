@@ -42,9 +42,12 @@ module ara import ara_pkg::*; #(
     // Dependant parameters. DO NOT CHANGE!
     // Ara has NrLanes + 3 processing elements: each one of the lanes, the vector load unit, the
     // vector store unit, the slide unit, and the mask unit.
-    localparam int           unsigned NrPEs        = NrLanes + 4,
-    localparam type                   vlen_t       = logic[$clog2(VLEN+1)-1:0],
-    localparam int           unsigned VLENB        = VLEN / 8
+    localparam int           unsigned NrPEs             = NrLanes + 4,
+    localparam type                   vlen_t            = logic[$clog2(VLEN+1)-1:0],
+    localparam int           unsigned VLENB             = VLEN / 8,
+    // Number of VRF words transferred per AXI beat. Equals AxiDataWidth / (NrLanes * ELEN).
+    // Must be >= 1 (i.e. AxiDataWidth >= NrLanes*64). With AxiDataWidth=256*NrLanes this is 4.
+    localparam int           unsigned NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * $bits(elen_t))
   ) (
     // Clock and Reset
     input  logic              clk_i,
@@ -324,10 +327,10 @@ module ara import ara_pkg::*; #(
   /////////////
 
   // Interface with the vector load/store unit
-  // Store unit
-  elen_t     [NrLanes-1:0]                     stu_operand;
-  logic      [NrLanes-1:0]                     stu_operand_valid;
-  logic      [NrLanes-1:0]                     stu_operand_ready;
+  // Store unit — NrVRFWordsPerBeat parallel operand words per lane
+  elen_t     [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand;
+  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_valid;
+  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_ready;
   // Slide unit/address generation operands
   elen_t     [NrLanes-1:0]                     sldu_addrgen_operand;
   logic      [NrLanes-1:0]                     sldu_operand_valid;
@@ -338,14 +341,14 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]                     sldu_red_valid;
 
   // Results
-  // Load Unit
-  logic      [NrLanes-1:0]                     ldu_result_req;
-  vid_t      [NrLanes-1:0]                     ldu_result_id;
-  vaddr_t    [NrLanes-1:0]                     ldu_result_addr;
-  elen_t     [NrLanes-1:0]                     ldu_result_wdata;
-  strb_t     [NrLanes-1:0]                     ldu_result_be;
-  logic      [NrLanes-1:0]                     ldu_result_gnt;
-  logic      [NrLanes-1:0]                     ldu_result_final_gnt;
+  // Load Unit — NrVRFWordsPerBeat independent write-back ports per lane
+  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_req;
+  vid_t      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_id;
+  vaddr_t    [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_addr;
+  elen_t     [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_wdata;
+  strb_t     [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_be;
+  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_gnt;
+  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_final_gnt;
   // Slide Unit
   logic      [NrLanes-1:0]                     sldu_result_req;
   vid_t      [NrLanes-1:0]                     sldu_result_id;
@@ -374,6 +377,7 @@ module ara import ara_pkg::*; #(
       .FPUSupport           (FPUSupport           ),
       .FPExtSupport         (FPExtSupport         ),
       .FixPtSupport         (FixPtSupport         ),
+      .AxiDataWidth         (AxiDataWidth         ),
       .pe_req_t_bits        ($bits(pe_req_t)      ),
       .pe_resp_t_bits       ($bits(pe_resp_t)     )
     ) i_lane (
@@ -408,7 +412,7 @@ module ara import ara_pkg::*; #(
       .sldu_result_be_i                (sldu_result_be[lane]                ),
       .sldu_result_gnt_o               (sldu_result_gnt[lane]               ),
       .sldu_result_final_gnt_o         (sldu_result_final_gnt[lane]         ),
-      // Interface with the load unit
+      // Interface with the load unit — NrVRFWordsPerBeat independent write-back ports
       .ldu_result_req_i                (ldu_result_req[lane]                ),
       .ldu_result_addr_i               (ldu_result_addr[lane]               ),
       .ldu_result_id_i                 (ldu_result_id[lane]                 ),
@@ -416,7 +420,7 @@ module ara import ara_pkg::*; #(
       .ldu_result_be_i                 (ldu_result_be[lane]                 ),
       .ldu_result_gnt_o                (ldu_result_gnt[lane]                ),
       .ldu_result_final_gnt_o          (ldu_result_final_gnt[lane]          ),
-      // Interface with the store unit
+      // Interface with the store unit — NrVRFWordsPerBeat parallel operand words
       .stu_operand_o                   (stu_operand[lane]                   ),
       .stu_operand_valid_o             (stu_operand_valid[lane]             ),
       .stu_operand_ready_i             (stu_operand_ready[lane]             ),

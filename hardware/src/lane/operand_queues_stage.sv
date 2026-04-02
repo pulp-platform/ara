@@ -9,9 +9,12 @@
 module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter int     unsigned NrLanes          = 0,
     parameter int     unsigned VLEN             = 0,
+    parameter int     unsigned AxiDataWidth     = 0,
     // Support for floating-point data types
     parameter fpu_support_e FPUSupport          = FPUSupportHalfSingleDouble,
-    parameter type          operand_queue_cmd_t = logic
+    parameter type          operand_queue_cmd_t = logic,
+    // Dependant parameters. DO NOT CHANGE!
+    localparam int    unsigned NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * $bits(elen_t))
   ) (
     input  logic                                     clk_i,
     input  logic                                     rst_ni,
@@ -41,9 +44,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     output logic               [2:0]                 mfpu_operand_valid_o,
     input  logic               [2:0]                 mfpu_operand_ready_i,
     // Store unit
-    output elen_t                                    stu_operand_o,
-    output logic                                     stu_operand_valid_o,
-    input  logic                                     stu_operand_ready_i,
+    output elen_t              [NrVRFWordsPerBeat-1:0] stu_operand_o,
+    output logic               [NrVRFWordsPerBeat-1:0] stu_operand_valid_o,
+    input  logic               [NrVRFWordsPerBeat-1:0] stu_operand_ready_i,
     // Slide Unit/Address Generation unit
     output elen_t                                    sldu_addrgen_operand_o,
     output target_fu_e                               sldu_addrgen_operand_target_fu_o,
@@ -216,30 +219,34 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   //  Load/Store Unit  //
   ///////////////////////
 
-  operand_queue #(
-    .CmdBufDepth        (VstuInsnQueueDepth + MaskuInsnQueueDepth),
-    .DataBufDepth       (2                                       ),
-    .FPUSupport         (FPUSupportNone                          ),
-    .NrLanes            (NrLanes                                 ),
-    .VLEN               (VLEN                                    ),
-    .operand_queue_cmd_t(operand_queue_cmd_t                     )
-  ) i_operand_queue_st_mask_a (
-    .clk_i                    (clk_i                         ),
-    .rst_ni                   (rst_ni                        ),
-    .flush_i                  (lsu_ex_flush_o                ),
-    .lane_id_i                (lane_id_i                     ),
-    .operand_queue_cmd_i      (operand_queue_cmd_i[StA]      ),
-    .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[StA]),
-    .cmd_pop_o                (/* Unused */                  ),
-    .operand_i                (operand_i[StA]                ),
-    .operand_valid_i          (operand_valid_i[StA]          ),
-    .operand_issued_i         (operand_issued_i[StA]         ),
-    .operand_queue_ready_o    (operand_queue_ready_o[StA]    ),
-    .operand_o                (stu_operand_o                 ),
-    .operand_target_fu_o      (/* Unused */                  ),
-    .operand_valid_o          (stu_operand_valid_o           ),
-    .operand_ready_i          (stu_operand_ready_i           )
-  );
+  // NrVRFWordsPerBeat independent store operand queues (StA_0 .. StA_{NrVRFWordsPerBeat-1}).
+  // Queue w provides the w-th VRF word segment per AXI beat.
+  for (genvar w = 0; w < NrVRFWordsPerBeat; w++) begin: gen_stu_opqueue
+    operand_queue #(
+      .CmdBufDepth        (VstuInsnQueueDepth + MaskuInsnQueueDepth),
+      .DataBufDepth       (2                                       ),
+      .FPUSupport         (FPUSupportNone                          ),
+      .NrLanes            (NrLanes                                 ),
+      .VLEN               (VLEN                                    ),
+      .operand_queue_cmd_t(operand_queue_cmd_t                     )
+    ) i_operand_queue_st_a (
+      .clk_i                    (clk_i                                                  ),
+      .rst_ni                   (rst_ni                                                 ),
+      .flush_i                  (lsu_ex_flush_o                                         ),
+      .lane_id_i                (lane_id_i                                              ),
+      .operand_queue_cmd_i      (operand_queue_cmd_i[opqueue_e'(int'(StA_0) + w)]      ),
+      .operand_queue_cmd_valid_i(operand_queue_cmd_valid_i[opqueue_e'(int'(StA_0) + w)]),
+      .cmd_pop_o                (/* Unused */                                           ),
+      .operand_i                (operand_i[opqueue_e'(int'(StA_0) + w)]                ),
+      .operand_valid_i          (operand_valid_i[opqueue_e'(int'(StA_0) + w)]          ),
+      .operand_issued_i         (operand_issued_i[opqueue_e'(int'(StA_0) + w)]         ),
+      .operand_queue_ready_o    (operand_queue_ready_o[opqueue_e'(int'(StA_0) + w)]    ),
+      .operand_o                (stu_operand_o[w]                                       ),
+      .operand_target_fu_o      (/* Unused */                                          ),
+      .operand_valid_o          (stu_operand_valid_o[w]                                ),
+      .operand_ready_i          (stu_operand_ready_i[w]                                )
+    );
+  end: gen_stu_opqueue
 
   /****************
    *  Slide Unit  *

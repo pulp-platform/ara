@@ -25,10 +25,11 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  type          axi_w_t      = logic,
     parameter  type          axi_b_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           DataWidth    = $bits(elen_t),
-    localparam type          strb_t       = logic[DataWidth/8-1:0],
-    localparam type          vlen_t       = logic[$clog2(VLEN+1)-1:0],
-    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
+    localparam int           DataWidth       = $bits(elen_t),
+    localparam int  unsigned NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * DataWidth),
+    localparam type          strb_t         = logic[DataWidth/8-1:0],
+    localparam type          vlen_t         = logic[$clog2(VLEN+1)-1:0],
+    localparam type          axi_addr_t     = logic [AxiAddrWidth-1:0]
   )(
     input  logic                           clk_i,
     input  logic                           rst_ni,
@@ -55,9 +56,9 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                           axi_addrgen_req_ready_o,
     input  logic                           addrgen_illegal_store_i,
     // Interface with the lanes
-    input  elen_t            [NrLanes-1:0] stu_operand_i,
-    input  logic             [NrLanes-1:0] stu_operand_valid_i,
-    output logic             [NrLanes-1:0] stu_operand_ready_o,
+    input  elen_t            [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_i,
+    input  logic             [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_valid_i,
+    output logic             [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_ready_o,
     // LSU exception support
     input  logic                           lsu_ex_flush_i,
     // Interface with the Mask unit
@@ -77,26 +78,28 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   //  Spill registers  //
   ///////////////////////
 
-  elen_t [NrLanes-1:0] stu_operand;
-  logic  [NrLanes-1:0] stu_operand_valid;
-  logic  [NrLanes-1:0] stu_operand_ready;
+  elen_t [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand;
+  logic  [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_valid;
+  logic  [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_ready;
   logic  lsu_ex_flush_q;
 
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_regs
-    fall_through_register #(
-      .T(elen_t)
-    ) i_register (
-      .clk_i     (clk_i                    ),
-      .rst_ni    (rst_ni                   ),
-      .clr_i     (lsu_ex_flush_q           ),
-      .testmode_i(1'b0                     ),
-      .data_i    (stu_operand_i[lane]      ),
-      .valid_i   (stu_operand_valid_i[lane]),
-      .ready_o   (stu_operand_ready_o[lane]),
-      .data_o    (stu_operand[lane]        ),
-      .valid_o   (stu_operand_valid[lane]  ),
-      .ready_i   (stu_operand_ready[lane]  )
-    );
+    for (genvar w = 0; w < NrVRFWordsPerBeat; w++) begin: gen_regs_w
+      fall_through_register #(
+        .T(elen_t)
+      ) i_register (
+        .clk_i     (clk_i                       ),
+        .rst_ni    (rst_ni                      ),
+        .clr_i     (lsu_ex_flush_q              ),
+        .testmode_i(1'b0                        ),
+        .data_i    (stu_operand_i[lane][w]      ),
+        .valid_i   (stu_operand_valid_i[lane][w]),
+        .ready_o   (stu_operand_ready_o[lane][w]),
+        .data_o    (stu_operand[lane][w]        ),
+        .valid_o   (stu_operand_valid[lane][w]  ),
+        .ready_i   (stu_operand_ready[lane][w]  )
+      );
+    end: gen_regs_w
   end: gen_regs
 
   ////////////////
@@ -203,7 +206,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   vlen_t vrf_valid_bytes ;
   vlen_t vinsn_valid_bytes;
   vlen_t axi_valid_bytes   ;
-  logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
+  logic [idx_width(AxiDataWidth/8):0] valid_bytes;
 
 
   // Vector instructions currently running
@@ -221,18 +224,18 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // from the VRF. Namely, we need:
   // - A counter of how many beats are left in the current AXI burst
   axi_pkg::len_t axi_len_d, axi_len_q;
-  // - A pointer to which byte in the full VRF word we are reading data from.
-  logic [idx_width(DataWidth*NrLanes/8):0] vrf_pnt_d, vrf_pnt_q;
+  // - A pointer to which byte in the full VRF beat (NrVRFWordsPerBeat VRF words) we are reading data from.
+  logic [idx_width(AxiDataWidth/8):0] vrf_pnt_d, vrf_pnt_q;
 
   // When vstart > 0, the very first payload written to the VRF contains less than
-  // (8 * NrLanes) bytes.
-  logic [$clog2(8*NrLanes):0] first_payload_byte_d, first_payload_byte_q;
-  logic [$clog2(8*NrLanes):0] vrf_eff_write_bytes;
+  // (NrVRFWordsPerBeat * 8 * NrLanes) bytes.
+  logic [$clog2(AxiDataWidth/8):0] first_payload_byte_d, first_payload_byte_q;
+  logic [$clog2(AxiDataWidth/8):0] vrf_eff_write_bytes;
 
   // A counter that follows the vrf_word_byte_pnt pointer, but without the vstart information
   // We can compare this counter witht the issue_cnt_bytes counter to find the last byte in
   // our transaction
-  logic [idx_width(DataWidth*NrLanes/8):0] vrf_cnt_d, vrf_cnt_q;
+  logic [idx_width(AxiDataWidth/8):0] vrf_cnt_d, vrf_cnt_q;
   // - A pointer that indicates the start byte in the vrf word.
   logic [$clog2(8*NrLanes)-1:0] vrf_word_start_byte;
   // First payload from the lanes? If yes, it can be offset by vstart.
@@ -308,14 +311,14 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       // automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
 
       // Account for the issued bytes
-      // How many bytes are valid in this VRF word
-      vrf_valid_bytes   = (NrLanes * DataWidthB) - vrf_pnt_q;
+      // How many bytes are valid in this VRF beat (NrVRFWordsPerBeat VRF words)
+      vrf_valid_bytes   = (NrVRFWordsPerBeat * NrLanes * DataWidthB) - vrf_pnt_q;
       // How many bytes are valid in this instruction
       vinsn_valid_bytes = issue_cnt_bytes_q - vrf_cnt_q;
       // How many bytes are valid in this AXI word
       axi_valid_bytes   = upper_byte - lower_byte + 1;
 
-      valid_bytes = (issue_cnt_bytes_q < (NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
+      valid_bytes = (issue_cnt_bytes_q < (NrVRFWordsPerBeat * NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
       valid_bytes = (valid_bytes       < axi_valid_bytes       ) ? valid_bytes       : axi_valid_bytes;
 
       // TODO: apply the same vstart logic also to mask_valid_q
@@ -327,26 +330,34 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_pnt_d = vrf_pnt_q + valid_bytes;
         vrf_cnt_d = vrf_cnt_q + valid_bytes;
 
-        // Copy data from the operands into the W channel
+        // Copy data from the operands into the W channel.
+        // One AXI beat covers NrVRFWordsPerBeat VRF words; each VRF word segment is
+        // deshuffled independently using the same shuffle_index function.
         for (int unsigned axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin : stu_operand_to_axi_w
           // Is this byte a valid byte in the W beat?
           if (axi_byte >= lower_byte && axi_byte <= upper_byte) begin
-            // Map axy_byte to the corresponding byte in the VRF word (sequential)
-            vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
-            // Follow the vrf_seq_byte, but without the vstart information
-            vrf_seq_byte_cnt = axi_byte - lower_byte + vrf_cnt_q;
-            // And then shuffle it
-            vrf_byte     = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.old_eew_vs1);
+            // Which VRF word segment (0..NrVRFWordsPerBeat-1) does this byte belong to?
+            automatic int unsigned vrf_word_seg;
+            // Byte index within that segment (0..NrLanes*DataWidthB-1)
+            automatic int unsigned byte_in_seg;
 
-            // Is this byte a valid byte in the VRF word?
+            // Sequential byte position across all VRF word segments in this beat
+            vrf_seq_byte = axi_byte - lower_byte + vrf_pnt_q;
+            // Same, but without vstart offset (used for bounds checking only)
+            vrf_seq_byte_cnt = axi_byte - lower_byte + vrf_cnt_q;
+            vrf_word_seg = vrf_seq_byte / (NrLanes * DataWidthB);
+            byte_in_seg  = vrf_seq_byte % (NrLanes * DataWidthB);
+            // Deshuffle within the segment
+            vrf_byte = shuffle_index(byte_in_seg, NrLanes, vinsn_issue_q.old_eew_vs1);
+
+            // Is this byte a valid byte in the instruction?
             if (vrf_seq_byte_cnt < issue_cnt_bytes_q) begin
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int unsigned vrf_offset = vrf_byte[2:0];
-              // automatic logic [$clog2(NrLanes)-1:0] vrf_lane = (vrf_byte >> 3) + vinsn_issue_q.vstart[idx_width(NrLanes)-1:0];
-              automatic int unsigned vrf_lane = (vrf_byte >> 3);
+              automatic int unsigned vrf_lane   = (vrf_byte >> 3);
 
-              // Copy data
-              axi_w_o.data[8*axi_byte +: 8] = stu_operand[vrf_lane][8*vrf_offset +: 8];
+              // Copy data from the appropriate VRF word segment
+              axi_w_o.data[8*axi_byte +: 8] = stu_operand[vrf_lane][vrf_word_seg][8*vrf_offset +: 8];
               axi_w_o.strb[axi_byte]        = vinsn_issue_q.vm || mask_q[vrf_lane][vrf_offset];
             end
           end
@@ -365,14 +376,14 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           axi_len_d                   = '0;
         end : beats_complete
 
-        // We consumed a whole word from the lanes
-        if (vrf_pnt_d == NrLanes*8 || vrf_cnt_d == issue_cnt_bytes_q) begin : vrf_word_done
-          // Reset the pointer in the VRF word
+        // We consumed a full beat's worth of VRF words (NrVRFWordsPerBeat) from the lanes
+        if (vrf_pnt_d == NrVRFWordsPerBeat*NrLanes*8 || vrf_cnt_d == issue_cnt_bytes_q) begin : vrf_word_done
+          // Reset the pointer in the VRF beat
           vrf_pnt_d         = '0;
           vrf_cnt_d         = '0;
           // Next payloads will not be affected by vstart anymore
           first_lane_payload_d = 1'b0;
-          // Acknowledge the operands with the lanes
+          // Acknowledge all NrVRFWordsPerBeat × NrLanes operands with the lanes
           stu_operand_ready = '1;
           // Acknowledge the mask operand
           mask_ready_d      = !vinsn_issue_q.vm;
@@ -380,8 +391,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           if (first_lane_payload_q) begin
             vrf_eff_write_bytes = first_payload_byte_q;
           end else begin
-            // First payload of the vector instruction
-            vrf_eff_write_bytes = (NrLanes * DataWidthB);
+            vrf_eff_write_bytes = (NrVRFWordsPerBeat * NrLanes * DataWidthB);
           end
           issue_cnt_bytes_d = issue_cnt_bytes_q - vrf_eff_write_bytes;
           if (issue_cnt_bytes_q < vrf_eff_write_bytes) begin : issue_cnt_bytes_overflow
@@ -412,7 +422,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_pnt_d           = {1'b0, vrf_word_start_byte[$clog2(8*NrLanes)-1:0]};
         vrf_cnt_d           = '0;
         // The first payload byte width for this vload
-        first_payload_byte_d = (NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0];
+        first_payload_byte_d = (NrVRFWordsPerBeat * NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0];
         // The next payload will be the first one for this store
         first_lane_payload_d = 1'b1;
       end : issue_cnt_bytes_update
@@ -507,7 +517,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_pnt_d           = {1'b0, vrf_word_start_byte[$clog2(8*NrLanes)-1:0]};
         vrf_cnt_d           = '0;
         // The first payload byte width for this vload
-        first_payload_byte_d = (NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0];
+        first_payload_byte_d = (NrVRFWordsPerBeat * NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0];
         // The next payload will be the first one for this store
         first_lane_payload_d = 1'b1;
       end

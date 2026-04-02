@@ -18,10 +18,11 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int  unsigned AxiAddrWidth = 0,
     parameter  type          axi_r_t      = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int           DataWidth    = $bits(elen_t),
-    localparam type          strb_t       = logic[DataWidth/8-1:0],
-    localparam type          vlen_t       = logic[$clog2(VLEN+1)-1:0],
-    localparam type          axi_addr_t   = logic [AxiAddrWidth-1:0]
+    localparam int           DataWidth         = $bits(elen_t),
+    localparam type          strb_t            = logic[DataWidth/8-1:0],
+    localparam type          vlen_t            = logic[$clog2(VLEN+1)-1:0],
+    localparam type          axi_addr_t        = logic [AxiAddrWidth-1:0],
+    localparam int unsigned  NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * DataWidth)
   ) (
     input  logic                           clk_i,
     input  logic                           rst_ni,
@@ -44,13 +45,13 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                           axi_addrgen_req_ready_o,
     input  logic                           addrgen_illegal_load_i,
     // Interface with the lanes
-    output logic             [NrLanes-1:0] ldu_result_req_o,
-    output vid_t             [NrLanes-1:0] ldu_result_id_o,
-    output vaddr_t           [NrLanes-1:0] ldu_result_addr_o,
-    output elen_t            [NrLanes-1:0] ldu_result_wdata_o,
-    output strb_t            [NrLanes-1:0] ldu_result_be_o,
-    input  logic             [NrLanes-1:0] ldu_result_gnt_i,
-    input  logic             [NrLanes-1:0] ldu_result_final_gnt_i,
+    output logic             [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_req_o,
+    output vid_t             [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_id_o,
+    output vaddr_t           [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_addr_o,
+    output elen_t            [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_wdata_o,
+    output strb_t            [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_be_o,
+    input  logic             [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_gnt_i,
+    input  logic             [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_final_gnt_i,
     // LSU exception support
     input  logic                           lsu_ex_flush_i,
     // Interface with the Mask unit
@@ -161,8 +162,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
   localparam int unsigned ResultQueueDepth = 2;
 
-  // There is a result queue per lane, holding the results that were not
-  // yet accepted by the corresponding lane.
+  // There are NrVRFWordsPerBeat independent result queues, one per VRF word slot per beat.
+  // Write pointers advance together (one AXI beat fills one entry in every queue).
+  // Read pointers advance independently as each word is granted by the VRF arbiter.
   typedef struct packed {
     vid_t id;
     vaddr_t addr;
@@ -170,28 +172,28 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     strb_t be;
   } payload_t;
 
-  // Result queue
-  payload_t [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_d, result_queue_q;
-  logic     [ResultQueueDepth-1:0][NrLanes-1:0] result_queue_valid_d, result_queue_valid_q;
-  // We need two pointers in the result queue. One pointer to
-  // indicate with `payload_t` we are currently writing into (write_pnt),
-  // and one pointer to indicate which `payload_t` we are currently
-  // reading from and writing into the lanes (read_pnt).
-  logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_write_pnt_d, result_queue_write_pnt_q;
-  logic     [idx_width(ResultQueueDepth)-1:0]   result_queue_read_pnt_d, result_queue_read_pnt_q;
-  // We need to count how many valid elements (payload_t) are there in this result queue.
-  logic     [idx_width(ResultQueueDepth):0]     result_queue_cnt_d, result_queue_cnt_q;
-  // Vector to register the final grants from the operand requesters, which indicate
-  // that the result was actually written in the VRF (while the normal grant just says
-  // that the result was accepted by the operand requester stage
-  logic     [NrLanes-1:0]                       result_final_gnt_d, result_final_gnt_q;
+  // NrVRFWordsPerBeat independent result queues
+  payload_t [NrVRFWordsPerBeat-1:0][ResultQueueDepth-1:0][NrLanes-1:0] result_queue_d, result_queue_q;
+  logic     [NrVRFWordsPerBeat-1:0][ResultQueueDepth-1:0][NrLanes-1:0] result_queue_valid_d, result_queue_valid_q;
+  // Write pointers (all advance together when AXI beat is consumed)
+  logic     [NrVRFWordsPerBeat-1:0][idx_width(ResultQueueDepth)-1:0] result_queue_write_pnt_d, result_queue_write_pnt_q;
+  // Read pointers (each advances independently based on VRF grants)
+  logic     [NrVRFWordsPerBeat-1:0][idx_width(ResultQueueDepth)-1:0] result_queue_read_pnt_d, result_queue_read_pnt_q;
+  // Per-queue entry count
+  logic     [NrVRFWordsPerBeat-1:0][idx_width(ResultQueueDepth):0]   result_queue_cnt_d, result_queue_cnt_q;
+  // Per-queue final-grant tracking (one bit per lane per queue)
+  logic     [NrVRFWordsPerBeat-1:0][NrLanes-1:0]                     result_final_gnt_d, result_final_gnt_q;
 
-  // Is the result queue full?
+  // Any queue full stalls accepting a new AXI beat
+  logic [NrVRFWordsPerBeat-1:0] result_queue_full_w, result_queue_empty_w;
+  for (genvar w = 0; w < NrVRFWordsPerBeat; w++) begin : gen_result_queue_status
+    assign result_queue_full_w[w]  = (result_queue_cnt_q[w] == ResultQueueDepth);
+    assign result_queue_empty_w[w] = (result_queue_cnt_q[w] == '0);
+  end : gen_result_queue_status
   logic result_queue_full;
-  assign result_queue_full = (result_queue_cnt_q == ResultQueueDepth);
-  // Is the result queue empty?
+  assign result_queue_full = |result_queue_full_w;
   logic result_queue_empty;
-  assign result_queue_empty = (result_queue_cnt_q == '0);
+  assign result_queue_empty = &result_queue_empty_w;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_result_queue_ff
     if (!rst_ni) begin
@@ -232,24 +234,26 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   axi_pkg::len_t                           axi_len_d, axi_len_q;
   // - A pointer to which byte in the current R beat we are reading data from.
   logic [idx_width(AxiDataWidth/8):0]      axi_r_byte_pnt_d, axi_r_byte_pnt_q;
-  // - A pointer to which byte in the full VRF word we are writing data into.
-  logic [idx_width(DataWidth*NrLanes/8):0] vrf_word_byte_pnt_d, vrf_word_byte_pnt_q;
+  // - A pointer to which byte in the NrVRFWordsPerBeat-word group we are writing data into.
+  // Tracks byte offset within the NrVRFWordsPerBeat-word group being filled from the current beat
+  logic [idx_width(NrVRFWordsPerBeat*DataWidth*NrLanes/8):0] vrf_word_byte_pnt_d, vrf_word_byte_pnt_q;
   // - A pointer that indicates the start byte in the vrf word.
   logic [$clog2(8*NrLanes)-1:0] vrf_word_start_byte;
 
   // A counter that follows the vrf_word_byte_pnt pointer, but without the vstart information
   // We can compare this counter witht the issue_cnt_bytes counter to find the last byte in
   // our transaction
-  logic [idx_width(DataWidth*NrLanes/8):0] vrf_word_byte_cnt_d, vrf_word_byte_cnt_q;
+  logic [idx_width(NrVRFWordsPerBeat*DataWidth*NrLanes/8):0] vrf_word_byte_cnt_d, vrf_word_byte_cnt_q;
 
   // When vstart > 0, the very first payload written to the VRF contains less than
-  // (8 * NrLanes) bytes.
-  logic [$clog2(8*NrLanes):0] first_payload_byte_d, first_payload_byte_q;
-  logic [$clog2(8*NrLanes):0] vrf_eff_write_bytes;
+  // (NrVRFWordsPerBeat * 8 * NrLanes) bytes.
+  // first_payload_byte: valid bytes in the first word-group (queue 0 partial + queues 1..N-1 full)
+  logic [$clog2(NrVRFWordsPerBeat*8*NrLanes):0] first_payload_byte_d, first_payload_byte_q;
+  logic [$clog2(NrVRFWordsPerBeat*8*NrLanes):0] vrf_eff_write_bytes;
   // Same thing, but for the commit (resqueue -> VRF)
   // Track if this VRF write is the first one for this instruction
   logic first_result_queue_read_d, first_result_queue_read_q;
-  logic [$clog2(8*NrLanes):0] res_queue_eff_write_bytes;
+  logic [$clog2(NrVRFWordsPerBeat*8*NrLanes):0] res_queue_eff_write_bytes;
 
   // Signal that the current burst is having an exception
   logic ldu_current_burst_exception_d;
@@ -306,7 +310,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     ldu_ex_state_d = ldu_ex_state_q;
 
     // Normally write multiple of resqueue width
-    vrf_eff_write_bytes       = (NrLanes * DataWidthB);
+    vrf_eff_write_bytes       = (NrVRFWordsPerBeat * NrLanes * DataWidthB);
     res_queue_eff_write_bytes = (NrLanes * DataWidthB);
 
     ldu_current_burst_exception_d = 1'b0;
@@ -337,8 +341,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       // Do we have the operands for it?
       if (vinsn_issue_valid && (vinsn_issue_q.vm || (|mask_valid_q))) begin : operands_valid
         // Account for the issued bytes
-        // How many bytes are valid in this VRF word
-        automatic vlen_t vrf_valid_bytes   = (NrLanes * DataWidthB) - vrf_word_byte_pnt_q;
+        // How many bytes are valid in this NrVRFWordsPerBeat-word group
+        automatic vlen_t vrf_valid_bytes   = (NrVRFWordsPerBeat * NrLanes * DataWidthB) - vrf_word_byte_pnt_q;
         // How many bytes are valid in this instruction
         automatic vlen_t vinsn_valid_bytes = issue_cnt_bytes_q - vrf_word_byte_cnt_q;
         // How many bytes are valid in this AXI word
@@ -346,8 +350,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
 
         // How many bytes are we committing?
-        automatic logic [idx_width(DataWidth*NrLanes/8):0] valid_bytes;
-        valid_bytes = (issue_cnt_bytes_q < (NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
+        automatic logic [idx_width(NrVRFWordsPerBeat*DataWidth*NrLanes/8):0] valid_bytes;
+        valid_bytes = (issue_cnt_bytes_q < (NrVRFWordsPerBeat * NrLanes * DataWidthB)) ? vinsn_valid_bytes : vrf_valid_bytes;
         valid_bytes = (valid_bytes       < axi_valid_bytes       ) ? valid_bytes       : axi_valid_bytes;
 
         // Bump R beat and VRF word pointers
@@ -359,60 +363,65 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         for (int unsigned axi_byte = 0; axi_byte < AxiDataWidth/8; axi_byte++) begin : axi_r_to_result_queue
           // Is this byte a valid byte in the R beat?
           if ((axi_byte >= (lower_byte + axi_r_byte_pnt_q)) && (axi_byte <= upper_byte)) begin : is_axi_r_byte
-            // Map axi_byte to the corresponding byte in the VRF word (sequential)
-            automatic int unsigned vrf_seq_byte = axi_byte - lower_byte - axi_r_byte_pnt_q + vrf_word_byte_pnt_q;
-            // Follow the vrf_seq_byte, but without the vstart information
-            automatic int unsigned vrf_seq_byte_cnt = axi_byte - lower_byte - axi_r_byte_pnt_q + vrf_word_byte_cnt_q;
-            // And then shuffle it
-            automatic int unsigned vrf_byte = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
+            // Total sequential byte offset across the NrVRFWordsPerBeat-word group
+            automatic int unsigned total_vrf_seq_byte = axi_byte - lower_byte - axi_r_byte_pnt_q + vrf_word_byte_pnt_q;
+            automatic int unsigned total_vrf_seq_byte_cnt = axi_byte - lower_byte - axi_r_byte_pnt_q + vrf_word_byte_cnt_q;
+            // Which VRF word segment (queue) does this byte belong to?
+            automatic int unsigned vrf_word_seg     = total_vrf_seq_byte / (NrLanes * DataWidthB);
+            automatic int unsigned vrf_word_seg_cnt = total_vrf_seq_byte_cnt / (NrLanes * DataWidthB);
+            // Byte position within that VRF word
+            automatic int unsigned vrf_seq_byte     = total_vrf_seq_byte % (NrLanes * DataWidthB);
+            automatic int unsigned vrf_seq_byte_cnt = total_vrf_seq_byte_cnt % (NrLanes * DataWidthB);
+            // Shuffle into lane-striped VRF layout
+            automatic int unsigned vrf_byte         = shuffle_index(vrf_seq_byte, NrLanes, vinsn_issue_q.vtype.vsew);
 
             // Is this byte a valid byte in the VRF word?
             // We compare vrf_seq_byte_cnt since vrf_seq_byte contains also the vstart contribution, while the issue_cnt_bytes
             // counter does not.
-            if (vrf_seq_byte_cnt < issue_cnt_bytes_q && vrf_seq_byte < (NrLanes * DataWidthB)) begin : is_vrf_byte
+            if (vrf_seq_byte_cnt < issue_cnt_bytes_q && vrf_word_seg < NrVRFWordsPerBeat &&
+                total_vrf_seq_byte < (NrVRFWordsPerBeat * NrLanes * DataWidthB)) begin : is_vrf_byte
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int unsigned vrf_offset = vrf_byte[2:0];
-              // Make sure this index wraps around the number of lane
-              automatic int unsigned vrf_lane = (vrf_byte >> 3);
+              // Make sure this index wraps around the number of lanes
+              automatic int unsigned vrf_lane   = (vrf_byte >> 3);
 
               // Copy data and byte strobe
-              result_queue_d[result_queue_write_pnt_q][vrf_lane].wdata[8*vrf_offset +: 8] =
+              result_queue_d[vrf_word_seg][result_queue_write_pnt_q[vrf_word_seg]][vrf_lane].wdata[8*vrf_offset +: 8] =
                 axi_r_i.data[8*axi_byte +: 8];
-              result_queue_d[result_queue_write_pnt_q][vrf_lane].be[vrf_offset] =
+              result_queue_d[vrf_word_seg][result_queue_write_pnt_q[vrf_word_seg]][vrf_lane].be[vrf_offset] =
                 vinsn_issue_q.vm || mask_q[vrf_lane][vrf_offset];
             end : is_vrf_byte
           end : is_axi_r_byte
         end : axi_r_to_result_queue
 
         for (int unsigned lane = 0; lane < NrLanes; lane++) begin : compute_vrf_addr
-          // vstart value local ot the lane
+          // vstart value local to the lane
           automatic vlen_t vstart_lane;
-
-          // vstart of the lanes that we are writing to in this cycle
           vstart_lane = vinsn_issue_q.vstart / NrLanes;
-
-          // Store in result queue
-          result_queue_d[result_queue_write_pnt_q][lane].addr = vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + (vstart_lane >> (EW64 - vinsn_issue_q.vtype.vsew)) + seq_word_wr_offset_q;
-          result_queue_d[result_queue_write_pnt_q][lane].id   = vinsn_issue_q.id;
+          for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++) begin : compute_vrf_addr_per_word
+            result_queue_d[w][result_queue_write_pnt_q[w]][lane].addr =
+              vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + (vstart_lane >> (EW64 - vinsn_issue_q.vtype.vsew))
+              + seq_word_wr_offset_q + w;
+            result_queue_d[w][result_queue_write_pnt_q[w]][lane].id = vinsn_issue_q.id;
+          end : compute_vrf_addr_per_word
         end : compute_vrf_addr
       end : operands_valid
 
-      // We have a word ready to be sent to the lanes
-      if (vrf_word_byte_pnt_d == (NrLanes * DataWidthB) || vrf_word_byte_cnt_d == issue_cnt_bytes_q) begin : vrf_word_ready
-        // Increment result queue pointers and counters
-        result_queue_cnt_d += 1;
-        if (result_queue_write_pnt_q == ResultQueueDepth-1) begin : result_queue_write_pnt_overflow
-          result_queue_write_pnt_d = '0;
-        end : result_queue_write_pnt_overflow
-        else begin : result_queue_write_pnt_increment
-          result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
-        end : result_queue_write_pnt_increment
+      // We have a word-group ready to be sent to the lanes
+      if (vrf_word_byte_pnt_d == (NrVRFWordsPerBeat * NrLanes * DataWidthB) || vrf_word_byte_cnt_d == issue_cnt_bytes_q) begin : vrf_word_ready
+        // All NrVRFWordsPerBeat write pointers advance together
+        for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++) begin : advance_write_ptrs
+          result_queue_cnt_d[w] += 1;
+          if (result_queue_write_pnt_q[w] == ResultQueueDepth-1) begin
+            result_queue_write_pnt_d[w] = '0;
+          end else begin
+            result_queue_write_pnt_d[w] = result_queue_write_pnt_q[w] + 1;
+          end
+          result_queue_valid_d[w][result_queue_write_pnt_q[w]] = {NrLanes{1'b1}};
+        end : advance_write_ptrs
 
-        // Trigger the request signal
-        result_queue_valid_d[result_queue_write_pnt_q] = {NrLanes{1'b1}};
-
-        // Increase the VRF-write sequential counter
-        seq_word_wr_offset_d = seq_word_wr_offset_q + 1;
+        // Increase the VRF-write sequential counter by NrVRFWordsPerBeat
+        seq_word_wr_offset_d = seq_word_wr_offset_q + NrVRFWordsPerBeat;
 
         // Acknowledge the mask operands
         mask_ready_d = !vinsn_issue_q.vm;
@@ -422,9 +431,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_word_byte_cnt_d   = '0;
         // Account for the results that were issued
         if (seq_word_wr_offset_q) begin
-          vrf_eff_write_bytes = (NrLanes * DataWidthB);
+          vrf_eff_write_bytes = (NrVRFWordsPerBeat * NrLanes * DataWidthB);
         end else begin
-          // First payload of the vector instruction
+          // First payload of the vector instruction (queue 0 partial + queues 1..N-1 full)
           vrf_eff_write_bytes = first_payload_byte_q;
         end
         issue_cnt_bytes_d = issue_cnt_bytes_q - vrf_eff_write_bytes;
@@ -473,8 +482,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
           vrf_word_byte_pnt_d  = {1'b0, vrf_word_start_byte[$clog2(8*NrLanes)-1:0]};
           vrf_word_byte_cnt_d  = '0;
           seq_word_wr_offset_d = '0;
-          // The first payload byte width for this vload
-          first_payload_byte_d = (NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0];
+          // Queue 0's first entry may be partial due to vstart; queues 1..NrVRFWordsPerBeat-1 are always full
+          first_payload_byte_d = (NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0]
+                                 + (NrVRFWordsPerBeat - 1) * (NrLanes * DataWidthB);
         end : issue_cnt_bytes_update
       end : vrf_results_finish
     end : axi_r_beat_read
@@ -484,59 +494,55 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     //////////////////////////////////
 
     for (int unsigned lane = 0; lane < NrLanes; lane++) begin: vrf_result_write
-      ldu_result_req_o[lane]   = result_queue_valid_q[result_queue_read_pnt_q][lane];
-      ldu_result_addr_o[lane]  = result_queue_q[result_queue_read_pnt_q][lane].addr;
-      ldu_result_id_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].id;
-      ldu_result_wdata_o[lane] = result_queue_q[result_queue_read_pnt_q][lane].wdata;
-      ldu_result_be_o[lane]    = result_queue_q[result_queue_read_pnt_q][lane].be;
+      for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++) begin : vrf_result_write_per_word
+        ldu_result_req_o[lane][w]   = result_queue_valid_q[w][result_queue_read_pnt_q[w]][lane];
+        ldu_result_addr_o[lane][w]  = result_queue_q[w][result_queue_read_pnt_q[w]][lane].addr;
+        ldu_result_id_o[lane][w]    = result_queue_q[w][result_queue_read_pnt_q[w]][lane].id;
+        ldu_result_wdata_o[lane][w] = result_queue_q[w][result_queue_read_pnt_q[w]][lane].wdata;
+        ldu_result_be_o[lane][w]    = result_queue_q[w][result_queue_read_pnt_q[w]][lane].be;
 
-      // Update the final gnt vector
-      result_final_gnt_d[lane] |= ldu_result_final_gnt_i[lane];
+        // Update the final gnt vector
+        result_final_gnt_d[w][lane] |= ldu_result_final_gnt_i[lane][w];
 
-      // Received a grant from the VRF.
-      // Deactivate the request, but do not bump the pointers for now.
-      if (ldu_result_req_o[lane] && ldu_result_gnt_i[lane]) begin : vrf_grant
-        result_queue_valid_d[result_queue_read_pnt_q][lane] = 1'b0;
-        result_queue_d[result_queue_read_pnt_q][lane]       = '0;
-        // Reset the final gnt vector since we are now waiting for another final gnt
-        result_final_gnt_d[lane] = 1'b0;
-      end : vrf_grant
+        // Received a grant from the VRF — deactivate request, do not bump pointer yet
+        if (ldu_result_req_o[lane][w] && ldu_result_gnt_i[lane][w]) begin : vrf_grant
+          result_queue_valid_d[w][result_queue_read_pnt_q[w]][lane] = 1'b0;
+          result_queue_d[w][result_queue_read_pnt_q[w]][lane]       = '0;
+          result_final_gnt_d[w][lane] = 1'b0;
+        end : vrf_grant
+      end : vrf_result_write_per_word
     end: vrf_result_write
 
-    // How many result bytes can possibly be committed this cycle?
-    res_queue_eff_write_bytes = (NrLanes * DataWidthB);
-    // If vstart > 0, the first payload can contain less than (NrLanes * DataWidthB) Bytes
-    if (first_result_queue_read_q) begin
-      res_queue_eff_write_bytes = first_payload_byte_q;
-    end
+    // Advance each queue's read pointer independently when all its lanes are granted
+    for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++) begin : advance_read_ptrs
+      res_queue_eff_write_bytes = (NrLanes * DataWidthB);
+      if (first_result_queue_read_q && w == 0) begin
+        res_queue_eff_write_bytes = first_payload_byte_q;
+      end
 
-    // All lanes accepted the VRF request
-    // Wait for all the final grants, to be sure that all the results were written back
-    if (!(|result_queue_valid_d[result_queue_read_pnt_q]) &&
-      (&result_final_gnt_d || commit_cnt_bytes_q > (NrLanes * DataWidthB))) begin : wait_for_write_back
-      // There is something waiting to be written
-      if (!result_queue_empty) begin : result_available
-        // Increment the read pointer
-        if (result_queue_read_pnt_q == (ResultQueueDepth-1)) begin : result_queue_read_pnt_overflow
-          result_queue_read_pnt_d = 0;
-        end : result_queue_read_pnt_overflow
-        else begin  : result_queue_read_pnt_increment
-          result_queue_read_pnt_d = result_queue_read_pnt_q + 1;
-        end : result_queue_read_pnt_increment
+      if (!(|result_queue_valid_d[w][result_queue_read_pnt_q[w]]) &&
+          (&result_final_gnt_d[w] || commit_cnt_bytes_q > (NrLanes * DataWidthB))) begin : wait_for_write_back
+        if (!result_queue_empty_w[w]) begin : result_available
+          if (result_queue_read_pnt_q[w] == (ResultQueueDepth-1)) begin : result_queue_read_pnt_overflow
+            result_queue_read_pnt_d[w] = 0;
+          end : result_queue_read_pnt_overflow
+          else begin : result_queue_read_pnt_increment
+            result_queue_read_pnt_d[w] = result_queue_read_pnt_q[w] + 1;
+          end : result_queue_read_pnt_increment
 
-        // Decrement the counter of results waiting to be written
-        result_queue_cnt_d -= 1;
+          result_queue_cnt_d[w] -= 1;
 
-        // The next write will surely not be the first one anymore
-        first_result_queue_read_d = 1'b0;
+          if (w == 0) begin
+            first_result_queue_read_d = 1'b0;
+          end
 
-        // Decrement the counter of remaining vector elements waiting to be written
-        commit_cnt_bytes_d = commit_cnt_bytes_q - res_queue_eff_write_bytes;
-        if (commit_cnt_bytes_q < (NrLanes * DataWidthB)) begin : commit_cnt_bytes_overflow
-          commit_cnt_bytes_d = '0;
-        end : commit_cnt_bytes_overflow
-      end : result_available
-    end : wait_for_write_back
+          commit_cnt_bytes_d = commit_cnt_bytes_d - res_queue_eff_write_bytes;
+          if (commit_cnt_bytes_d > commit_cnt_bytes_q) begin : commit_cnt_bytes_overflow
+            commit_cnt_bytes_d = '0;
+          end : commit_cnt_bytes_overflow
+        end : result_available
+      end : wait_for_write_back
+    end : advance_read_ptrs
 
     // Finished committing the results of a vector instruction
     if (vinsn_commit_valid && commit_cnt_bytes_d == '0) begin : vinsn_done
@@ -581,14 +587,21 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
       VALID_RESULT_QUEUE: begin
         ldu_ex_state_d = WAIT_RESULT_QUEUE;
         // Send to the lanes what we had written in the resqueue before the exception.
-        // If this is empty, the byte-enalbe signals should be zero, so no write happens.
-        result_queue_valid_d[result_queue_write_pnt_q] |= {NrLanes{1'b1}};
+        // If this is empty, the byte-enable signals should be zero, so no write happens.
+        for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++)
+          result_queue_valid_d[w][result_queue_write_pnt_q[w]] |= {NrLanes{1'b1}};
       end
       // Wait until the resqueue is empty
       WAIT_RESULT_QUEUE: begin
-        if (!(|result_queue_valid_q[result_queue_read_pnt_q])) begin
-          ldu_ex_state_d = HANDLE_EXCEPTION;
-        end
+        begin : check_all_queues_drained
+          automatic logic all_queues_drained;
+          all_queues_drained = 1'b1;
+          for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++)
+            all_queues_drained &= !(|result_queue_valid_q[w][result_queue_read_pnt_q[w]]);
+          if (all_queues_drained) begin
+            ldu_ex_state_d = HANDLE_EXCEPTION;
+          end
+        end : check_all_queues_drained
       end
       // Handle the exception
       HANDLE_EXCEPTION: begin
@@ -653,8 +666,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_word_byte_pnt_d  = {1'b0, vrf_word_start_byte[$clog2(8*NrLanes)-1:0]};
         vrf_word_byte_cnt_d  = '0;
         seq_word_wr_offset_d = '0;
-        // The first payload byte width for this vload
-        first_payload_byte_d = (NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0];
+        // Queue 0's first entry may be partial due to vstart; queues 1..NrVRFWordsPerBeat-1 are always full
+        first_payload_byte_d = (NrLanes * DataWidthB) - vrf_word_start_byte[$clog2(8*NrLanes)-1:0]
+                               + (NrVRFWordsPerBeat - 1) * (NrLanes * DataWidthB);
       end
 
       // Bump pointers and counters of the vector instruction queue

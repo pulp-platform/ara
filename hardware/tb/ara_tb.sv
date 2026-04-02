@@ -40,7 +40,7 @@ module ara_tb;
   localparam int unsigned AxiRespDelay = 200;
 
   localparam AxiAddrWidth      = 64;
-  localparam AxiWideDataWidth  = 64 * NrLanes / 2;
+  localparam AxiWideDataWidth  = 256 * NrLanes;
   localparam AxiWideBeWidth    = AxiWideDataWidth / 8;
   localparam AxiWideByteOffset = $clog2(AxiWideBeWidth);
 
@@ -121,22 +121,19 @@ module ara_tb;
       $display("Loading ELF file %s", binary);
       while (get_section(address, length)) begin
         // Read sections
-        automatic int nwords = (length + AxiWideBeWidth - 1)/AxiWideBeWidth;
         $display("Loading section %x of length %x", address, length);
-        buffer = new[nwords * AxiWideBeWidth];
+        buffer = new[length];
         void'(read_section(address, buffer));
-        // Initializing memories
-        for (int w = 0; w < nwords; w++) begin
-          mem_row = '0;
-          for (int b = 0; b < AxiWideBeWidth; b++) begin
-            mem_row[8 * b +: 8] = buffer[w * AxiWideBeWidth + b];
-          end
-          if (address >= DRAMAddrBase && address < DRAMAddrBase + DRAMLength)
-            // This requires the sections to be aligned to AxiWideByteOffset,
-            // otherwise, they can be over-written.
-            dut.i_ara_soc.i_dram.init_val[(address - DRAMAddrBase + (w << AxiWideByteOffset)) >> AxiWideByteOffset] = mem_row;
+        // Byte-by-byte initialisation: handles sections that are not aligned
+        // to the memory word boundary (AxiWideBeWidth bytes).
+        for (longint i = 0; i < length; i++) begin
+          automatic addr_t byte_addr = address - DRAMAddrBase + i;
+          automatic int unsigned word_idx  = byte_addr >> AxiWideByteOffset;
+          automatic int unsigned byte_off  = byte_addr & (AxiWideBeWidth - 1);
+          if (address + i >= DRAMAddrBase && address + i < DRAMAddrBase + DRAMLength)
+            dut.i_ara_soc.i_dram.init_val[word_idx][8*byte_off +: 8] = buffer[i];
           else
-            $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address);
+            $display("Cannot initialize address %x, which doesn't fall into the L2 region.", address + i);
         end
       end
     end else begin

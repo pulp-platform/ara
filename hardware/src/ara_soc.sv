@@ -20,14 +20,18 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // Support for segment memory operations
     parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // AXI Interface
-    parameter  int           unsigned AxiDataWidth = 32*NrLanes,
+    parameter  int           unsigned AxiDataWidth = 256*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
     parameter  int           unsigned AxiUserWidth = 1,
     parameter  int           unsigned AxiIdWidth   = 5,
     // AXI Resp Delay [ps] for gate-level simulation
     parameter  int           unsigned AxiRespDelay = 200,
     // Main memory
-    parameter  int           unsigned L2NumWords   = (2**22) / NrLanes,
+    // Keep total L2 capacity constant at 16 MiB regardless of AxiDataWidth.
+    // Old formula (2**22)/NrLanes assumed AxiDataWidth = 32*NrLanes.
+    // Generalised: NumWords * AxiDataWidth = 2^22 * 32  =>  NumWords = 2^22 * 32 / AxiDataWidth.
+    // NOTE: update this if a different total L2 size is desired.
+    parameter  int           unsigned L2NumWords   = (2**22) * 32 / AxiDataWidth,
     // Dependant parameters. DO NOT CHANGE!
     localparam type                   axi_data_t   = logic [AxiDataWidth-1:0],
     localparam type                   axi_strb_t   = logic [AxiDataWidth/8-1:0],

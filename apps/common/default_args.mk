@@ -10,10 +10,13 @@ def_args_iconv2d     ?= "112 7"
 def_args_fconv2d     ?= "112 7"
 def_args_fconv3d     ?= "112 7"
 def_args_dtype-conv3d?= "112 7 float64"
+def_args_faxpy 			 ?= "65536"
 # Vector size
-def_args_fdotproduct ?= "512"
+def_args_fdotproduct ?= "256"
 # Vector size
-def_args_dotproduct  ?= "512"
+def_args_dotproduct  ?= "8096"
+# Matrix size
+def_args_gemv 			 ?= "64"
 # Matrix padded size 0, matrix padded size 1, onlyvec
 def_args_jacobi2d    ?= "130 130"
 # Vector size

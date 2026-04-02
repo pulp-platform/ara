@@ -28,9 +28,10 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     parameter  type          axi_req_t    = logic,
     parameter  type          axi_resp_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
-    localparam int  unsigned DataWidth    = $bits(elen_t),
-    localparam type          strb_t       = logic [DataWidth/8-1:0],
-    localparam type          vlen_t       = logic[$clog2(VLEN+1)-1:0]
+    localparam int  unsigned DataWidth        = $bits(elen_t),
+    localparam type          strb_t           = logic [DataWidth/8-1:0],
+    localparam type          vlen_t           = logic[$clog2(VLEN+1)-1:0],
+    localparam int  unsigned NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * DataWidth)
   ) (
     input  logic                    clk_i,
     input  logic                    rst_ni,
@@ -54,10 +55,10 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     output logic                    addrgen_fof_exception_o,
     output logic                    lsu_current_burst_exception_o,
     // Interface with the lanes
-    // Store unit operands
-    input  elen_t     [NrLanes-1:0] stu_operand_i,
-    input  logic      [NrLanes-1:0] stu_operand_valid_i,
-    output logic      [NrLanes-1:0] stu_operand_ready_o,
+    // Store unit operands — NrVRFWordsPerBeat parallel words per lane
+    input  elen_t     [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_i,
+    input  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_valid_i,
+    output logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] stu_operand_ready_o,
     // Address generation operands
     input  elen_t     [NrLanes-1:0] addrgen_operand_i,
     input  logic      [NrLanes-1:0] addrgen_operand_valid_i,
@@ -89,14 +90,14 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     input logic [CVA6Cfg.PLEN-1:0]         mmu_paddr_i,      // translated address
     input exception_t                      mmu_exception_i,  // address translation threw an exception
 
-    // Results
-    output logic      [NrLanes-1:0] ldu_result_req_o,
-    output vid_t      [NrLanes-1:0] ldu_result_id_o,
-    output vaddr_t    [NrLanes-1:0] ldu_result_addr_o,
-    output elen_t     [NrLanes-1:0] ldu_result_wdata_o,
-    output strb_t     [NrLanes-1:0] ldu_result_be_o,
-    input  logic      [NrLanes-1:0] ldu_result_gnt_i,
-    input  logic      [NrLanes-1:0] ldu_result_final_gnt_i
+    // Results — NrVRFWordsPerBeat independent write-back ports per lane
+    output logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_req_o,
+    output vid_t      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_id_o,
+    output vaddr_t    [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_addr_o,
+    output elen_t     [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_wdata_o,
+    output strb_t     [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_be_o,
+    input  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_gnt_i,
+    input  logic      [NrLanes-1:0][NrVRFWordsPerBeat-1:0] ldu_result_final_gnt_i
   );
 
   `include "common_cells/registers.svh"
@@ -314,6 +315,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
 
   if (AxiDataWidth == 0)
     $error("[vlsu] The data width of the AXI bus cannot be zero.");
+
+  if (NrVRFWordsPerBeat == 0)
+    $error("[vlsu] AxiDataWidth must be >= NrLanes*ELEN (NrVRFWordsPerBeat < 1).");
 
   if (AxiAddrWidth == 0)
     $error("[vlsu] The address width of the AXI bus cannot be zero.");

@@ -12,10 +12,12 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     parameter  int  unsigned NrLanes               = 0,
     parameter  int  unsigned VLEN                  = 0,
     parameter  int  unsigned NrBanks               = 0,     // Number of banks in the vector register file
+    parameter  int  unsigned AxiDataWidth          = 0,
     parameter  type          vaddr_t               = logic, // Type used to address vector register file elements
     parameter  type          operand_request_cmd_t = logic,
     parameter  type          operand_queue_cmd_t   = logic,
     // Dependant parameters. DO NOT CHANGE!
+    localparam int  unsigned NrVRFWordsPerBeat = AxiDataWidth / (NrLanes * $bits(elen_t)),
     localparam type          strb_t  = logic[$bits(elen_t)/8-1:0],
     localparam type          vlen_t  = logic[$clog2(VLEN+1)-1:0]
   ) (
@@ -73,14 +75,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t                                      sldu_result_be_i,
     output logic                                       sldu_result_gnt_o,
     output logic                                       sldu_result_final_gnt_o,
-    // Load unit
-    input  logic                                       ldu_result_req_i,
-    input  vid_t                                       ldu_result_id_i,
-    input  vaddr_t                                     ldu_result_addr_i,
-    input  elen_t                                      ldu_result_wdata_i,
-    input  strb_t                                      ldu_result_be_i,
-    output logic                                       ldu_result_gnt_o,
-    output logic                                       ldu_result_final_gnt_o
+    // Load unit (NrVRFWordsPerBeat independent result queues)
+    input  logic               [NrVRFWordsPerBeat-1:0] ldu_result_req_i,
+    input  vid_t               [NrVRFWordsPerBeat-1:0] ldu_result_id_i,
+    input  vaddr_t             [NrVRFWordsPerBeat-1:0] ldu_result_addr_i,
+    input  elen_t              [NrVRFWordsPerBeat-1:0] ldu_result_wdata_i,
+    input  strb_t              [NrVRFWordsPerBeat-1:0] ldu_result_be_i,
+    output logic               [NrVRFWordsPerBeat-1:0] ldu_result_gnt_o,
+    output logic               [NrVRFWordsPerBeat-1:0] ldu_result_final_gnt_o
   );
 
   import cf_math_pkg::idx_width;
@@ -96,25 +98,28 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     strb_t be;
   } stream_register_payload_t;
 
-  // Load unit
-  vid_t   ldu_result_id;
-  vaddr_t ldu_result_addr;
-  elen_t  ldu_result_wdata;
-  strb_t  ldu_result_be;
-  logic   ldu_result_req;
-  logic   ldu_result_gnt;
-  stream_register #(.T(stream_register_payload_t)) i_ldu_stream_register (
-    .clk_i     (clk_i                                                                    ),
-    .rst_ni    (rst_ni                                                                   ),
-    .clr_i     (1'b0                                                                     ),
-    .testmode_i(1'b0                                                                     ),
-    .data_i    ({ldu_result_id_i, ldu_result_addr_i, ldu_result_wdata_i, ldu_result_be_i}),
-    .valid_i   (ldu_result_req_i                                                         ),
-    .ready_o   (ldu_result_gnt_o                                                         ),
-    .data_o    ({ldu_result_id, ldu_result_addr, ldu_result_wdata, ldu_result_be}        ),
-    .valid_o   (ldu_result_req                                                           ),
-    .ready_i   (ldu_result_gnt                                                           )
-  );
+  // Load unit — NrVRFWordsPerBeat independent stream registers (one per VRF word segment)
+  vid_t   [NrVRFWordsPerBeat-1:0] ldu_result_id;
+  vaddr_t [NrVRFWordsPerBeat-1:0] ldu_result_addr;
+  elen_t  [NrVRFWordsPerBeat-1:0] ldu_result_wdata;
+  strb_t  [NrVRFWordsPerBeat-1:0] ldu_result_be;
+  logic   [NrVRFWordsPerBeat-1:0] ldu_result_req;
+  logic   [NrVRFWordsPerBeat-1:0] ldu_result_gnt;
+
+  for (genvar w = 0; w < NrVRFWordsPerBeat; w++) begin: gen_ldu_stream_registers
+    stream_register #(.T(stream_register_payload_t)) i_ldu_stream_register (
+      .clk_i     (clk_i                                                                         ),
+      .rst_ni    (rst_ni                                                                        ),
+      .clr_i     (1'b0                                                                          ),
+      .testmode_i(1'b0                                                                          ),
+      .data_i    ({ldu_result_id_i[w], ldu_result_addr_i[w], ldu_result_wdata_i[w], ldu_result_be_i[w]}),
+      .valid_i   (ldu_result_req_i[w]                                                           ),
+      .ready_o   (ldu_result_gnt_o[w]                                                           ),
+      .data_o    ({ldu_result_id[w], ldu_result_addr[w], ldu_result_wdata[w], ldu_result_be[w]}),
+      .valid_o   (ldu_result_req[w]                                                             ),
+      .ready_i   (ldu_result_gnt[w]                                                             )
+    );
+  end: gen_ldu_stream_registers
 
   // Slide unit
   vid_t   sldu_result_id;
@@ -160,7 +165,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   // Otherwise the dependency is freed in advance
   always_ff @(posedge clk_i or negedge rst_ni) begin : p_final_gnts
     if (!rst_ni) begin
-      ldu_result_final_gnt_o   <= 1'b0;
+      ldu_result_final_gnt_o   <= '0;
       sldu_result_final_gnt_o  <= 1'b0;
       masku_result_final_gnt_o <= 1'b0;
     end else begin
@@ -190,7 +195,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     vinsn_result_written_d[alu_result_id_i] |= alu_result_gnt_o;
     vinsn_result_written_d[mfpu_result_id_i] |= mfpu_result_gnt_o;
     vinsn_result_written_d[masku_result_id] |= masku_result_gnt;
-    vinsn_result_written_d[ldu_result_id] |= ldu_result_gnt;
+    for (int w = 0; w < NrVRFWordsPerBeat; w++)
+      vinsn_result_written_d[ldu_result_id[w]] |= ldu_result_gnt[w];
     vinsn_result_written_d[sldu_result_id] |= sldu_result_gnt;
   end
 
@@ -217,9 +223,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
   // A set bit indicates that the the master q is requesting access to the bank b
   // Masters 0 to NrOperandQueues-1 correspond to the operand queues.
-  // The remaining four masters correspond to the ALU, the MFPU, the MASKU, the VLDU, and the SLDU.
-  localparam NrGlobalMasters = 5;
-  localparam NrMasters = NrOperandQueues + NrGlobalMasters;
+  // The remaining masters correspond to the ALU, the MFPU, the SLDU, the MASKU,
+  // and NrVRFWordsPerBeat independent load-unit result queues.
+  localparam int unsigned NrGlobalMasters = 4 + NrVRFWordsPerBeat;
+  localparam int unsigned NrMasters = NrOperandQueues + NrGlobalMasters;
 
   typedef struct packed {
     vaddr_t addr;
@@ -264,6 +271,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   end
 
   for (genvar requester_index = 0; requester_index < NrOperandQueues; requester_index++) begin : gen_operand_requester
+    // StA_0..StA_{NrVRFWordsPerBeat-1} are driven by the shared block below.
+    if (requester_index < int'(StA_0) || requester_index >= int'(StA_0) + NrVRFWordsPerBeat) begin : gen_independent
     // State of this operand requester_index
     state_t state_d, state_q;
 
@@ -465,7 +474,7 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       requester_metadata_d.hazard &= global_hazard_table_i[requester_metadata_d.id];
 
       // Kill all store-unit, idx, and mem-masked requests in case of exceptions
-      if (lsu_ex_flush_o && (requester_index == StA || requester_index == SlideAddrGenA || requester_index == MaskM)) begin : vlsu_exception_idle
+      if (lsu_ex_flush_o && (requester_index == SlideAddrGenA || requester_index == MaskM)) begin : vlsu_exception_idle
         // Reset state
         state_d = IDLE;
         // Don't wake up the store queue (redundant, as it will be flushed anyway)
@@ -486,7 +495,210 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         requester_metadata_q <= requester_metadata_d;
       end
     end
+    end : gen_independent
   end : gen_operand_requester
+
+  // Continuous assignment for StA operand_issued_o (must not mix assign/procedural)
+  for (genvar w = 0; w < NrVRFWordsPerBeat; w++) begin : gen_sta_issued
+    logic [NrBanks-1:0] sta_requester_gnt;
+    for (genvar b = 0; b < NrBanks; b++) begin : gen_sta_gnt
+      assign sta_requester_gnt[b] = operand_gnt[b][int'(StA_0)+w];
+    end
+    assign operand_issued_o[int'(StA_0)+w] = |sta_requester_gnt;
+  end
+
+  ///////////////////////////////
+  //  Shared StA state machine  //
+  ///////////////////////////////
+  //
+  // One shared address counter distributes per-lane VRF elements to all
+  // NrVRFWordsPerBeat StA queues in parallel. Each batch, StA_w reads from
+  // VRF address (base+w); the counter then advances by NrVRFWordsPerBeat.
+  // Consecutive per-lane elements live in consecutive banks, so all
+  // NrVRFWordsPerBeat reads can be granted simultaneously by independent
+  // bank arbiters. A per-queue grant flag handles the rare case where an
+  // HP write preempts one bank: the affected queue is retried the next cycle
+  // while the already-granted queues do not re-request.
+
+  typedef struct packed {
+    vid_t   id;
+    vaddr_t addr;    // base VRF address of the current batch
+    vlen_t  len;     // remaining batches = ceil(vl / NrVRFWordsPerBeat)
+    vew_e   vew;
+    logic [NrVInsn-1:0] hazard;
+  } sta_meta_t;
+
+  state_t    sta_state_d, sta_state_q;
+  sta_meta_t sta_meta_d,  sta_meta_q;
+  // Tracks which StA queues have received their data in the current batch
+  logic [NrVRFWordsPerBeat-1:0] sta_batch_granted_d, sta_batch_granted_q;
+
+  // Stall when a hazardous instruction has not yet committed its results
+  logic sta_stall;
+  assign sta_stall = |(sta_meta_q.hazard & ~vinsn_result_written_q);
+
+  always_comb begin : sta_shared_operand_requester
+    automatic vaddr_t vrf_addr_base;
+    automatic vlen_t  per_queue_len;
+
+    // Defaults
+    sta_state_d         = sta_state_q;
+    sta_meta_d          = sta_meta_q;
+    sta_batch_granted_d = sta_batch_granted_q;
+
+    for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+      operand_payload[int'(StA_0)+w]           = '0;
+      for (int b = 0; b < NrBanks; b++)
+        lane_operand_req_transposed[int'(StA_0)+w][b] = 1'b0;
+      operand_request_ready_o[int'(StA_0)+w]   = 1'b0;
+      operand_queue_cmd_o[int'(StA_0)+w]        = '0;
+      operand_queue_cmd_valid_o[int'(StA_0)+w]  = 1'b0;
+    end
+
+    // Helper: VRF base address for the incoming request
+    vrf_addr_base = vaddr(operand_request_i[StA_0].vs, NrLanes, VLEN)
+                  + (operand_request_i[StA_0].vstart >>
+                     (unsigned'(EW64) - unsigned'(operand_request_i[StA_0].eew)));
+    // Per-queue element count: ceil(vl / NrVRFWordsPerBeat), minimum 1
+    per_queue_len = (operand_request_i[StA_0].vl + NrVRFWordsPerBeat - 1)
+                    / NrVRFWordsPerBeat;
+    if (per_queue_len == '0) per_queue_len = 1;
+
+    case (sta_state_q)
+      IDLE: begin : sta_idle
+        if (operand_request_valid_i[StA_0]) begin : sta_accept_new
+          // Acknowledge all NrVRFWordsPerBeat StA requests simultaneously
+          for (int w = 0; w < NrVRFWordsPerBeat; w++)
+            operand_request_ready_o[int'(StA_0)+w] = 1'b1;
+          // Send identical command to every StA queue
+          for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+            operand_queue_cmd_o[int'(StA_0)+w] = '{
+              eew       : operand_request_i[StA_0].eew,
+              elem_count: per_queue_len,
+              conv      : operand_request_i[StA_0].conv,
+              ntr_red   : operand_request_i[StA_0].cvt_resize,
+              target_fu : operand_request_i[StA_0].target_fu,
+              is_reduct : operand_request_i[StA_0].is_reduct
+            };
+            operand_queue_cmd_valid_o[int'(StA_0)+w] = 1'b1;
+          end
+          sta_meta_d = '{
+            id    : operand_request_i[StA_0].id,
+            addr  : vrf_addr_base,
+            len   : per_queue_len,
+            vew   : operand_request_i[StA_0].eew,
+            hazard: operand_request_i[StA_0].hazard
+          };
+          sta_state_d         = REQUESTING;
+          sta_batch_granted_d = '0;
+          // Nothing to fetch when vl == 0
+          if (operand_request_i[StA_0].vl == '0) begin
+            sta_state_d = IDLE;
+            for (int w = 0; w < NrVRFWordsPerBeat; w++)
+              operand_queue_cmd_valid_o[int'(StA_0)+w] = 1'b0;
+          end
+        end : sta_accept_new
+      end : sta_idle
+
+      REQUESTING: begin : sta_requesting
+        automatic logic sta_queues_rdy;
+        sta_queues_rdy = 1'b1;
+        for (int w = 0; w < NrVRFWordsPerBeat; w++)
+          sta_queues_rdy &= operand_queue_ready_i[int'(StA_0)+w];
+
+        if (sta_queues_rdy) begin : sta_queues_ready
+          // Issue read to each StA_w that hasn't received its data this batch
+          for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+            if (!sta_batch_granted_q[w]) begin
+              automatic vaddr_t addr_w;
+              automatic int     bank_w;
+              addr_w = sta_meta_q.addr + vaddr_t'(w);
+              bank_w = int'(addr_w[idx_width(NrBanks)-1:0]);
+              lane_operand_req_transposed[int'(StA_0)+w][bank_w] = !sta_stall;
+              operand_payload[int'(StA_0)+w] = '{
+                addr   : addr_w >> $clog2(NrBanks),
+                opqueue: opqueue_e'(int'(StA_0) + w),
+                default: '0
+              };
+            end
+          end
+
+          // Accumulate grants across cycles within the current batch
+          for (int w = 0; w < NrVRFWordsPerBeat; w++)
+            for (int b = 0; b < NrBanks; b++)
+              if (operand_gnt[b][int'(StA_0)+w])
+                sta_batch_granted_d[w] = 1'b1;
+
+          // When all queues have their data, advance to the next batch
+          if (&sta_batch_granted_d) begin : sta_batch_complete
+            sta_meta_d.addr     = sta_meta_q.addr + vaddr_t'(NrVRFWordsPerBeat);
+            sta_meta_d.len      = sta_meta_q.len - 1;
+            sta_batch_granted_d = '0;
+
+            if (sta_meta_d.len == '0) begin : sta_insn_done
+              sta_state_d = IDLE;
+              // Immediately accept the next instruction if already waiting
+              if (operand_request_valid_i[StA_0]) begin : sta_accept_next
+                for (int w = 0; w < NrVRFWordsPerBeat; w++)
+                  operand_request_ready_o[int'(StA_0)+w] = 1'b1;
+                for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+                  operand_queue_cmd_o[int'(StA_0)+w] = '{
+                    eew       : operand_request_i[StA_0].eew,
+                    elem_count: per_queue_len,
+                    conv      : operand_request_i[StA_0].conv,
+                    ntr_red   : operand_request_i[StA_0].cvt_resize,
+                    target_fu : operand_request_i[StA_0].target_fu,
+                    is_reduct : operand_request_i[StA_0].is_reduct
+                  };
+                  operand_queue_cmd_valid_o[int'(StA_0)+w] = 1'b1;
+                end
+                sta_meta_d = '{
+                  id    : operand_request_i[StA_0].id,
+                  addr  : vrf_addr_base,
+                  len   : per_queue_len,
+                  vew   : operand_request_i[StA_0].eew,
+                  hazard: operand_request_i[StA_0].hazard
+                };
+                sta_state_d = REQUESTING;
+                if (operand_request_i[StA_0].vl == '0) begin
+                  sta_state_d = IDLE;
+                  for (int w = 0; w < NrVRFWordsPerBeat; w++)
+                    operand_queue_cmd_valid_o[int'(StA_0)+w] = 1'b0;
+                end
+              end : sta_accept_next
+            end : sta_insn_done
+          end : sta_batch_complete
+        end : sta_queues_ready
+      end : sta_requesting
+    endcase
+
+    // Keep hazard bits current with the global hazard table
+    sta_meta_d.hazard &= global_hazard_table_i[sta_meta_d.id];
+
+    // Kill StA requests on LSU exceptions (flush handled by operand_queues_stage)
+    if (lsu_ex_flush_o) begin : sta_exception_flush
+      sta_state_d         = IDLE;
+      sta_meta_d          = '0;
+      sta_batch_granted_d = '0;
+      for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+        operand_queue_cmd_valid_o[int'(StA_0)+w] = 1'b0;
+        for (int b = 0; b < NrBanks; b++)
+          lane_operand_req_transposed[int'(StA_0)+w][b] = 1'b0;
+      end
+    end : sta_exception_flush
+  end : sta_shared_operand_requester
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : sta_shared_ff
+    if (!rst_ni) begin
+      sta_state_q         <= IDLE;
+      sta_meta_q          <= '0;
+      sta_batch_granted_q <= '0;
+    end else begin
+      sta_state_q         <= sta_state_d;
+      sta_meta_q          <= sta_meta_d;
+      sta_batch_granted_q <= sta_batch_granted_d;
+    end
+  end : sta_shared_ff
 
   ////////////////
   //  Arbiters  //
@@ -500,7 +712,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       ext_operand_req[bank][VFU_MFpu]      = 1'b0;
       ext_operand_req[bank][VFU_MaskUnit]  = 1'b0;
       ext_operand_req[bank][VFU_SlideUnit] = 1'b0;
-      ext_operand_req[bank][VFU_LoadUnit]  = 1'b0;
+      for (int w = 0; w < NrVRFWordsPerBeat; w++)
+        ext_operand_req[bank][int'(VFU_LoadUnit) + w] = 1'b0;
     end
 
     // Generate the payloads for write back operations
@@ -536,14 +749,18 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       opqueue: AluA,
       default: '0
     };
-    operand_payload[NrOperandQueues + VFU_LoadUnit] = '{
-      addr   : ldu_result_addr >> $clog2(NrBanks),
-      wen    : 1'b1,
-      wdata  : ldu_result_wdata,
-      be     : ldu_result_be,
-      opqueue: AluA,
-      default: '0
-    };
+    // NrVRFWordsPerBeat independent load-unit result queues.
+    // Each occupies slot VFU_LoadUnit+w in the global masters array.
+    for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+      operand_payload[NrOperandQueues + int'(VFU_LoadUnit) + w] = '{
+        addr   : ldu_result_addr[w] >> $clog2(NrBanks),
+        wen    : 1'b1,
+        wdata  : ldu_result_wdata[w],
+        be     : ldu_result_be[w],
+        opqueue: AluA,
+        default: '0
+      };
+    end
 
     // Store their request value
     ext_operand_req[alu_result_addr_i[idx_width(NrBanks)-1:0]][VFU_Alu] =
@@ -554,21 +771,24 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     masku_result_req;
     ext_operand_req[sldu_result_addr[idx_width(NrBanks)-1:0]][VFU_SlideUnit] =
     sldu_result_req;
-    ext_operand_req[ldu_result_addr[idx_width(NrBanks)-1:0]][VFU_LoadUnit] =
-    ldu_result_req;
+    for (int w = 0; w < NrVRFWordsPerBeat; w++)
+      ext_operand_req[ldu_result_addr[w][idx_width(NrBanks)-1:0]][int'(VFU_LoadUnit) + w] =
+      ldu_result_req[w];
 
     // Generate the grant signals
     alu_result_gnt_o  = 1'b0;
     mfpu_result_gnt_o = 1'b0;
     masku_result_gnt  = 1'b0;
     sldu_result_gnt   = 1'b0;
-    ldu_result_gnt    = 1'b0;
+    ldu_result_gnt    = '0;
     for (int bank = 0; bank < NrBanks; bank++) begin
       alu_result_gnt_o  = alu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_Alu];
       mfpu_result_gnt_o = mfpu_result_gnt_o | operand_gnt[bank][NrOperandQueues + VFU_MFpu];
       masku_result_gnt  = masku_result_gnt | operand_gnt[bank][NrOperandQueues + VFU_MaskUnit];
       sldu_result_gnt   = sldu_result_gnt | operand_gnt[bank][NrOperandQueues + VFU_SlideUnit];
-      ldu_result_gnt    = ldu_result_gnt | operand_gnt[bank][NrOperandQueues + VFU_LoadUnit];
+      for (int w = 0; w < NrVRFWordsPerBeat; w++)
+        ldu_result_gnt[w] = ldu_result_gnt[w] |
+          operand_gnt[bank][NrOperandQueues + int'(VFU_LoadUnit) + w];
     end
   end
 
@@ -604,20 +824,23 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     logic payload_lp_req;
     logic payload_lp_gnt;
     rr_arb_tree #(
-      .NumIn(unsigned'(SlideAddrGenA)- unsigned'(MaskB) + 1 + unsigned'(VFU_LoadUnit) - unsigned'(VFU_SlideUnit) + 1),
-      .DataWidth($bits(payload_t)                                                               ),
-      .AxiVldRdy(1'b0                                                                           )
+      .NumIn(unsigned'(SlideAddrGenA) - unsigned'(MaskB) + 1 +
+             unsigned'(VFU_LoadUnit) + NrVRFWordsPerBeat - unsigned'(VFU_SlideUnit)),
+      .DataWidth($bits(payload_t)),
+      .AxiVldRdy(1'b0            )
     ) i_lp_vrf_arbiter (
       .clk_i  (clk_i ),
       .rst_ni (rst_ni),
       .flush_i(1'b0  ),
       .rr_i   ('0    ),
       .data_i ({operand_payload[SlideAddrGenA:MaskB],
-          operand_payload[NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]} ),
+          operand_payload[NrOperandQueues + int'(VFU_LoadUnit) + NrVRFWordsPerBeat - 1:
+                          NrOperandQueues + int'(VFU_SlideUnit)]} ),
       .req_i ({lane_operand_req[bank][SlideAddrGenA:MaskB],
-          ext_operand_req[bank][VFU_LoadUnit:VFU_SlideUnit]}),
+          ext_operand_req[bank][int'(VFU_LoadUnit) + NrVRFWordsPerBeat - 1:int'(VFU_SlideUnit)]}),
       .gnt_o ({operand_gnt[bank][SlideAddrGenA:MaskB],
-          operand_gnt[bank][NrOperandQueues + VFU_LoadUnit:NrOperandQueues + VFU_SlideUnit]}),
+          operand_gnt[bank][NrOperandQueues + int'(VFU_LoadUnit) + NrVRFWordsPerBeat - 1:
+                            NrOperandQueues + int'(VFU_SlideUnit)]}),
       .data_o (payload_lp    ),
       .idx_o  (/* Unused */  ),
       .req_o  (payload_lp_req),

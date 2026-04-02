@@ -10,10 +10,13 @@
 
 module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width; #(
     parameter int unsigned NrLanes               = 0,
+    parameter int unsigned AxiDataWidth          = 0,
     parameter type         pe_req_t              = logic,
     parameter type         pe_resp_t             = logic,
     parameter type         operand_request_cmd_t = logic,
-    parameter type         vfu_operation_t       = logic
+    parameter type         vfu_operation_t       = logic,
+    // Dependant parameters. DO NOT CHANGE!
+    localparam int unsigned NrVRFWordsPerBeat    = AxiDataWidth / (NrLanes * $bits(elen_t))
   ) (
     input  logic                                          clk_i,
     input  logic                                          rst_ni,
@@ -158,7 +161,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
     // Flush upon mem op with VRF access (st, idx ld, masked mem op)
     if (lsu_ex_flush_o) begin
-      operand_request_valid_d[StA]           = 1'b0;
+      for (int w = 0; w < NrVRFWordsPerBeat; w++)
+        operand_request_valid_d[opqueue_e'(int'(StA_0) + w)] = 1'b0;
       operand_request_valid_d[SlideAddrGenA] = 1'b0;
       operand_request_valid_d[MaskM]         = 1'b0;
     end
@@ -301,9 +305,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             (pe_req.op == VLXE && operand_request_valid_o[SlideAddrGenA]));
         VFU_SlideUnit: pe_req_ready = !(operand_request_valid_o[SlideAddrGenA]);
         VFU_StoreUnit: begin
-          pe_req_ready = !(operand_request_valid_o[StA] ||
-            operand_request_valid_o[MaskM] ||
-            (pe_req.op == VSXE && operand_request_valid_o[SlideAddrGenA]));
+          pe_req_ready = !operand_request_valid_o[MaskM] &&
+            !(pe_req.op == VSXE && operand_request_valid_o[SlideAddrGenA]);
+          for (int w = 0; w < NrVRFWordsPerBeat; w++)
+            pe_req_ready &= !operand_request_valid_o[opqueue_e'(int'(StA_0) + w)];
         end
         VFU_MaskUnit : begin
           pe_req_ready = !(operand_request_valid_o[AluA] ||
@@ -569,28 +574,34 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
         end
 
         VFU_StoreUnit : begin
-          // vstart is supported here
-          operand_request[StA] = '{
-            id      : pe_req.id,
-            vs      : pe_req.vs1,
-            eew     : pe_req.old_eew_vs1,
-            conv    : pe_req.conversion_vs1,
-            scale_vl: pe_req.scale_vl,
-            vtype   : pe_req.vtype,
-            vl      : vfu_operation_d.vl,
-            vstart  : vfu_operation_d.vstart,
-            hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
-            target_fu : ALU_SLDU,
-            cvt_resize: CVT_SAME,
-            default : '0
-          };
-          // Since this request goes outside of the lane, we might need to request an
-          // extra operand regardless of whether it is valid in this lane or not.
-          // This is done to balance the data received by the store unit, which expects
-          // L*64-bits packets only.
-          if (lane_id_i > pe_req.end_lane)
-            operand_request[StA].vl += 1;
-          operand_request_push[StA] = pe_req.use_vs1;
+          // vstart is supported here.
+          // All NrVRFWordsPerBeat StA queues receive the same vstart/vl.
+          // The operand_requester shared counter distributes per-lane elements
+          // in batches of NrVRFWordsPerBeat: queue StA_w receives elements
+          // w, w+N, w+2N, ... (stride = NrVRFWordsPerBeat).
+          for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+            operand_request[opqueue_e'(int'(StA_0) + w)] = '{
+              id      : pe_req.id,
+              vs      : pe_req.vs1,
+              eew     : pe_req.old_eew_vs1,
+              conv    : pe_req.conversion_vs1,
+              scale_vl: pe_req.scale_vl,
+              vtype   : pe_req.vtype,
+              vl      : vfu_operation_d.vl,
+              vstart  : vfu_operation_d.vstart,
+              hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
+              target_fu : ALU_SLDU,
+              cvt_resize: CVT_SAME,
+              default : '0
+            };
+            // Since this request goes outside of the lane, we might need to request an
+            // extra operand regardless of whether it is valid in this lane or not.
+            // This is done to balance the data received by the store unit, which expects
+            // NrVRFWordsPerBeat*L*64-bits packets only.
+            if (lane_id_i > pe_req.end_lane)
+              operand_request[opqueue_e'(int'(StA_0) + w)].vl += 1;
+            operand_request_push[opqueue_e'(int'(StA_0) + w)] = pe_req.use_vs1;
+          end
 
           // This vector instruction uses masks
           operand_request[MaskM] = '{

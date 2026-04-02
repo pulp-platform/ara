@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
+// Author: Hong Pang <hopang@iis.ee.ethz.ch>
 
 #include <stdint.h>
 #include <string.h>
@@ -22,7 +22,7 @@
 #include "runtime.h"
 #include "util.h"
 
-#include "kernel/fdotproduct.h"
+#include "kernel/faxpy.h"
 
 #ifdef SPIKE
 #include <stdio.h>
@@ -32,11 +32,6 @@
 #include "printf.h"
 #endif
 
-// Threshold for FP comparisons
-#define THRESHOLD_64b 0.0000000001
-#define THRESHOLD_32b 0.0001
-#define THRESHOLD_16b 1
-
 // Run also the scalar benchmark
 #define SCALAR 0
 
@@ -44,30 +39,34 @@
 #define CHECK 0
 
 // Macro to check similarity between two fp-values, wrt a threshold
-#define fp_check(a, b, threshold) ((((a - b) < 0) ? b - a : a - b) < threshold)
+static inline int fp_check(const double a, const double b) {
+  const double threshold = 0.00001;
+
+  // Absolute value
+  double comp = a - b;
+  if (comp < 0)
+    comp = -comp;
+
+  return comp > threshold;
+}
 
 // Vector size (Byte)
 extern uint64_t vsize;
+// Scalar input
+extern double a;
 // Input vectors
-extern double v64a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern double v64b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern float v32a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern float v32b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern _Float16 v16a[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-extern _Float16 v16b[] __attribute__((aligned(32 * NR_LANES), section(".l2")));
-// Golden outputs
-extern double gold64;
-extern float gold32;
-extern _Float16 gold16;
+extern double v64x[] __attribute__((aligned(4 * NR_LANES), section(".vector")));
 // Output vectors
-extern double res64_v, res64_s;
-extern float res32_v, res32_s;
-extern _Float16 res16_v, res16_s;
+extern double v64y[] __attribute__((aligned(4 * NR_LANES), section(".vector")));
+// Golden outputs
+extern double gold64[] __attribute__((aligned(4 * NR_LANES), section(".vector")));;
 
 int main() {
+// *********** NMAra Testing *********** //
+
   printf("\n");
   printf("===========\n");
-  printf("=  FDOTP  =\n");
+  printf("=  FAXPY  =\n");
   printf("===========\n");
   printf("\n");
   printf("\n");
@@ -75,9 +74,9 @@ int main() {
   uint64_t runtime_s, runtime_v;
 
   for (uint64_t avl = 8; avl <= vsize; avl *= 2) {
-    printf("Calulating 64b dotp with vectors with length = %lu\n", avl);
+    printf("Calulating 64b faxpy with vectors with length = %lu\n", avl);
     start_timer();
-    res64_v = fdotp_v64b(v64a, v64b, avl);
+    faxpy_v64b_unrl(a, v64x, v64y, avl);
     stop_timer();
     runtime_v = get_timer();
     // 2 FLOP per element (mul + add)

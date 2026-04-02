@@ -918,10 +918,19 @@ typedef struct packed {
   //  Lane definitions  //
   ////////////////////////
 
-  // There are seven operand queues, serving operands to the different functional units of each lane
-  localparam int unsigned NrOperandQueues = 9;
+  // There are NrOperandQueues operand queues, serving operands to the different functional units
+  // of each lane. The HP group (AluA..MulFPUC) feeds the ALU and MFPU. The LP group
+  // (MaskB..SlideAddrGenA) feeds the mask unit, NrVRFWordsPerBeat store queues, and the slide
+  // unit. NrVRFWordsPerBeat is defined per-lane as AxiDataWidth / (NrLanes * ELEN); for the
+  // default configuration (AxiDataWidth = 256*NrLanes) this equals 4.
+  // NOTE: when changing AxiDataWidth such that NrVRFWordsPerBeat changes, update NrOperandQueues
+  // and the StA entries in opqueue_e manually (these cannot be auto-derived in a package).
+  localparam int unsigned NrOperandQueues = 12; // 5 HP + 7 LP (4 StA + MaskB + MaskM + SlideAddrGenA)
   typedef enum logic [$clog2(NrOperandQueues)-1:0] {
-    AluA, AluB, MulFPUA, MulFPUB, MulFPUC, MaskB, MaskM, StA, SlideAddrGenA
+    // High-priority group (ALU and MFPU operand reads + write-backs)
+    AluA, AluB, MulFPUA, MulFPUB, MulFPUC,
+    // Low-priority group (mask, store, slide)
+    MaskB, MaskM, StA_0, StA_1, StA_2, StA_3, SlideAddrGenA
   } opqueue_e;
 
   // Each lane has eight VRF banks
