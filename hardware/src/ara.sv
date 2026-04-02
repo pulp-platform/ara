@@ -92,6 +92,13 @@ module ara import ara_pkg::*; #(
         $fatal(1,
                "Ara Zvkned requires NrLanes*(ELEN/32) to be a multiple of 4 and at least 4 AES columns per beat; got NrLanes=%0d, ELEN=%0d",
                NrLanes, ELEN);
+      // .vs broadcast relies on per-lane operand queue duplication which only
+      // covers the within-lane case.  NrLanes > 4 would need cross-lane data
+      // replication that is not yet implemented.
+      if (NrLanes > 4)
+        $fatal(1,
+               "Ara Zvkned .vs broadcast currently only supports NrLanes <= 4; got NrLanes=%0d",
+               NrLanes);
       if (MaxVLenPerLane < ELEN)
         $fatal(1,
                "Ara Zvkned requires VLEN/NrLanes >= %0d bits so each lane can hold one 64-bit beat; got VLEN=%0d, NrLanes=%0d",

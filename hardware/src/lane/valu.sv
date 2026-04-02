@@ -417,7 +417,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   ///////////////////////////
 
   elen_t aes_lane_result;
-  // AES phase: 0 = SubBytes (Phase 1), 1 = MixColumns+AddRoundKey (Phase 2)
+  // AES phase: 0 = SubBytes, 1 = MixColumns+AddRoundKey
   logic aes_phase;
 
   if (Zvkned(CryptoSupport)) begin : gen_aes_lane
@@ -511,9 +511,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     // Don't prevent commit by default
     prevent_commit = 1'b0;
 
-    // AES phase: 0 = SubBytes (Phase 1), 1 = MixColumns+AddRoundKey (Phase 2)
+    // AES phase: 0 = SubBytes, 1 = MixColumns+AddRoundKey
     aes_phase = 1'b0;
-
 
     // How many elements are we processing this cycle?
     issue_effective_eew = vinsn_issue_q.op == VRGATHEREI16 ? 1 : unsigned'(vinsn_issue_q.vtype.vsew[1:0]);

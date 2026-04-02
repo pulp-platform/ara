@@ -3620,9 +3620,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req.use_vd        = 1'b1;
                       ara_req.use_vd_op     = 1'b1;
                       ara_req.eew_vd_op     = EW32;
-                      // Round number immediate in rs1 field
+                      // Round number immediate in rs1 field (accessed via scalar_op,
+                      // not use_scalar_op which would override operand_a)
                       ara_req.scalar_op     = {{ELEN-5{1'b0}}, insn.varith_type.rs1};
-                      ara_req.use_scalar_op = 1'b1;
                       ara_req_valid         = 1'b1;
                       // Enforce vsew == EW32
                       if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
