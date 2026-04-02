@@ -320,8 +320,8 @@ static const char *test_name = "vaesdf.vs (2 groups)";
 
 #ifdef TEST_VAESKF1
 // vaeskf1.vi: vs2 = RK0, rnum = 1 → RK1
-#define VD_DATA rk0
-#define VS2_DATA rk0 // unused for vaeskf1, but load for register setup
+#define VD_DATA rk0  // vd old value is irrelevant for vaeskf1
+#define VS2_DATA rk0 // vs2 = current round key (input to vaeskf1)
 static uint32_t expected[4] __attribute__((aligned(16))) = {
     0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a};
 static const char *test_name = "vaeskf1.vi";

@@ -232,16 +232,10 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       sub_word[i*8 +: 8] = sbox_fwd(w[i*8 +: 8]);
   endfunction
 
-  // SubBytes on a single 32-bit column (4 bytes)
-  function automatic logic [31:0] sub_bytes_col(input logic [31:0] col);
+  // InvSubWord: apply inverse S-box to each byte of a 32-bit word
+  function automatic logic [31:0] inv_sub_word(input logic [31:0] w);
     for (int i = 0; i < 4; i++)
-      sub_bytes_col[i*8 +: 8] = sbox_fwd(col[i*8 +: 8]);
-  endfunction
-
-  // InvSubBytes on a single 32-bit column
-  function automatic logic [31:0] inv_sub_bytes_col(input logic [31:0] col);
-    for (int i = 0; i < 4; i++)
-      inv_sub_bytes_col[i*8 +: 8] = sbox_inv(col[i*8 +: 8]);
+      inv_sub_word[i*8 +: 8] = sbox_inv(w[i*8 +: 8]);
   endfunction
 
   // MixColumns on a single 32-bit column
@@ -296,7 +290,7 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         // Encrypt middle round
         VAESEM_VV, VAESEM_VS: begin
           if (!phase_i) begin
-            aes_result[c*32 +: 32] = sub_bytes_col(state_col);
+            aes_result[c*32 +: 32] = sub_word(state_col);
           end else begin
             aes_result[c*32 +: 32] = mix_columns_col(state_col) ^ rkey_col;
           end
@@ -305,21 +299,21 @@ module simd_aes_lane import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
         // Encrypt final round (no MixColumns)
         VAESEF_VV, VAESEF_VS:
           if (!phase_i)
-            aes_result[c*32 +: 32] = sub_bytes_col(state_col);
+            aes_result[c*32 +: 32] = sub_word(state_col);
           else
             aes_result[c*32 +: 32] = state_col ^ rkey_col;
 
         // Decrypt middle round
         VAESDM_VV, VAESDM_VS:
           if (!phase_i)
-            aes_result[c*32 +: 32] = inv_sub_bytes_col(state_col);
+            aes_result[c*32 +: 32] = inv_sub_word(state_col);
           else
             aes_result[c*32 +: 32] = inv_mix_columns_col(state_col ^ rkey_col);
 
         // Decrypt final round (no InvMixColumns)
         VAESDF_VV, VAESDF_VS:
           if (!phase_i)
-            aes_result[c*32 +: 32] = inv_sub_bytes_col(state_col);
+            aes_result[c*32 +: 32] = inv_sub_word(state_col);
           else
             aes_result[c*32 +: 32] = state_col ^ rkey_col;
 
