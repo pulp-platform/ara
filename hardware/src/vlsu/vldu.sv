@@ -378,7 +378,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
             // Is this byte a valid byte in the VRF word?
             // We compare vrf_seq_byte_cnt since vrf_seq_byte contains also the vstart contribution, while the issue_cnt_bytes
             // counter does not.
-            if (vrf_seq_byte_cnt < issue_cnt_bytes_q && vrf_word_seg < NrVRFWordsPerBeat &&
+            if (total_vrf_seq_byte_cnt < issue_cnt_bytes_q && vrf_word_seg < NrVRFWordsPerBeat &&
                 total_vrf_seq_byte < (NrVRFWordsPerBeat * NrLanes * DataWidthB)) begin : is_vrf_byte
               // At which lane, and what is the byte offset in that lane, of the byte vrf_byte?
               automatic int unsigned vrf_offset = vrf_byte[2:0];
@@ -515,9 +515,14 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
     // Advance each queue's read pointer independently when all its lanes are granted
     for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++) begin : advance_read_ptrs
-      res_queue_eff_write_bytes = (NrLanes * DataWidthB);
       if (first_result_queue_read_q && w == 0) begin
+        // first_payload_byte accounts for ALL segments (partial queue 0 + full queues 1..N-1).
+        // Only w=0 subtracts it; w>0 subtracts 0 to avoid double-counting.
         res_queue_eff_write_bytes = first_payload_byte_q;
+      end else if (first_result_queue_read_q) begin
+        res_queue_eff_write_bytes = '0;
+      end else begin
+        res_queue_eff_write_bytes = (NrLanes * DataWidthB);
       end
 
       if (!(|result_queue_valid_d[w][result_queue_read_pnt_q[w]]) &&

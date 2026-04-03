@@ -188,24 +188,43 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   // Instruction wrote a result
   logic [NrVInsn-1:0] vinsn_result_written_d, vinsn_result_written_q;
 
+  // Track which VLDU segments have been granted for the current beat.
+  // Only fire vinsn_result_written when ALL segments are granted (possibly
+  // across multiple cycles). This prevents chained instructions from reading
+  // VRF words whose segments haven't been written yet due to HP preemption.
+  logic [NrVRFWordsPerBeat-1:0] ldu_beat_seg_granted_d, ldu_beat_seg_granted_q;
+
   always_comb begin
     vinsn_result_written_d = '0;
+    ldu_beat_seg_granted_d = ldu_beat_seg_granted_q;
 
     // Which vector instructions are writing something?
     vinsn_result_written_d[alu_result_id_i] |= alu_result_gnt_o;
     vinsn_result_written_d[mfpu_result_id_i] |= mfpu_result_gnt_o;
     vinsn_result_written_d[masku_result_id] |= masku_result_gnt;
-    for (int w = 0; w < NrVRFWordsPerBeat; w++)
-      vinsn_result_written_d[ldu_result_id[w]] |= ldu_result_gnt[w];
     vinsn_result_written_d[sldu_result_id] |= sldu_result_gnt;
+
+    // VLDU: accumulate per-segment grants across cycles
+    for (int w = 0; w < NrVRFWordsPerBeat; w++)
+      if (ldu_result_gnt[w])
+        ldu_beat_seg_granted_d[w] = 1'b1;
+
+    // Only fire pacing when ALL segments have been granted
+    if (&ldu_beat_seg_granted_d) begin
+      vinsn_result_written_d[ldu_result_id[0]] = 1'b1;
+      // Reset for the next beat
+      ldu_beat_seg_granted_d = '0;
+    end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_vinsn_result_written_ff
     if (!rst_ni) begin
-      vinsn_result_written_q <= '0;
+      vinsn_result_written_q   <= '0;
+      ldu_beat_seg_granted_q   <= '0;
       lsu_ex_flush_o <= 1'b0;
     end else begin
-      vinsn_result_written_q <= vinsn_result_written_d;
+      vinsn_result_written_q   <= vinsn_result_written_d;
+      ldu_beat_seg_granted_q   <= ldu_beat_seg_granted_d;
       lsu_ex_flush_o <= lsu_ex_flush_i;
     end
   end
@@ -533,13 +552,37 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   // Tracks which StA queues have received their data in the current batch
   logic [NrVRFWordsPerBeat-1:0] sta_batch_granted_d, sta_batch_granted_q;
 
-  // Stall when a hazardous instruction has not yet committed its results
+  // Stall when a hazardous instruction has not yet committed enough results.
+  // The StA reads NrVRFWordsPerBeat words per batch, so we must wait until
+  // the hazardous instruction has written NrVRFWordsPerBeat words before
+  // releasing. We reuse the same pacing signal (vinsn_result_written_q) that
+  // independent operand requesters use, but count NrVRFWordsPerBeat pulses.
   logic sta_stall;
-  assign sta_stall = |(sta_meta_q.hazard & ~vinsn_result_written_q);
+  logic [$clog2(NrVRFWordsPerBeat):0] sta_wr_cnt_d, sta_wr_cnt_q;
+
+  always_comb begin
+    sta_wr_cnt_d = sta_wr_cnt_q;
+
+    // Count pacing pulses from hazardous instructions
+    if (|(sta_meta_q.hazard & vinsn_result_written_q))
+      sta_wr_cnt_d = sta_wr_cnt_q + 1;
+
+    // Reset when no hazard (instruction completed)
+    if (!(|(sta_meta_q.hazard)))
+      sta_wr_cnt_d = '0;
+
+    // Stall until NrVRFWordsPerBeat writes have been observed for this batch
+    sta_stall = (|(sta_meta_q.hazard)) && (sta_wr_cnt_d < NrVRFWordsPerBeat);
+
+    // When threshold reached, consume NrVRFWordsPerBeat for the next batch
+    if (sta_wr_cnt_d >= NrVRFWordsPerBeat)
+      sta_wr_cnt_d = sta_wr_cnt_d - NrVRFWordsPerBeat;
+  end
 
   always_comb begin : sta_shared_operand_requester
     automatic vaddr_t vrf_addr_base;
     automatic vlen_t  per_queue_len;
+
 
     // Defaults
     sta_state_d         = sta_state_q;
@@ -693,10 +736,12 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       sta_state_q         <= IDLE;
       sta_meta_q          <= '0;
       sta_batch_granted_q <= '0;
+      sta_wr_cnt_q        <= '0;
     end else begin
       sta_state_q         <= sta_state_d;
       sta_meta_q          <= sta_meta_d;
       sta_batch_granted_q <= sta_batch_granted_d;
+      sta_wr_cnt_q        <= sta_wr_cnt_d;
     end
   end : sta_shared_ff
 
@@ -790,6 +835,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         ldu_result_gnt[w] = ldu_result_gnt[w] |
           operand_gnt[bank][NrOperandQueues + int'(VFU_LoadUnit) + w];
     end
+    // Note: individual segment grants are allowed — the stream registers advance
+    // independently. The pacing (vinsn_result_written) only fires when ALL
+    // segments have been granted (tracked by ldu_beat_seg_granted).
   end
 
   // Instantiate a RR arbiter per bank
