@@ -208,6 +208,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       [VFREDMIN:VFREDMAX]:    fpu_latency = LatFNonComp;
       [VFCVTXUF:VFCVTFF]:     fpu_latency = LatFConv;
       [VFMIN:VFSGNJX]:        fpu_latency = LatFNonComp;
+      [VMFEQ:VMFGE]:          fpu_latency = LatFNonComp;
       default: begin
         case (sew)
           EW64:    fpu_latency = LatFCompEW64;
@@ -1366,8 +1367,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // Latency stall mechanism to ensure in-order FPU execution when needed
   // i.e. when issue insn has latency lower than processing insn latency
-  fpu_latency_t vinsn_issue_lat_d, vinsn_processing_lat_d;
-  logic latency_stall, latency_problem_d, latency_problem_q;
+  fpu_latency_t vinsn_issue_lat, vinsn_processing_lat;
+  logic latency_stall, latency_problem;
 
   always_comb begin: p_vmfpu
     // Maintain state
@@ -1416,8 +1417,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     fpu_red_complete_d = 1'b0;
 
     // Get latencies
-    vinsn_issue_lat_d      = fpu_latency(vinsn_issue_d.vtype.vsew, vinsn_issue_d.op);
-    vinsn_processing_lat_d = fpu_latency(vinsn_processing_d.vtype.vsew, vinsn_processing_d.op);
+    vinsn_issue_lat      = fpu_latency(vinsn_issue_q.vtype.vsew, vinsn_issue_q.op);
+    vinsn_processing_lat = fpu_latency(vinsn_processing_q.vtype.vsew, vinsn_processing_q.op);
 
     // fpnew allows out-of-order execution and different instruction
     // types have different latencies. We have to enforce in-order execution.
@@ -1425,12 +1426,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     // issue only if the new instruction is slower than the previous one.
     // VFDIV-like instructions have variable latency, so stall them not to create
     // problems.
-    latency_problem_d = (vinsn_issue_lat_d < vinsn_processing_lat_d)            ||
-                        (((vinsn_issue_d.op    inside {VFDIV, VFRDIV, VFSQRT})  ||
-                        (vinsn_processing_d.op inside {VFDIV, VFRDIV, VFSQRT})) &&
-                        vinsn_issue_d.id != vinsn_processing_d.id);
+    latency_problem = (vinsn_issue_lat < vinsn_processing_lat)            ||
+                        (((vinsn_issue_q.op    inside {VFDIV, VFRDIV, VFSQRT})  ||
+                        (vinsn_processing_q.op inside {VFDIV, VFRDIV, VFSQRT})) &&
+                        vinsn_issue_q.id != vinsn_processing_q.id);
 
-    latency_stall     = vinsn_issue_q_valid & vinsn_processing_q_valid & latency_problem_q;
+    latency_stall     = vinsn_issue_q_valid & vinsn_processing_q_valid & latency_problem;
 
     operand_a = (vinsn_issue_q.op == VFRDIV) ? scalar_op : mfpu_operand_i[1]; // vs2
     operand_b = (vinsn_issue_q.use_scalar_op && vinsn_issue_q.op != VFRDIV)
@@ -2357,7 +2358,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       narrowing_select_out_q  <= 1'b0;
       fflags_ex_valid_q       <= 1'b0;
       fflags_ex_q             <= '0;
-      latency_problem_q       <= 1'b0;
       simd_red_cnt_q          <= '0;
       mfpu_state_q            <= NO_REDUCTION;
       reduction_rx_cnt_q      <= '0;
@@ -2381,7 +2381,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       narrowing_select_out_q  <= narrowing_select_out_d;
       fflags_ex_valid_q       <= fflags_ex_valid_d;
       fflags_ex_q             <= fflags_ex_d;
-      latency_problem_q       <= latency_problem_d;
       simd_red_cnt_q          <= simd_red_cnt_d;
       mfpu_state_q            <= mfpu_state_d;
       reduction_rx_cnt_q      <= reduction_rx_cnt_d;
