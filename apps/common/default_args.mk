@@ -38,3 +38,5 @@ def_args_spmv        ?= "128 128 0.6"
 def_args_conjugate_gradient	?= "128 0 0.5"
 # box1d, particles_per_box, alpha, maxelm
 def_args_lavamd      ?= "2 32 0.5 128"
+# Number of 16-byte AES-128 blocks to encrypt
+def_args_aes         ?= "64"
