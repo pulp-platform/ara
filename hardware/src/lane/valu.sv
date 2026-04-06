@@ -795,7 +795,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           aes_phase = 1'b0;
           // Need both operands: AluA (vd_op/state) and AluB (vs2/round key)
           // We consume AluA now but keep AluB for Phase 2
-          if (alu_operand_valid_i[0] && alu_operand_valid_i[1]) begin
+          if (!result_queue_full && alu_operand_valid_i[0] && alu_operand_valid_i[1]) begin
             // Compute SubBytes via simd_aes_lane (phase=0)
             // Buffer SubBytes'd result in result queue entry (don't bump pointers yet —
             // same pattern as reductions, the entry is reused as a buffer)
@@ -879,8 +879,15 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     //  Write results into the VRF  //
     //////////////////////////////////
 
-    alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
-    if (alu_state_q == NO_REDUCTION || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max_q)) begin
+    // During AES_TX, wdata must come from write_pnt (SubBytes buffer) for the SLDU.
+    // In all other states, wdata comes from read_pnt for VRF writeback.
+    alu_result_wdata_o = (alu_state_q == AES_TX)
+                       ? result_queue_q[result_queue_write_pnt_q].wdata
+                       : result_queue_q[result_queue_read_pnt_q].wdata;
+    // Enable VRF writeback in NO_REDUCTION, AES_SUBBYTES, AES_RX, and SIMD_REDUCTION final.
+    // Disabled during AES_TX (wdata is muxed for SLDU, not VRF).
+    if (alu_state_q == NO_REDUCTION || alu_state_q inside {AES_SUBBYTES, AES_RX}
+        || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max_q)) begin
       alu_result_req_o = result_queue_valid_q[result_queue_read_pnt_q] & ((alu_state_q == SIMD_REDUCTION) || !result_queue_q[result_queue_read_pnt_q].mask);
     end else begin
       alu_result_req_o = 1'b0;
