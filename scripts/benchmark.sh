@@ -372,6 +372,46 @@ jacobi2d() {
   done
 }
 
+#########
+## AES ##
+#########
+
+aes() {
+
+  kernel=aes
+  defines=""
+  # Tag as 16-byte-block benchmark; dummy sew
+  sew=4
+
+  tempfile=`mktemp`
+
+  # Log the performance results
+  > ${kernel}_${nr_lanes}.benchmark
+  > ${kernel}_${nr_lanes}_ideal.benchmark
+  # Init error report
+  echo "kernel: $kernel" >> ${error_rpt}
+
+  # Measure throughput for several buffer sizes (blocks of 16 B)
+  for nblocks in 4 8 16 32 64 128 256 512 1024; do
+
+    args="$nblocks"
+    metadata="$kernel $nr_lanes $nblocks $sew"
+
+    clean_and_gen_data $kernel "$args" || exit
+
+    # Default System
+    compile_and_run $kernel "$defines" $tempfile 0                                                 || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark    || exit
+
+    # Ideal Dispatcher System, if QuestaSim is available
+    if [ "$ci" == 0 ]; then
+      compile_and_run $kernel "$defines" $tempfile 1                                               || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      verify_id_results 0 | tee -a ${error_rpt}
+    fi
+  done
+}
+
 #############
 ## DROPOUT ##
 #############
@@ -851,6 +891,10 @@ case $1 in
     lavamd
     ;;
 
+  "aes")
+    aes
+    ;;
+
   *)
     echo "Benchmarking all the apps."
     matmul fmatmul
@@ -866,5 +910,6 @@ case $1 in
     pathfinder
     roi_align
     lavamd
+    aes
     ;;
 esac
