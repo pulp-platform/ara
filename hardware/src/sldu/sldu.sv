@@ -622,12 +622,13 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
               state_d = SLIDE_RUN_OSUM;
             end
-            // AES ops (one pass through all lanes: ShiftRows for round ops, prefix-XOR for key schedule)
+            // AES ops: ShiftRows for round ops, prefix-XOR for key schedule.
+            // Each beat processes NrLanes*8 bytes; total bytes = VL * 4 (SEW=32).
+            // Note: vsew was overridden to EW64 at accept time, so use EW32 explicitly.
             VAESDM_VV, VAESDF_VV, VAESEM_VV, VAESEF_VV, VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS, VAESKF1, VAESKF2:  if (Zvkned(CryptoSupport)) begin
               in_pnt_d  = '0;
               out_pnt_d = '0;
-              // One beat: NrLanes * 8 bytes
-              issue_cnt_d = NrLanes * 8;
+              issue_cnt_d = vinsn_issue_q.vl << unsigned'(rvv_pkg::EW32);
             end
             // Unordered reductions
             default: begin
@@ -974,7 +975,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {VSLIDEUP, VSLIDEDOWN}
                      ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew)
                      : (Zvkned(CryptoSupport) && vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {[VAESDM_VV:VAESKF2]})
-                     ? NrLanes * 8
+                     ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << unsigned'(rvv_pkg::EW32)
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
 
         // Trim vector elements which are not written by the slide unit
@@ -1006,7 +1007,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
         else if (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]})
-          commit_cnt_d = NrLanes * 8; // One beat through all lanes
+          commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
         // Trim vector elements which are not written by the slide unit
