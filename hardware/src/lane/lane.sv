@@ -92,6 +92,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     input  strb_t               [NrVRFWordsPerBeat-1:0]   ldu_result_be_i,
     output logic                [NrVRFWordsPerBeat-1:0]   ldu_result_gnt_o,
     output logic                [NrVRFWordsPerBeat-1:0]   ldu_result_final_gnt_o,
+    // Load completion signal (from VLDU)
+    input  logic                                          load_complete_i,
     // Interface with the Mask unit
     output `STRUCT_VECT(elen_t, [NrMaskFUnits+2-1:0])      mask_operand_o,
     output logic                [NrMaskFUnits+2-1:0]       mask_operand_valid_o,
@@ -386,7 +388,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_result_wdata_i       (ldu_result_wdata_i      ),
     .ldu_result_be_i          (ldu_result_be_i         ),
     .ldu_result_gnt_o         (ldu_result_gnt_o        ),
-    .ldu_result_final_gnt_o   (ldu_result_final_gnt_o  )
+    .ldu_result_final_gnt_o   (ldu_result_final_gnt_o  ),
+    .load_complete_i          (load_complete_i         )
   );
 
   ////////////////////////////

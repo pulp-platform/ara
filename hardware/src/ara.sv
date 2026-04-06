@@ -420,6 +420,7 @@ module ara import ara_pkg::*; #(
       .ldu_result_be_i                 (ldu_result_be[lane]                 ),
       .ldu_result_gnt_o                (ldu_result_gnt[lane]                ),
       .ldu_result_final_gnt_o          (ldu_result_final_gnt[lane]          ),
+      .load_complete_i                 (load_complete                       ),
       // Interface with the store unit — NrVRFWordsPerBeat parallel operand words
       .stu_operand_o                   (stu_operand[lane]                   ),
       .stu_operand_valid_o             (stu_operand_valid[lane]             ),

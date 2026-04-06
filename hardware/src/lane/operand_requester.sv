@@ -82,7 +82,9 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     input  elen_t              [NrVRFWordsPerBeat-1:0] ldu_result_wdata_i,
     input  strb_t              [NrVRFWordsPerBeat-1:0] ldu_result_be_i,
     output logic               [NrVRFWordsPerBeat-1:0] ldu_result_gnt_o,
-    output logic               [NrVRFWordsPerBeat-1:0] ldu_result_final_gnt_o
+    output logic               [NrVRFWordsPerBeat-1:0] ldu_result_final_gnt_o,
+    // Load completion signal (from VLDU, active for one cycle when a load instruction finishes)
+    input  logic                                       load_complete_i
   );
 
   import cf_math_pkg::idx_width;
@@ -188,44 +190,74 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
   // Instruction wrote a result
   logic [NrVInsn-1:0] vinsn_result_written_d, vinsn_result_written_q;
 
-  // Track which VLDU segments have been granted for the current beat.
-  // Only fire vinsn_result_written when ALL segments are granted (possibly
-  // across multiple cycles). This prevents chained instructions from reading
-  // VRF words whose segments haven't been written yet due to HP preemption.
-  logic [NrVRFWordsPerBeat-1:0] ldu_beat_seg_granted_d, ldu_beat_seg_granted_q;
+  // Fine-grained element-level tracking for load-compute chaining.
+  // 16 bits track NrVRFWordsPerBeat queues x NrVRFWordsPerBeat beats.
+  // Bit layout: bit[beat * NrVRFWordsPerBeat + queue].
+  //   Queue 0 owns bits {0, 4, 8, 12}; Queue 1 owns {1, 5, 9, 13}; etc.
+  // Each per-requester block maintains its own copy of this register.
+  // The module-level set mask is broadcast to all requesters simultaneously.
+  //
+  // IMPORTANT: The element tracking only works for the *active* load (ldu_active_id_q).
+  // For other concurrent loads, the coarse ldu_beat_seg_granted / vinsn_result_written
+  // mechanism is kept as a fallback. Element tracking adds finer granularity on top.
+  localparam int unsigned NrLduTrackBits = NrVRFWordsPerBeat * NrVRFWordsPerBeat;
+
+  // Per-VLDU-queue write counter: which beat (0..NrVRFWordsPerBeat-1) the next grant belongs to.
+  logic [$clog2(NrVRFWordsPerBeat)-1:0] ldu_queue_wr_cnt_d [NrVRFWordsPerBeat];
+  logic [$clog2(NrVRFWordsPerBeat)-1:0] ldu_queue_wr_cnt_q [NrVRFWordsPerBeat];
+  // Active load instruction ID (updated on every VLDU grant)
+  vid_t ldu_active_id_d, ldu_active_id_q;
+  // Combinational mask: which bits of the 16-bit tracking register to set this cycle
+  logic [NrLduTrackBits-1:0] ldu_queue_set_mask;
 
   always_comb begin
-    vinsn_result_written_d = '0;
-    ldu_beat_seg_granted_d = ldu_beat_seg_granted_q;
+    vinsn_result_written_d  = '0;
+    ldu_active_id_d         = ldu_active_id_q;
+    ldu_queue_set_mask      = '0;
+    for (int w = 0; w < NrVRFWordsPerBeat; w++)
+      ldu_queue_wr_cnt_d[w] = ldu_queue_wr_cnt_q[w];
 
     // Which vector instructions are writing something?
-    vinsn_result_written_d[alu_result_id_i] |= alu_result_gnt_o;
+    vinsn_result_written_d[alu_result_id_i]  |= alu_result_gnt_o;
     vinsn_result_written_d[mfpu_result_id_i] |= mfpu_result_gnt_o;
-    vinsn_result_written_d[masku_result_id] |= masku_result_gnt;
-    vinsn_result_written_d[sldu_result_id] |= sldu_result_gnt;
+    vinsn_result_written_d[masku_result_id]  |= masku_result_gnt;
+    vinsn_result_written_d[sldu_result_id]   |= sldu_result_gnt;
 
-    // VLDU: accumulate per-segment grants across cycles
+    // Per-segment load pacing: each individual segment grant fires vinsn_result_written.
+    // This avoids deadlock where HP operand reads starve LP load writes —
+    // if one segment is granted, the dependent compute can make progress immediately.
     for (int w = 0; w < NrVRFWordsPerBeat; w++)
-      if (ldu_result_gnt[w])
-        ldu_beat_seg_granted_d[w] = 1'b1;
+      vinsn_result_written_d[ldu_result_id[w]] |= ldu_result_gnt[w];
 
-    // Only fire pacing when ALL segments have been granted
-    if (&ldu_beat_seg_granted_d) begin
-      vinsn_result_written_d[ldu_result_id[0]] = 1'b1;
-      // Reset for the next beat
-      ldu_beat_seg_granted_d = '0;
+    // Reset write counters when a load instruction completes or on exception flush
+    if (load_complete_i || lsu_ex_flush_i) begin
+      for (int w = 0; w < NrVRFWordsPerBeat; w++)
+        ldu_queue_wr_cnt_d[w] = '0;
+    end
+
+    // VLDU: compute the fine-grained set mask from queue grants
+    for (int w = 0; w < NrVRFWordsPerBeat; w++) begin
+      if (ldu_result_gnt[w]) begin
+        ldu_queue_set_mask[ldu_queue_wr_cnt_d[w] * NrVRFWordsPerBeat + w] = 1'b1;
+        ldu_queue_wr_cnt_d[w] = ldu_queue_wr_cnt_d[w] + 1;
+        ldu_active_id_d = ldu_result_id[w];
+      end
     end
   end
 
   always_ff @(posedge clk_i or negedge rst_ni) begin: p_vinsn_result_written_ff
     if (!rst_ni) begin
-      vinsn_result_written_q   <= '0;
-      ldu_beat_seg_granted_q   <= '0;
-      lsu_ex_flush_o <= 1'b0;
+      vinsn_result_written_q <= '0;
+      ldu_active_id_q        <= '0;
+      for (int w = 0; w < NrVRFWordsPerBeat; w++)
+        ldu_queue_wr_cnt_q[w] <= '0;
+      lsu_ex_flush_o         <= 1'b0;
     end else begin
-      vinsn_result_written_q   <= vinsn_result_written_d;
-      ldu_beat_seg_granted_q   <= ldu_beat_seg_granted_d;
-      lsu_ex_flush_o <= lsu_ex_flush_i;
+      vinsn_result_written_q <= vinsn_result_written_d;
+      ldu_active_id_q        <= ldu_active_id_d;
+      for (int w = 0; w < NrVRFWordsPerBeat; w++)
+        ldu_queue_wr_cnt_q[w] <= ldu_queue_wr_cnt_d[w];
+      lsu_ex_flush_o         <= lsu_ex_flush_i;
     end
   end
 
@@ -297,9 +329,26 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
     requester_metadata_t requester_metadata_d, requester_metadata_q;
 
+    // Per-requester element-level tracking register and read pointer
+    logic [NrLduTrackBits-1:0]          ldu_elem_written_d, ldu_elem_written_q;
+    logic [$clog2(NrLduTrackBits)-1:0]  ldu_rd_pnt_d, ldu_rd_pnt_q;
+
+    // Augment vinsn_result_written with per-element load tracking.
+    // Element tracking provides finer granularity for the active load BETWEEN
+    // coarse per-segment pulses. When the coarse mechanism fires for the active
+    // load, it already handles pacing — element tracking is not applied to avoid
+    // double-advancing.
+    logic [NrVInsn-1:0] effective_result_written;
+    always_comb begin
+      effective_result_written = vinsn_result_written_q;
+      if (!vinsn_result_written_q[ldu_active_id_q])
+        effective_result_written[ldu_active_id_q] =
+          effective_result_written[ldu_active_id_q] | ldu_elem_written_q[ldu_rd_pnt_q];
+    end
+
     // Is there a hazard during this cycle?
     logic stall;
-    assign stall = |(requester_metadata_q.hazard & ~(vinsn_result_written_q &
+    assign stall = |(requester_metadata_q.hazard & ~(effective_result_written &
                    (~{NrVInsn{requester_metadata_q.is_widening}} | requester_metadata_q.waw_hazard_counter)));
 
     // Did we get a grant?
@@ -329,6 +378,16 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
       // Maintain state
       state_d     = state_q;
       requester_metadata_d = requester_metadata_q;
+
+      // Per-requester element tracking: apply set mask from VLDU writes
+      ldu_elem_written_d = ldu_elem_written_q | ldu_queue_set_mask;
+      ldu_rd_pnt_d       = ldu_rd_pnt_q;
+
+      // Reset element tracking when load completes
+      if (load_complete_i) begin
+        ldu_elem_written_d = ldu_queue_set_mask;
+        ldu_rd_pnt_d       = '0;
+      end
 
       // Make no requests to the VRF
       operand_payload[requester_index] = '0;
@@ -392,6 +451,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
             // Acknowledge the request
             operand_request_ready_o[requester_index] = 1'b1;
 
+            // Reset element tracking for the new instruction
+            ldu_elem_written_d = ldu_queue_set_mask;
+            ldu_rd_pnt_d       = '0;
+
             // Send a command to the operand queue
             operand_queue_cmd_o[requester_index] = operand_queue_cmd_tmp;
             operand_queue_cmd_valid_o[requester_index] = 1'b1;
@@ -450,6 +513,14 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
               else begin
                 requester_metadata_d.len = requester_metadata_q.len - num_elements;
               end
+
+              // Advance element tracking pointer when element tracking was the
+              // sole enabler (coarse didn't fire for the active load this cycle).
+              if (requester_metadata_q.hazard[ldu_active_id_q] &&
+                  !vinsn_result_written_q[ldu_active_id_q]) begin
+                ldu_elem_written_d[ldu_rd_pnt_q] = 1'b0;
+                ldu_rd_pnt_d = ldu_rd_pnt_q + 1;
+              end
             end : op_req_grant
 
             // Finished requesting all the elements
@@ -461,6 +532,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
                 state_d                            = REQUESTING;
                 // Acknowledge the request
                 operand_request_ready_o[requester_index] = 1'b1;
+
+                // Reset element tracking for the new instruction
+                ldu_elem_written_d = ldu_queue_set_mask;
+                ldu_rd_pnt_d       = '0;
 
                 // Send a command to the operand queue
                 operand_queue_cmd_o[requester_index] = operand_queue_cmd_tmp;
@@ -502,16 +577,23 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         requester_metadata_d = '0;
         // Flush this request
         lane_operand_req_transposed[requester_index][bank] = '0;
+        // Reset element tracking
+        ldu_elem_written_d = '0;
+        ldu_rd_pnt_d       = '0;
       end : vlsu_exception_idle
     end : operand_requester
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
-        state_q     <= IDLE;
+        state_q              <= IDLE;
         requester_metadata_q <= '0;
+        ldu_elem_written_q   <= '0;
+        ldu_rd_pnt_q         <= '0;
       end else begin
-        state_q     <= state_d;
+        state_q              <= state_d;
         requester_metadata_q <= requester_metadata_d;
+        ldu_elem_written_q   <= ldu_elem_written_d;
+        ldu_rd_pnt_q         <= ldu_rd_pnt_d;
       end
     end
     end : gen_independent
@@ -836,8 +918,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
           operand_gnt[bank][NrOperandQueues + int'(VFU_LoadUnit) + w];
     end
     // Note: individual segment grants are allowed — the stream registers advance
-    // independently. The pacing (vinsn_result_written) only fires when ALL
-    // segments have been granted (tracked by ldu_beat_seg_granted).
+    // independently. Each segment grant immediately fires vinsn_result_written
+    // (per-segment pacing) to avoid deadlock from HP/LP arbiter starvation.
+    // Per-requester 16-bit element tracking registers provide additional
+    // fine-grained load-compute chaining on top of this.
   end
 
   // Instantiate a RR arbiter per bank

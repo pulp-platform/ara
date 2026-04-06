@@ -8,15 +8,17 @@
 // upon receiving vector memory operations.
 
 module vldu import ara_pkg::*; import rvv_pkg::*; #(
-    parameter  int  unsigned NrLanes   = 0,
-    parameter  int  unsigned VLEN      = 0,
-    parameter  type          vaddr_t   = logic,  // Type used to address vector register file elements
-    parameter  type          pe_req_t  = logic,
-    parameter  type          pe_resp_t = logic,
+    parameter  int  unsigned NrLanes          = 0,
+    parameter  int  unsigned VLEN             = 0,
+    parameter  type          vaddr_t          = logic,  // Type used to address vector register file elements
+    parameter  type          pe_req_t         = logic,
+    parameter  type          pe_resp_t        = logic,
     // AXI Interface parameters
-    parameter  int  unsigned AxiDataWidth = 0,
-    parameter  int  unsigned AxiAddrWidth = 0,
-    parameter  type          axi_r_t      = logic,
+    parameter  int  unsigned AxiDataWidth     = 0,
+    parameter  int  unsigned AxiAddrWidth     = 0,
+    parameter  type          axi_r_t          = logic,
+    // Result queue depth (number of buffered beats between AXI reception and VRF write-back)
+    parameter  int  unsigned ResultQueueDepth = 16,
     // Dependant parameters. DO NOT CHANGE!
     localparam int           DataWidth         = $bits(elen_t),
     localparam type          strb_t            = logic[DataWidth/8-1:0],
@@ -160,7 +162,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   //  Result queues  //
   /////////////////////
 
-  localparam int unsigned ResultQueueDepth = 2;
+  // ResultQueueDepth is now a module parameter (default 4)
 
   // There are NrVRFWordsPerBeat independent result queues, one per VRF word slot per beat.
   // Write pointers advance together (one AXI beat fills one entry in every queue).
@@ -515,14 +517,9 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
     // Advance each queue's read pointer independently when all its lanes are granted
     for (int unsigned w = 0; w < NrVRFWordsPerBeat; w++) begin : advance_read_ptrs
+      res_queue_eff_write_bytes = (NrLanes * DataWidthB);
       if (first_result_queue_read_q && w == 0) begin
-        // first_payload_byte accounts for ALL segments (partial queue 0 + full queues 1..N-1).
-        // Only w=0 subtracts it; w>0 subtracts 0 to avoid double-counting.
         res_queue_eff_write_bytes = first_payload_byte_q;
-      end else if (first_result_queue_read_q) begin
-        res_queue_eff_write_bytes = '0;
-      end else begin
-        res_queue_eff_write_bytes = (NrLanes * DataWidthB);
       end
 
       if (!(|result_queue_valid_d[w][result_queue_read_pnt_q[w]]) &&
