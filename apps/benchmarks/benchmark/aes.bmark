@@ -28,9 +28,9 @@
 #endif
 
 extern const uint64_t N;
-extern const uint32_t round_keys[]   __attribute__((aligned(16)));
-extern const uint32_t plaintext[]    __attribute__((aligned(4 * NR_LANES)));
-extern       uint32_t ciphertext[]   __attribute__((aligned(4 * NR_LANES)));
+extern const uint32_t round_keys[] __attribute__((aligned(16)));
+extern const uint32_t plaintext[] __attribute__((aligned(4 * NR_LANES)));
+extern uint32_t ciphertext[] __attribute__((aligned(4 * NR_LANES)));
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)

@@ -43,8 +43,8 @@ int main() {
   printf("=  AES  =\n");
   printf("=========\n");
   printf("\n");
-  printf("Running AES-128 ECB on %lu blocks (%lu bytes).\n",
-         (unsigned long)N, (unsigned long)(N * AES_BLOCK_BYTES));
+  printf("Running AES-128 ECB on %lu blocks (%lu bytes).\n", (unsigned long)N,
+         (unsigned long)(N * AES_BLOCK_BYTES));
 
   // Encrypt
   start_timer();
@@ -67,16 +67,16 @@ int main() {
   // Verify encryption against the reference ciphertext.
   for (uint64_t i = 0; i < N * AES_BLOCK_WORDS; ++i) {
     if (ciphertext[i] != ciphertext_g[i]) {
-      printf("Encrypt error at word %lu: 0x%08x != 0x%08x\n",
-             (unsigned long)i, ciphertext[i], ciphertext_g[i]);
+      printf("Encrypt error at word %lu: 0x%08x != 0x%08x\n", (unsigned long)i,
+             ciphertext[i], ciphertext_g[i]);
       return 1;
     }
   }
   // Verify decryption round-trips back to the plaintext.
   for (uint64_t i = 0; i < N * AES_BLOCK_WORDS; ++i) {
     if (roundtrip[i] != plaintext[i]) {
-      printf("Decrypt error at word %lu: 0x%08x != 0x%08x\n",
-             (unsigned long)i, roundtrip[i], plaintext[i]);
+      printf("Decrypt error at word %lu: 0x%08x != 0x%08x\n", (unsigned long)i,
+             roundtrip[i], plaintext[i]);
       return 2;
     }
   }
