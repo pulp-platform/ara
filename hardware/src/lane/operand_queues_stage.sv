@@ -11,6 +11,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     parameter int     unsigned VLEN             = 0,
     // Support for floating-point data types
     parameter fpu_support_e FPUSupport          = FPUSupportHalfSingleDouble,
+    // Support for Crypto extensions
+    parameter crypto_support_e       CryptoSupport       = CryptoSupportNone,
     parameter type          operand_queue_cmd_t = logic
   ) (
     input  logic                                     clk_i,
@@ -52,7 +54,9 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     // Mask unit
     output elen_t              [1:0]                 mask_operand_o,
     output logic               [1:0]                 mask_operand_valid_o,
-    input  logic               [1:0]                 mask_operand_ready_i
+    input  logic               [1:0]                 mask_operand_ready_i,
+    // Cross-lane AES .vs key broadcast (for AluB operand queue)
+    input  elen_t                                    alu_b_broadcast_key_i
   );
 
   `include "common_cells/registers.svh"
@@ -68,6 +72,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .CmdBufDepth        (ValuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
     .FPUSupport         (FPUSupportNone       ),
+    .CryptoSupport      (CryptoSupportNone    ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -91,13 +96,15 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (alu_operand_o[0]               ),
     .operand_target_fu_o      (/* Unused */                   ),
     .operand_valid_o          (alu_operand_valid_o[0]         ),
-    .operand_ready_i          (alu_operand_ready_i[0]         )
+    .operand_ready_i          (alu_operand_ready_i[0]         ),
+    .broadcast_key_data_i     ('0                             )
   );
 
   operand_queue #(
     .CmdBufDepth        (ValuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
     .FPUSupport         (FPUSupportNone       ),
+    .CryptoSupport      (CryptoSupport        ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -121,7 +128,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (alu_operand_o[1]               ),
     .operand_target_fu_o      (/* Unused */                   ),
     .operand_valid_o          (alu_operand_valid_o[1]         ),
-    .operand_ready_i          (alu_operand_ready_i[1]         )
+    .operand_ready_i          (alu_operand_ready_i[1]         ),
+    .broadcast_key_data_i     (alu_b_broadcast_key_i          )
   );
 
   //////////////////////
@@ -132,6 +140,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .CmdBufDepth        (MfpuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
     .FPUSupport         (FPUSupport           ),
+    .CryptoSupport      (CryptoSupportNone    ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -153,13 +162,15 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (mfpu_operand_o[0]                 ),
     .operand_target_fu_o      (/* Unused */                      ),
     .operand_valid_o          (mfpu_operand_valid_o[0]           ),
-    .operand_ready_i          (mfpu_operand_ready_i[0]           )
+    .operand_ready_i          (mfpu_operand_ready_i[0]           ),
+    .broadcast_key_data_i     ('0                                )
   );
 
   operand_queue #(
     .CmdBufDepth        (MfpuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
     .FPUSupport         (FPUSupport           ),
+    .CryptoSupport      (CryptoSupportNone    ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -181,13 +192,15 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (mfpu_operand_o[1]                 ),
     .operand_target_fu_o      (/* Unused */                      ),
     .operand_valid_o          (mfpu_operand_valid_o[1]           ),
-    .operand_ready_i          (mfpu_operand_ready_i[1]           )
+    .operand_ready_i          (mfpu_operand_ready_i[1]           ),
+    .broadcast_key_data_i     ('0                                )
   );
 
   operand_queue #(
     .CmdBufDepth        (MfpuInsnQueueDepth   ),
     .DataBufDepth       (5                    ),
     .FPUSupport         (FPUSupport           ),
+    .CryptoSupport      (CryptoSupportNone    ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .SupportIntExt2     (1'b1                 ),
@@ -209,7 +222,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (mfpu_operand_o[2]                 ),
     .operand_target_fu_o      (/* Unused */                      ),
     .operand_valid_o          (mfpu_operand_valid_o[2]           ),
-    .operand_ready_i          (mfpu_operand_ready_i[2]           )
+    .operand_ready_i          (mfpu_operand_ready_i[2]           ),
+    .broadcast_key_data_i     ('0                                )
   );
 
   ///////////////////////
@@ -220,6 +234,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .CmdBufDepth        (VstuInsnQueueDepth + MaskuInsnQueueDepth),
     .DataBufDepth       (2                                       ),
     .FPUSupport         (FPUSupportNone                          ),
+    .CryptoSupport      (CryptoSupportNone                       ),
     .NrLanes            (NrLanes                                 ),
     .VLEN               (VLEN                                    ),
     .operand_queue_cmd_t(operand_queue_cmd_t                     )
@@ -238,7 +253,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (stu_operand_o                 ),
     .operand_target_fu_o      (/* Unused */                  ),
     .operand_valid_o          (stu_operand_valid_o           ),
-    .operand_ready_i          (stu_operand_ready_i           )
+    .operand_ready_i          (stu_operand_ready_i           ),
+    .broadcast_key_data_i     ('0                            )
   );
 
   /****************
@@ -250,6 +266,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .DataBufDepth       (2                    ),
     .AccessCmdPop       (1'b1                 ),
     .FPUSupport         (FPUSupportNone       ),
+    .CryptoSupport      (CryptoSupportNone    ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .operand_queue_cmd_t(operand_queue_cmd_t  )
@@ -268,7 +285,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (sldu_addrgen_operand_o                  ),
     .operand_target_fu_o      (sldu_addrgen_operand_target_fu_o        ),
     .operand_valid_o          (sldu_addrgen_operand_valid_o            ),
-    .operand_ready_i          (sldu_addrgen_operand_ready_i            )
+    .operand_ready_i          (sldu_addrgen_operand_ready_i            ),
+    .broadcast_key_data_i     ('0                                      )
   );
 
   /////////////////
@@ -280,6 +298,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .DataBufDepth       (MaskuInsnQueueDepth + VrgatherOpQueueBufDepth ),
     .AccessCmdPop       (1'b1                                          ),
     .FPUSupport         (FPUSupportNone                                ),
+    .CryptoSupport      (CryptoSupportNone                             ),
     .SupportIntExt2     (1'b1                                          ),
     .SupportIntExt4     (1'b1                                          ),
     .SupportIntExt8     (1'b1                                          ),
@@ -301,13 +320,15 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (mask_operand_o[1]               ),
     .operand_target_fu_o      (/* Unused */                    ),
     .operand_valid_o          (mask_operand_valid_o[1]         ),
-    .operand_ready_i          (mask_operand_ready_i[1]         )
+    .operand_ready_i          (mask_operand_ready_i[1]         ),
+    .broadcast_key_data_i     ('0                              )
   );
 
   operand_queue #(
     .CmdBufDepth        (MaskuInsnQueueDepth  ),
     .DataBufDepth       (1                    ),
     .FPUSupport         (FPUSupportNone       ),
+    .CryptoSupport      (CryptoSupportNone    ),
     .NrLanes            (NrLanes              ),
     .VLEN               (VLEN                 ),
     .operand_queue_cmd_t(operand_queue_cmd_t  )
@@ -326,7 +347,8 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
     .operand_o                (mask_operand_o[0]               ),
     .operand_target_fu_o      (/* Unused */                    ),
     .operand_valid_o          (mask_operand_valid_o[0]         ),
-    .operand_ready_i          (mask_operand_ready_i[0]         )
+    .operand_ready_i          (mask_operand_ready_i[0]         ),
+    .broadcast_key_data_i     ('0                              )
   );
 
   // Checks

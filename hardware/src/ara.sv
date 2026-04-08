@@ -92,13 +92,6 @@ module ara import ara_pkg::*; #(
         $fatal(1,
                "Ara Zvkned requires NrLanes*(ELEN/32) to be a multiple of 4 and at least 4 AES columns per beat; got NrLanes=%0d, ELEN=%0d",
                NrLanes, ELEN);
-      // .vs broadcast relies on per-lane operand queue duplication which only
-      // covers the within-lane case.  NrLanes > 4 would need cross-lane data
-      // replication that is not yet implemented.
-      if (NrLanes > 4)
-        $fatal(1,
-               "Ara Zvkned .vs broadcast currently only supports NrLanes <= 4; got NrLanes=%0d",
-               NrLanes);
       if (MaxVLenPerLane < ELEN)
         $fatal(1,
                "Ara Zvkned requires VLEN/NrLanes >= %0d bits so each lane can hold one 64-bit beat; got VLEN=%0d, NrLanes=%0d",
@@ -393,6 +386,19 @@ module ara import ara_pkg::*; #(
   logic      [NrLanes-1:0]                     masku_vrgat_req_ready;
   vrgat_req_t                                  masku_vrgat_req;
 
+  // Cross-lane AES .vs key broadcast wiring.
+  // For .vs instructions, the 128-bit round key lives in vs2[3:0], which maps
+  // to lanes 0-3. Lanes 4+ need to receive the key from lane (l % 4).
+  elen_t [NrLanes-1:0] aes_key_data;
+  elen_t [NrLanes-1:0] aes_broadcast_key;
+  if (Zvkned(CryptoSupport)) begin : gen_aes_broadcast
+    for (genvar l = 0; l < NrLanes; l++) begin : gen_aes_broadcast
+      assign aes_broadcast_key[l] = aes_key_data[l % 4];
+    end
+  end else begin : gen_no_aes_broadcast
+    assign aes_broadcast_key = '0;
+  end
+
   for (genvar lane = 0; lane < NrLanes; lane++) begin: gen_lanes
     lane #(
       .NrLanes              (NrLanes              ),
@@ -472,7 +478,10 @@ module ara import ara_pkg::*; #(
       .masku_vrgat_req_i               (masku_vrgat_req                     ),
       .mask_i                          (mask[lane]                          ),
       .mask_valid_i                    (mask_valid[lane] & mask_valid_lane  ),
-      .mask_ready_o                    (lane_mask_ready[lane]               )
+      .mask_ready_o                    (lane_mask_ready[lane]               ),
+      // Cross-lane AES .vs key broadcast
+      .aes_broadcast_key_i             (aes_broadcast_key[lane]             ),
+      .aes_key_data_o                  (aes_key_data[lane]                  )
     );
   end: gen_lanes
 

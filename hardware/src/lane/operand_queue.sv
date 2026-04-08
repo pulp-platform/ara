@@ -17,6 +17,8 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     parameter  bit                    AccessCmdPop        = 0,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport          = FPUSupportHalfSingleDouble,
+    // Support for Crypto extensions
+    parameter  crypto_support_e       CryptoSupport       = CryptoSupportNone,
     // Supported conversions
     parameter  logic                  SupportIntExt2      = 1'b0,
     parameter  logic                  SupportIntExt4      = 1'b0,
@@ -49,7 +51,9 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     output elen_t                             operand_o,
     output target_fu_e                        operand_target_fu_o,
     output logic                              operand_valid_o,
-    input  logic               [NrSlaves-1:0] operand_ready_i
+    input  logic               [NrSlaves-1:0] operand_ready_i,
+    // Cross-lane AES .vs key broadcast: data from lane (lane_id % 4)
+    input  elen_t                             broadcast_key_data_i
   );
 
   //////////////////////
@@ -491,13 +495,21 @@ module operand_queue import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     elem_count_d     = elem_count_q;
 
     // Send the operand. AES _vs uses the first 128-bit key group for the full
-    // instruction. With 4 lanes, one 64-bit packet already contains both AES
-    // groups in its low/high 32-bit halves, so broadcast by duplicating the
-    // first-group half locally. With 2 lanes, the whole first packet belongs to
-    // the first AES group and can be replayed unchanged.
+    // instruction. With NrLanes >= 4, each lane's lower 32 bits hold one key
+    // column; the upper 32 bits (next element group) need the same column, so
+    // broadcast by duplicating the first-group half locally. With NrLanes < 4
+    // (e.g. 2), both halves belong to the same AES group and can be replayed
+    // unchanged.
+    // With NrLanes > 4 (8 or 16 lanes), lanes 4+ don't hold key data in
+    // their VRF — they need the data from lane (lane_id % 4) via cross-lane
+    // broadcast wiring (broadcast_key_data_i, supplied by ara.sv).
     operand_o       = conv_operand;
-    if (cmd.broadcast_first_group && cmd.eew == EW32 && NrLanes == 4)
-      operand_o = {conv_operand[31:0], conv_operand[31:0]};
+    if (Zvkned(CryptoSupport) && cmd.broadcast_first_group && cmd.eew == EW32 && NrLanes >= 4) begin
+      if (NrLanes > 4 && lane_id_i >= 4)
+        operand_o = {broadcast_key_data_i[31:0], broadcast_key_data_i[31:0]};
+      else
+        operand_o = {conv_operand[31:0], conv_operand[31:0]};
+    end
     operand_valid_o = ibuf_operand_valid;
     // Encode the target functional unit when it is not clear
     // Default encoding: SLDU == 1'b0, ADDRGEN == 1'b1
