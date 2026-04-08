@@ -108,7 +108,10 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     // Interface between the Mask unit and the VFUs
     input  strb_t                                          mask_i,
     input  logic                                           mask_valid_i,
-    output logic                                           mask_ready_o
+    output logic                                           mask_ready_o,
+    // Cross-lane AES .vs key broadcast
+    input  elen_t                                          aes_broadcast_key_i,
+    output elen_t                                          aes_key_data_o
   );
 
   `include "common_cells/registers.svh"
@@ -426,6 +429,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   elen_t [1:0] alu_operand;
   logic  [1:0] alu_operand_valid;
   logic  [1:0] alu_operand_ready;
+
+  // Expose AluB operand for cross-lane AES .vs key broadcast
+  assign aes_key_data_o = Zvkned(CryptoSupport) ? alu_operand[1] : '0;
   // Multiplier/FPU
   elen_t [2:0] mfpu_operand;
   logic  [2:0] mfpu_operand_valid;
@@ -442,6 +448,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .NrLanes            (NrLanes            ),
     .VLEN               (VLEN               ),
     .FPUSupport         (FPUSupport         ),
+    .CryptoSupport      (CryptoSupport      ),
     .operand_queue_cmd_t(operand_queue_cmd_t)
   ) i_operand_queues (
     .clk_i                            (clk_i                              ),
@@ -462,6 +469,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .mask_b_cmd_pop_o                 (mask_b_cmd_pop_d                   ),
     // Interface with the Lane
     .sldu_addrgen_cmd_pop_o           (sldu_addrgen_cmd_pop               ),
+    // Cross-lane AES .vs key broadcast
+    .alu_b_broadcast_key_i            (Zvkned(CryptoSupport) ? aes_broadcast_key_i : '0),
     // Interface with the VFUs
     // ALU
     .alu_operand_o                    (alu_operand                        ),
