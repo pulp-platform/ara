@@ -285,19 +285,9 @@ jobs:
       max-parallel: 1
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
-    needs: ["tc-verilator", "tc-isa-sim"]
+    needs: ["tc-verilator"]
     steps:
     - uses: actions/checkout@v6
-    - name: Download Spike
-      run: |
-        git submodule update --init --recursive -- toolchain/riscv-isa-sim
-        git submodule foreach --recursive git reset --hard
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
     - name: Get Verilator artifacts
       uses: actions/download-artifact@v8
       with:
@@ -326,19 +316,13 @@ jobs:
   simulate:
     runs-on: ubuntu-22.04
     strategy:
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align, lavamd]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v6
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v8
       with:
@@ -366,12 +350,6 @@ jobs:
     needs: ["compile-ara", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v6
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v8
       with:
@@ -511,12 +489,6 @@ jobs:
         name: tc-llvm
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v8
       with:
