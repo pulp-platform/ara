@@ -312,6 +312,18 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     assign is_issue_aes = 1'b0;
   end
 
+  // Active lane mask for AES ops: when VL < 2*NrLanes (less than one full beat),
+  // only lanes 0..num_active_cols-1 participate. Column c maps to lane (c % NrLanes).
+  // issue_cnt_q is in bytes; each column = 4 bytes.
+  logic [NrLanes-1:0] aes_lane_mask;
+  always_comb begin
+    aes_lane_mask = '1;
+    if (is_issue_aes) begin
+      for (int unsigned l = 0; l < NrLanes; l++)
+        aes_lane_mask[l] = (l < (issue_cnt_q >> 2)) || (issue_cnt_q >= (NrLanes * 8));
+    end
+  end
+
   always_comb begin
     sldu_mux_sel_o = NO_RED;
     if (((is_issue_alu_reduction || is_issue_aes) && !(vinsn_commit_valid && vinsn_commit.vfu != VFU_Alu)) || (vinsn_commit_valid && vinsn_commit.vfu == VFU_Alu)) begin
@@ -646,7 +658,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
       SLIDE_RUN, SLIDE_RUN_VSLIDE1UP_FIRST_WORD, SLIDE_NP2_COMMIT: begin
         // Are we ready?
         // During a reduction (vinsn_issue_q.vfu == VFU_Alu/VFU_MFPU) don't wait for mask bits
-        if ((&sldu_operand_valid ||
+        if ((&(sldu_operand_valid | ~aes_lane_mask) ||
            (((vinsn_issue_q.stride[$bits(vinsn_issue_q.vl)-1:0] >> vinsn_issue_q.vtype.vsew) >= vinsn_issue_q.vl) &&
            (state_q == SLIDE_RUN_VSLIDE1UP_FIRST_WORD))) &&
            !result_queue_full && (vinsn_issue_q.vm || vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} || (|mask_valid_q)))
@@ -761,7 +773,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
             // Send result to the VRF
             result_queue_cnt_d += 1;
-            result_queue_valid_d[result_queue_write_pnt_q] = '1;
+            // For AES with fewer active lanes than NrLanes, only mark active lanes valid.
+            // Inactive lanes have no ALU waiting to grant, so marking them valid would deadlock.
+            result_queue_valid_d[result_queue_write_pnt_q] = is_issue_aes ? aes_lane_mask : '1;
             result_queue_write_pnt_d                       = result_queue_write_pnt_q + 1;
             if (result_queue_write_pnt_q == ResultQueueDepth-1)
               result_queue_write_pnt_d = '0;
