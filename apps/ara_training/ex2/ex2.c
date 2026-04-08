@@ -57,7 +57,7 @@ void ex2(velement_t *c, velement_t *a, velement_t *b) {
    *  Task 5  *
    ************/
 
-  // Consider SIZE = 64, i.e., vectors of length 64*64 = 4096.
+  // Consider SIZE = 64, i.e., vectors of length 64*64-bits = 4096-bits
 
   // Q1: How many bytes do you need to load to run the vvadd kernel?
 
@@ -76,7 +76,7 @@ void ex2(velement_t *c, velement_t *a, velement_t *b) {
   // Ara can either load or store 16 bytes per cycle, and is capable of running
   // 4 additions per cycle.
 
-  // Q1: How many cycles do you need to load/store all the data required to run
+  // Q1: How many cycles do you need to load and store all the data required to run
   // the vvadd kernel?
 
   // Q2: How many cycles do you need to execute all the vector additions
@@ -86,7 +86,9 @@ void ex2(velement_t *c, velement_t *a, velement_t *b) {
   // (memory-bound) or by the number of ALUs (compute-bound)? Justify.
 
   // Q4: Compare the runtime of the vvadd kernel with the ideal runtime (your
-  // answer to either Q1 or Q2, depending on what you answered in Q3).
+  // answer to either Q1 or Q2, depending on what you answered in Q3). 
+  // Note: There is some overhead for timer start/stop, comment out the vvadd function and 
+  // subtract the timer overhead from the vvadd runtime to get a more accurate estimate of the vvadd runtime for comparison
 
   /**********************
    *  Check the result  *
@@ -106,14 +108,11 @@ void vvadd(velement_t *c, velement_t *a, velement_t *b, uint64_t len) {
    *  Task 1  *
    ************/
 
-  // Since we do not have a vectorizing compiler, we will need to do vector
-  // register allocation manually. For this vector-vector add, you will need
-  // three vector registers, `vA`, `vB`, and `vC`. Choose three vectors from the
-  // v0-v31 available for the execution of this kernel.
-
-  // vA = ??
-  // vB = ??
-  // vC = ??
+  // Since we do not have a vectorizing compiler (i.e. you write scalar C code and the compiler automatically vectorizes it), 
+  // we will need to do vector register allocation manually. For this vector-vector add example, you will need
+  // three vector registers, `vA`, `vB`, and `vC`. 
+  // 
+  // Choose three vectors from the v0-v31 available for the execution of this kernel.
 
   /************
    *  Task 2  *

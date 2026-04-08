@@ -148,7 +148,7 @@ void dropout_vector(uint64_t n, velement_t *i, velement_t scale,
    ************/
 
   // Test your implementation. Is it correct? If not, why?
-  // Suggestion: pay attention to the RISC-V V VRF byte layouts.
+  // Suggestion: pay attention to the RISC-V V VRF byte layouts for masks
 
   /************
    *  Task 3  *

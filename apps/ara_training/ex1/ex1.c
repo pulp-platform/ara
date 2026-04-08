@@ -60,4 +60,10 @@ void ex1(void) {
   printf("For SEW = 16, the maximum vl is %d.\n", vl);
   printf("For SEW = 32, the maximum vl is %d.\n", vl);
   printf("For SEW = 64, the maximum vl is %d.\n", vl);
+
+  /************
+   *  Task 4  *
+   ************/
+   
+  // Estimate the size of the VRF in kB?
 }

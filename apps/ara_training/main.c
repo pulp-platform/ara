@@ -57,7 +57,7 @@ velement_t d[SIZE]
 #endif
 
 int main(void) {
-  printf("SoCDAML -- 12/04/2022\n\n");
+  printf("SoCDAML -- 21/04/2026\n\n");
 
 #if (EX1 == 1)
   printf("\n-- Exercise 1 --\n");
