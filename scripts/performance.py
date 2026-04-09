@@ -121,6 +121,11 @@ def lavamd(args, cycles):
   # pseudo lavaMD iteration bounds: 1, 2, 4, par4box
   performance = (1 * 2 * 4 * (51 * par4box + 4 * min(par4box, maxelm))) / cycles
   return [par4box, performance]
+def aes(args, cycles):
+  nblocks     = int(args[0])
+  # 16 bytes per AES block
+  performance = 16 * nblocks / cycles
+  return [nblocks, performance]
 
 perfExtr = {
   'imatmul'    : imatmul,
@@ -139,6 +144,7 @@ perfExtr = {
   'fdotproduct': fdotproduct,
   'roi_align'  : roi_align,
   'lavamd'     : lavamd,
+  'aes'        : aes,
 }
 
 # Maximum performance if Ara's BW can be fully utilized
@@ -159,6 +165,7 @@ ideal_maxPerf = {
   'fdotproduct': lambda l, s : l * 8/s,
   'roi_align'  : lambda l, s : l * 8/s,
   'lavamd'     : lambda l, s : 0, # placeholder
+  'aes'        : lambda l, s : 0, # placeholder
 }
 
 # Maximum performance taking into account Ara's limited
@@ -180,6 +187,7 @@ real_maxPerf = {
   'fdotproduct': lambda l, s : 4 * l/s,
   'roi_align'  : lambda l, s : 9/5 * l * 4/s,
   'lavamd'     : lambda l, s : 0, # placeholder
+  'aes'        : lambda l, s : 0, # placeholder
 }
 
 def main():
