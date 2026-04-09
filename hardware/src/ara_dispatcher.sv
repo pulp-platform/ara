@@ -943,21 +943,40 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.conversion_vs2 = OpQueueConversionSExt2;
                     ara_req.cvt_resize     = CVT_WIDE;
                   end
+                  6'b110101: if (Zvbb(CryptoSupport)) begin
+                    ara_req.op             = ara_pkg::VWSLL;
+                    ara_req.emul           = next_lmul(csr_vtype_q.vlmul);
+                    ara_req.vtype.vsew     = csr_vtype_q.vsew.next();
+                    ara_req.conversion_vs1 = OpQueueConversionZExt2;
+                    ara_req.conversion_vs2 = OpQueueConversionZExt2;
+                    ara_req.cvt_resize     = CVT_WIDE;
+
+                    if (int'(csr_vtype_q.vsew) > int'(EW32) || ara_req.emul == LMUL_RSVD)
+                      illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   default: illegal_insn = 1'b1;
                 endcase
 
                 // Instructions with an integer LMUL have extra constraints on the registers they can
-                // access.
+                // access. Source and destination register groups can differ for widening ops.
                 unique case (ara_req.emul)
-                  LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  default:;
+                endcase
+                unique case (lmul_vs1)
+                  LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  default:;
+                endcase
+                unique case (lmul_vs2)
+                  LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
                   default:;
                 endcase
 
@@ -1207,18 +1226,33 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.op = ara_pkg::VNCLIP;
                     ara_req.eew_vs2 = csr_vtype_q.vsew.next();
                   end
+                  6'b110101: if (Zvbb(CryptoSupport)) begin
+                    ara_req.op             = ara_pkg::VWSLL;
+                    ara_req.emul           = next_lmul(csr_vtype_q.vlmul);
+                    ara_req.vtype.vsew     = csr_vtype_q.vsew.next();
+                    ara_req.conversion_vs2 = OpQueueConversionZExt2;
+                    ara_req.cvt_resize     = CVT_WIDE;
+
+                    if (int'(csr_vtype_q.vsew) > int'(EW32) || ara_req.emul == LMUL_RSVD)
+                      illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   default: illegal_insn = 1'b1;
                 endcase
 
                 // Instructions with an integer LMUL have extra constraints on the registers they can
-                // access.
+                // access. Source and destination register groups can differ for widening ops.
                 unique case (ara_req.emul)
-                  LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  default:;
+                endcase
+                unique case (lmul_vs2)
+                  LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
                   default:;
                 endcase
 
@@ -1364,6 +1398,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b100000: ara_req.op = ara_pkg::VSADDU;
                   6'b100001: ara_req.op = ara_pkg::VSADD;
                   6'b100101: ara_req.op = ara_pkg::VSLL;
+                  6'b110101: if (Zvbb(CryptoSupport)) begin
+                    ara_req.op             = ara_pkg::VWSLL;
+                    ara_req.emul           = next_lmul(csr_vtype_q.vlmul);
+                    ara_req.vtype.vsew     = csr_vtype_q.vsew.next();
+                    ara_req.scalar_op      = {{ELEN-5{1'b0}}, insn.varith_type.rs1};
+                    ara_req.conversion_vs2 = OpQueueConversionZExt2;
+                    ara_req.cvt_resize     = CVT_WIDE;
+
+                    if (int'(csr_vtype_q.vsew) > int'(EW32) || ara_req.emul == LMUL_RSVD)
+                      illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   6'b100111: begin // vmv<nr>r.v
                     automatic int unsigned vlmax;
                     // Execute also if vl == 0
@@ -1458,14 +1505,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 endcase
 
                 // Instructions with an integer LMUL have extra constraints on the registers they can
-                // access.
+                // access. Source and destination register groups can differ for widening ops.
                 unique case (ara_req.emul)
-                  LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_2: if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                  default:;
+                endcase
+                unique case (lmul_vs2)
+                  LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                  LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
                   default:;
                 endcase
 
@@ -1766,7 +1816,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         if (int'(csr_vtype_q.vsew) < int'(EW16) || int'(csr_vtype_q.vlmul) inside {LMUL_1_8})
                           illegal_insn = 1'b1;
                       end
-                      // Zvkb: VBREV8, VREV8
+                      // Zvbb / Zvkb unary bit-manipulation
                       5'b01000: if (Zvkb(CryptoSupport)) begin
                         ara_req.op            = ara_pkg::VBREV8;
                         ara_req.use_scalar_op = 1'b0;
@@ -1776,6 +1826,34 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b01001: if (Zvkb(CryptoSupport)) begin
                         ara_req.op            = ara_pkg::VREV8;
+                        ara_req.use_scalar_op = 1'b0;
+                        ara_req.emul          = csr_vtype_q.vlmul;
+                      end else begin
+                        illegal_insn = 1'b1;
+                      end
+                      5'b01010: if (Zvbb(CryptoSupport)) begin
+                        ara_req.op            = ara_pkg::VBREV;
+                        ara_req.use_scalar_op = 1'b0;
+                        ara_req.emul          = csr_vtype_q.vlmul;
+                      end else begin
+                        illegal_insn = 1'b1;
+                      end
+                      5'b01100: if (Zvbb(CryptoSupport)) begin
+                        ara_req.op            = ara_pkg::VCLZ;
+                        ara_req.use_scalar_op = 1'b0;
+                        ara_req.emul          = csr_vtype_q.vlmul;
+                      end else begin
+                        illegal_insn = 1'b1;
+                      end
+                      5'b01101: if (Zvbb(CryptoSupport)) begin
+                        ara_req.op            = ara_pkg::VCTZ;
+                        ara_req.use_scalar_op = 1'b0;
+                        ara_req.emul          = csr_vtype_q.vlmul;
+                      end else begin
+                        illegal_insn = 1'b1;
+                      end
+                      5'b01110: if (Zvbb(CryptoSupport)) begin
+                        ara_req.op            = ara_pkg::VCPOPV;
                         ara_req.use_scalar_op = 1'b0;
                         ara_req.emul          = csr_vtype_q.vlmul;
                       end else begin

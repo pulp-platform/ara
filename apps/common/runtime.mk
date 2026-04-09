@@ -79,8 +79,8 @@ RISCV_SIM     ?= $(ISA_SIM_INSTALL_DIR)/bin/spike
 RISCV_SIM_MOD ?= $(ISA_SIM_MOD_INSTALL_DIR)/bin/spike
 # VLEN should be lower or equal than 4096 because of spike restrictions
 vlen_spike := $(shell vlen=$$(grep vlen $(ARA_DIR)/config/$(config).mk | cut -d" " -f3) && echo "$$(( $$vlen < 4096 ? $$vlen : 4096 ))")
-RISCV_SIM_OPT ?= --isa=rv64gcv_zfh_zvfh_zvkb_zvkned_zvl$(vlen_spike)b
-RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh_zvfh_zvkb_zvkned_zvl$(vlen_spike)b -d
+RISCV_SIM_OPT ?= --isa=rv64gcv_zfh_zvfh_zvbb_zvkned_zvl$(vlen_spike)b
+RISCV_SIM_MOD_OPT ?= --isa=rv64gcv_zfh_zvfh_zvbb_zvkned_zvl$(vlen_spike)b -d
 
 # Python
 PYTHON ?= python3
@@ -100,7 +100,7 @@ DEFINES += $(ENV_DEFINES) $(MAKE_DEFINES)
 RISCV_WARNINGS += -Wunused-variable -Wall -Wextra -Wno-unused-command-line-argument # -Werror
 
 # LLVM Flags
-LLVM_FLAGS     ?= -march=rv64gcv_zfh_zvfh_zvkb_zvkned -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
+LLVM_FLAGS     ?= -march=rv64gcv_zfh_zvfh_zvbb_zvkned -mabi=$(RISCV_ABI) -mno-relax -fuse-ld=lld
 LLVM_V_FLAGS   ?= -fno-vectorize -mllvm -scalable-vectorization=off -mllvm -riscv-v-vector-bits-min=0 -mno-implicit-float
 RISCV_FLAGS    ?= $(LLVM_FLAGS) $(LLVM_V_FLAGS) -mcmodel=medany -I$(CURDIR)/common -O3 -ffast-math -fno-common -fno-builtin-printf $(DEFINES) $(RISCV_WARNINGS)
 ifeq ($(LINUX),1)

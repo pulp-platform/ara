@@ -83,12 +83,18 @@ package ara_pkg;
   typedef enum bit [15:0] {
     CryptoSupportNone          = 16'h0000,
     CryptoSupportBitmanip      = 16'h2000,
+    CryptoSupportBasicBit      = 16'hA000,
     CryptoSupportAES           = 16'h0800,
-    CryptoSupportBitAES        = 16'h2800
+    CryptoSupportBitAES        = 16'h2800,
+    CryptoSupportBasicAES      = 16'hA800
   } crypto_support_e;
 
+  function automatic bit Zvbb(crypto_support_e e);
+    return e[15];
+  endfunction
+
   function automatic bit Zvkb(crypto_support_e e);
-    return e[13];
+    return e[15] | e[13];
   endfunction
 
   function automatic bit Zvkned(crypto_support_e e);
@@ -142,8 +148,8 @@ package ara_pkg;
   typedef enum logic [7:0] {
     // Arithmetic and logic instructions
     VADD, VSUB, VADC, VSBC, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
-    // Zvkb
-    VANDN, VBREV8, VREV8, VROL, VROR,
+    // Zvbb / Zvkb
+    VANDN, VBREV8, VBREV, VCLZ, VCTZ, VCPOPV, VREV8, VROL, VROR, VWSLL,
     // Fixed point
     VSADDU, VSADD, VSSUBU, VSSUB, VAADDU, VAADD, VASUBU, VASUB, VSSRL, VSSRA, VNCLIP, VNCLIPU,
     // Shifts,
