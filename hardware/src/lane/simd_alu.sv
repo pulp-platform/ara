@@ -9,6 +9,7 @@
 module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     // Support for fixed-point data types
     parameter  fixpt_support_e FixPtSupport = FixedPointEnable,
+    parameter  crypto_support_e CryptoSupport = CryptoSupportNone,
     // Dependant parameters. DO NOT CHANGE!
     localparam int    unsigned DataWidth    = $bits(elen_t),
     localparam int    unsigned StrbWidth    = DataWidth/8,
@@ -121,6 +122,78 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VAND, VREDAND: res = operand_a_i & operand_b_i;
         VOR, VREDOR  : res = operand_a_i | operand_b_i;
         VXOR, VREDXOR: res = operand_a_i ^ operand_b_i;
+
+        // Zvkb: AND-NOT
+        VANDN: if (Zvkb(CryptoSupport)) begin
+          res = ~operand_a_i & operand_b_i;
+        end
+
+        // Zvkb: Rotate left
+        VROL: if (Zvkb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) begin
+                automatic logic [2:0] sh = opa.w8[b][2:0];
+                res.w8[b] = (opb.w8[b] << sh) | (opb.w8[b] >> (3'd0 - sh));
+              end
+            EW16: for (int b = 0; b < 4; b++) begin
+                automatic logic [3:0] sh = opa.w16[b][3:0];
+                res.w16[b] = (opb.w16[b] << sh) | (opb.w16[b] >> (4'd0 - sh));
+              end
+            EW32: for (int b = 0; b < 2; b++) begin
+                automatic logic [4:0] sh = opa.w32[b][4:0];
+                res.w32[b] = (opb.w32[b] << sh) | (opb.w32[b] >> (5'd0 - sh));
+              end
+            EW64: for (int b = 0; b < 1; b++) begin
+                automatic logic [5:0] sh = opa.w64[b][5:0];
+                res.w64[b] = (opb.w64[b] << sh) | (opb.w64[b] >> (6'd0 - sh));
+              end
+          endcase
+        end
+
+        // Zvkb: Rotate right
+        VROR: if (Zvkb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) begin
+                automatic logic [2:0] sh = opa.w8[b][2:0];
+                res.w8[b] = (opb.w8[b] >> sh) | (opb.w8[b] << (3'd0 - sh));
+              end
+            EW16: for (int b = 0; b < 4; b++) begin
+                automatic logic [3:0] sh = opa.w16[b][3:0];
+                res.w16[b] = (opb.w16[b] >> sh) | (opb.w16[b] << (4'd0 - sh));
+              end
+            EW32: for (int b = 0; b < 2; b++) begin
+                automatic logic [4:0] sh = opa.w32[b][4:0];
+                res.w32[b] = (opb.w32[b] >> sh) | (opb.w32[b] << (5'd0 - sh));
+              end
+            EW64: for (int b = 0; b < 1; b++) begin
+                automatic logic [5:0] sh = opa.w64[b][5:0];
+                res.w64[b] = (opb.w64[b] >> sh) | (opb.w64[b] << (6'd0 - sh));
+              end
+          endcase
+        end
+
+        // Zvkb: Bit-reverse within bytes
+        VBREV8: if (Zvkb(CryptoSupport)) begin
+          for (int b = 0; b < 8; b++)
+            for (int i = 0; i < 8; i++)
+              res.w8[b][i] = opb.w8[b][7-i];
+        end
+
+        // Zvkb: Byte-reverse within elements (endian swap)
+        VREV8: if (Zvkb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : res = opb; // no-op for single-byte elements
+            EW16: for (int b = 0; b < 4; b++) begin
+                res.w8[2*b]   = opb.w8[2*b+1];
+                res.w8[2*b+1] = opb.w8[2*b];
+              end
+            EW32: for (int b = 0; b < 2; b++)
+                for (int i = 0; i < 4; i++)
+                  res.w8[4*b+i] = opb.w8[4*b+3-i];
+            EW64: for (int i = 0; i < 8; i++)
+                res.w8[i] = opb.w8[7-i];
+          endcase
+        end
 
         // Mask logical operations
         VMAND   : res = operand_a_i & operand_b_i;
