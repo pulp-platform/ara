@@ -8,9 +8,35 @@ SHELL = /usr/bin/env bash
 ROOT_DIR := $(patsubst %/,%, $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 ARA_DIR := $(shell git rev-parse --show-toplevel 2>/dev/null || echo $$ARA_DIR)
 INSTALL_DIR := $(abspath $(ROOT_DIR)/../install)
-VERILATOR_INCLUDE := $(INSTALL_DIR)/verilator/share/verilator/include/vltstd
 
-BENDER         := $(ROOT_DIR)/../hardware/bender
+# Use system-installed verilator: make verilate system_verilator=1
+ifdef system_verilator
+  veril_path        ?= $(dir $(shell which verilator))
+  VERILATOR_ROOT    ?= $(shell verilator --getenv VERILATOR_ROOT)
+  VERILATOR_INCLUDE := $(VERILATOR_ROOT)/include/vltstd
+else
+  veril_path        ?= $(abspath $(INSTALL_DIR)/verilator/bin)
+  VERILATOR_INCLUDE := $(INSTALL_DIR)/verilator/share/verilator/include/vltstd
+endif
+
+# macOS: add Homebrew libelf paths (libelf is not shipped with macOS)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  HOMEBREW_PREFIX ?= $(shell brew --prefix 2>/dev/null || echo /opt/homebrew)
+  LIBELF_CFLAGS  := -CFLAGS -I$(HOMEBREW_PREFIX)/opt/libelf/include/libelf \
+                    -CFLAGS -I$(HOMEBREW_PREFIX)/opt/libelf/include
+  LIBELF_LDFLAGS := -LDFLAGS "-L$(HOMEBREW_PREFIX)/opt/libelf/lib -lelf"
+else
+  LIBELF_CFLAGS  :=
+  LIBELF_LDFLAGS := -LDFLAGS "-lelf"
+endif
+
+# Use system-installed bender: make verilate system_bender=1
+ifdef system_bender
+  BENDER       := $(shell which bender)
+else
+  BENDER       := $(ROOT_DIR)/../hardware/bender
+endif
 BENDER_VERSION := 0.31.0
 
 # Choose Ara's configuration
@@ -44,8 +70,6 @@ library        ?= work
 dpi_library    ?= work-dpi
 # verilator library
 veril_library  ?= $(buildpath)/verilator
-# verilator path
-veril_path     ?= $(abspath $(INSTALL_DIR)/verilator/bin)
 # verilator top-level
 veril_top      ?= ara_tb_verilator
 # Top level module to compile
@@ -214,8 +238,9 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp       \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_verilator/cpp \
   -CFLAGS -I$(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_simutil_verilator/cpp \
+  $(LIBELF_CFLAGS)                                                              \
   $(CLANG_CXXFLAGS)                                                             \
-  -LDFLAGS "-lelf"                                                              \
+  $(LIBELF_LDFLAGS)                                                             \
   $(CLANG_LDFLAGS)                                                              \
   --exe                                                                         \
   $(ROOT_DIR)/tb/verilator/lowrisc_dv_verilator_memutil_dpi/cpp/*.cc            \
