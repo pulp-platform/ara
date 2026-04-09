@@ -62,6 +62,22 @@ To build it, run the following command in the project's root directory.
 make verilator
 ```
 
+Alternatively, you can use a system-installed Verilator by passing `system_verilator=1` to the hardware make targets:
+
+```bash
+make -C hardware verilate system_verilator=1
+```
+
+### macOS
+
+On macOS, install `libelf` via Homebrew (it is not shipped with macOS):
+
+```bash
+brew install libelf
+```
+
+The build system will automatically detect macOS and add the necessary Homebrew include/library paths.
+
 ## Configuration
 
 Ara's parameters are centralized in the `config` folder, which provides several configurations to the vector machine.
@@ -112,6 +128,8 @@ cd hardware
 # Install Bender and checkout all the IPs
 make checkout
 ```
+
+If you have Bender installed system-wide, pass `system_bender=1` to use it instead of the local binary.
 
 ### Patches (only once!)
 
