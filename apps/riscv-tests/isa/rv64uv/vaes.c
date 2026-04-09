@@ -9,17 +9,28 @@
 
 static const int k_block_configs[] = {1, 2, 4, 8};
 
-static const uint32_t rk128_0[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09};
-static const uint32_t rk128_1[4] = {0x17fefaa0, 0xb12c5488, 0x3939a323, 0x05766c2a};
-static const uint32_t rk128_2[4] = {0xf295c2f2, 0x43b9967a, 0x7a803559, 0x7ff65973};
-static const uint32_t plaintext[4] = {0xa8f64332, 0x8d305a88, 0xa2983131, 0x340737e0};
-static const uint32_t ciphertext[4] = {0x1d842539, 0xfb09dc02, 0x978511dc, 0x320b6a19};
-static const uint32_t state_after_rk0[4] = {0xbee33d19, 0x2be2f4a0, 0x2a8dc69a, 0x0848f8e9};
-static const uint32_t state_after_round1[4] = {0xf27f9ca4, 0x2b359f68, 0x43ea5b6b, 0x49506a02};
-static const uint32_t state_after_round9[4] = {0x1ef240eb, 0x84382e59, 0xe713a18b, 0xd242c31b};
-static const uint32_t state_after_ct_rk10[4] = {0xb57d31e9, 0x722c32cb, 0x5f892e3d, 0x940709af};
-static const uint32_t state_after_inv_round9[4] = {0xa6466e87, 0x8ce74cf2, 0xd84a904d, 0x95c3ec97};
-static const uint32_t state_before_final_decrypt[4] = {0x305dbfd4, 0xae52b4e0, 0xf11141b8, 0xe598271e};
+static const uint32_t rk128_0[4] = {0x16157e2b, 0xa6d2ae28, 0x8815f7ab,
+                                    0x3c4fcf09};
+static const uint32_t rk128_1[4] = {0x17fefaa0, 0xb12c5488, 0x3939a323,
+                                    0x05766c2a};
+static const uint32_t rk128_2[4] = {0xf295c2f2, 0x43b9967a, 0x7a803559,
+                                    0x7ff65973};
+static const uint32_t plaintext[4] = {0xa8f64332, 0x8d305a88, 0xa2983131,
+                                      0x340737e0};
+static const uint32_t ciphertext[4] = {0x1d842539, 0xfb09dc02, 0x978511dc,
+                                       0x320b6a19};
+static const uint32_t state_after_rk0[4] = {0xbee33d19, 0x2be2f4a0, 0x2a8dc69a,
+                                            0x0848f8e9};
+static const uint32_t state_after_round1[4] = {0xf27f9ca4, 0x2b359f68,
+                                               0x43ea5b6b, 0x49506a02};
+static const uint32_t state_after_round9[4] = {0x1ef240eb, 0x84382e59,
+                                               0xe713a18b, 0xd242c31b};
+static const uint32_t state_after_ct_rk10[4] = {0xb57d31e9, 0x722c32cb,
+                                                0x5f892e3d, 0x940709af};
+static const uint32_t state_after_inv_round9[4] = {0xa6466e87, 0x8ce74cf2,
+                                                   0xd84a904d, 0x95c3ec97};
+static const uint32_t state_before_final_decrypt[4] = {0x305dbfd4, 0xae52b4e0,
+                                                       0xf11141b8, 0xe598271e};
 
 static const uint32_t all_rk128[11][4] = {
     {0x16157e2b, 0xa6d2ae28, 0x8815f7ab, 0x3c4fcf09},
@@ -35,10 +46,14 @@ static const uint32_t all_rk128[11][4] = {
     {0xa8f914d0, 0x8925eec9, 0xc80c3fe1, 0xa60c63b6},
 };
 
-static const uint32_t rk256_0[4] = {0x10eb3d60, 0xbe71ca15, 0xf0ae732b, 0x81777d85};
-static const uint32_t rk256_1[4] = {0x072c351f, 0xd708613b, 0xa310982d, 0xf4df1409};
-static const uint32_t rk256_2[4] = {0x1154a39b, 0xaf25698e, 0x5f8b1aa5, 0xdefc6720};
-static const uint32_t rk256_3[4] = {0x1a9cb0a8, 0xcd94d193, 0x6e8449be, 0x9a5b5db7};
+static const uint32_t rk256_0[4] = {0x10eb3d60, 0xbe71ca15, 0xf0ae732b,
+                                    0x81777d85};
+static const uint32_t rk256_1[4] = {0x072c351f, 0xd708613b, 0xa310982d,
+                                    0xf4df1409};
+static const uint32_t rk256_2[4] = {0x1154a39b, 0xaf25698e, 0x5f8b1aa5,
+                                    0xdefc6720};
+static const uint32_t rk256_3[4] = {0x1a9cb0a8, 0xcd94d193, 0x6e8449be,
+                                    0x9a5b5db7};
 
 static volatile uint32_t buf_vd[8 * 4] __attribute__((aligned(128)));
 static volatile uint32_t buf_vs2[8 * 4] __attribute__((aligned(128)));
@@ -48,14 +63,22 @@ static inline int aes_vl(int blocks) { return blocks * 4; }
 
 static void aes_vset_blocks(int blocks) {
   switch (blocks) {
-    case 1: VSET(4, e32, m1); break;
-    case 2: VSET(8, e32, m2); break;
-    case 4: VSET(16, e32, m4); break;
-    case 8: VSET(32, e32, m8); break;
-    default:
-      printf("Invalid block count: %d\n", blocks);
-      num_failed++;
-      break;
+  case 1:
+    VSET(4, e32, m1);
+    break;
+  case 2:
+    VSET(8, e32, m2);
+    break;
+  case 4:
+    VSET(16, e32, m4);
+    break;
+  case 8:
+    VSET(32, e32, m8);
+    break;
+  default:
+    printf("Invalid block count: %d\n", blocks);
+    num_failed++;
+    break;
   }
 }
 
@@ -63,7 +86,8 @@ static inline void aes_vset4(void) { VSET(4, e32, m1); }
 
 static void rep4(volatile uint32_t *dst, const uint32_t src[4], int blocks) {
   for (int b = 0; b < blocks; ++b)
-    for (int i = 0; i < 4; ++i) dst[b * 4 + i] = src[i];
+    for (int i = 0; i < 4; ++i)
+      dst[b * 4 + i] = src[i];
 }
 
 static void store_v8(int blocks) {
@@ -76,7 +100,8 @@ static void store_v16(int blocks) {
   asm volatile("vse32.v v16, (%0)" ::"r"(buf_out) : "memory");
 }
 
-static void load_vv(int blocks, const uint32_t state[4], const uint32_t key[4]) {
+static void load_vv(int blocks, const uint32_t state[4],
+                    const uint32_t key[4]) {
   rep4(buf_vd, state, blocks);
   rep4(buf_vs2, key, blocks);
   aes_vset_blocks(blocks);
@@ -84,7 +109,8 @@ static void load_vv(int blocks, const uint32_t state[4], const uint32_t key[4]) 
   asm volatile("vle32.v v16, (%0)" ::"r"(buf_vs2) : "memory");
 }
 
-static void load_vs(int blocks, const uint32_t state[4], const uint32_t key[4]) {
+static void load_vs(int blocks, const uint32_t state[4],
+                    const uint32_t key[4]) {
   rep4(buf_vd, state, blocks);
   aes_vset_blocks(blocks);
   asm volatile("vle32.v v8, (%0)" ::"r"(buf_vd) : "memory");
@@ -98,7 +124,8 @@ static void start_case(const char *name, int blocks) {
   printf("Test %d (%d blocks): %s\n", test_case, blocks, name);
 }
 
-static void expect_words(const char *name, int blocks, const uint32_t expected[4], int reg_v16) {
+static void expect_words(const char *name, int blocks,
+                         const uint32_t expected[4], int reg_v16) {
   if (reg_v16)
     store_v16(blocks);
   else
@@ -362,7 +389,8 @@ int main(void) {
   enable_vec();
   enable_fp();
 
-  for (unsigned i = 0; i < sizeof(k_block_configs) / sizeof(k_block_configs[0]); ++i)
+  for (unsigned i = 0; i < sizeof(k_block_configs) / sizeof(k_block_configs[0]);
+       ++i)
     run_config(k_block_configs[i]);
 
   EXIT_CHECK();
