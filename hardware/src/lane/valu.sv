@@ -535,8 +535,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           // Do not accept operands from this state if the current instruction is a reduction or AES round
           if (!result_queue_full && !is_reduction(vinsn_issue_q.op) && !is_aes_round(vinsn_issue_q.op)) begin
             // Do we have all the operands necessary for this instruction?
-            // AluA carries vs1, or vd_op when use_vd_op && !use_vs1 (e.g., AES)
-            automatic logic need_alu_a = vinsn_issue_q.use_vs1 || (vinsn_issue_q.use_vd_op && !vinsn_issue_q.use_vs1);
+            // AluA carries vs1, or vd_op when use_vd_op && !use_vs1 (only for AES single-phase ops)
+            automatic logic need_alu_a = vinsn_issue_q.use_vs1 || (is_aes_valu(vinsn_issue_q.op) && vinsn_issue_q.use_vd_op && !vinsn_issue_q.use_vs1);
             if ((alu_operand_valid_i[1] || !vinsn_issue_q.use_vs2) &&
                 (alu_operand_valid_i[0] || !need_alu_a) &&
                 (mask_valid_i || vinsn_issue_q.vm)) begin
