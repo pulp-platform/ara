@@ -15,6 +15,7 @@ RVTEST_CODE_BEGIN
 
   # Set up breakpoint to trap on M-mode fetches.
   li TESTNUM, 2
+  csrsi mstatus, MSTATUS_MIE
 
   # Skip tselect if hard-wired.
   csrw tselect, x0
