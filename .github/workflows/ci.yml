@@ -350,12 +350,6 @@ jobs:
     needs: ["compile-ara", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v6
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v8
       with:
@@ -495,12 +489,6 @@ jobs:
         name: tc-llvm
     - name: Untar LLVM
       run: tar xvf tc-llvm.tar
-    - name: Get Spike artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: tc-isa-sim
-    - name: Untar Spike
-      run: tar xvf tc-isa-sim.tar
     - name: Get Verilated model of Ara
       uses: actions/download-artifact@v8
       with:
