@@ -712,6 +712,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
                   6'b000000: ara_req.op = ara_pkg::VADD;
+                  6'b000001: if (Zvkb(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VANDN;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   6'b000010: ara_req.op = ara_pkg::VSUB;
                   6'b000100: ara_req.op = ara_pkg::VMINU;
                   6'b000101: ara_req.op = ara_pkg::VMIN;
@@ -843,6 +848,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
                   end
+                  6'b010100: if (Zvkb(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VROR;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
+                  6'b010101: if (Zvkb(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VROL;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
@@ -965,6 +980,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // Decode based on the func6 field
                 unique case (insn.varith_type.func6)
                   6'b000000: ara_req.op = ara_pkg::VADD;
+                  6'b000001: if (Zvkb(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VANDN;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   6'b000010: ara_req.op = ara_pkg::VSUB;
                   6'b000011: ara_req.op = ara_pkg::VRSUB;
                   6'b000100: ara_req.op = ara_pkg::VMINU;
@@ -1118,6 +1138,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                  end
+                  6'b010100: if (Zvkb(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VROR;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
+                  6'b010101: if (Zvkb(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VROL;
+                  end else begin
+                    illegal_insn = 1'b1;
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -1318,6 +1348,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2    = csr_vtype_q.vsew;
                     ara_req.eew_vd_op  = eew_q[ara_req.vd];
                     ara_req.vtype.vsew = eew_q[ara_req.vd];
+                  end
+                  6'b010100, 6'b010101: if (Zvkb(CryptoSupport)) begin // Zvkb vror.vi (6-bit unsigned immediate)
+                    automatic logic [5:0] func6;
+                    func6 = insn.varith_type.func6;
+                    ara_req.op        = ara_pkg::VROR;
+                    ara_req.scalar_op = {{ELEN-6{1'b0}}, func6[0], insn.varith_type.rs1};
+                  end else begin
+                    illegal_insn = 1'b1;
                   end
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
@@ -1727,6 +1765,21 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         // Invalid conversion
                         if (int'(csr_vtype_q.vsew) < int'(EW16) || int'(csr_vtype_q.vlmul) inside {LMUL_1_8})
                           illegal_insn = 1'b1;
+                      end
+                      // Zvkb: VBREV8, VREV8
+                      5'b01000: if (Zvkb(CryptoSupport)) begin
+                        ara_req.op            = ara_pkg::VBREV8;
+                        ara_req.use_scalar_op = 1'b0;
+                        ara_req.emul          = csr_vtype_q.vlmul;
+                      end else begin
+                        illegal_insn = 1'b1;
+                      end
+                      5'b01001: if (Zvkb(CryptoSupport)) begin
+                        ara_req.op            = ara_pkg::VREV8;
+                        ara_req.use_scalar_op = 1'b0;
+                        ara_req.emul          = csr_vtype_q.vlmul;
+                      end else begin
+                        illegal_insn = 1'b1;
                       end
                       default: illegal_insn = 1'b1;
                     endcase

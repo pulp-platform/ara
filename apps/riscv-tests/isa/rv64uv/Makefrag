@@ -181,6 +181,7 @@ rv64uv_sc_tests = vaadd \
                   vfrec7 \
                   vfrsqrt7 \
                   vaes \
+                  zvkb \
                   vrgather \
                   vcompress
 
