@@ -20,7 +20,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
     // Support for segment memory operations
     parameter  seg_support_e          SegSupport   = SegSupportEnable,
     // Support for crypto extension
-    parameter  crypto_support_e       CryptoSupport = CryptoSupportBitAES,
+    parameter  crypto_support_e       CryptoSupport = CryptoSupportBasicAES,
     // AXI Interface
     parameter  int           unsigned AxiDataWidth = 32*NrLanes,
     parameter  int           unsigned AxiAddrWidth = 64,
