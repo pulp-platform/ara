@@ -109,3 +109,62 @@ This utility module generates stride vectors where exactly one bit is high (i.e.
 - `sldu_op_dp` interprets the sliding direction (`dir_i`) and index (`slamt_i`) to select the output permutation.
 - `stride_p2_o` controls which element is selected during a stride-slide.
 - All data vectors (`op_i`, `op_o`) are organized as `elen_t [NrLanes-1:0]`, allowing lane-based parallel operation.
+
+---
+
+## Zvkned AES Support
+
+When `Zvkned(CryptoSupport)` is enabled, the SLDU serves as the cross-lane permutation engine for AES instructions. It performs **Phase 2** of the 3-phase ALU-SLDU-ALU pipeline used by AES round and key schedule instructions.
+
+### Role in the AES Pipeline
+
+The SLDU receives intermediate results from the VALU (after SubBytes), performs a cross-column permutation, and returns the result to the VALU (for MixColumns + AddRoundKey). This reuses the existing SLDU datapath and avoids dedicated AES shuffle hardware.
+
+### AES ShiftRows / InvShiftRows
+
+For AES round instructions, the SLDU performs the ShiftRows (encrypt) or InvShiftRows (decrypt) byte permutation across the 4 columns of each 128-bit AES element group.
+
+Each 32-bit AES column is laid out as `[7:0]=row0, [15:8]=row1, [23:16]=row2, [31:24]=row3`. The permutation operates per-element-group (4 columns), selecting source bytes from neighboring columns:
+
+**ShiftRows** (for `vaesem`, `vaesef`):
+- Row 0: stays in place
+- Row 1: sourced from column `(c+1) % 4`
+- Row 2: sourced from column `(c+2) % 4`
+- Row 3: sourced from column `(c+3) % 4`
+
+**InvShiftRows** (for `vaesdm`, `vaesdf`):
+- Row 0: stays in place
+- Row 1: sourced from column `(c+3) % 4`
+- Row 2: sourced from column `(c+2) % 4`
+- Row 3: sourced from column `(c+1) % 4`
+
+The permutation is computed combinationally using column indices derived from `NrLanes` and `AesColsPerLane` (= DataWidth / 32).
+
+### AES Key Schedule Prefix-XOR
+
+For key schedule instructions (`vaeskf1`, `vaeskf2`), the SLDU performs a prefix-XOR chain across the 4 columns of each element group:
+
+```
+Input from VALU Phase 0:  [w0, w1, w2, temp]
+  where temp = SubWord(RotWord(w3)) ^ Rcon
+
+XOR chain:
+  nw0 = w0 ^ temp
+  nw1 = w1 ^ nw0
+  nw2 = w2 ^ nw1
+
+Output to VALU Phase 1:   [nw0, nw1, nw2, nw2]
+```
+
+The `nw2` value is placed in both column 2 and column 3 positions, so that the VALU can compute `nw3 = old_w3 ^ nw2` in Phase 3.
+
+### Active Lane Masking
+
+When `VL` is smaller than one full beat (fewer than `2 * NrLanes` columns), the SLDU computes an active lane mask to avoid marking inactive lanes as valid — which would cause a deadlock since no VALU would be waiting to grant on those lanes.
+
+### Parameterization
+
+Key AES parameters in the SLDU:
+- `AesColsPerLane = DataWidth / 32` — AES columns per 64-bit lane (typically 2)
+- `AesColsPerGroup = 4` — columns per 128-bit AES element group
+- `AesGroupsPerBeat = (NrLanes * AesColsPerLane) / AesColsPerGroup` — element groups processed per beat

@@ -77,6 +77,13 @@ Each VFU type causes specific requests to be sent to matching operand queues wit
 
 This block also defines how VL is distributed across lanes and balances load when VL is not divisible by lane count.
 
+### Zvkned AES Operand Routing
+
+For AES instructions, the lane sequencer routes operands differently from standard ALU operations:
+- **`vd` (AES state)** is sent through the `AluA` operand queue (since `rs1` encodes the sub-opcode, not a source register)
+- **`vs2` (round key)** is sent through the `AluB` operand queue
+- For **`.vs` instructions**, the round key is broadcast from the first element group across all element groups. The broadcast is wired at the `ara.sv` level: lane `l` receives the key from lane `l % 4`, matching the 4-column AES state structure.
+
 ---
 
 ## 5. VFUs Operation Dispatch

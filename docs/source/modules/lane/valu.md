@@ -164,3 +164,59 @@ The FSM governs transitions based on instruction type, operand readiness, and SL
 - Writeback to VRF is gated by `alu_result_gnt_i`.
 - Results for masking go through `mask_operand_o`.
 - Queue counters and state pointers are updated accordingly.
+
+---
+
+## Zvkned AES Support
+
+When `Zvkned(CryptoSupport)` is enabled, the VALU handles all 11 AES instructions from the Zvkned extension. AES round and key schedule instructions follow a **3-phase ALU-SLDU-ALU pipeline** that reuses the existing SLDU datapath for cross-lane permutations (ShiftRows), avoiding dedicated shuffle hardware.
+
+### AES 3-Phase Pipeline (ALU-SLDU-ALU)
+
+AES round instructions (`vaesdm`, `vaesdf`, `vaesem`, `vaesef`) and key schedule instructions (`vaeskf1`, `vaeskf2`) execute in three phases per element group:
+
+```
+Phase 1 (VALU — AES_SUBBYTES state):
+  Input:  vd (AES state) + vs2 (round key)
+  Action: SubBytes (or InvSubBytes for decrypt) applied per-column via simd_aes_lane
+  Output: Buffered in result queue (not written to VRF yet)
+
+Phase 2 (SLDU — AES_TX / AES_RX states):
+  TX: VALU sends SubBytes result to SLDU via the reduction interface
+  SLDU: Performs ShiftRows byte permutation across element groups
+        (or prefix-XOR chain for key schedule instructions)
+  RX: VALU receives permuted result back from SLDU
+
+Phase 3 (VALU — AES_RX state):
+  Input:  ShiftRows result (from SLDU) + vs2 (round key)
+  Action: MixColumns + AddRoundKey via simd_aes_lane
+          (final rounds skip MixColumns; vaesz does XOR only)
+  Output: Written to VRF
+```
+
+The single-phase exception is `vaesz.vs` (round zero), which performs a plain XOR (AddRoundKey) in one VALU cycle without SLDU involvement.
+
+### AES State Machine
+
+The ALU state machine is extended with three AES-specific states:
+
+| State | Description |
+|-------|-------------|
+| `AES_SUBBYTES` | Phase 1: compute SubBytes, buffer result, transition to TX |
+| `AES_TX` | Phase 2a: send buffered result to SLDU for ShiftRows |
+| `AES_RX` | Phase 2b/3: receive ShiftRows result, compute MixColumns + AddRoundKey |
+
+After all element groups are processed, the FSM returns to `NO_REDUCTION`.
+
+### simd_aes_lane Integration
+
+The VALU instantiates `simd_aes_lane`, a combinational AES unit that operates on 64-bit lane data (2 AES columns at SEW=32). It is controlled by a `phase` signal:
+- **Phase 0**: SubBytes / InvSubBytes (or SubWord+RotWord+Rcon for key schedule)
+- **Phase 1**: MixColumns + AddRoundKey (or prefix-XOR result finalization for key schedule)
+
+### Operand Muxing
+
+AES instructions reuse the standard operand queues with special muxing:
+- **AES_SUBBYTES**: operand A = `vd` (state from VRF), operand B = `vs2` (round key)
+- **AES_RX**: operand A = SLDU result, operand B = `vs2` (or `vd` for `vaeskf2`)
+- For `.vs` instructions, the round key is broadcast from the first element group (see lane sequencer and `ara.sv` broadcast wiring)

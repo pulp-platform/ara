@@ -112,6 +112,10 @@ Instructions include but are not limited to:
 - **Saturation Awareness:** vxsat flags make it suitable for overflow-sensitive ops.
 - **RISC-V RVV Compatible:** Aligns with vector instruction format and control conventions.
 
+## Relationship to AES (simd_aes_lane)
+
+The `simd_alu` module handles standard integer/fixed-point SIMD operations. AES cryptographic operations are handled by a separate `simd_aes_lane` module, instantiated alongside `simd_alu` inside the `valu`. See [simd_aes_lane](simd_aes_lane.md) for details on the AES datapath.
+
 ---
 
 ## Example Behavior (Pseudocode)

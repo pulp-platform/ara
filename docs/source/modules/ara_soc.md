@@ -26,6 +26,7 @@ It is **parameterizable** to support varying numbers of vector lanes and data wi
 | `FPExtSupport`    | Enable optional `vfrec7` / `vfrsqrt7` instructions                          |
 | `FixPtSupport`    | Enables fixed-point support                                                 |
 | `SegSupport`      | Enables segmented memory instructions                                       |
+| `CryptoSupport`   | Enables vector crypto extensions (e.g., `CryptoSupportAES` for Zvkned)      |
 | `Axi*Width`       | AXI bus widths for data, address, ID, user                                  |
 | `AxiRespDelay`    | AXI response delay in picoseconds (used in gate-level simulations)          |
 | `L2NumWords`      | Number of words in simulated SRAM (`4MiB / lane` default)                   |

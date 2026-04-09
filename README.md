@@ -3,7 +3,7 @@
 [![ci](https://github.com/pulp-platform/ara/actions/workflows/ci.yml/badge.svg)](https://github.com/pulp-platform/ara/actions/workflows/ci.yml)
 
 Ara is a vector unit working as a coprocessor for the CVA6 core.
-It supports the RISC-V Vector Extension, [version 1.0](https://github.com/riscv/riscv-v-spec/releases/tag/v1.0).
+It supports the RISC-V Vector Extension, [version 1.0](https://github.com/riscv/riscv-v-spec/releases/tag/v1.0), and the [Zvkned](https://github.com/riscv/riscv-crypto/releases/tag/v1.0.0) vector crypto extension for AES encryption/decryption.
 
 Prototypical documentation can be found at https://pulp-platform.github.io/ara
 

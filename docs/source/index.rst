@@ -62,6 +62,7 @@ Welcome to Ara's documentation!
    modules/lane/vector_fus_stage.md
    modules/lane/valu.md
    modules/lane/simd_alu.md
+   modules/lane/simd_aes_lane.md
    modules/lane/fixed_p_rounding.md
    modules/lane/vmfpu.md
    modules/lane/simd_mul.md

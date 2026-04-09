@@ -93,3 +93,13 @@ This file specifies the functionalities of the RISC-V Vector Specification suppo
 - Vector single-width fractional multiply with rounding and saturation instruction: `vsmul`
 - Vector single-width scaling shift instructions: `vssra`, `vssrl`
 - Vector narrowing fixed-point clip instructions: `vnclip`, `vnclipu`
+
+## Vector Crypto AES Instructions (Zvkned)
+
+- Vector AES decrypt middle round instructions: `vaesdm.vv`, `vaesdm.vs`
+- Vector AES decrypt final round instructions: `vaesdf.vv`, `vaesdf.vs`
+- Vector AES encrypt middle round instructions: `vaesem.vv`, `vaesem.vs`
+- Vector AES encrypt final round instructions: `vaesef.vv`, `vaesef.vs`
+- Vector AES round zero instruction: `vaesz.vs`
+- Vector AES-128 forward key schedule instruction: `vaeskf1.vi`
+- Vector AES-256 forward key schedule instruction: `vaeskf2.vi`

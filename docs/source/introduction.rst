@@ -14,6 +14,7 @@ At its core, **Ara is a scalable vector accelerator** compliant with the `RISC-V
 - Linear algebra
 - Machine learning kernels
 - Computer vision
+- Cryptographic acceleration (currently AES via the Zvkned extension)
 
 Ara can be configured with a power-of-2 number of parallel vector lanes ranging from 2 to 16. Each lane contains a slice of the Vector Register File (VRF), a SIMD FPU, and a SIMD ALU/Multiplier.
 
@@ -36,7 +37,7 @@ Ara is composed of the following major components:
 - **Register File (VRF)**: Ara contains a large vector register file, partitioned across lanes for bandwidth scalability.
 - **Memory Interface**: Vector loads and stores are issued via AXI-compatible memory accesses, either from DRAM or TCDM (depending on system integration).
 
-Ara is **modular by construction**: users can configure the number of lanes, supported datatypes (int/fixed/fp), and optional features like floating-point extensions or reductions.
+Ara is **modular by construction**: users can configure the number of lanes, supported datatypes (int/fixed/fp), and optional features like floating-point extensions, reductions, or vector crypto.
 
 Target Use Cases
 ----------------

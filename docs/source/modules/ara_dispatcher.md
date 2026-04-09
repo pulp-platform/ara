@@ -101,6 +101,21 @@ Instructions are decoded based on RVV encoding using extracted fields:
 
 ---
 
+## Zvkned (Vector Crypto AES) Instruction Decoding
+
+When `Zvkned(CryptoSupport)` is enabled, the dispatcher decodes AES instructions from the `OP-VE` opcode space (`0x77`). These instructions are routed to `VFU_Alu` and include:
+
+- **Vector-vector round ops** (`.vv`): `vaesdm.vv`, `vaesdf.vv`, `vaesem.vv`, `vaesef.vv` — multi-phase execution through ALU and SLDU
+- **Vector-scalar round ops** (`.vs`): `vaesdm.vs`, `vaesdf.vs`, `vaesem.vs`, `vaesef.vs` — use broadcast key from vs2
+- **Round zero** (`.vs`): `vaesz.vs` — single-phase AddRoundKey (XOR only)
+- **Key schedule**: `vaeskf1.vi` (AES-128), `vaeskf2.vi` (AES-256) — multi-phase execution through ALU and SLDU
+
+All Zvkned instructions operate with SEW=32 (EW32) on 128-bit element groups (4 columns per AES state block). The dispatcher overrides `vsew` to `EW32` for these instructions and sets `vl` accordingly.
+
+If `CryptoSupport` does not include Zvkned, these opcodes raise an illegal instruction exception.
+
+---
+
 ## Illegal Instruction Checks
 
 Illegal cases include:
@@ -111,6 +126,7 @@ Illegal cases include:
 - Disallowed CSR writes or invalid opcodes
 - Fixed-point ops without hardware support
 - Floating-point ops (e.g., `VFREC7`) without FPExt support
+- Zvkned crypto ops without `CryptoSupport` enabled
 
 ---
 

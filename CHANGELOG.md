@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+ - Add support for RISC-V Zvkned vector crypto AES instructions (`vaesdm`, `vaesdf`, `vaesem`, `vaesef`, `vaesz`, `vaeskf1`, `vaeskf2`) with configurable `CryptoSupport` parameter
  - Plot kernels-Vl performance plot
  - Print I$/D$ stall metrics
  - Add `spmv`, `conjugate_gradient`, and `gemv` kernels.
