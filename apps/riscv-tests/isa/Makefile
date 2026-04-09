@@ -64,7 +64,7 @@ vpath %.S $(src_dir)
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
 
 %.cout: %
-	$(RISCV_SIM) --isa=rv64gcv_zfh_zvfh_zvl4096b $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv_zfh_zvfh_zvkned_zvl4096b $< 2> $@
 
 %.cout32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
