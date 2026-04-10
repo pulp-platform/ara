@@ -612,7 +612,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Filled up a word to the VRF or finished the instruction
           if (out_pnt_d == NrLanes * 8 || issue_cnt_q <= byte_count) begin
             // Reset the pointer
-            out_pnt_d = vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} ? {'0, red_stride_cnt_d, 3'b0} : '0;
+            out_pnt_d = vinsn_issue_q.vfu inside {VFU_Alu, VFU_MFpu} ? {{idx_width(NrLanes*(StrbWidth-1)){1'b0}}, red_stride_cnt_d, 3'b0} : '0;
             // We used all the bits of the mask
             if (vinsn_issue_q.op inside {VSLIDEUP, VSLIDEDOWN})
               mask_ready_d = !vinsn_issue_q.vm;
@@ -754,7 +754,7 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           // Update the p2 stride
           p2_stride_gen_update_d = 1'b1;
           // Commit the final result
-          if (p2_stride_gen_popc_q == {'0, 1'b1} && result_queue_empty) begin
+          if (p2_stride_gen_popc_q == {{(idx_width(idx_width(8*NrLanes))-1){1'b0}}, 1'b1} && result_queue_empty) begin
             state_d = SLIDE_NP2_COMMIT;
             // Prepare the write pointer
             result_queue_write_pnt_d = NP2_RESULT_PNT;

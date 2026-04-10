@@ -227,7 +227,6 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
   // When vstart > 0, the very first payload written to the VRF contains less than
   // (8 * NrLanes) bytes.
   logic [$clog2(8*NrLanes):0] first_payload_byte_d, first_payload_byte_q;
-  logic [$clog2(8*NrLanes):0] vrf_eff_write_bytes;
 
   // A counter that follows the vrf_word_byte_pnt pointer, but without the vstart information
   // We can compare this counter witht the issue_cnt_bytes counter to find the last byte in
@@ -367,6 +366,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
         // We consumed a whole word from the lanes
         if (vrf_pnt_d == NrLanes*8 || vrf_cnt_d == issue_cnt_bytes_q) begin : vrf_word_done
+          automatic logic [$clog2(8*NrLanes):0] vrf_eff_write_bytes;
           // Reset the pointer in the VRF word
           vrf_pnt_d         = '0;
           vrf_cnt_d         = '0;

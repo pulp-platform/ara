@@ -26,7 +26,7 @@ jobs:
 #####################
 
   tc-llvm:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
     - name: Recover the submodule commit hash
@@ -82,7 +82,7 @@ jobs:
         path: tc-llvm.tar
 
   tc-gcc:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
     - name: Recover the submodule commit hash
@@ -134,7 +134,7 @@ jobs:
         path: tc-gcc.tar
 
   tc-isa-sim:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
     - name: Recover the submodule commit hash
@@ -169,7 +169,7 @@ jobs:
         path: tc-isa-sim.tar
 
   tc-verilator:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
     - name: Recover the submodule commit hash
@@ -208,8 +208,35 @@ jobs:
 #  Compile stage  #
 ###################
 
+  compile-slang:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Download RTL submodules
+        run: |
+            make -C hardware checkout
+            make -C hardware apply-patches
+      - name: Generate flist
+        run: make -C hardware spyglass/tmp/files
+      - name: Run slang
+        uses: pulp-platform/pulp-actions/slang@v2.5.0 # update version as needed, not autoupdated
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          slang-flags: >-
+            -f hardware/spyglass/tmp/files --top ara_soc_wrap
+            -Wextra -Wno-width-trunc -Wno-case-redundant-default -Wno-case-enum -Wno-incomplete-return -Wno-dup-import
+            --ignore-unknown-modules
+            --suppress-warnings .bender/...,hardware/deps/...
+
   compile-apps:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
@@ -241,7 +268,7 @@ jobs:
         path: apps/bin
 
   compile-riscv-tests:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
@@ -280,7 +307,7 @@ jobs:
         path: apps/bin
 
   compile-ara:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
@@ -324,7 +351,7 @@ jobs:
 ####################
 
   simulate:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
@@ -358,7 +385,7 @@ jobs:
 ########################
 
   riscv-tests-simv:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
@@ -387,7 +414,7 @@ jobs:
       run: config=${{ matrix.ara_config }} make -C hardware -j8 riscv_tests_simv
 
   riscv-tests-spike:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs: ["tc-isa-sim", "compile-riscv-tests"]
     steps:
     - uses: actions/checkout@v6
@@ -426,7 +453,7 @@ jobs:
 ###################
 
   check-license:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
     - uses: actions/setup-python@v6
@@ -438,7 +465,7 @@ jobs:
       run: python scripts/licence-checker.py --config scripts/licence-checker.hjson hardware
 
   check-clang-format:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs: ['tc-llvm']
     steps:
     - uses: actions/checkout@v6
@@ -464,7 +491,7 @@ jobs:
         exit $EXIT_STATUS
 
   check-trailing-whitespaces:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
       with:
@@ -492,7 +519,7 @@ jobs:
 #####################
 
   benchmark:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:
@@ -544,7 +571,7 @@ jobs:
         path: benchmarks-${{ matrix.ara_config }}.tar
 
   roofline:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs: benchmark
     steps:
     - uses: actions/checkout@v6
@@ -700,7 +727,7 @@ jobs:
 ####################
 
   clean-up:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: always()
     needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
     steps:
@@ -716,7 +743,7 @@ jobs:
             riscv-tests-spike
 
   clean-up-compile-runs:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
       matrix:

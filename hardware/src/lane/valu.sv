@@ -317,7 +317,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
 
   // The ALU has completed a reduction
   logic alu_red_complete_d;
-  `FF(alu_red_complete_o, alu_red_complete_d, 1'b0, clk_i, rst_ni);
+  `FF(alu_red_complete_o, alu_red_complete_d, 1'b0, clk_i, rst_ni)
 
   // Signal to indicate the state of the ALU
   typedef enum logic [2:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_RX, INTER_LANES_REDUCTION_TX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION} alu_state_e;
