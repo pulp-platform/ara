@@ -19,6 +19,6 @@ module power_gating_generic #(
 
   // Gate with an AND
   assign en_wide = en_i ? T'('1) : T'('0);
-  assign out_o   = T'(in_i & en_wide);
+  assign out_o   = in_i & en_wide;
 
 endmodule

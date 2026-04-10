@@ -803,9 +803,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // The vd source can have a different encoding (it gets deshuffled in the masku_operand stage)
         [VRGATHER:VCOMPRESS]: begin
           // Buffer for the current element
-          logic [NrLanes*DataWidth-1:0] vrgat_res;
+          automatic logic [NrLanes*DataWidth-1:0] vrgat_res;
           // Buffer for the current element
-          logic [DataWidth-1:0] vrgat_buf;
+          automatic logic [DataWidth-1:0] vrgat_buf;
 
           // Extract the correct elements
           vrgat_res = '1; // Default assignment

@@ -58,7 +58,7 @@ module operand_queues_stage import ara_pkg::*; import rvv_pkg::*; import cf_math
   `include "common_cells/registers.svh"
 
   // STU flush support
-  `FF(lsu_ex_flush_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni);
+  `FF(lsu_ex_flush_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni)
 
   ///////////
   //  ALU  //

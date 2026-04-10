@@ -491,7 +491,7 @@ module ara import ara_pkg::*; #(
 
   // Break path for acc_mmu_en. This signal can afford some additional latency
   // since vector mem ops take multiple cycles to reach the addrgen
-  `FF(acc_mmu_en_q, acc_mmu_en, '0, clk_i, rst_ni);
+  `FF(acc_mmu_en_q, acc_mmu_en, '0, clk_i, rst_ni)
 
   vlsu #(
     .NrLanes     (NrLanes     ),
