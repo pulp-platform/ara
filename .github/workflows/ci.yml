@@ -208,6 +208,33 @@ jobs:
 #  Compile stage  #
 ###################
 
+  compile-slang:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Download RTL submodules
+        run: |
+            make -C hardware checkout
+            make -C hardware apply-patches
+      - name: Generate flist
+        run: make -C hardware spyglass/tmp/files
+      - name: Run slang
+        uses: pulp-platform/pulp-actions/slang@v2.5.0 # update version as needed, not autoupdated
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          slang-flags: >-
+            -f hardware/spyglass/tmp/files --top ara_soc_wrap
+            -Wextra -Wno-width-trunc -Wno-case-redundant-default -Wno-case-enum -Wno-incomplete-return -Wno-dup-import
+            --ignore-unknown-modules
+            --suppress-warnings .bender/...,hardware/deps/...
+
   compile-apps:
     runs-on: ubuntu-22.04
     strategy:
