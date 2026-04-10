@@ -85,6 +85,9 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     logic [idx_width(VInsnQueueDepth):0] commit_cnt;
   } vinsn_queue_d, vinsn_queue_q;
 
+  // Remaining bytes of the current instruction in the issue phase
+  vlen_t issue_cnt_d, issue_cnt_q;
+
   pe_req_t vinsn_issue_q;
   logic vinsn_issue_valid_q;
   // Is the vector instruction queue full?
@@ -394,8 +397,6 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   logic   [idx_width(NrLanes*StrbWidth):0] out_pnt_d, out_pnt_q;
   vaddr_t                                  vrf_pnt_d, vrf_pnt_q;
 
-  // Remaining bytes of the current instruction in the issue phase
-  vlen_t issue_cnt_d, issue_cnt_q;
   // Respected by default: input_limit_d  = 8*NrLanes + out_pnt_d - in_pnt_d;
   // To enforce: output_limit_d = out_pnt_d + issue_cnt_d;
   // MAXVL == VLEN (when LMUL == 8, i.e., the maximum possible)
