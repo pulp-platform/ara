@@ -17,8 +17,6 @@ module ara_soc_wrap (
   localparam int unsigned AxiUserWidth = 1;
   localparam int unsigned AxiIdWidth   = 5;
 
-  logic clk_i, rst_ni;
-
   ara_soc #(
     .NrLanes     (NrLanes      ),
     .VLEN        (VLEN         ),
@@ -33,7 +31,15 @@ module ara_soc_wrap (
     .scan_data_i   (1'b0        ),
     .uart_prdata_i ('0          ),
     .uart_pready_i ('0          ),
-    .uart_pslverr_i('0          )
+    .uart_pslverr_i('0          ),
+    .exit_o(),
+    .hw_cnt_en_o(),
+    .scan_data_o(),
+    .uart_penable_o(),
+    .uart_pwrite_o(),
+    .uart_paddr_o(),
+    .uart_psel_o(),
+    .uart_pwdata_o()
   );
 
 endmodule

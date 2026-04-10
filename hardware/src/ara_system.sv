@@ -96,7 +96,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
 
   // Support max 8 cores, for now
   logic [63:0] hart_id;
-  assign hart_id = {'0, hart_id_i};
+  assign hart_id = 64'(hart_id_i);
 
   // Pack invalidation interface into acc interface
   acc_to_cva6_t acc_resp_pack;

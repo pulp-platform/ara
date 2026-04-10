@@ -234,8 +234,6 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
   logic [idx_width(AxiDataWidth/8):0]      axi_r_byte_pnt_d, axi_r_byte_pnt_q;
   // - A pointer to which byte in the full VRF word we are writing data into.
   logic [idx_width(DataWidth*NrLanes/8):0] vrf_word_byte_pnt_d, vrf_word_byte_pnt_q;
-  // - A pointer that indicates the start byte in the vrf word.
-  logic [$clog2(8*NrLanes)-1:0] vrf_word_start_byte;
 
   // A counter that follows the vrf_word_byte_pnt pointer, but without the vstart information
   // We can compare this counter witht the issue_cnt_bytes counter to find the last byte in
@@ -421,7 +419,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_word_byte_pnt_d   = '0;
         vrf_word_byte_cnt_d   = '0;
         // Account for the results that were issued
-        if (seq_word_wr_offset_q) begin
+        if (seq_word_wr_offset_q != '0) begin
           vrf_eff_write_bytes = (NrLanes * DataWidthB);
         end else begin
           // First payload of the vector instruction
@@ -464,6 +462,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
         // Prepare for the next vector instruction
         if (vinsn_queue_d.issue_cnt != 0) begin : issue_cnt_bytes_update
+          // - A pointer that indicates the start byte in the vrf word.
+          automatic logic [$clog2(8*NrLanes)-1:0] vrf_word_start_byte;
           issue_cnt_bytes_d = (
                                 vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl
                                 - vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vstart
@@ -649,6 +649,8 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
 
       // New instruction with new vstart. Initialize the vrf byte ptr
       if (vinsn_queue_d.issue_cnt == '0) begin
+        // - A pointer that indicates the start byte in the vrf word.
+        automatic logic [$clog2(8*NrLanes)-1:0] vrf_word_start_byte;
         vrf_word_start_byte  = pe_req_i.vstart[$clog2(8*NrLanes)-1:0] << pe_req_i.vtype.vsew;
         vrf_word_byte_pnt_d  = {1'b0, vrf_word_start_byte[$clog2(8*NrLanes)-1:0]};
         vrf_word_byte_cnt_d  = '0;

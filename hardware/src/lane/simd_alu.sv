@@ -55,7 +55,6 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
   alu_sat_operand_t sat_sum, sat_sub;
   vxsat_t     vxsat;
   vxrm_t      vxrm;
-  logic       r;
 
   assign vxrm = vxrm_i;
   assign vxsat_o = vxsat;
@@ -183,7 +182,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                 res.w64[b]     = &vxsat.w64[b] ? (sum[63] ? {1'b0, {63{1'b1}}} : {1'b1, {63{1'b0}}} ) : sum[63:0];
               end
           endcase
-        VAADD, VAADDU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
+        VAADD, VAADDU: if (FixPtSupport == FixedPointEnable) begin
+          automatic logic r;
+          unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
               automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b];
                 unique case (vxrm)
@@ -224,48 +225,48 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                 endcase
                 res.w64[b] = (op_i == VAADDU) ? sum[64:1] + r : {sum[63], sum[63:1]} + r;
               end
-          endcase
+          endcase end
         VADD, VADC, VMADC, VREDSUM, VWREDSUMU, VWREDSUM: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b] +
-                logic'(op_i inside {VADC, VMADC} && mask_i[1*b] & ~vm_i);
+                8'(op_i inside {VADC, VMADC} && mask_i[1*b] & ~vm_i);
                 res.w8[b] = (op_i == VMADC) ? {6'b0, 1'b1, sum[8]} : sum[7:0];
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [16:0] sum = opa.w16[b] + opb.w16[b] +
-                logic'(op_i inside {VADC, VMADC} && mask_i[2*b] & ~vm_i);
+                16'(op_i inside {VADC, VMADC} && mask_i[2*b] & ~vm_i);
                 res.w16[b] = (op_i == VMADC) ? {14'b0, 1'b1, sum[16]} : sum[15:0];
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [32:0] sum = opa.w32[b] + opb.w32[b] +
-                logic'(op_i inside {VADC, VMADC} && mask_i[4*b] & ~vm_i);
+                32'(op_i inside {VADC, VMADC} && mask_i[4*b] & ~vm_i);
                 res.w32[b] = (op_i == VMADC) ? {30'b0, 1'b1, sum[32]} : sum[31:0];
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [64:0] sum = opa.w64[b] + opb.w64[b] +
-                logic'(op_i inside {VADC, VMADC} && mask_i[8*b] & ~vm_i);
+                64'(op_i inside {VADC, VMADC} && mask_i[8*b] & ~vm_i);
                 res.w64[b] = (op_i == VMADC) ? {62'b0, 1'b1, sum[64]} : sum[63:0];
               end
           endcase
         VSUB, VSBC, VMSBC: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sub = opb.w8 [b] - opa.w8 [b] -
-                logic'(op_i inside {VSBC, VMSBC} && mask_i[1*b] & ~vm_i);
+                8'(op_i inside {VSBC, VMSBC} && mask_i[1*b] & ~vm_i);
                 res.w8[b] = (op_i == VMSBC) ? {6'b0, 1'b1, sub[8]} : sub[7:0];
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [16:0] sub = opb.w16[b] - opa.w16[b] -
-                logic'(op_i inside {VSBC, VMSBC} && mask_i[2*b] & ~vm_i);
+                16'(op_i inside {VSBC, VMSBC} && mask_i[2*b] & ~vm_i);
                 res.w16[b] = (op_i == VMSBC) ? {14'b0, 1'b1, sub[16]} : sub[15:0];
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [32:0] sub = opb.w32[b] - opa.w32[b] -
-                logic'(op_i inside {VSBC, VMSBC} && mask_i[4*b] & ~vm_i);
+                32'(op_i inside {VSBC, VMSBC} && mask_i[4*b] & ~vm_i);
                 res.w32[b] = (op_i == VMSBC) ? {30'b0, 1'b1, sub[32]} : sub[31:0];
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [64:0] sub = opb.w64[b] - opa.w64[b] -
-                logic'(op_i inside {VSBC, VMSBC} && mask_i[8*b] & ~vm_i);
+                64'(op_i inside {VSBC, VMSBC} && mask_i[8*b] & ~vm_i);
                 res.w64[b] = (op_i == VMSBC) ? {62'b0, 1'b1, sub[64]} : sub[63:0];
               end
           endcase
@@ -308,22 +309,24 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               automatic logic [16:0] sub = opb.w16[b] - opa.w16[b];
               vxsat.w16[b]   = (!opb.w16[b][15] & opa.w16[b][15] & sub[15]) |
                                (opb.w16[b][15] & !opa.w16[b][15] & !sub[15]);
-              res.w16[b]     = vxsat.w16[b] ? (opb.w16[b][15] ? 16'h8000 : 16'h7FFF) : sub[15:0];
+              res.w16[b]     = &vxsat.w16[b] ? (opb.w16[b][15] ? 16'h8000 : 16'h7FFF) : sub[15:0];
           end
           EW32: for (int b = 0; b < 2; b++) begin
               automatic logic [32:0] sub = opb.w32[b] - opa.w32[b];
               vxsat.w32[b]   = (!opb.w32[b][31] & opa.w32[b][31] & sub[31]) |
                                (opb.w32[b][31] & !opa.w32[b][31] & !sub[31]);
-              res.w32[b]     = vxsat.w32[b] ? (opb.w32[b][31] ? 32'h80000000 : 32'h7FFFFFFF) : sub[31:0];
+              res.w32[b]     = &vxsat.w32[b] ? (opb.w32[b][31] ? 32'h80000000 : 32'h7FFFFFFF) : sub[31:0];
           end
           EW64: for (int b = 0; b < 1; b++) begin
               automatic logic [64:0] sub = opb.w64[b] - opa.w64[b];
               vxsat.w64[b]   = (!opb.w64[b][63] & opa.w64[b][63] & sub[63]) |
                                (opb.w64[b][63] & !opa.w64[b][63] & !sub[63]);
-              res.w64[b]     = vxsat.w64[b] ? (opb.w64[b][63] ? 64'h8000000000000000 : 64'h7FFFFFFFFFFFFFFF) : sub[63:0];
+              res.w64[b]     = &vxsat.w64[b] ? (opb.w64[b][63] ? 64'h8000000000000000 : 64'h7FFFFFFFFFFFFFFF) : sub[63:0];
           end
           endcase
-        VASUB, VASUBU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
+        VASUB, VASUBU: if (FixPtSupport == FixedPointEnable) begin
+        automatic logic r;
+        unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sub = opb.w8 [b] - opa.w8 [b];
                 unique case (vxrm)
@@ -332,7 +335,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w8[b] = (op_i == VASUBU) ? (sub[7:0] >> 1) + r : ($signed(sub[7:0]) >>> 1) + r;
+                res.w8[b] = (op_i == VASUBU) ? (sub[7:0] >> 1) + {7'b0, r} : $unsigned(($signed(sub[7:0]) >>> 1) + $signed({7'b0, r}));
               end
             EW16: for (int b = 0; b < 4; b++) begin
                 automatic logic [ 16:0] sub = opb.w16[b] - opa.w16[b];
@@ -342,7 +345,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w16[b] = (op_i == VASUBU) ? (sub[15:0] >> 1) + r : ($signed(sub[15:0]) >>> 1) + r;
+                res.w16[b] = (op_i == VASUBU) ? (sub[15:0] >> 1) + {15'b0, r} : $unsigned(($signed(sub[15:0]) >>> 1) + $signed({15'b0, r}));
               end
             EW32: for (int b = 0; b < 2; b++) begin
                 automatic logic [ 32:0] sub = opb.w32[b] - opa.w32[b];
@@ -352,7 +355,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w32[b] = (op_i == VASUBU) ? (sub[31:0] >> 1) + r : ($signed(sub[31:0]) >>> 1) + r;
+                res.w32[b] = (op_i == VASUBU) ? (sub[31:0] >> 1) + {31'b0, r} : $unsigned(($signed(sub[31:0]) >>> 1) + $signed({31'b0, r}));
               end
             EW64: for (int b = 0; b < 1; b++) begin
                 automatic logic [ 64:0] sub = opb.w64[b] - opa.w64[b];
@@ -362,9 +365,9 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w64[b] = (op_i == VASUBU) ? (sub[63:0] >> 1) + r : ($signed(sub[63:0]) >>> 1) + r;
+                res.w64[b] = (op_i == VASUBU) ? (sub[63:0] >> 1) + {63'b0, r} : $unsigned(($signed(sub[63:0]) >>> 1) + $signed({63'b0, r}));
               end
-          endcase
+          endcase end
 
         // Shift instructions
         VSLL: unique case (vew_i)
@@ -443,19 +446,19 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         // Fixed point clip instructions
         VNCLIP: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8 : for (int b = 0; b < 4; b++) begin
-                automatic logic [15:0] clip = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
+                automatic logic [15:0] clip = $unsigned($signed(opb.w16[b]) >>> opa.w16[b][3:0]);
                 vxsat.w8[b]   = |clip[15:8];
-                res.w8 [2*b + narrowing_select_i] = ($signed(opb.w16[b]) >>> opa.w16[b][3:0]) + rm[b];
+                res.w8 [2*b + narrowing_select_i] = $unsigned(($signed(opb.w16[b]) >>> opa.w16[b][3:0]) + $signed(rm[b]));
               end
             EW16: for (int b = 0; b < 2; b++) begin
-                automatic logic [31:0] clip = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
+                automatic logic [31:0] clip = $unsigned($signed(opb.w32[b]) >>> opa.w32[b][4:0]);
                 vxsat.w8[b]   = |clip[31:16];
-                res.w16[2*b + narrowing_select_i] = ($signed(opb.w32[b]) >>> opa.w32[b][4:0]) + rm[b];
+                res.w16[2*b + narrowing_select_i] = $unsigned(($signed(opb.w32[b]) >>> opa.w32[b][4:0]) + $signed(rm[b]));
               end
             EW32: for (int b = 0; b < 1; b++) begin
                 automatic logic [63:0] clip = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
                 vxsat.w8[b]   = |clip[63:32];
-                res.w32[2*b + narrowing_select_i] = ($signed(opb.w64[b]) >>> opa.w64[b][5:0]) + rm[b];
+                res.w32[2*b + narrowing_select_i] = $unsigned(($signed(opb.w64[b]) >>> opa.w64[b][5:0]) + $signed(rm[b]));
               end
           endcase
         VNCLIPU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)

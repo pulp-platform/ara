@@ -259,7 +259,7 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
 `endif
 
   // One-cycle latency
-  `FF(l2_rvalid, l2_req, 1'b0);
+  `FF(l2_rvalid, l2_req, 1'b0)
 
   ////////////
   //  UART  //
@@ -482,17 +482,17 @@ module ara_soc import axi_pkg::*; import ara_pkg::*; #(
   localparam config_pkg::cva6_cfg_t CVA6AraConfig = build_config_pkg::build_config(CVA6AraConfig_user);
 
   // Define the exception type
-  `CVA6_TYPEDEF_EXCEPTION(exception_t, CVA6AraConfig);
+  `CVA6_TYPEDEF_EXCEPTION(exception_t, CVA6AraConfig)
 
   // Standard interface
-  `CVA6_INTF_TYPEDEF_ACC_REQ(accelerator_req_t, CVA6AraConfig, fpnew_pkg::roundmode_e);
-  `CVA6_INTF_TYPEDEF_ACC_RESP(accelerator_resp_t, CVA6AraConfig, exception_t);
+  `CVA6_INTF_TYPEDEF_ACC_REQ(accelerator_req_t, CVA6AraConfig, fpnew_pkg::roundmode_e)
+  `CVA6_INTF_TYPEDEF_ACC_RESP(accelerator_resp_t, CVA6AraConfig, exception_t)
   // MMU interface
-  `CVA6_INTF_TYPEDEF_MMU_REQ(acc_mmu_req_t, CVA6AraConfig);
-  `CVA6_INTF_TYPEDEF_MMU_RESP(acc_mmu_resp_t, CVA6AraConfig, exception_t);
+  `CVA6_INTF_TYPEDEF_MMU_REQ(acc_mmu_req_t, CVA6AraConfig)
+  `CVA6_INTF_TYPEDEF_MMU_RESP(acc_mmu_resp_t, CVA6AraConfig, exception_t)
   // Accelerator - CVA6's top-level interface
-  `CVA6_INTF_TYPEDEF_CVA6_TO_ACC(cva6_to_acc_t, accelerator_req_t, acc_mmu_resp_t);
-  `CVA6_INTF_TYPEDEF_ACC_TO_CVA6(acc_to_cva6_t, accelerator_resp_t, acc_mmu_req_t);
+  `CVA6_INTF_TYPEDEF_CVA6_TO_ACC(cva6_to_acc_t, accelerator_req_t, acc_mmu_resp_t)
+  `CVA6_INTF_TYPEDEF_ACC_TO_CVA6(acc_to_cva6_t, accelerator_resp_t, acc_mmu_req_t)
 
 `ifndef TARGET_GATESIM
   ara_system #(

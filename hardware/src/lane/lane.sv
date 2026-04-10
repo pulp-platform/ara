@@ -222,12 +222,12 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                 [NrVInsn-1:0]         mfpu_vinsn_done;
   // Interface with the MaskB operand queue (VRGATHER/VCOMPRESS)
   logic                                       mask_b_cmd_pop_d, mask_b_cmd_pop_q;
-  `FF(mask_b_cmd_pop_q, mask_b_cmd_pop_d, 1'b0, clk_i, rst_ni);
+  `FF(mask_b_cmd_pop_q, mask_b_cmd_pop_d, 1'b0, clk_i, rst_ni)
 
 
   // Support for store exception flush
   logic lsu_ex_flush_op_req_d, lsu_ex_flush_op_req_q;
-  `FF(lsu_ex_flush_op_req_q, lsu_ex_flush_op_req_d, 1'b0, clk_i, rst_ni);
+  `FF(lsu_ex_flush_op_req_q, lsu_ex_flush_op_req_d, 1'b0, clk_i, rst_ni)
 
   // Additional signals to please Verilator's hierarchical verilation
   pe_req_t  pe_req;
@@ -310,7 +310,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   logic                                       sldu_result_gnt_opqueues;
   // Support for store exception flush
   logic                                       lsu_ex_flush_op_queues_d, lsu_ex_flush_op_queues_q;
-  `FF(lsu_ex_flush_op_queues_q, lsu_ex_flush_op_queues_d, 1'b0, clk_i, rst_ni);
+  `FF(lsu_ex_flush_op_queues_q, lsu_ex_flush_op_queues_d, 1'b0, clk_i, rst_ni)
 
   operand_requester #(
     .NrLanes              (NrLanes              ),
@@ -609,8 +609,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
   );
 
   // Break timing path
-  `FF(vfu_operation_valid_q, vfu_operation_valid, 1'b0, clk_i, rst_ni);
-  `FF(vfu_operation_op_q, vfu_operation.op, VADD, clk_i, rst_ni);
+  `FF(vfu_operation_valid_q, vfu_operation_valid, 1'b0, clk_i, rst_ni)
+  `FF(vfu_operation_op_q, vfu_operation.op, VADD, clk_i, rst_ni)
 
   always_comb begin
     sldu_addrgen_sel_d = SLDU_SEL;
