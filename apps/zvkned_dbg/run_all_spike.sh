@@ -8,7 +8,7 @@ ARA_DIR="$(cd "$APPS_DIR/.." && pwd)"
 
 CC="$ARA_DIR/install/riscv-llvm/bin/clang"
 SPIKE="$ARA_DIR/install/riscv-isa-sim/bin/spike"
-SPIKE_ISA="rv64gcv_zfh_zvkned_zvl4096b"
+SPIKE_ISA="rv64gcv_zfh_zvkb_zvkned_zvl4096b"
 
 CFLAGS="-march=rv64gcv_zfh_zvfh_zvkned -mabi=lp64d -mno-relax -fuse-ld=lld \
   -fno-vectorize -mllvm -scalable-vectorization=off \

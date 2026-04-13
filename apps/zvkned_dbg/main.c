@@ -33,7 +33,7 @@
     !defined(TEST_VAESDF_VS) && !defined(TEST_VAESDF_VS_2G) &&                 \
     !defined(TEST_VAESKF1) && !defined(TEST_VAESKF2_EVEN) &&                   \
     !defined(TEST_VAESKF2_ODD)
-#define TEST_VAESZ
+#define TEST_VAESKF1
 #endif
 
 // FIPS 197 Appendix B, AES-128 key (LE uint32)

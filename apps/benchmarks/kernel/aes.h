@@ -28,6 +28,25 @@
 #define AES_BLOCK_WORDS 4
 #define AES_128_NROUNDS 10
 #define AES_128_NKEYS (AES_128_NROUNDS + 1) // 11 round keys
+#define AES_256_KEY_WORDS 8
+#define AES_256_KEY_BYTES (AES_256_KEY_WORDS * sizeof(uint32_t))
+#define AES_256_NROUNDS 14
+#define AES_256_NKEYS (AES_256_NROUNDS + 1) // 15 round keys
+
+// Expand `nkeys` AES-128 user keys in parallel using `vaeskf1.vi`.
+// `keys` holds `nkeys * 4` u32 words (one 128-bit key per 4-word group).
+// `round_keys` is written in round-major order:
+//   round_keys[(round * nkeys + key) * 4 + word]
+void aes128_expand_keys_vec(const uint32_t *keys, uint32_t *round_keys,
+                            size_t nkeys);
+
+// Expand `nkeys` AES-256 user keys in parallel using `vaeskf2.vi`.
+// `keys_lo` and `keys_hi` hold the first and second 128-bit halves of each
+// user key as `nkeys * 4` u32 words each.
+// `round_keys` is written in round-major order:
+//   round_keys[(round * nkeys + key) * 4 + word]
+void aes256_expand_keys_vec(const uint32_t *keys_lo, const uint32_t *keys_hi,
+                            uint32_t *round_keys, size_t nkeys);
 
 // Vectorized AES-128 ECB encryption of `nblocks` 16-byte blocks using the
 // Zvkned instructions. The 44-word expanded key must already be stored at
