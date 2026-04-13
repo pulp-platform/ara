@@ -40,3 +40,11 @@ def_args_conjugate_gradient	?= "128 0 0.5"
 def_args_lavamd      ?= "2 32 0.5 128"
 # Number of 16-byte AES-128 blocks to encrypt
 def_args_aes         ?= "64"
+# Number of AES-128 keys to expand
+def_args_aes_ks128   ?= "64"
+# Number of AES-128 keys to expand
+def_args_aes_ks      ?= "64"
+# Number of AES-256 keys to expand
+def_args_aes_ks256   ?= "64"
+# Number of messages and bytes per message for the SHA-256 benchmark
+def_args_sha         ?= "64 1024"

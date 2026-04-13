@@ -666,6 +666,21 @@ jobs:
       with:
         name: lavamd_roofline
         path: lavamd.png
+    - name: Upload the aes_ks128 roofline
+      uses: actions/upload-artifact@v7
+      with:
+        name: aes_ks128_roofline
+        path: aes_ks128.png
+    - name: Upload the aes_ks256 roofline
+      uses: actions/upload-artifact@v7
+      with:
+        name: aes_ks256_roofline
+        path: aes_ks256.png
+    - name: Upload the sha roofline
+      uses: actions/upload-artifact@v7
+      with:
+        name: sha_roofline
+        path: sha.png
 
 ####################
 #  Clean-up stage  #
