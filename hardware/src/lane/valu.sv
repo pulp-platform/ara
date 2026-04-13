@@ -53,6 +53,13 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     input  elen_t                        sldu_operand_i,
     input  logic                         sldu_alu_valid_i,
     output logic                         sldu_alu_ready_o,
+    // Third operand path, used by Zvknh SHA-2 to forward vs1 to the SLDU.
+    // Physically tapped from the MulFPUA operand queue (mfpu_operand_i[0]) in
+    // vector_fus_stage.sv; an external mux decides whether the vmfpu or the
+    // valu consumes the queue. Unused by non-SHA ops.
+    input  elen_t                        sha_vs1_operand_i,
+    input  logic                         sha_vs1_operand_valid_i,
+    output logic                         sha_vs1_operand_ready_o,
     // Interface with the Mask unit
     output elen_t                        mask_operand_o,
     output logic                         mask_operand_valid_o,
@@ -252,6 +259,11 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     is_aes_round = op inside {[VAESDM_VV:VAESKF2]};
   endfunction : is_aes_round
 
+  // Returns 1'b1 if `op` is a Zvknh SHA-2 op handled via VALU forwarding + SLDU compute.
+  function automatic logic is_sha_valu(ara_op_e op);
+    is_sha_valu = op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV};
+  endfunction : is_sha_valu
+
   //////////////////
   //  Reductions  //
   //////////////////
@@ -336,7 +348,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   `FF(alu_red_complete_o, alu_red_complete_d, 1'b0, clk_i, rst_ni);
 
   // Signal to indicate the state of the ALU
-  typedef enum logic [3:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_RX, INTER_LANES_REDUCTION_TX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION, AES_SUBBYTES, AES_TX, AES_RX} alu_state_e;
+  // SHA_TX_A: forward the first beat to the SLDU carrying packed (vd, vs2) for SEW=32
+  //           or just vd for SEW=64.
+  // SHA_TX_B: forward a beat carrying vs1 (SEW=32) or vs2 (SEW=64).
+  // SHA_TX_C: SEW=64 only -- forward a beat carrying vs1.
+  // SHA_WAIT: wait for the SLDU to commit the SHA-2 result to the VRF.
+  typedef enum logic [3:0] {NO_REDUCTION, INTRA_LANE_REDUCTION, INTER_LANES_REDUCTION_RX, INTER_LANES_REDUCTION_TX, LN0_REDUCTION_COMMIT, SIMD_REDUCTION, AES_SUBBYTES, AES_TX, AES_RX, SHA_TX_A, SHA_TX_B, SHA_TX_C, SHA_WAIT} alu_state_e;
   alu_state_e alu_state_d, alu_state_q;
 
   // Reductions commit by zeroing the commit counter
@@ -506,8 +523,9 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     alu_vinsn_done_o = '0;
 
     // Do not acknowledge any operands
-    alu_operand_ready_o = '0;
-    mask_ready_o        = '0;
+    alu_operand_ready_o      = '0;
+    sha_vs1_operand_ready_o  = 1'b0;
+    mask_ready_o             = '0;
 
     // Don't prevent commit by default
     prevent_commit = 1'b0;
@@ -534,7 +552,7 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         NO_REDUCTION: begin
           // Do not accept operands if the result queue is full!
           // Do not accept operands from this state if the current instruction is a reduction or AES round
-          if (!result_queue_full && !is_reduction(vinsn_issue_q.op) && !is_aes_round(vinsn_issue_q.op)) begin
+          if (!result_queue_full && !is_reduction(vinsn_issue_q.op) && !is_aes_round(vinsn_issue_q.op) && !is_sha_valu(vinsn_issue_q.op)) begin
             // Do we have all the operands necessary for this instruction?
             // AluA carries vs1, or vd_op when use_vd_op && !use_vs1 (only for AES single-phase ops)
             automatic logic need_alu_a = vinsn_issue_q.use_vs1 || (is_aes_valu(vinsn_issue_q.op) && vinsn_issue_q.use_vd_op && !vinsn_issue_q.use_vs1);
@@ -825,6 +843,96 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
             alu_state_d = AES_RX;
         end
 
+        ////////////////////////////
+        //  SHA-2 Multi-phase FSM //
+        ////////////////////////////
+        //
+        // Each element-group pair is delivered to the SLDU in 3 back-to-back
+        // beats carrying vd, vs2, vs1 on the alu_red_* (SubBytes-forwarding)
+        // channel. The SLDU buffers beats A/B and on beat C computes the
+        // per-group SHA-2 result, then ships it back via the reduction return
+        // path (sldu_alu_valid_i / sldu_operand_i), which we hand into the
+        // result queue for the normal VRF writeback path.
+        //
+        // Unlike AES, there is no per-lane phase-0 compute in the VALU — the
+        // lane simply forwards three operand words per beat.
+
+        // Beat A: ship vd (alu_operand_i[0]) to the SLDU.
+        SHA_TX_A: begin
+          prevent_commit  = 1'b1;
+          // Gate valid on operand A being ready so the SLDU doesn't drain
+          // stale data before the operand queue delivers vd.
+          alu_red_valid_o = alu_operand_valid_i[0];
+          if (alu_operand_valid_i[0] && alu_red_ready_i) begin
+            alu_operand_ready_o = 2'b01;  // ack AluA (vd)
+            alu_state_d = SHA_TX_B;
+          end
+        end
+
+        // Beat B: ship vs2 (alu_operand_i[1]) to the SLDU.
+        SHA_TX_B: begin
+          prevent_commit  = 1'b1;
+          alu_red_valid_o = alu_operand_valid_i[1];
+          if (alu_operand_valid_i[1] && alu_red_ready_i) begin
+            alu_operand_ready_o = 2'b10;  // ack AluB (vs2)
+            alu_state_d = SHA_TX_C;
+          end
+        end
+
+        // Beat C: ship vs1 (sha_vs1_operand_i, tapped from MulFPUA queue).
+        SHA_TX_C: begin
+          prevent_commit  = 1'b1;
+          alu_red_valid_o = sha_vs1_operand_valid_i;
+          if (sha_vs1_operand_valid_i && alu_red_ready_i) begin
+            sha_vs1_operand_ready_o = 1'b1;
+            alu_state_d = SHA_WAIT;
+          end
+        end
+
+        // Wait for the SLDU to ship the compressed group back; store it in
+        // result_queue and bump pointers so the normal VRF writeback path
+        // handles the commit. Reusing the same slot as AES phase-0 buffer is
+        // unsafe here because there is no compute in the VALU — so we always
+        // use a fresh entry.
+        SHA_WAIT: begin
+          prevent_commit = 1'b1;
+          if (!result_queue_full && sldu_alu_valid_q) begin
+            // Handshake SLDU
+            sldu_alu_ready_d = 1'b1;
+
+            // Capture the SHA result for this lane into the result queue.
+            result_queue_d[result_queue_write_pnt_q].wdata = sldu_operand_q;
+            result_queue_d[result_queue_write_pnt_q].addr  = vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + ((vinsn_issue_q.vl - issue_cnt_q) >> (unsigned'(EW64) - unsigned'(vinsn_issue_q.vtype.vsew)));
+            result_queue_d[result_queue_write_pnt_q].id    = vinsn_issue_q.id;
+            result_queue_d[result_queue_write_pnt_q].be    = be(issue_cnt_q < element_cnt_issue ? issue_cnt_q[6:0] : element_cnt_issue, vinsn_issue_q.vtype.vsew);
+            result_queue_valid_d[result_queue_write_pnt_q] = 1'b1;
+            result_queue_cnt_d += 1;
+            if (result_queue_write_pnt_q == ResultQueueDepth-1)
+              result_queue_write_pnt_d = 0;
+            else
+              result_queue_write_pnt_d = result_queue_write_pnt_q + 1;
+
+            // Account for issued elements (clamp to avoid underflow).
+            aes_element_cnt = (element_cnt_issue > issue_cnt_q) ? issue_cnt_q[6:0] : element_cnt_issue;
+            issue_cnt_d = issue_cnt_q - aes_element_cnt;
+
+            if (vinsn_issue_valid && issue_cnt_d == '0) begin
+              vinsn_queue_d.issue_cnt -= 1;
+              if (vinsn_queue_q.issue_pnt == VInsnQueueDepth-1)
+                vinsn_queue_d.issue_pnt = '0;
+              else
+                vinsn_queue_d.issue_pnt = vinsn_queue_q.issue_pnt + 1;
+
+              if (vinsn_queue_d.issue_cnt != 0)
+                issue_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].vl;
+
+              alu_state_d = NO_REDUCTION;
+            end else begin
+              alu_state_d = SHA_TX_A;
+            end
+          end
+        end
+
         // Receive ShiftRows'd data from SLDU, apply MixColumns + AddRoundKey
         AES_RX: begin
           prevent_commit = 1'b1;
@@ -880,14 +988,21 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     //  Write results into the VRF  //
     //////////////////////////////////
 
-    // During AES_TX, wdata must come from write_pnt (SubBytes buffer) for the SLDU.
-    // In all other states, wdata comes from read_pnt for VRF writeback.
-    alu_result_wdata_o = (alu_state_q == AES_TX)
-                       ? result_queue_q[result_queue_write_pnt_q].wdata
-                       : result_queue_q[result_queue_read_pnt_q].wdata;
-    // Enable VRF writeback in NO_REDUCTION, AES_SUBBYTES, AES_RX, and SIMD_REDUCTION final.
-    // Disabled during AES_TX (wdata is muxed for SLDU, not VRF).
-    if (alu_state_q == NO_REDUCTION || alu_state_q inside {AES_SUBBYTES, AES_RX}
+    // Wdata routing:
+    //   AES_TX     : forward the SubBytes buffer at write_pnt to the SLDU
+    //   SHA_TX_A/B : forward raw operand word (vd/vs2) to the SLDU via alu_result_wdata_o
+    //   SHA_TX_C   : forward sha_vs1_operand_i (vs1) to the SLDU
+    //   else       : normal VRF writeback path from read_pnt
+    unique case (alu_state_q)
+      AES_TX:   alu_result_wdata_o = result_queue_q[result_queue_write_pnt_q].wdata;
+      SHA_TX_A: alu_result_wdata_o = alu_operand_i[0];
+      SHA_TX_B: alu_result_wdata_o = alu_operand_i[1];
+      SHA_TX_C: alu_result_wdata_o = sha_vs1_operand_i;
+      default:  alu_result_wdata_o = result_queue_q[result_queue_read_pnt_q].wdata;
+    endcase
+    // Enable VRF writeback in NO_REDUCTION, AES_SUBBYTES, AES_RX, SHA_WAIT and
+    // SIMD_REDUCTION final. Disabled during *_TX states (wdata is muxed for SLDU).
+    if (alu_state_q == NO_REDUCTION || alu_state_q inside {AES_SUBBYTES, AES_RX, SHA_WAIT}
         || (alu_state_q == SIMD_REDUCTION && simd_red_cnt_q == simd_red_cnt_max_q)) begin
       alu_result_req_o = result_queue_valid_q[result_queue_read_pnt_q] & ((alu_state_q == SIMD_REDUCTION) || !result_queue_q[result_queue_read_pnt_q].mask);
     end else begin
@@ -940,8 +1055,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       if (vinsn_queue_d.commit_cnt != '0)
         commit_cnt_d = vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl;
 
-      // If this was a reduction or AES round, clean the Lane SLDU/ADDRGEN arbiter
-      if (is_reduction(vinsn_commit.op) || is_aes_round(vinsn_commit.op)) alu_red_complete_d = 1'b1;
+      // If this was a reduction or AES round or SHA op, clean the Lane SLDU/ADDRGEN arbiter
+      if (is_reduction(vinsn_commit.op) || is_aes_round(vinsn_commit.op) || is_sha_valu(vinsn_commit.op)) alu_red_complete_d = 1'b1;
 
       // Initialize counters and alu state if needed by the next instruction
       // After a reduction, the next instructions starts after the reduction commits
@@ -954,6 +1069,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
         alu_state_d = INTRA_LANE_REDUCTION;
       end else if (is_aes_round(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
         alu_state_d = AES_SUBBYTES;
+      end else if (is_sha_valu(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
+        alu_state_d = SHA_TX_A;
       end else begin
         alu_state_d = NO_REDUCTION;
       end
@@ -983,6 +1100,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
           alu_state_d = INTRA_LANE_REDUCTION;
         else if (is_aes_round(vfu_operation_i.op) && (vinsn_queue_d.commit_cnt == '0))
           alu_state_d = AES_SUBBYTES;
+        else if (is_sha_valu(vfu_operation_i.op) && (vinsn_queue_d.commit_cnt == '0))
+          alu_state_d = SHA_TX_A;
         else
           alu_state_d = NO_REDUCTION;
         // The next will be the first operation of this instruction

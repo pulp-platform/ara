@@ -246,6 +246,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
 
   lane_sequencer #(
     .NrLanes              (NrLanes              ),
+    .CryptoSupport        (CryptoSupport        ),
     .pe_req_t             (pe_req_t             ),
     .pe_resp_t            (pe_resp_t            ),
     .operand_request_cmd_t(operand_request_cmd_t),
@@ -645,7 +646,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
           sldu_addrgen_sel_d = ADDRGEN_SEL;
           sldu_addrgen_arbiter_push = 1'b1;
         end
-        [VREDSUM:VWREDSUM], [VAESDM_VV:VAESKF2]: begin
+        [VREDSUM:VWREDSUM], [VAESDM_VV:VAESKF2], [VSHA2MS_VV:VSHA2CL_VV]: begin
           sldu_addrgen_sel_d = ALU_RED_SEL;
           sldu_addrgen_arbiter_push = 1'b1;
         end

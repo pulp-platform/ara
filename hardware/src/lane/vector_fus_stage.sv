@@ -53,6 +53,8 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     input  elen_t          [2:0]              mfpu_operand_i,
     input  logic           [2:0]              mfpu_operand_valid_i,
     output logic           [2:0]              mfpu_operand_ready_o,
+    // SHA-2 taps mfpu_operand_i[0] as its vs1 channel (see valu.sv). Ready is
+    // OR-ed below between the vmfpu and the valu SHA consumer.
     // Interface with the vector register file
     output logic                              alu_result_req_o,
     output vid_t                              alu_result_id_o,
@@ -97,6 +99,14 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
   logic alu_mask_ready;
   logic mfpu_mask_ready;
   assign mask_ready_o = alu_mask_ready | mfpu_mask_ready;
+
+  // MulFPUA ready-mux: the queue is shared between vmfpu (normal consumer) and
+  // valu (SHA-2 vs1 consumer). Only one of them asserts ready at a time,
+  // decided by op_i routing inside each unit, so OR-combining is safe.
+  logic [2:0] vmfpu_operand_ready;
+  logic       valu_sha_vs1_ready;
+  assign mfpu_operand_ready_o[2:1] = vmfpu_operand_ready[2:1];
+  assign mfpu_operand_ready_o[0]   = vmfpu_operand_ready[0] | valu_sha_vs1_ready;
 
   // saturation selection
   logic alu_vxsat, mfpu_vxsat;
@@ -145,6 +155,10 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .sldu_alu_ready_o     (sldu_alu_ready_o               ),
     // Interface with the Slide Unit
     .alu_red_ready_i      (sldu_alu_gnt_i),
+    // SHA-2 vs1 tap from MulFPUA queue
+    .sha_vs1_operand_i        (mfpu_operand_i[0]       ),
+    .sha_vs1_operand_valid_i  (mfpu_operand_valid_i[0] ),
+    .sha_vs1_operand_ready_o  (valu_sha_vs1_ready      ),
     // Interface with the Mask unit
     .mask_operand_o       (mask_operand_o[MaskFUAlu]      ),
     .mask_operand_valid_o (mask_operand_valid_o[MaskFUAlu]),
@@ -187,7 +201,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     // Interface with the operand queues
     .mfpu_operand_i       (mfpu_operand_i                  ),
     .mfpu_operand_valid_i (mfpu_operand_valid_i            ),
-    .mfpu_operand_ready_o (mfpu_operand_ready_o            ),
+    .mfpu_operand_ready_o (vmfpu_operand_ready             ),
     // Interface with the vector register file
     .mfpu_result_req_o    (mfpu_result_req_o               ),
     .mfpu_result_id_o     (mfpu_result_id_o                ),

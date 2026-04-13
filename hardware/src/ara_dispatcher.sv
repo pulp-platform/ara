@@ -3875,6 +3875,38 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
                     end
                   end
+                  6'b101101, // vsha2ms.vv
+                  6'b101110, // vsha2ch.vv
+                  6'b101111: // vsha2cl.vv
+                  begin
+                    if (Zvknha(CryptoSupport)) begin
+                      unique case (insn.varith_type.func6)
+                        6'b101101: ara_req.op = ara_pkg::VSHA2MS_VV;
+                        6'b101110: ara_req.op = ara_pkg::VSHA2CH_VV;
+                        6'b101111: ara_req.op = ara_pkg::VSHA2CL_VV;
+                        default:   ara_req.op = ara_pkg::VSHA2MS_VV;
+                      endcase
+                      ara_req.vs1           = insn.varith_type.rs1;
+                      ara_req.use_vs1       = 1'b1;
+                      ara_req.use_vs2       = 1'b1;
+                      ara_req.use_vd        = 1'b1;
+                      ara_req.use_vd_op     = 1'b1;
+                      ara_req.eew_vs1       = csr_vtype_q.vsew;
+                      ara_req.eew_vs2       = csr_vtype_q.vsew;
+                      ara_req.eew_vd_op     = csr_vtype_q.vsew;
+                      ara_req_valid         = 1'b1;
+                      // Zvknha: SEW=32 only. Zvknhb: SEW=32 or SEW=64.
+                      if (!(csr_vtype_q.vsew inside {EW32, EW64})) illegal_insn = 1'b1;
+                      if (csr_vtype_q.vsew == EW64 && !Zvknhb(CryptoSupport)) illegal_insn = 1'b1;
+                      // vd must differ from vs1 and vs2
+                      if (insn.varith_type.rd == insn.varith_type.rs1 ||
+                          insn.varith_type.rd == insn.varith_type.rs2) illegal_insn = 1'b1;
+                      // vl and vstart must be element-group (EGS=4) aligned
+                      if (csr_vl_q[1:0] != 2'b00 || csr_vstart_q[1:0] != 2'b00) illegal_insn = 1'b1;
+                    end else begin
+                      illegal_insn = 1'b1;
+                    end
+                  end
                   default: begin
                     illegal_insn = 1'b1;
                   end
@@ -3921,7 +3953,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Is the instruction an in-lane one and could it be subject to reshuffling?
         in_lane_op = ara_req.op inside {[VADD:VMERGE]} || ara_req.op inside {[VREDSUM:VMSBC]} ||
                      ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {[VMVXS:VSLIDEDOWN]} ||
-                     ara_req.op inside {[VAESDM_VV:VAESZ_VS]};
+                     ara_req.op inside {[VAESDM_VV:VAESZ_VS]} ||
+                     ara_req.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!

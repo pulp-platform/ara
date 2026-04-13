@@ -241,6 +241,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   function automatic vfu_e vfu(ara_op_e op`ifndef SYNTHESIS = VADD `endif);
     unique case (op) inside
       [VADD:VAESZ_VS]      : vfu = VFU_Alu;
+      [VSHA2MS_VV:VSHA2CL_VV]: vfu = VFU_Alu;
       [VMUL:VFWREDOSUM]    : vfu = VFU_MFpu;
       [VMFEQ:VCOMPRESS]    : vfu = VFU_MaskUnit;
       [VLE:VLXE]           : vfu = VFU_LoadUnit;
@@ -270,6 +271,10 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
       VAESZ_VS: if (Zvkned(CryptoSupport)) begin
         for (int i = 0; i < NrVFUs; i++)
           if (i == VFU_Alu) target_vfus[i] = 1'b1;
+      end
+      VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV: if (Zvknha(CryptoSupport)) begin
+        for (int i = 0; i < NrVFUs; i++)
+          if (i == VFU_Alu || i == VFU_SlideUnit) target_vfus[i] = 1'b1;
       end
       [VFREDUSUM:VFWREDOSUM]:
         for (int i = 0; i < NrVFUs; i++)

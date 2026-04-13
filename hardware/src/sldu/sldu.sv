@@ -303,7 +303,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
   logic is_issue_reduction, is_issue_alu_reduction, is_issue_vmfpu_reduction;
 
   assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu)
-                                  & !(Zvkned(CryptoSupport) && vinsn_issue_q.op inside {[VAESDM_VV:VAESKF2]});
+                                  & !(Zvkned(CryptoSupport) && vinsn_issue_q.op inside {[VAESDM_VV:VAESKF2]})
+                                  & !(Zvknha(CryptoSupport) && vinsn_issue_q.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
@@ -315,6 +316,14 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     assign is_issue_aes = 1'b0;
   end
 
+  // Zvknh SHA-2 ops routed through the SLDU (compute in simd_sha_group)
+  logic is_issue_sha;
+  if (Zvknha(CryptoSupport)) begin : gen_sha_issue
+    assign is_issue_sha = vinsn_issue_valid_q & (vinsn_issue_q.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV});
+  end else begin : gen_no_sha_issue
+    assign is_issue_sha = 1'b0;
+  end
+
   // Active lane mask for AES ops: when VL < 2*NrLanes (less than one full beat),
   // only lanes 0..num_active_cols-1 participate. Column c maps to lane (c % NrLanes).
   // issue_cnt_q is in bytes; each column = 4 bytes.
@@ -324,6 +333,35 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     if (is_issue_aes) begin
       for (int unsigned l = 0; l < NrLanes; l++)
         aes_lane_mask[l] = (l < (issue_cnt_q >> 2)) || (issue_cnt_q >= (NrLanes * 8));
+    end
+  end
+
+  // Tail-masking for SHA-2 ops. issue_cnt_q is in bytes.
+  // At SEW=32 each lane holds 2 elements (low/high halves); each element = 4 bytes.
+  //   lane l low half (bytes[3:0])  = element l
+  //   lane l high half (bytes[7:4]) = element l + NrLanes
+  // At SEW=64 each lane holds 1 element = 8 bytes; lane l = element l.
+  logic [NrLanes-1:0][7:0] sha_lane_be;
+  logic [NrLanes-1:0]      sha_lane_valid;
+  always_comb begin
+    sha_lane_be    = '0;
+    sha_lane_valid = '0;
+    if (is_issue_sha) begin
+      automatic logic [$bits(issue_cnt_q)-1:0] rem_elems;
+      rem_elems = (vinsn_issue_q.vtype.vsew == EW64) ? (issue_cnt_q >> 3)
+                                                     : (issue_cnt_q >> 2);
+      for (int unsigned l = 0; l < NrLanes; l++) begin
+        if (vinsn_issue_q.vtype.vsew == EW64) begin
+          if (l < rem_elems) begin
+            sha_lane_be[l]    = 8'hff;
+            sha_lane_valid[l] = 1'b1;
+          end
+        end else begin // EW32
+          if (l < rem_elems)           sha_lane_be[l][3:0] = 4'hf;
+          if (l + NrLanes < rem_elems) sha_lane_be[l][7:4] = 4'hf;
+          sha_lane_valid[l] = |sha_lane_be[l];
+        end
+      end
     end
   end
 
@@ -385,7 +423,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     SLIDE_NP2_SETUP,
     SLIDE_NP2_RUN,
     SLIDE_NP2_COMMIT,
-    SLIDE_NP2_WAIT
+    SLIDE_NP2_WAIT,
+    SLIDE_RUN_SHA
   } slide_state_e;
   slide_state_e state_d, state_q;
 
@@ -516,6 +555,129 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     assign aes_kf1_result   = '0;
   end
 
+  //////////////////////////////////////////
+  //  Zvknh SHA-2 Datapath (SLDU, gated)  //
+  //////////////////////////////////////////
+  //
+  // The VALU forwards 2 (SEW=32) or 3 (SEW=64) beats per element-group pair:
+  //   - Beat A: carries vd group
+  //   - Beat B: carries vs2 group (SEW=32: packed with vd in upper half) or vs2 (SEW=64)
+  //   - Beat C (SEW=64 only): vs1
+  // The SLDU buffers the first beat(s) in sha_buf_q and on the final beat
+  // drives simd_sha_group per element group. The result is written to the VRF
+  // via the existing AES write path (masked by aes_lane_mask).
+  //
+  // NOTE: The beat-forwarding handshake from the VALU is NOT YET WIRED in
+  // this scaffold. The buffer/ compute logic is instantiated so simd_sha_group
+  // is synthesised and exercised, but the state machine coordinating with the
+  // VALU (sha_beat_q, sha_buf_q updates) remains TODO.
+  elen_t [NrLanes-1:0] sha_result;
+  // Beat counter and per-beat operand buffers. Declared at module scope so
+  // the main SLDU FSM (SLIDE_RUN_SHA) can drive `_d` variants; the FFs are
+  // only instantiated when Zvknha is supported.
+  logic [1:0]          sha_beat_q, sha_beat_d;
+  elen_t [NrLanes-1:0] sha_buf_a_q, sha_buf_a_d;
+  elen_t [NrLanes-1:0] sha_buf_b_q, sha_buf_b_d;
+
+  if (Zvknha(CryptoSupport)) begin : gen_sha_sldu
+    `FF(sha_beat_q, sha_beat_d, 2'b00, clk_i, rst_ni);
+    `FF(sha_buf_a_q, sha_buf_a_d, '0, clk_i, rst_ni);
+    `FF(sha_buf_b_q, sha_buf_b_d, '0, clk_i, rst_ni);
+
+    // Max SHA element groups per beat. A beat carries NrLanes*8 bytes.
+    //   SEW=32 (16 bytes/group): NrLanes/2 groups/beat
+    //   SEW=64 (32 bytes/group): NrLanes/4 groups/beat (requires NrLanes>=4)
+    // We size the array at the SEW=32 max; at SEW=64 only the first
+    // ShaGroupsPerBeat_64 groups are driven / consumed.
+    localparam int unsigned ShaGroupsPerBeat    = (NrLanes * AesColsPerLane) / AesColsPerGroup;
+    localparam int unsigned ShaGroupsPerBeat_64 = (NrLanes >= 4) ? (NrLanes / 4) : 0;
+
+    // Per-group inputs and outputs of simd_sha_group.
+    logic [ShaGroupsPerBeat-1:0][3:0][63:0] sha_vd_groups;
+    logic [ShaGroupsPerBeat-1:0][3:0][63:0] sha_vs2_groups;
+    logic [ShaGroupsPerBeat-1:0][3:0][63:0] sha_vs1_groups;
+    logic [ShaGroupsPerBeat-1:0][3:0][63:0] sha_out_groups;
+
+    // Gather element groups from the buffered beats and the current operand.
+    // Layout:
+    //   SEW=32: each lane carries two 32-bit elements (low/high halves);
+    //           element idx  = col,  col_lane = col % NrLanes, col_half = col/NrLanes
+    //   SEW=64: each lane carries one 64-bit element;
+    //           element idx  = lane idx directly (grp*4 + i)
+    always_comb begin
+      sha_vd_groups  = '0;
+      sha_vs2_groups = '0;
+      sha_vs1_groups = '0;
+      if (vinsn_issue_q.vtype.vsew == EW64) begin
+        for (int unsigned grp = 0; grp < ShaGroupsPerBeat_64; grp++) begin
+          for (int unsigned i = 0; i < 4; i++) begin
+            automatic int unsigned col_lane = grp * 4 + i;
+            if (col_lane < NrLanes) begin
+              sha_vd_groups [grp][i] = sha_buf_a_q[col_lane];
+              sha_vs2_groups[grp][i] = sha_buf_b_q[col_lane];
+              sha_vs1_groups[grp][i] = sldu_operand[col_lane];
+            end
+          end
+        end
+      end else begin
+        for (int unsigned grp = 0; grp < ShaGroupsPerBeat; grp++) begin
+          for (int unsigned i = 0; i < 4; i++) begin
+            automatic int unsigned col      = grp * 4 + i;
+            automatic int unsigned col_lane = col % NrLanes;
+            automatic int unsigned col_half = col / NrLanes;
+            sha_vd_groups [grp][i] = {32'h0, sha_buf_a_q[col_lane][col_half * 32 +: 32]};
+            sha_vs2_groups[grp][i] = {32'h0, sha_buf_b_q[col_lane][col_half * 32 +: 32]};
+            sha_vs1_groups[grp][i] = {32'h0, sldu_operand[col_lane][col_half * 32 +: 32]};
+          end
+        end
+      end
+    end
+
+    // One combinational SHA primitive per element group.
+    for (genvar grp = 0; grp < ShaGroupsPerBeat; grp++) begin : gen_sha_groups
+      simd_sha_group #(
+        .CryptoSupport(CryptoSupport)
+      ) i_sha_group (
+        .op_i           (vinsn_issue_q.op           ),
+        .sew_i          (vinsn_issue_q.vtype.vsew   ),
+        .vd_group_i     (sha_vd_groups [grp]        ),
+        .vs2_group_i    (sha_vs2_groups[grp]        ),
+        .vs1_group_i    (sha_vs1_groups[grp]        ),
+        .result_group_o (sha_out_groups[grp]        )
+      );
+    end
+
+    // Scatter the per-group results back into the lane layout.
+    elen_t [NrLanes-1:0] sha_result_comb;
+    always_comb begin
+      sha_result_comb = '0;
+      if (vinsn_issue_q.vtype.vsew == EW64) begin
+        for (int unsigned grp = 0; grp < ShaGroupsPerBeat_64; grp++) begin
+          for (int unsigned i = 0; i < 4; i++) begin
+            automatic int unsigned col_lane = grp * 4 + i;
+            if (col_lane < NrLanes)
+              sha_result_comb[col_lane] = sha_out_groups[grp][i];
+          end
+        end
+      end else begin
+        for (int unsigned grp = 0; grp < ShaGroupsPerBeat; grp++) begin
+          for (int unsigned i = 0; i < 4; i++) begin
+            automatic int unsigned col      = grp * 4 + i;
+            automatic int unsigned col_lane = col % NrLanes;
+            automatic int unsigned col_half = col / NrLanes;
+            sha_result_comb[col_lane][col_half * 32 +: 32] = sha_out_groups[grp][i][31:0];
+          end
+        end
+      end
+    end
+    assign sha_result = sha_result_comb;
+  end else begin : gen_no_sha_sldu
+    assign sha_result = '0;
+    assign sha_beat_q   = '0;
+    assign sha_buf_a_q  = '0;
+    assign sha_buf_b_q  = '0;
+  end
+
   always_comb begin: p_sldu
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;
@@ -557,6 +719,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     slide_np2_buf_valid_d = slide_np2_buf_valid_q;
 
     red_stride_cnt_d_wide = {red_stride_cnt_q, red_stride_cnt_q[idx_width(NrLanes)-1]};
+
+    // Zvknh SHA-2 defaults
+    sha_beat_d  = sha_beat_q;
+    sha_buf_a_d = sha_buf_a_q;
+    sha_buf_b_d = sha_buf_b_q;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -642,6 +809,14 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               in_pnt_d  = '0;
               out_pnt_d = '0;
               issue_cnt_d = vinsn_issue_q.vl << unsigned'(rvv_pkg::EW32);
+            end
+            // SHA-2 ops: 3 beats per group (vd, vs2, vs1); result committed on beat 2.
+            VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV: if (Zvknha(CryptoSupport)) begin
+              in_pnt_d    = '0;
+              out_pnt_d   = '0;
+              issue_cnt_d = vinsn_issue_q.vl << int'(vinsn_issue_q.vtype.vsew);
+              sha_beat_d  = 2'd0;
+              state_d     = SLIDE_RUN_SHA;
             end
             // Unordered reductions
             default: begin
@@ -922,6 +1097,48 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           state_d = SLIDE_NP2_COMMIT;
         end
       end
+      SLIDE_RUN_SHA: begin
+        // Consume 3 beats from the VALU (vd, vs2, vs1). The first two are
+        // latched in sha_buf_a/b; the third drives simd_sha_group directly
+        // and the result is written into the result_queue.
+        if (&sldu_operand_valid && !result_queue_full) begin
+          sldu_operand_ready = '1;
+          unique case (sha_beat_q)
+            2'd0: begin
+              sha_buf_a_d = sldu_operand;
+              sha_beat_d  = 2'd1;
+            end
+            2'd1: begin
+              sha_buf_b_d = sldu_operand;
+              sha_beat_d  = 2'd2;
+            end
+            default: begin // 2'd2: vs1 beat, commit result
+              for (int lane = 0; lane < NrLanes; lane++) begin
+                result_queue_d[result_queue_write_pnt_q][lane].wdata = sha_result[lane];
+                result_queue_d[result_queue_write_pnt_q][lane].be    = sha_lane_be[lane];
+                result_queue_d[result_queue_write_pnt_q][lane].id    = vinsn_issue_q.id;
+                result_queue_d[result_queue_write_pnt_q][lane].addr  =
+                  vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + vrf_pnt_q;
+              end
+              result_queue_valid_d[result_queue_write_pnt_q] = sha_lane_valid;
+              result_queue_cnt_d                             = result_queue_cnt_q + 1;
+              result_queue_write_pnt_d =
+                (result_queue_write_pnt_q == ResultQueueDepth-1) ? '0
+                                                                 : result_queue_write_pnt_q + 1;
+              vrf_pnt_d   = vrf_pnt_q + 1;
+              sha_beat_d  = 2'd0;
+              issue_cnt_d = (issue_cnt_q > NrLanes * 8) ? issue_cnt_q - NrLanes * 8 : '0;
+
+              // Finished all groups for this instruction
+              if (issue_cnt_q <= NrLanes * 8) begin
+                state_d = SLIDE_IDLE;
+                vinsn_queue_d.issue_pnt += 1;
+                vinsn_queue_d.issue_cnt -= 1;
+              end
+            end
+          endcase
+        end
+      end
       default:;
     endcase
 
@@ -991,6 +1208,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                      ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew)
                      : (Zvkned(CryptoSupport) && vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {[VAESDM_VV:VAESKF2]})
                      ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << unsigned'(rvv_pkg::EW32)
+                     : (Zvknha(CryptoSupport) && vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV})
+                     ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew)
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
 
         // Trim vector elements which are not written by the slide unit
@@ -1006,7 +1225,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
       (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]}
-        || (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]}))) begin
+        || (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]})
+        || (Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV}))) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -1015,13 +1235,17 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride = pe_req_i.stride <<
           int'(pe_req_i.vtype.vsew);
       // Always move 64-bit packs of data from one lane to the other
-      if (pe_req_i.vfu inside {VFU_Alu, VFU_MFpu})
+      // (but SHA-2 needs its real vsew preserved to pick SHA-256 vs SHA-512).
+      if (pe_req_i.vfu inside {VFU_Alu, VFU_MFpu} &&
+          !(Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV}))
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vtype.vsew = EW64;
 
       if (vinsn_queue_d.commit_cnt == '0) begin
         if (pe_req_i.op inside {VSLIDEUP, VSLIDEDOWN})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
         else if (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]})
+          commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
+        else if (Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;

@@ -80,13 +80,24 @@ package ara_pkg;
   endfunction : RVVBA
 
   // 16 bits correspond to {Zvbb, Zvbc, Zvkb, Zvkg, Zvkned, Zvknha, Zvknhb, Zvksed, Zvksh, Zvkn, Zvknc, Zvkng, Zvks, Zvksc, Zvksg, Zvkt}
+  // All crypto-enabled configs support Zvkt. Ara implements data-independent timing for required instructions by default.
   typedef enum bit [15:0] {
     CryptoSupportNone          = 16'h0000,
-    CryptoSupportBitmanip      = 16'h2000,
-    CryptoSupportBasicBit      = 16'hA000,
-    CryptoSupportAES           = 16'h0800,
-    CryptoSupportBitAES        = 16'h2800,
-    CryptoSupportBasicAES      = 16'hA800
+    CryptoSupportBitmanip      = 16'h2001,
+    CryptoSupportBasicBit      = 16'hA001,
+    CryptoSupportCLM           = 16'h4001,
+    CryptoSupportAES           = 16'h0801,
+    CryptoSupportBitAES        = 16'h2801,
+    CryptoSupportBasicAES      = 16'hA801,
+    CryptoSupportGCM           = 16'h1001,
+    CryptoSupportSHA2a         = 16'h0401,
+    CryptoSupportSHA2          = 16'h0601,
+    CryptoSupportNIST          = 16'h2E41,
+    CryptoSupportNISTclm       = 16'h6E61,
+    CryptoSupportNISTgcm       = 16'h3E51,
+    CryptoSupportBasicNIST     = 16'hAE41,
+    CryptoSupportBasicNISTclm  = 16'hEE61,
+    CryptoSupportBasicNISTgcm  = 16'hBE51
   } crypto_support_e;
 
   function automatic bit Zvbb(crypto_support_e e);
@@ -99,6 +110,16 @@ package ara_pkg;
 
   function automatic bit Zvkned(crypto_support_e e);
     return e[11];
+  endfunction
+
+  // Zvknha: SHA-256 vector crypto (bit 10). Zvknhb: SHA-256 + SHA-512 (bit 9).
+  // Zvknhb implies Zvknha.
+  function automatic bit Zvknha(crypto_support_e e);
+    return e[10] | e[9];
+  endfunction
+
+  function automatic bit Zvknhb(crypto_support_e e);
+    return e[9];
   endfunction
 
   // Multiplier latencies.
@@ -166,6 +187,8 @@ package ara_pkg;
     // .vs round ops, key schedule, round zero (ALU only for now)
     VAESDM_VS, VAESDF_VS, VAESEM_VS, VAESEF_VS,
     VAESKF1, VAESKF2, VAESZ_VS,
+    // Vector Crypto SHA-2 instructions (Zvknha/Zvknhb)
+    VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Fixed point multiplication
