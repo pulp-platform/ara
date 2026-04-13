@@ -41,6 +41,9 @@ threshold = {
   'roi_align'  : 500,
   'lavamd'     : 500,
   'aes'        : 500,
+  'aes_ks128'  : 500,
+  'aes_ks256'  : 500,
+  'sha'        : 500,
 }
 
 skip_check = {
@@ -61,6 +64,9 @@ skip_check = {
   'roi_align'  : 1, # This program has a larger scalar component
   'lavamd'     : 0,
   'aes'        : 0,
+  'aes_ks128'  : 0,
+  'aes_ks256'  : 0,
+  'sha'        : 0,
 }
 
 def main():

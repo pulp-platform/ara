@@ -450,3 +450,66 @@ plot roof_cpu(x, 1, 5.24) w l lw 2 lc 1 t  '2 Lanes',   \
      roof_cpu(x, 8, 5.5) w l lw 2 lc 7 t '16 Lanes',   \
      'lavamd_16.benchmark'       w p lw 2 lc 7 pt 5 notitle, \
      'lavamd_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+###############
+## AES_KS128 ##
+###############
+
+set title "aes_ks128 performance, (total input key bytes)"
+set xrange [64:16384]
+set yrange [0.03125:64]
+set xlabel 'Total input key bytes'
+set ylabel 'Performance (B/cycle)'
+set term png
+set out "aes_ks128.png"
+
+plot 'aes_ks128_2.benchmark'       w p lw 2 lc 1 pt 5 t '2 Lanes',    \
+     'aes_ks128_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,        \
+     'aes_ks128_4.benchmark'       w p lw 2 lc 2 pt 5 t '4 Lanes',    \
+     'aes_ks128_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,        \
+     'aes_ks128_8.benchmark'       w p lw 2 lc 3 pt 5 t '8 Lanes',    \
+     'aes_ks128_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,        \
+     'aes_ks128_16.benchmark'      w p lw 2 lc 7 pt 5 t '16 Lanes',   \
+     'aes_ks128_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+###############
+## AES_KS256 ##
+###############
+
+set title "aes_ks256 performance, (total input key bytes)"
+set xrange [128:32768]
+set yrange [0.03125:64]
+set xlabel 'Total input key bytes'
+set ylabel 'Performance (B/cycle)'
+set term png
+set out "aes_ks256.png"
+
+plot 'aes_ks256_2.benchmark'       w p lw 2 lc 1 pt 5 t '2 Lanes',    \
+     'aes_ks256_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,        \
+     'aes_ks256_4.benchmark'       w p lw 2 lc 2 pt 5 t '4 Lanes',    \
+     'aes_ks256_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,        \
+     'aes_ks256_8.benchmark'       w p lw 2 lc 3 pt 5 t '8 Lanes',    \
+     'aes_ks256_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,        \
+     'aes_ks256_16.benchmark'      w p lw 2 lc 7 pt 5 t '16 Lanes',   \
+     'aes_ks256_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle
+
+#########
+## SHA ##
+#########
+
+set title "sha performance, (total input bytes)"
+set xrange [4096:65536]
+set yrange [0.03125:64]
+set xlabel 'Total input bytes'
+set ylabel 'Performance (B/cycle)'
+set term png
+set out "sha.png"
+
+plot 'sha_2.benchmark'       w p lw 2 lc 1 pt 5 t '2 Lanes',   \
+     'sha_2_ideal.benchmark' w p lw 2 lc 1 pt 4 notitle,       \
+     'sha_4.benchmark'       w p lw 2 lc 2 pt 5 t '4 Lanes',   \
+     'sha_4_ideal.benchmark' w p lw 2 lc 2 pt 4 notitle,       \
+     'sha_8.benchmark'       w p lw 2 lc 3 pt 5 t '8 Lanes',   \
+     'sha_8_ideal.benchmark' w p lw 2 lc 3 pt 4 notitle,       \
+     'sha_16.benchmark'      w p lw 2 lc 7 pt 5 t '16 Lanes',  \
+     'sha_16_ideal.benchmark' w p lw 2 lc 7 pt 4 notitle

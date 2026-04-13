@@ -126,6 +126,22 @@ def aes(args, cycles):
   # 16 bytes per AES block
   performance = 16 * nblocks / cycles
   return [nblocks, performance]
+def aes_ks128(args, cycles):
+  nkeys       = int(args[0])
+  total_bytes = 16 * nkeys
+  performance = total_bytes / cycles
+  return [total_bytes, performance]
+def aes_ks256(args, cycles):
+  nkeys       = int(args[0])
+  total_bytes = 32 * nkeys
+  performance = total_bytes / cycles
+  return [total_bytes, performance]
+def sha(args, cycles):
+  nmessages   = int(args[0])
+  msg_bytes   = int(args[1])
+  total_bytes = nmessages * msg_bytes
+  performance = total_bytes / cycles
+  return [total_bytes, performance]
 
 perfExtr = {
   'imatmul'    : imatmul,
@@ -145,6 +161,9 @@ perfExtr = {
   'roi_align'  : roi_align,
   'lavamd'     : lavamd,
   'aes'        : aes,
+  'aes_ks128'  : aes_ks128,
+  'aes_ks256'  : aes_ks256,
+  'sha'        : sha,
 }
 
 # Maximum performance if Ara's BW can be fully utilized
@@ -166,6 +185,9 @@ ideal_maxPerf = {
   'roi_align'  : lambda l, s : l * 8/s,
   'lavamd'     : lambda l, s : 0, # placeholder
   'aes'        : lambda l, s : 0, # placeholder
+  'aes_ks128'  : lambda l, s : 0, # placeholder
+  'aes_ks256'  : lambda l, s : 0, # placeholder
+  'sha'        : lambda l, s : 0, # placeholder
 }
 
 # Maximum performance taking into account Ara's limited
@@ -188,6 +210,9 @@ real_maxPerf = {
   'roi_align'  : lambda l, s : 9/5 * l * 4/s,
   'lavamd'     : lambda l, s : 0, # placeholder
   'aes'        : lambda l, s : 0, # placeholder
+  'aes_ks128'  : lambda l, s : 0, # placeholder
+  'aes_ks256'  : lambda l, s : 0, # placeholder
+  'sha'        : lambda l, s : 0, # placeholder
 }
 
 def main():

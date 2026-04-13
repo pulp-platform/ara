@@ -412,6 +412,112 @@ aes() {
   done
 }
 
+###############
+## AES_KS128 ##
+###############
+
+aes_ks128() {
+
+  kernel=aes_ks128
+  defines=""
+  # Plot against total input key bytes; dummy sew.
+  sew=4
+
+  tempfile=`mktemp`
+
+  > ${kernel}_${nr_lanes}.benchmark
+  > ${kernel}_${nr_lanes}_ideal.benchmark
+  echo "kernel: $kernel" >> ${error_rpt}
+
+  for nkeys in 4 8 16 32 64 128 256 512 1024; do
+
+    args="$nkeys"
+    metadata="$kernel $nr_lanes $((16 * nkeys)) $sew"
+
+    clean_and_gen_data $kernel "$args" || exit
+
+    compile_and_run $kernel "$defines" $tempfile 0 || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+
+    if [ "$ci" == 0 ]; then
+      compile_and_run $kernel "$defines" $tempfile 1 || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      verify_id_results 0 | tee -a ${error_rpt}
+    fi
+  done
+}
+
+###############
+## AES_KS256 ##
+###############
+
+aes_ks256() {
+
+  kernel=aes_ks256
+  defines=""
+  # Plot against total input key bytes; dummy sew.
+  sew=4
+
+  tempfile=`mktemp`
+
+  > ${kernel}_${nr_lanes}.benchmark
+  > ${kernel}_${nr_lanes}_ideal.benchmark
+  echo "kernel: $kernel" >> ${error_rpt}
+
+  for nkeys in 4 8 16 32 64 128 256 512 1024; do
+
+    args="$nkeys"
+    metadata="$kernel $nr_lanes $((32 * nkeys)) $sew"
+
+    clean_and_gen_data $kernel "$args" || exit
+
+    compile_and_run $kernel "$defines" $tempfile 0 || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+
+    if [ "$ci" == 0 ]; then
+      compile_and_run $kernel "$defines" $tempfile 1 || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      verify_id_results 0 | tee -a ${error_rpt}
+    fi
+  done
+}
+
+#########
+## SHA ##
+#########
+
+sha() {
+
+  kernel=sha
+  defines=""
+  # Plot against total input bytes; use 32-bit word tag for compatibility.
+  sew=4
+
+  tempfile=`mktemp`
+
+  > ${kernel}_${nr_lanes}.benchmark
+  > ${kernel}_${nr_lanes}_ideal.benchmark
+  echo "kernel: $kernel" >> ${error_rpt}
+
+  nmessages=64
+  for msg_bytes in 64 128 256 512 1024; do
+
+    args="$nmessages $msg_bytes"
+    metadata="$kernel $nr_lanes $((nmessages * msg_bytes)) $sew"
+
+    clean_and_gen_data $kernel "$args" || exit
+
+    compile_and_run $kernel "$defines" $tempfile 0 || exit
+    extract_performance $kernel "$metadata 0" "$args" $tempfile ${kernel}_${nr_lanes}.benchmark || exit
+
+    if [ "$ci" == 0 ]; then
+      compile_and_run $kernel "$defines" $tempfile 1 || exit
+      extract_performance $kernel "$metadata 1" "$args" $tempfile ${kernel}_${nr_lanes}_ideal.benchmark || exit
+      verify_id_results 0 | tee -a ${error_rpt}
+    fi
+  done
+}
+
 #############
 ## DROPOUT ##
 #############
@@ -895,6 +1001,18 @@ case $1 in
     aes
     ;;
 
+  "aes_ks128")
+    aes_ks128
+    ;;
+
+  "aes_ks256")
+    aes_ks256
+    ;;
+
+  "sha")
+    sha
+    ;;
+
   *)
     echo "Benchmarking all the apps."
     matmul fmatmul
@@ -911,5 +1029,8 @@ case $1 in
     roi_align
     lavamd
     aes
+    aes_ks128
+    aes_ks256
+    sha
     ;;
 esac
