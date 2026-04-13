@@ -79,6 +79,15 @@
 #elif defined(AES)
 #include "benchmark/aes.bmark"
 
+#elif defined(AES_KS128)
+#include "benchmark/aes_ks128.bmark"
+
+#elif defined(AES_KS256)
+#include "benchmark/aes_ks256.bmark"
+
+#elif defined(SHA)
+#include "benchmark/sha.bmark"
+
 #else
 #error                                                                         \
     "Error, no kernel was specified. Please, run 'make bin/benchmarks ENV_DEFINES=-D${KERNEL}', where KERNEL contains the kernel to benchmark. For example: 'make bin/benchmarks ENV_DEFINES=-DIMATMUL'."
