@@ -429,7 +429,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       axi_b_ready_o = 1'b1;
 
       // Mark the vector instruction as being done
-      if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done
+      if (vinsn_commit_valid) begin : instr_done
         // Signal complete store
         store_complete_o = 1'b1;
 
