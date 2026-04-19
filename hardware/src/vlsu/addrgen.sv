@@ -281,7 +281,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     shuffled_word = addrgen_operand_i;
     // Deshuffle the whole NrLanes * 8 Byte word
     for (int unsigned b = 0; b < 8*NrLanes; b++) begin
-      automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, pe_req_q.eew_vs2);
+      automatic shortint unsigned b_shuffled = shuffle_index(b, NrLanes, pe_req_q.old_eew_vs2);
       deshuffled_word[8*b +: 8] = shuffled_word[8*b_shuffled +: 8];
     end
 

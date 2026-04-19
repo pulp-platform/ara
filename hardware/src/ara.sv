@@ -107,6 +107,7 @@ module ara import ara_pkg::*; #(
     opqueue_conversion_e conversion_vs1;
     rvv_pkg::vew_e eew_vs1;
     rvv_pkg::vew_e old_eew_vs1;
+    rvv_pkg::vew_e old_eew_vs2;
 
     // 2nd vector register operand
     logic [4:0] vs2;
