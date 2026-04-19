@@ -383,6 +383,25 @@ void TEST_CASE19(void) {
   LVVCMP_U32(19, ALIGNED_I32, LONG_I32);
 }
 
+void TEST_CASE20(void) {
+  uint64_t avl;
+  __asm__ volatile("vsetivli %[A], 1, e32, m1, ta, ma" : [A] "=r"(avl));
+  VLOAD_32(v1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[0]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[1]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[2]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[3]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[4]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[5]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[6]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[7]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[8]));
+  asm volatile("vse32.v v1, (%0)" ::"r"(&ALIGNED_I32[9]));
+
+  // Verify the last one
+  XCMP(20, ALIGNED_I32[9], 1);
+}
+
 int main(void) {
   INIT_CHECK();
   enable_vec();
@@ -407,6 +426,7 @@ int main(void) {
   TEST_CASE17();
   TEST_CASE18();
   TEST_CASE19();
+  TEST_CASE20();
 
   EXIT_CHECK();
 }
