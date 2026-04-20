@@ -35,8 +35,8 @@
 // #define SIZE 64
 
 // Allocate the vector arrays on the L2, and align them on 128-bit boundaries.
-// If only executing EX3, save more space to better explore the effect of different SIZEs.
-#if (EX1 == 0 && EX2 == 0 && EX3 == 1 && EX4 == 0)
+// If only executing EX-1/2/3, save more space to better explore the effect of different SIZEs.
+#if ((EX1 == 1 || EX2 == 1 || EX3 == 1) && (EX4 == 0))
 velement_t a[SIZE]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
 velement_t b[SIZE]
