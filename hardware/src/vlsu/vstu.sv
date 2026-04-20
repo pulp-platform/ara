@@ -142,6 +142,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
   struct packed {
     pe_req_t [VInsnQueueDepth-1:0] vinsn;
+    vlen_t [VInsnQueueDepth-1:0] pending_b;
 
     // Each instruction can be in one of the three execution phases.
     // - Being accepted (i.e., it is being stored for future execution in this
@@ -165,7 +166,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
 
   // Is the vector instruction queue full?
   logic vinsn_queue_full;
-  assign vinsn_queue_full = (vinsn_queue_q.commit_cnt == VInsnQueueDepth);
+  assign vinsn_queue_full = (vinsn_queue_q.issue_cnt == VInsnQueueDepth);
 
   // Is the vector instruction queue empty?
   logic vinsn_queue_empty;
@@ -361,6 +362,8 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
           axi_w_o.last            = 1'b1;
           // Ask for another burst by the address generator
           axi_addrgen_req_ready_o = 1'b1;
+          // Increment the number of pending B responses for this instruction
+          vinsn_queue_d.pending_b[vinsn_queue_q.issue_pnt] += 1;
           // Reset AXI pointers
           axi_len_d                   = '0;
         end : beats_complete
@@ -427,10 +430,19 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     if (axi_b_valid_i) begin : axi_b_valid
       // Acknowledge the B beat
       axi_b_ready_o = 1'b1;
+      // Decrement the number of pending B responses for this instruction
+      if (vinsn_commit_valid) begin
+        vinsn_queue_d.pending_b[vinsn_queue_q.commit_pnt] -= 1;
+      end
+      // pragma translate_off
+      assert (vinsn_commit_valid) else $error("Received AXI B response while no instruction is in flight.");
+      // pragma translate_on
+    end : axi_b_valid
 
-      // Mark the vector instruction as being done
-      if (vinsn_queue_d.issue_pnt != vinsn_queue_d.commit_pnt) begin : instr_done
-        // Signal complete store
+    // Mark the vector instruction as being done
+    if (vinsn_commit_valid &&
+        vinsn_queue_d.pending_b[vinsn_queue_q.commit_pnt] == '0 &&
+        (vinsn_queue_q.commit_pnt != vinsn_queue_q.issue_pnt || vinsn_queue_q.issue_cnt == '0)) begin : instr_done
         store_complete_o = 1'b1;
 
         pe_resp_d.vinsn_done[vinsn_commit.id] = 1'b1;
@@ -443,8 +455,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
         else begin : commit_pnt_increment
           vinsn_queue_d.commit_pnt += 1;
         end : commit_pnt_increment
-      end : instr_done
-    end : axi_b_valid
+    end : instr_done
 
     ////////////////////////
     //  Handle exceptions //
@@ -513,6 +524,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
       end
 
       // Bump pointers and counters of the vector instruction queue
+      vinsn_queue_d.pending_b[vinsn_queue_q.accept_pnt] = '0;
       vinsn_queue_d.accept_pnt += 1;
       vinsn_queue_d.issue_cnt += 1;
       vinsn_queue_d.commit_cnt += 1;
