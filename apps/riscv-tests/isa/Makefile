@@ -43,7 +43,7 @@ RISCV_LLVM ?= clang -fuse-ld=lld
 RISCV_CC_OPTS ?= -mcmodel=medany -fvisibility=hidden -mno-relax -nostdlib -nostartfiles
 RISCV_CC_OPTS_C ?= -O2 -mno-relax -nostdlib -nostartfiles -fno-vectorize -mllvm -scalable-vectorization=off -mllvm -riscv-v-vector-bits-min=0 -mno-implicit-float
 RISCV_CC_DEFS_C ?= $(ARA_DEFINES)
-LLVM_V_VERSION ?= v_zfh_zvfh_zvbb_zvkned_zvknhb_zvkg
+LLVM_V_VERSION ?= v_zfh_zvfh_zvbb_zvbc_zvkned_zvknhb_zvkg
 
 # Original objdump + spike variables
 RISCV_OBJDUMP ?= llvm-objdump --disassemble-all --disassemble-zeroes --section=.text --section=.text.startup --section=.text.init --section=.data
@@ -64,7 +64,7 @@ vpath %.S $(src_dir)
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
 
 %.cout: %
-	$(RISCV_SIM) --isa=rv64gcv_zfh_zvfh_zvbb_zvkned_zvknhb_zvkg_zvl4096b $< 2> $@
+	$(RISCV_SIM) --isa=rv64gcv_zfh_zvfh_zvbb_zvbc_zvkned_zvknhb_zvkg_zvl4096b $< 2> $@
 
 %.cout32: %
 	$(RISCV_SIM) --isa=rv32gcv $< 2> $@
