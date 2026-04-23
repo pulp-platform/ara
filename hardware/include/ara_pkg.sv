@@ -122,6 +122,11 @@ package ara_pkg;
     return e[9];
   endfunction
 
+  // Zvkg: vector Galois field multiplication (GCM/GMAC).
+  function automatic bit Zvkg(crypto_support_e e);
+    return e[12];
+  endfunction
+
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;
@@ -189,6 +194,8 @@ package ara_pkg;
     VAESKF1, VAESKF2, VAESZ_VS,
     // Vector Crypto SHA-2 instructions (Zvknha/Zvknhb)
     VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV,
+    // Vector Crypto GCM/GMAC instructions (Zvkg)
+    VGHSH_VV, VGMUL_VV,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
     // Fixed point multiplication

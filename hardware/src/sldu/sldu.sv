@@ -304,7 +304,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
 
   assign is_issue_alu_reduction   = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_Alu)
                                   & !(Zvkned(CryptoSupport) && vinsn_issue_q.op inside {[VAESDM_VV:VAESKF2]})
-                                  & !(Zvknha(CryptoSupport) && vinsn_issue_q.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV});
+                                  & !(Zvknha(CryptoSupport) && vinsn_issue_q.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV})
+                                  & !(Zvkg(CryptoSupport)   && vinsn_issue_q.op inside {VGHSH_VV, VGMUL_VV});
   assign is_issue_vmfpu_reduction = vinsn_issue_valid_q & (vinsn_issue_q.vfu == VFU_MFpu);
   assign is_issue_reduction       = is_issue_alu_reduction | is_issue_vmfpu_reduction;
 
@@ -322,6 +323,14 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     assign is_issue_sha = vinsn_issue_valid_q & (vinsn_issue_q.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV});
   end else begin : gen_no_sha_issue
     assign is_issue_sha = 1'b0;
+  end
+
+  // Zvkg GCM ops routed through the SLDU (compute in simd_gcm_group)
+  logic is_issue_gcm;
+  if (Zvkg(CryptoSupport)) begin : gen_gcm_issue
+    assign is_issue_gcm = vinsn_issue_valid_q & (vinsn_issue_q.op inside {VGHSH_VV, VGMUL_VV});
+  end else begin : gen_no_gcm_issue
+    assign is_issue_gcm = 1'b0;
   end
 
   // Active lane mask for AES ops: when VL < 2*NrLanes (less than one full beat),
@@ -424,7 +433,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     SLIDE_NP2_RUN,
     SLIDE_NP2_COMMIT,
     SLIDE_NP2_WAIT,
-    SLIDE_RUN_SHA
+    SLIDE_RUN_SHA,
+    SLIDE_RUN_GCM
   } slide_state_e;
   slide_state_e state_d, state_q;
 
@@ -678,6 +688,104 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     assign sha_buf_b_q  = '0;
   end
 
+  ///////////////////////////////////////////
+  //  Zvkg GCM Datapath (SLDU, gated)      //
+  ///////////////////////////////////////////
+  //
+  // The VALU forwards 2 beats (vgmul: vd, vs2) or 3 beats (vghsh: vd, vs2, vs1)
+  // per element-group pair. The SLDU latches the earlier beats in gcm_buf_a/b
+  // and on the final beat drives simd_gcm_group per element group.
+  //
+  // Tail masking for GCM ops at SEW=32 (EGS=4, EGW=128).
+  // Layout matches SHA-2 SEW=32: lane l low half = element l,
+  //                              lane l high half = element l + NrLanes.
+  logic [NrLanes-1:0][7:0] gcm_lane_be;
+  logic [NrLanes-1:0]      gcm_lane_valid;
+  always_comb begin
+    gcm_lane_be    = '0;
+    gcm_lane_valid = '0;
+    if (is_issue_gcm) begin
+      automatic logic [$bits(issue_cnt_q)-1:0] rem_elems;
+      rem_elems = issue_cnt_q >> 2;
+      for (int unsigned l = 0; l < NrLanes; l++) begin
+        if (l < rem_elems)           gcm_lane_be[l][3:0] = 4'hf;
+        if (l + NrLanes < rem_elems) gcm_lane_be[l][7:4] = 4'hf;
+        gcm_lane_valid[l] = |gcm_lane_be[l];
+      end
+    end
+  end
+
+  elen_t [NrLanes-1:0] gcm_result;
+  logic [1:0]          gcm_beat_q, gcm_beat_d;
+  elen_t [NrLanes-1:0] gcm_buf_a_q, gcm_buf_a_d;
+  elen_t [NrLanes-1:0] gcm_buf_b_q, gcm_buf_b_d;
+
+  if (Zvkg(CryptoSupport)) begin : gen_gcm_sldu
+    `FF(gcm_beat_q, gcm_beat_d, 2'b00, clk_i, rst_ni);
+    `FF(gcm_buf_a_q, gcm_buf_a_d, '0, clk_i, rst_ni);
+    `FF(gcm_buf_b_q, gcm_buf_b_d, '0, clk_i, rst_ni);
+
+    localparam int unsigned GcmGroupsPerBeat = (NrLanes * AesColsPerLane) / AesColsPerGroup;
+
+    // 4x32-bit element group per GCM primitive.
+    logic [GcmGroupsPerBeat-1:0][3:0][31:0] gcm_vd_groups;
+    logic [GcmGroupsPerBeat-1:0][3:0][31:0] gcm_vs2_groups;
+    logic [GcmGroupsPerBeat-1:0][3:0][31:0] gcm_vs1_groups;
+    logic [GcmGroupsPerBeat-1:0][3:0][31:0] gcm_out_groups;
+
+    // On the compute beat:
+    //   vgmul: buf_a = vd (beat 0), sldu_operand = vs2 (beat 1). vs1 unused.
+    //   vghsh: buf_a = vd (beat 0), buf_b = vs2 (beat 1), sldu_operand = vs1 (beat 2).
+    always_comb begin
+      gcm_vd_groups  = '0;
+      gcm_vs2_groups = '0;
+      gcm_vs1_groups = '0;
+      for (int unsigned grp = 0; grp < GcmGroupsPerBeat; grp++) begin
+        for (int unsigned i = 0; i < 4; i++) begin
+          automatic int unsigned col      = grp * 4 + i;
+          automatic int unsigned col_lane = col % NrLanes;
+          automatic int unsigned col_half = col / NrLanes;
+          gcm_vd_groups [grp][i] = gcm_buf_a_q[col_lane][col_half * 32 +: 32];
+          gcm_vs2_groups[grp][i] = (vinsn_issue_q.op == VGHSH_VV)
+                                    ? gcm_buf_b_q[col_lane][col_half * 32 +: 32]
+                                    : sldu_operand[col_lane][col_half * 32 +: 32];
+          gcm_vs1_groups[grp][i] = (vinsn_issue_q.op == VGHSH_VV)
+                                    ? sldu_operand[col_lane][col_half * 32 +: 32]
+                                    : 32'h0;
+        end
+      end
+    end
+
+    for (genvar grp = 0; grp < GcmGroupsPerBeat; grp++) begin : gen_gcm_groups
+      simd_gcm_group i_gcm_group (
+        .op_i           (vinsn_issue_q.op   ),
+        .vd_group_i     (gcm_vd_groups [grp]),
+        .vs2_group_i    (gcm_vs2_groups[grp]),
+        .vs1_group_i    (gcm_vs1_groups[grp]),
+        .result_group_o (gcm_out_groups[grp])
+      );
+    end
+
+    elen_t [NrLanes-1:0] gcm_result_comb;
+    always_comb begin
+      gcm_result_comb = '0;
+      for (int unsigned grp = 0; grp < GcmGroupsPerBeat; grp++) begin
+        for (int unsigned i = 0; i < 4; i++) begin
+          automatic int unsigned col      = grp * 4 + i;
+          automatic int unsigned col_lane = col % NrLanes;
+          automatic int unsigned col_half = col / NrLanes;
+          gcm_result_comb[col_lane][col_half * 32 +: 32] = gcm_out_groups[grp][i];
+        end
+      end
+    end
+    assign gcm_result = gcm_result_comb;
+  end else begin : gen_no_gcm_sldu
+    assign gcm_result  = '0;
+    assign gcm_beat_q  = '0;
+    assign gcm_buf_a_q = '0;
+    assign gcm_buf_b_q = '0;
+  end
+
   always_comb begin: p_sldu
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;
@@ -724,6 +832,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     sha_beat_d  = sha_beat_q;
     sha_buf_a_d = sha_buf_a_q;
     sha_buf_b_d = sha_buf_b_q;
+
+    // Zvkg GCM defaults
+    gcm_beat_d  = gcm_beat_q;
+    gcm_buf_a_d = gcm_buf_a_q;
+    gcm_buf_b_d = gcm_buf_b_q;
 
     // Inform the main sequencer if we are idle
     pe_req_ready_o = !vinsn_queue_full;
@@ -817,6 +930,16 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
               issue_cnt_d = vinsn_issue_q.vl << int'(vinsn_issue_q.vtype.vsew);
               sha_beat_d  = 2'd0;
               state_d     = SLIDE_RUN_SHA;
+            end
+            // Zvkg GCM ops: 2 beats (vgmul: vd, vs2) or 3 beats (vghsh: vd, vs2, vs1)
+            // per element-group pair. Result committed on the final beat.
+            VGHSH_VV, VGMUL_VV: if (Zvkg(CryptoSupport)) begin
+              in_pnt_d    = '0;
+              out_pnt_d   = '0;
+              // SEW=32 only for Zvkg; vl is in elements, byte-count = vl*4.
+              issue_cnt_d = vinsn_issue_q.vl << unsigned'(rvv_pkg::EW32);
+              gcm_beat_d  = 2'd0;
+              state_d     = SLIDE_RUN_GCM;
             end
             // Unordered reductions
             default: begin
@@ -1139,6 +1262,71 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           endcase
         end
       end
+      SLIDE_RUN_GCM: begin
+        // Consume 2 beats (vgmul: vd, vs2) or 3 beats (vghsh: vd, vs2, vs1)
+        // from the VALU. Earlier beats are latched in gcm_buf_a/b; the final
+        // beat drives simd_gcm_group and the result is written into the
+        // result_queue.
+        if (&sldu_operand_valid && !result_queue_full) begin
+          sldu_operand_ready = '1;
+          unique case (gcm_beat_q)
+            2'd0: begin
+              gcm_buf_a_d = sldu_operand;
+              gcm_beat_d  = 2'd1;
+            end
+            2'd1: begin
+              if (vinsn_issue_q.op == VGHSH_VV) begin
+                gcm_buf_b_d = sldu_operand;
+                gcm_beat_d  = 2'd2;
+              end else begin
+                // vgmul.vv: compute & commit on beat 1.
+                for (int lane = 0; lane < NrLanes; lane++) begin
+                  result_queue_d[result_queue_write_pnt_q][lane].wdata = gcm_result[lane];
+                  result_queue_d[result_queue_write_pnt_q][lane].be    = gcm_lane_be[lane];
+                  result_queue_d[result_queue_write_pnt_q][lane].id    = vinsn_issue_q.id;
+                  result_queue_d[result_queue_write_pnt_q][lane].addr  =
+                    vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + vrf_pnt_q;
+                end
+                result_queue_valid_d[result_queue_write_pnt_q] = gcm_lane_valid;
+                result_queue_cnt_d                             = result_queue_cnt_q + 1;
+                result_queue_write_pnt_d =
+                  (result_queue_write_pnt_q == ResultQueueDepth-1) ? '0
+                                                                   : result_queue_write_pnt_q + 1;
+                vrf_pnt_d   = vrf_pnt_q + 1;
+                gcm_beat_d  = 2'd0;
+                issue_cnt_d = (issue_cnt_q > NrLanes * 8) ? issue_cnt_q - NrLanes * 8 : '0;
+                if (issue_cnt_q <= NrLanes * 8) begin
+                  state_d = SLIDE_IDLE;
+                  vinsn_queue_d.issue_pnt += 1;
+                  vinsn_queue_d.issue_cnt -= 1;
+                end
+              end
+            end
+            default: begin // 2'd2: vghsh.vv vs1 beat, commit result
+              for (int lane = 0; lane < NrLanes; lane++) begin
+                result_queue_d[result_queue_write_pnt_q][lane].wdata = gcm_result[lane];
+                result_queue_d[result_queue_write_pnt_q][lane].be    = gcm_lane_be[lane];
+                result_queue_d[result_queue_write_pnt_q][lane].id    = vinsn_issue_q.id;
+                result_queue_d[result_queue_write_pnt_q][lane].addr  =
+                  vaddr(vinsn_issue_q.vd, NrLanes, VLEN) + vrf_pnt_q;
+              end
+              result_queue_valid_d[result_queue_write_pnt_q] = gcm_lane_valid;
+              result_queue_cnt_d                             = result_queue_cnt_q + 1;
+              result_queue_write_pnt_d =
+                (result_queue_write_pnt_q == ResultQueueDepth-1) ? '0
+                                                                 : result_queue_write_pnt_q + 1;
+              vrf_pnt_d   = vrf_pnt_q + 1;
+              gcm_beat_d  = 2'd0;
+              issue_cnt_d = (issue_cnt_q > NrLanes * 8) ? issue_cnt_q - NrLanes * 8 : '0;
+              if (issue_cnt_q <= NrLanes * 8) begin
+                state_d = SLIDE_IDLE;
+                vinsn_queue_d.issue_pnt += 1;
+                vinsn_queue_d.issue_cnt -= 1;
+              end
+            end
+          endcase
+        end
+      end
       default:;
     endcase
 
@@ -1210,6 +1398,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
                      ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << unsigned'(rvv_pkg::EW32)
                      : (Zvknha(CryptoSupport) && vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV})
                      ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << int'(vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vtype.vsew)
+                     : (Zvkg(CryptoSupport) && vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].op inside {VGHSH_VV, VGMUL_VV})
+                     ? vinsn_queue_q.vinsn[vinsn_queue_d.commit_pnt].vl << unsigned'(rvv_pkg::EW32)
                      : (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
 
         // Trim vector elements which are not written by the slide unit
@@ -1226,7 +1416,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
     if (!vinsn_queue_full && pe_req_valid_i && !vinsn_running_q[pe_req_i.id] &&
       (pe_req_i.vfu == VFU_SlideUnit || pe_req_i.op inside {[VREDSUM:VWREDSUM], [VFREDUSUM:VFWREDOSUM]}
         || (Zvkned(CryptoSupport) && pe_req_i.op inside {[VAESDM_VV:VAESKF2]})
-        || (Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV}))) begin
+        || (Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV})
+        || (Zvkg(CryptoSupport)   && pe_req_i.op inside {VGHSH_VV, VGMUL_VV}))) begin
       vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt] = pe_req_i;
       vinsn_running_d[pe_req_i.id]                  = 1'b1;
 
@@ -1235,9 +1426,11 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].stride = pe_req_i.stride <<
           int'(pe_req_i.vtype.vsew);
       // Always move 64-bit packs of data from one lane to the other
-      // (but SHA-2 needs its real vsew preserved to pick SHA-256 vs SHA-512).
+      // (but SHA-2 and GCM need their real vsew preserved: SHA picks SHA-256
+      // vs SHA-512; GCM's tail-mask and byte-enable paths assume SEW=32).
       if (pe_req_i.vfu inside {VFU_Alu, VFU_MFpu} &&
-          !(Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV}))
+          !(Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV}) &&
+          !(Zvkg(CryptoSupport)   && pe_req_i.op inside {VGHSH_VV, VGMUL_VV}))
         vinsn_queue_d.vinsn[vinsn_queue_q.accept_pnt].vtype.vsew = EW64;
 
       if (vinsn_queue_d.commit_cnt == '0) begin
@@ -1247,6 +1440,8 @@ module sldu import ara_pkg::*; import rvv_pkg::*; #(
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
         else if (Zvknha(CryptoSupport) && pe_req_i.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV})
           commit_cnt_d = pe_req_i.vl << int'(pe_req_i.vtype.vsew);
+        else if (Zvkg(CryptoSupport) && pe_req_i.op inside {VGHSH_VV, VGMUL_VV})
+          commit_cnt_d = pe_req_i.vl << unsigned'(rvv_pkg::EW32);
         else
           commit_cnt_d = (NrLanes * ($clog2(NrLanes) + 1)) << EW64;
         // Trim vector elements which are not written by the slide unit

@@ -99,6 +99,22 @@ module ara import ara_pkg::*; #(
     end
   end
 
+  // Zvkg uses the same 4-column-per-EG layout as AES/SHA-2 and forwards
+  // element groups (128 bits = 4 * SEW=32) through the ALU->SLDU datapath.
+  if (Zvkg(CryptoSupport)) begin : gen_zvkg_cfg_checks
+    initial begin
+      if ((NrLanes * AesColsPerLane < AesColsPerGroup) ||
+          (((NrLanes * AesColsPerLane) % AesColsPerGroup) != 0))
+        $fatal(1,
+               "Ara Zvkg requires NrLanes*(ELEN/32) to be a multiple of 4 and at least 4 columns per beat; got NrLanes=%0d, ELEN=%0d",
+               NrLanes, ELEN);
+      if (MaxVLenPerLane < ELEN)
+        $fatal(1,
+               "Ara Zvkg requires VLEN/NrLanes >= %0d bits; got VLEN=%0d, NrLanes=%0d",
+               ELEN, VLEN, NrLanes);
+    end
+  end
+
   // Interfaces between Ara's dispatcher and Ara's backend
   typedef struct packed {
     ara_op_e op; // Operation

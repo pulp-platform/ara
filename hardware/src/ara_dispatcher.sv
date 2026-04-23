@@ -3808,6 +3808,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                           illegal_insn = 1'b1;
                         end
                       end
+                      5'b10001: begin // vgmul.vv (Zvkg): rs1 field is a sub-opcode
+                        if (Zvkg(CryptoSupport)) begin
+                          ara_req.op = ara_pkg::VGMUL_VV;
+                        end else begin
+                          illegal_insn = 1'b1;
+                        end
+                      end
                       default: begin
                         illegal_insn = 1'b1;
                       end
@@ -3821,6 +3828,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_valid     = 1'b1;
                       // Enforce vsew == EW32
                       if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                      // Zvkg vgmul.vv: EGS=4, vl/vstart must be EG-aligned
+                      if (ara_req.op == ara_pkg::VGMUL_VV) begin
+                        if (csr_vl_q[1:0] != 2'b00 || csr_vstart_q[1:0] != 2'b00)
+                          illegal_insn = 1'b1;
+                      end
                     end
                   end
                   6'b101001: begin // vector-scalar: vd = AES_op(vd, vs2[3:0])
@@ -3873,6 +3885,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       ara_req_valid     = 1'b1;
                       // Enforce vsew == EW32
                       if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                    end
+                  end
+                  6'b101100: begin // vghsh.vv (Zvkg)
+                    if (Zvkg(CryptoSupport)) begin
+                      ara_req.op            = ara_pkg::VGHSH_VV;
+                      ara_req.vs1           = insn.varith_type.rs1;
+                      ara_req.use_vs1       = 1'b1;
+                      ara_req.use_vs2       = 1'b1;
+                      ara_req.use_vd        = 1'b1;
+                      ara_req.use_vd_op     = 1'b1;
+                      ara_req.eew_vs1       = EW32;
+                      ara_req.eew_vs2       = EW32;
+                      ara_req.eew_vd_op     = EW32;
+                      ara_req_valid         = 1'b1;
+                      // Zvkg: SEW=32 only, vl/vstart EG-aligned (EGS=4)
+                      if (csr_vtype_q.vsew != EW32) illegal_insn = 1'b1;
+                      if (csr_vl_q[1:0] != 2'b00 || csr_vstart_q[1:0] != 2'b00) illegal_insn = 1'b1;
+                    end else begin
+                      illegal_insn = 1'b1;
                     end
                   end
                   6'b101101, // vsha2ms.vv
@@ -3954,7 +3985,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         in_lane_op = ara_req.op inside {[VADD:VMERGE]} || ara_req.op inside {[VREDSUM:VMSBC]} ||
                      ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {[VMVXS:VSLIDEDOWN]} ||
                      ara_req.op inside {[VAESDM_VV:VAESZ_VS]} ||
-                     ara_req.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV};
+                     ara_req.op inside {VSHA2MS_VV, VSHA2CH_VV, VSHA2CL_VV} ||
+                     ara_req.op inside {VGHSH_VV, VGMUL_VV};
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
