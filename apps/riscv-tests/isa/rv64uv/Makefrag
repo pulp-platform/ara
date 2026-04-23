@@ -184,6 +184,7 @@ rv64uv_sc_tests = vaadd \
                   zvkb \
                   zvbb \
                   zvknhb \
+                  zvkg \
                   vrgather \
                   vcompress
 
