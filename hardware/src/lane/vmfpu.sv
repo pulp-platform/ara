@@ -12,6 +12,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     parameter  int           unsigned NrLanes         = 0,
     parameter  int           unsigned VLEN            = 0,
     parameter  config_pkg::cva6_cfg_t CVA6Cfg         = cva6_config_pkg::cva6_cfg,
+    // Support for crypto extension
+    parameter  crypto_support_e       CryptoSupport   = CryptoSupportNone,
     // Support for floating-point data types
     parameter  fpu_support_e          FPUSupport      = FPUSupportHalfSingleDouble,
     // External support for vfrec7, vfrsqrt7, rounding-toward-odd
@@ -412,6 +414,11 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     );
   end
 
+  // EW64 integer multiplier result. For Zvbc VCLMUL/VCLMULH, we swap this for
+  // the carry-less multiplier output below; the integer result is unused but
+  // the handshake still runs in lockstep with the clmul unit.
+  elen_t vmul_simd_result_ew64_int;
+
   simd_mul #(
     .FixPtSupport(FixPtSupport     ),
     .NumPipeRegs (LatMultiplierEW64),
@@ -426,13 +433,50 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     .op_i       (vmul_simd_op_q_gated[EW64]    ),
     .vxsat_o    (mfpu_vxsat[EW64]              ),
     .vxrm_i     (mfpu_vxrm_i                   ),
-    .result_o   (vmul_simd_result[EW64]        ),
+    .result_o   (vmul_simd_result_ew64_int     ),
     .mask_o     (vmul_simd_mask[EW64]          ),
     .valid_i    (vmul_simd_in_valid_q[EW64]    ),
     .ready_o    (vmul_simd_in_ready[EW64]      ),
     .ready_i    (vmul_simd_out_ready[EW64]     ),
     .valid_o    (vmul_simd_out_valid[EW64]     )
   );
+
+  // Zvbc carry-less multiplier (SEW=64 only). Runs in lockstep with the
+  // EW64 integer multiplier and its output is muxed in when op is
+  // VCLMUL/VCLMULH. The post-pipeline `op_o` from the clmul unit selects
+  // which result to commit so the mux stays aligned with the pipeline.
+  elen_t   vmul_simd_result_ew64_clmul;
+  ara_op_e vmul_simd_op_ew64_post;
+  if (Zvbc(CryptoSupport)) begin : gen_clmul_ew64
+    simd_clmul_lane #(
+      .NumPipeRegs(LatMultiplierEW64)
+    ) i_simd_clmul_ew64 (
+      .clk_i      (clk_i_gated                   ),
+      .rst_ni     (rst_ni                        ),
+      .operand_a_i(vmul_simd_op_a_q_gated[EW64]  ),
+      .operand_b_i(vmul_simd_op_b_q_gated[EW64]  ),
+      .mask_i     (vmul_simd_mask_q_gated[EW64]  ),
+      .op_i       (vmul_simd_op_q_gated[EW64]    ),
+      .result_o   (vmul_simd_result_ew64_clmul   ),
+      .op_o       (vmul_simd_op_ew64_post        ),
+      // mask / valid / ready are shadowed by the integer multiplier above;
+      // the shared handshake already drives the flow.
+      .mask_o     (/* unused */                  ),
+      .valid_i    (vmul_simd_in_valid_q[EW64]    ),
+      .ready_o    (/* unused */                  ),
+      .ready_i    (vmul_simd_out_ready[EW64]     ),
+      .valid_o    (/* unused */                  )
+    );
+  end else begin : gen_no_clmul_ew64
+    assign vmul_simd_result_ew64_clmul = '0;
+    assign vmul_simd_op_ew64_post      = ara_op_e'('0);
+  end
+
+  // Pick clmul over integer at the EW64 slot for Zvbc ops.
+  assign vmul_simd_result[EW64] =
+      (Zvbc(CryptoSupport) && vmul_simd_op_ew64_post inside {VCLMUL, VCLMULH})
+        ? vmul_simd_result_ew64_clmul
+        : vmul_simd_result_ew64_int;
 
   simd_mul #(
     .FixPtSupport(FixPtSupport     ),

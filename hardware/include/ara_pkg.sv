@@ -95,9 +95,11 @@ package ara_pkg;
     CryptoSupportNIST          = 16'h2E41,
     CryptoSupportNISTclm       = 16'h6E61,
     CryptoSupportNISTgcm       = 16'h3E51,
+    CryptoSupportNISTgcmclm    = 16'h7E71,
     CryptoSupportBasicNIST     = 16'hAE41,
     CryptoSupportBasicNISTclm  = 16'hEE61,
-    CryptoSupportBasicNISTgcm  = 16'hBE51
+    CryptoSupportBasicNISTgcm  = 16'hBE51,
+    CryptoSupportBasicNISTgcmclm = 16'hFE71
   } crypto_support_e;
 
   function automatic bit Zvbb(crypto_support_e e);
@@ -125,6 +127,11 @@ package ara_pkg;
   // Zvkg: vector Galois field multiplication (GCM/GMAC).
   function automatic bit Zvkg(crypto_support_e e);
     return e[12];
+  endfunction
+
+  // Zvbc: vector carry-less multiplication (vclmul, vclmulh).
+  function automatic bit Zvbc(crypto_support_e e);
+    return e[14];
   endfunction
 
   // Multiplier latencies.
@@ -198,6 +205,8 @@ package ara_pkg;
     VGHSH_VV, VGMUL_VV,
     // Mul/Mul-Add
     VMUL, VMULH, VMULHU, VMULHSU, VMACC, VNMSAC, VMADD, VNMSUB,
+    // Vector Crypto carry-less multiplication (Zvbc)
+    VCLMUL, VCLMULH,
     // Fixed point multiplication
     VSMUL,
     // Div

@@ -176,6 +176,7 @@ module vector_fus_stage import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg
     .NrLanes        (NrLanes        ),
     .VLEN           (VLEN           ),
     .CVA6Cfg        (CVA6Cfg        ),
+    .CryptoSupport  (CryptoSupport  ),
     .FPUSupport     (FPUSupport     ),
     .FPExtSupport   (FPExtSupport   ),
     .FixPtSupport   (FixPtSupport   ),

@@ -1672,6 +1672,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001001: ara_req.op = ara_pkg::VAADD;
                   6'b001010: ara_req.op = ara_pkg::VASUBU;
                   6'b001011: ara_req.op = ara_pkg::VASUB;
+                  // Zvbc carry-less multiply (SEW=64 only)
+                  6'b001100: if (Zvbc(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VCLMUL;
+                    if (csr_vtype_q.vsew != EW64) illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
+                  6'b001101: if (Zvbc(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VCLMULH;
+                    if (csr_vtype_q.vsew != EW64) illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   6'b010111: begin
                     ara_req.op = ara_pkg::VCOMPRESS;
                     // Correctly deshuffle vs1 (it gets deshuffled with eew_vs2)
@@ -2068,6 +2081,19 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b001001: ara_req.op = ara_pkg::VAADD;
                   6'b001010: ara_req.op = ara_pkg::VASUBU;
                   6'b001011: ara_req.op = ara_pkg::VASUB;
+                  // Zvbc carry-less multiply (SEW=64 only)
+                  6'b001100: if (Zvbc(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VCLMUL;
+                    if (csr_vtype_q.vsew != EW64) illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
+                  6'b001101: if (Zvbc(CryptoSupport)) begin
+                    ara_req.op = ara_pkg::VCLMULH;
+                    if (csr_vtype_q.vsew != EW64) illegal_insn = 1'b1;
+                  end else begin
+                    illegal_insn = 1'b1;
+                  end
                   // Slides
                   6'b001110: begin // vslide1up
                     ara_req.op      = ara_pkg::VSLIDEUP;

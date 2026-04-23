@@ -44,6 +44,7 @@ sources:
     - hardware/src/lane/simd_aes_lane.sv
     - hardware/src/lane/simd_sha_group.sv
     - hardware/src/lane/simd_gcm_group.sv
+    - hardware/src/lane/simd_clmul_lane.sv
     - hardware/src/lane/simd_alu.sv
     - hardware/src/lane/simd_div.sv
     - hardware/src/lane/simd_mul.sv
