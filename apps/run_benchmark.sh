@@ -2,27 +2,36 @@
 set -e
 
 app=$1
-dtype=$2
-nr_lanes=$3
-vlen=$4
-banks=$5
-bytes_lane=$6
-lat=$7
+
+# Fixed parameters
+dtype=double
+nr_lanes=4
+lat=0
 
 logdir=logs
 
-make clean
 mkdir -p ${logdir}/$app
+
+for banks in 8
+do
+for vlen in 4096
+do
 
 #Build hw
 cd ../
 pwd
 
-git apply patches/ara_${banks}banks.patch
+if [[ $banks != 8 ]]; then
+  git apply patches/ara_${banks}banks.patch
+fi
+
 cd hardware/
-make clean && make compile config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen}
+make compile config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} -B
 
 cd ../apps/
+
+for bytes_lane in 16 32 64
+do
 
 len=$((bytes_lane * nr_lanes/ 8))
 echo "L=$nr_lanes LEN=$len"
@@ -59,10 +68,10 @@ fi
 
 # Build app
 echo "$app"
-make $app/data.S def_args_$app="$args_app" config=${nr_lanes}_lanes
+make $app/data.S def_args_$app="$args_app" config=${nr_lanes}_lanes -B
 cp $app/data.S benchmarks/
 
-make bin/benchmarks ENV_DEFINES="-D$str_app -Ddtype=$dtype" config=${nr_lanes}_lanes old_data=1
+make bin/benchmarks ENV_DEFINES="-D$str_app -Ddtype=$dtype" config=${nr_lanes}_lanes old_data=1 -B
 
 # Simulate
 appname=${app}_${nr_lanes}_${bytes_lane}_${vlen}_${banks}
@@ -74,8 +83,14 @@ cd ../hardware/
 
 logfile=../apps/${logdir}/${app}/${nr_lanes}L_${bytes_lane}B__${vlen}vlen_${banks}banks_${lat}mem.log
 
-make simc app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} | tee $logfile
-# make sim app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} #> $logfile &
+# make simc app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} > $logfile &
+make sim app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen}
 
-git restore include/ara_pkg.sv
+if [[ $banks != 8 ]]; then
+  git restore include/ara_pkg.sv
+fi
 cd ../apps
+
+done
+done
+done
