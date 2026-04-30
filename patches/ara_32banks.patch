@@ -1,5 +1,5 @@
 diff --git a/hardware/include/ara_pkg.sv b/hardware/include/ara_pkg.sv
-index 3b269e71..71623d46 100644
+index 3b269e71..b8599f13 100644
 --- a/hardware/include/ara_pkg.sv
 +++ b/hardware/include/ara_pkg.sv
 @@ -925,7 +925,7 @@ typedef struct packed {
@@ -7,7 +7,7 @@ index 3b269e71..71623d46 100644
  
    // Each lane has eight VRF banks
 -  localparam int unsigned NrVRFBanksPerLane = 8;
-+  localparam int unsigned NrVRFBanksPerLane = 16;
++  localparam int unsigned NrVRFBanksPerLane = 32;
  
    // Find the starting address (in bytes) of a vector register chunk of vid
    function automatic logic [63:0] vaddr(logic [4:0] vid, int NrLanes, int vlen);
