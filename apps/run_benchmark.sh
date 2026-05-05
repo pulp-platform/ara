@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 app=$1
 
@@ -12,25 +11,29 @@ logdir=logs
 
 mkdir -p ${logdir}/$app
 
-for banks in 8
-do
-for vlen in 4096
-do
-
-#Build hw
 cd ../
-pwd
+
+for banks in 8 16 32
+do
 
 if [[ $banks != 8 ]]; then
   git apply patches/ara_${banks}banks.patch
 fi
+
+for vlen in 4096 8192 16384
+do
+
+#Build hw
 
 cd hardware/
 make compile config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} -B
 
 cd ../apps/
 
-for bytes_lane in 16 32 64
+# small vl - 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128
+# medium vl - 136 144 152 160 168 176 184 192 200 208 216 224 232 240 248 256
+# large vl - 512 1024
+for bytes_lane in 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128 136 144 152 160 168 176 184 192 200 208 216 224 232 240 248 256 264 272 512 520 528 1024
 do
 
 len=$((bytes_lane * nr_lanes/ 8))
@@ -39,7 +42,7 @@ echo "L=$nr_lanes LEN=$len"
 # Benchmark parameters
 if [[ $app == "fmatmul" ]]
 then
-  args_app="64 64 $len"
+  args_app="32 32 $len"
   str_app=FMATMUL
 elif [[ $app == "fconv2d" ]]
 then
@@ -56,7 +59,7 @@ then
   str_app=JACOBI2D
 elif [[ $app == "softmax" ]]
 then
-  args_app="64 $len"
+  args_app="16 $len"
   str_app=SOFTMAX
 elif [[ $app == "exp" ]]
 then
@@ -83,14 +86,21 @@ cd ../hardware/
 
 logfile=../apps/${logdir}/${app}/${nr_lanes}L_${bytes_lane}B__${vlen}vlen_${banks}banks_${lat}mem.log
 
-# make simc app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} > $logfile &
-make sim app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen}
+# To run without gui
+make simc app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen} > $logfile
 
-if [[ $banks != 8 ]]; then
-  git restore include/ara_pkg.sv
-fi
+# To use gui
+# make sim app=${appname} config=${nr_lanes}_lanes mem_latency=${lat} vlen=${vlen}
+
 cd ../apps
 
-done
-done
-done
+done # bytes_lane
+
+cd ../
+done # vlen
+
+if [[ $banks != 8 ]]; then
+  git restore hardware/include/ara_pkg.sv
+fi
+
+done # banks

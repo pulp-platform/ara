@@ -216,7 +216,8 @@ module ara_tb;
         $display("[#Cycles Operand Requestor not ready]:%d", int'(dut.i_ara_soc.i_system.i_ara.i_sequencer.op_req_stall_cycles_d));
 
         $display("----------FPU Stats-----------");
-        $display("[FPU utilization]:%.2f",(dut.i_ara_soc.i_system.i_ara.gen_lanes[0].i_lane.i_vfus.i_vmfpu.counter_q * 100.0/ dut.runtime_buf_q));
+        $display("[FPU active     ]:%.2f",(dut.i_ara_soc.i_system.i_ara.gen_lanes[0].i_lane.i_vfus.i_vmfpu.fpu_gen.counter_q));
+        $display("[FPU utilization]:%.2f",(dut.i_ara_soc.i_system.i_ara.gen_lanes[0].i_lane.i_vfus.i_vmfpu.fpu_gen.counter_q * 100.0/ dut.runtime_buf_q));
 `endif
         $info("Core Test ", $sformatf("*** SUCCESS *** (tohost = %0d)", (exit >> 1)));
       end

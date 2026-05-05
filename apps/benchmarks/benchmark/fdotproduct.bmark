@@ -57,7 +57,7 @@ dtype r;
 
 void warm_caches(uint64_t heat) {
   for (uint64_t k = 0; k < heat; ++k)
-    fdotp_v64b(v64a, v64b, 128);
+    fdotp_v64b(v64a, v64b, vsize);
 }
 
 int main() {
@@ -97,9 +97,9 @@ int main() {
   float utilization;
 
   if (sizeof(r) == 8) {
-    utilization = 100 * performance / (NR_LANES);
+    utilization = 100 * performance / (NR_LANES * 2.0);
   } else {
-    utilization = 100 * performance / (NR_LANES * 2.0); // 2 FP32-ops/lane/cycle
+    utilization = 100 * performance / (2 * NR_LANES * 2.0); // 2 FP32-ops/lane/cycle
   }
   printf("VL:%d [sw-cycles]: %ld perf:%f util:%f%%\n", avl, v_sw_runtime, performance, utilization);
 
