@@ -4,6 +4,27 @@ Ara can be synthesized on a VCU128 FPGA and boot Linux through the Cheshire SoC.
 
 Our entry point is to generate a custom `add_sources.vcu128.tcl` file with specific Ara targets, copy this file into the Cheshire directory, and then use the default Cheshire compile flow, which will use our provided TCL file
 
+## Requirements
+From Cheshire's [web documentation](https://pulp-platform.github.io/cheshire/gs/#dependencies), ensure you have the next dependencies:
+
+- GNU make >= 3.82
+- CMake >= 3.24.0
+- Python >= 3.11
+- Bender >= 0.27.1
+- RISCV GCC >= 11.2.0
+
+> [!TIP]
+> Check [Bender](https://github.com/pulp-platform/bender) repository to install it
+
+For Python dependencies, it is highly recommended to create a virtual environment and install all packages listed in `requirements.txt`
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
 ## How to Use
 
 Ara should be instantiated as a submodule of Cheshire. This means that the Ara repo should be downloaded through `bender checkout` from the Cheshire directory. Then, Ara's path can be retrived using `bender path ara`.
