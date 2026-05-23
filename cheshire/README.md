@@ -27,10 +27,10 @@ pip install -r requirements.txt
 
 ## How to Use
 
-Ara should be instantiated as a submodule of Cheshire. This means that the Ara repo should be downloaded through `bender checkout` from the Cheshire directory. Then, Ara's path can be retrived using `bender path ara`.
+Ara should be instantiated as a submodule of Cheshire. This means that the Ara repo should be downloaded through `bender checkout` from the Cheshire directory, more specifically, the `mp/ara-pulp-v2` branch, which includes the CVA6 connected to the Ara. Then, Ara's path can be retrived using `bender path ara`.
 
 ```bash
-git clone git@github.com:pulp-platform/cheshire.git
+git clone --branch=mp/ara-pulp-v2 https://github.com/pulp-platform/cheshire.git
 cd cheshire
 git checkout ${COMMIT}
 bender checkout
