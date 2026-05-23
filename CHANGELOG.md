@@ -132,6 +132,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Switch to a better buildroot mirror
  - CI frees up space in the runner before building a toolchain
  - Update documentation
+ - Enhance Cheshire's documentation for better workflow integration with Ara
 
 ## 3.0.0 - 2023-09-08
 
