@@ -89,7 +89,7 @@ cd ${ARA_ROOT}/cheshire
 make ara-chs-xilinx-program
 ```
 
-For more information, see Cheshire's documentation (https://pulp-platform.github.io/cheshire/tg/xilinx).
+Every output will be in `cheshire/target/xilinx` directory. For more information, see Cheshire's documentation (https://pulp-platform.github.io/cheshire/tg/xilinx).
 
 ### Example
 
