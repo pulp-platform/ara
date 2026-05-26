@@ -1,6 +1,6 @@
-# University Institute of Applied Microelectronics
-#       https://www.iuma.ulpgc.es/
+# University Institute of Applied Microelectronics (https://www.iuma.ulpgc.es/)
 # Author: Jorge López Viera
+# Created: 20/05/2026
 # This file includes the Python's dependencies for
 # both the Cheshire and Ara
 
