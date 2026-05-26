@@ -40,6 +40,10 @@ cd ${ARA_ROOT}
 
 ## FPGA and OS flow
 
+> [!WARNING]
+> Ensure that your `$PATH` variable includes ONLY those binaries listed above as well as default system's binaries. Your `$PATH` should look something like follows:
+> `/path/to/RISCV>=11.2.0:/path/to/bender:/path/to/cmake>= 3.24.0/:/path/to/python>= 3.11:/bin:/usr/bin:etc`
+
 ### LINUX-RVV Kernels
 Compile kernels to be run on the FPGA under Linux (this will also install the buildroot toolchain)
 
