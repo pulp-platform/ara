@@ -64,6 +64,8 @@ cd ${ARA_ROOT}/cheshire/sw
 make linux-img
 
 # Generate Cheshire's Linux img
+export VIVADO="/path/to/Vivado/20XX.X/bin/vivado"
+
 cd ${ARA_ROOT}/cheshire
 make ara-chs-image
 ```
