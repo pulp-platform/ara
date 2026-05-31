@@ -1,0 +1,13 @@
+{
+  "flags": "-f /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/filelist_slang.f",
+  "index": [
+    {
+      "dirs": ["hardware/src", "hardware/tb", "hardware/include", "hardware/deps"],
+      "excludeDirs": ["build", "work", "verilator_build", "patches", "deprecated"]
+    }
+  ],
+  "inlayHints": {
+    "orderedInstanceNames": true,
+    "wildcardNames": true
+  }
+}
