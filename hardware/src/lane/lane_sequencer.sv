@@ -73,6 +73,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   logic    pe_req_valid;
   logic    pe_req_ready;
 
+  // VSLIDEDOWN stride helpers (kept at module scope to remain visible in waveforms)
+  // Extra elements to ask, because of the stride
+  logic [$clog2(8*NrLanes)-1:0] extra_stride;
+  // Need one bit more than vl, since we will also add the stride contribution
+  logic [$bits(pe_req.vl):0]    vl_tot;
+
   fall_through_register #(
     .T(pe_req_t)
   ) i_pe_req_register (
@@ -278,6 +284,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     // Make no requests to the operand requester
     operand_request    = '0;
     operand_request_push = '0;
+
+    // Default the slide unit stride helpers (avoids inferred latches)
+    extra_stride = '0;
+    vl_tot       = '0;
 
     // Make no requests to the lane's VFUs
     vfu_operation_d       = '0;
@@ -662,11 +672,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               (pe_req.vl - pe_req.stride + NrLanes - 1) / NrLanes;
             end
             VSLIDEDOWN: begin
-              // Extra elements to ask, because of the stride
-              automatic logic [$clog2(8*NrLanes)-1:0] extra_stride;
-              // Need one bit more than vl, since we will also add the stride contribution
-              automatic logic [$bits(pe_req.vl):0] vl_tot;
-
               // We need to trim full words from the start of the vector that are not used
               // as operands by the slide unit.
               operand_request[SlideAddrGenA].vstart = pe_req.stride / NrLanes;

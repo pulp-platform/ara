@@ -55,6 +55,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
   alu_sat_operand_t sat_sum, sat_sub;
   vxsat_t     vxsat;
   vxrm_t      vxrm;
+  logic       r;
 
   assign vxrm = vxrm_i;
   assign vxsat_o = vxsat;
@@ -113,6 +114,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     // Default assignment
     res       = '0;
     vxsat.w64 = '0;
+    r         = '0;
 
     if (valid_i)
       unique case (op_i)
@@ -182,9 +184,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                 res.w64[b]     = &vxsat.w64[b] ? (sum[63] ? {1'b0, {63{1'b1}}} : {1'b1, {63{1'b0}}} ) : sum[63:0];
               end
           endcase
-        VAADD, VAADDU: if (FixPtSupport == FixedPointEnable) begin
-          automatic logic r;
-          unique case (vew_i)
+        VAADD, VAADDU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
               automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b];
                 unique case (vxrm)
@@ -225,7 +225,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                 endcase
                 res.w64[b] = (op_i == VAADDU) ? sum[64:1] + r : {sum[63], sum[63:1]} + r;
               end
-          endcase end
+          endcase
         VADD, VADC, VMADC, VREDSUM, VWREDSUMU, VWREDSUM: unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b] +
@@ -324,9 +324,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
               res.w64[b]     = &vxsat.w64[b] ? (opb.w64[b][63] ? 64'h8000000000000000 : 64'h7FFFFFFFFFFFFFFF) : sub[63:0];
           end
           endcase
-        VASUB, VASUBU: if (FixPtSupport == FixedPointEnable) begin
-        automatic logic r;
-        unique case (vew_i)
+        VASUB, VASUBU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
                 automatic logic [ 8:0] sub = opb.w8 [b] - opa.w8 [b];
                 unique case (vxrm)
@@ -367,7 +365,7 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
                 endcase
                 res.w64[b] = (op_i == VASUBU) ? (sub[63:0] >> 1) + {63'b0, r} : $unsigned(($signed(sub[63:0]) >>> 1) + $signed({63'b0, r}));
               end
-          endcase end
+          endcase
 
         // Shift instructions
         VSLL: unique case (vew_i)

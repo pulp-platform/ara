@@ -280,6 +280,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
   logic narrowing_select_in_d, narrowing_select_in_q;
   // Output selector, used to control the Result MUX and validate the results
   logic narrowing_select_out_d, narrowing_select_out_q;
+  // FPU SIMD result needs to be shuffled for narrowing instructions before commit
+  elen_t narrowing_shuffled_result;
+  // Helper signal to shuffle the narrowed result
+  logic [7:0] narrowing_shuffle_be;
 
   //////////////////
   //  Multiplier  //
@@ -1120,11 +1124,19 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     fpu_mask_t vfpu_flag_mask;
 
+    vf7_flag_out_e16 vfrec7_out_e16[4];
+    vf7_flag_out_e32 vfrec7_out_e32[2];
+    vf7_flag_out_e64 vfrec7_out_e64[1];
+
     status_t vfrec7_ex_flag, vfrsqrt7_ex_flag;
 
     roundmode_e fp_rm_process;
 
     elen_t [LatFNonComp:0]   operand_a_d, vfpu_flag_mask_d;
+
+    vf7_flag_out_e16 vfrsqrt7_out_e16[4];
+    vf7_flag_out_e32 vfrsqrt7_out_e32[2];
+    vf7_flag_out_e64 vfrsqrt7_out_e64[1];
 
     logic [15:0] lzc_e16;
     logic [9:0]  lzc_e32;
@@ -1187,13 +1199,19 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     assign   fp_rm_process = vinsn_processing_q.fp_rm;
 
     always_comb begin: fpu_result_processing_p
+      // Default the vfrec7/vfrsqrt7 scratch arrays (avoids inferred latches)
+      vfrec7_out_e16   = '{default: '0};
+      vfrec7_out_e32   = '{default: '0};
+      vfrec7_out_e64   = '{default: '0};
+      vfrsqrt7_out_e16 = '{default: '0};
+      vfrsqrt7_out_e32 = '{default: '0};
+      vfrsqrt7_out_e64 = '{default: '0};
 
       if (FPExtSupport) begin
 
         // vfrec7 (only supported on 16, 32, 64-bit)
         unique case (vinsn_processing_q.vtype.vsew)
           EW16: begin
-            automatic vf7_flag_out_e16 vfrec7_out_e16[4];
             for (int h = 0; h < 4; h++) vfrec7_out_e16[h] =
               vfrec7_fp16(vfpu_result[h*16 +: 10], operand_a_delay[h*16 +: 16], fp_rm_process);
 
@@ -1206,7 +1224,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                             | (vfrec7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW32: begin
-            automatic vf7_flag_out_e32 vfrec7_out_e32[2];
             for (int w = 0; w < 2; w++) vfrec7_out_e32[w] =
               vfrec7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], fp_rm_process);
 
@@ -1216,7 +1233,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                             | (vfrec7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW64: begin
-            automatic vf7_flag_out_e64 vfrec7_out_e64[1];
             for (int d = 0; d < 1; d++) vfrec7_out_e64[d] =
               vfrec7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], fp_rm_process);
 
@@ -1233,7 +1249,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
        // vfrsqrt7 (only supported on 16, 32, 64-bit)
         unique case (vinsn_processing_q.vtype.vsew)
           EW16: begin
-            automatic vf7_flag_out_e16 vfrsqrt7_out_e16[4];
             for (int h = 0; h < 4; h++) vfrsqrt7_out_e16[h] =
               vfrsqrt7_fp16(vfpu_result[h*16 +: 10], operand_a_delay[h*16 +: 16], lzc_e16[h*4 +: 4]);
 
@@ -1246,7 +1261,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                              | (vfrsqrt7_out_e16[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW32: begin
-            automatic vf7_flag_out_e32 vfrsqrt7_out_e32[2];
             for (int w = 0; w < 2; w++) vfrsqrt7_out_e32[w] =
               vfrsqrt7_fp32(vfpu_result[w*32 +: 10], operand_a_delay[w*32 +: 32], lzc_e32[w*5 +: 5]);
 
@@ -1256,7 +1270,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                              | (vfrsqrt7_out_e32[0].ex_flag & {5{vfpu_flag_mask[0]}});
           end
           EW64: begin
-            automatic vf7_flag_out_e64 vfrsqrt7_out_e64[1];
             for (int d = 0; d < 1; d++) vfrsqrt7_out_e64[d] =
               vfrsqrt7_fp64(vfpu_result[d*64 +: 10], operand_a_delay[d*64 +: 64], lzc_e64[d*6 +: 6]);
 
@@ -1378,6 +1391,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     narrowing_select_in_d  = narrowing_select_in_q;
     narrowing_select_out_d = narrowing_select_out_q;
+    narrowing_shuffled_result = '0;
+    narrowing_shuffle_be      = '0;
 
     // Inform our status to the lane controller
     mfpu_ready_o      = !vinsn_queue_full;
@@ -1484,11 +1499,6 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     case (mfpu_state_q)
       NO_REDUCTION: begin
-        // FPU SIMD result needs to be shuffled for narrowing instructions before commit
-        automatic elen_t narrowing_shuffled_result;
-        // Helper signal to shuffle the narrowed result
-        automatic logic [7:0] narrowing_shuffle_be;
-
         vfpu_tag_in = mask_i;
 
         // Sign injection
