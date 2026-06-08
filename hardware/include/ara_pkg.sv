@@ -82,8 +82,13 @@ package ara_pkg;
   // Support for the vector crypto extensions.
   // 16 bits correspond to {Zvbb, Zvbc, Zvkb, Zvkg, Zvkned, Zvknha, Zvknhb, Zvksed, Zvksh, Zvkn, Zvknc, Zvkng, Zvks, Zvksc, Zvksg, Zvkt}
   typedef enum bit [15:0] {
-    CryptoSupportNone = 16'h0000
+    CryptoSupportNone     = 16'h0000,
+    CryptoSupportBitmanip = 16'h2000
   } crypto_support_e;
+
+  function automatic bit Zvkb(crypto_support_e e);
+    return e[13];
+  endfunction
 
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
@@ -132,6 +137,8 @@ package ara_pkg;
   typedef enum logic [7:0] {
     // Arithmetic and logic instructions
     VADD, VSUB, VADC, VSBC, VRSUB, VMINU, VMIN, VMAXU, VMAX, VAND, VOR, VXOR,
+    // Zvkb
+    VANDN, VBREV8, VREV8, VROL, VROR,
     // Fixed point
     VSADDU, VSADD, VSSUBU, VSSUB, VAADDU, VAADD, VASUBU, VASUB, VSSRL, VSSRA, VNCLIP, VNCLIPU,
     // Shifts,
