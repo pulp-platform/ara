@@ -79,6 +79,12 @@ package ara_pkg;
     return e[0];
   endfunction : RVVBA
 
+  // Support for the vector crypto extensions.
+  // 16 bits correspond to {Zvbb, Zvbc, Zvkb, Zvkg, Zvkned, Zvknha, Zvknhb, Zvksed, Zvksh, Zvkn, Zvknc, Zvkng, Zvks, Zvksc, Zvksg, Zvkt}
+  typedef enum bit [15:0] {
+    CryptoSupportNone = 16'h0000
+  } crypto_support_e;
+
   // Multiplier latencies.
   localparam int unsigned LatMultiplierEW64 = 1;
   localparam int unsigned LatMultiplierEW32 = 1;

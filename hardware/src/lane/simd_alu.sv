@@ -9,6 +9,7 @@
 module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     // Support for fixed-point data types
     parameter  fixpt_support_e FixPtSupport = FixedPointEnable,
+    parameter  crypto_support_e CryptoSupport = CryptoSupportNone,
     // Dependant parameters. DO NOT CHANGE!
     localparam int    unsigned DataWidth    = $bits(elen_t),
     localparam int    unsigned StrbWidth    = DataWidth/8,

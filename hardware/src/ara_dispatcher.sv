@@ -26,6 +26,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     parameter fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Support for segment memory operations
     parameter seg_support_e          SegSupport   = SegSupportEnable,
+    // Support for crypto extension
+    parameter crypto_support_e       CryptoSupport = CryptoSupportNone,
     // Dependent parameters: DO NOT CHANGE
     localparam type                  vlen_t       = logic[$clog2(VLEN+1)-1:0],
     localparam int          unsigned VLENB        = VLEN / 8

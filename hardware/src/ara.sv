@@ -19,6 +19,8 @@ module ara import ara_pkg::*; #(
     parameter  fixpt_support_e        FixPtSupport = FixedPointEnable,
     // Support for segment memory operations
     parameter  seg_support_e          SegSupport   = SegSupportEnable,
+    // Support for crypto extension
+    parameter  crypto_support_e       CryptoSupport = CryptoSupportNone,
     // CVA6 configuration
     parameter  config_pkg::cva6_cfg_t CVA6Cfg      = cva6_config_pkg::cva6_cfg,
     // CVA6-related parameters
@@ -204,6 +206,7 @@ module ara import ara_pkg::*; #(
     .VLEN              (VLEN              ),
     .FPUSupport        (FPUSupport        ),
     .SegSupport        (SegSupport        ),
+    .CryptoSupport     (CryptoSupport     ),
     .ara_req_t         (ara_req_t         ),
     .ara_resp_t        (ara_resp_t        ),
     .accelerator_req_t (accelerator_req_t ),
@@ -374,6 +377,7 @@ module ara import ara_pkg::*; #(
       .FPUSupport           (FPUSupport           ),
       .FPExtSupport         (FPExtSupport         ),
       .FixPtSupport         (FixPtSupport         ),
+      .CryptoSupport        (CryptoSupport        ),
       .pe_req_t_bits        ($bits(pe_req_t)      ),
       .pe_resp_t_bits       ($bits(pe_resp_t)     )
     ) i_lane (
