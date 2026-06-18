@@ -554,7 +554,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv     : pe_req.conversion_vs2,
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req.vl / NrLanes,
-            scale_vl : pe_req.scale_vl,
+            // The index-operand vl above is already the index element count.
+            // Do not let the operand requester rescale it by the data SEW
+            // (vl<<vsew>>eew), which only matches when SEW==EEW and otherwise
+            // under-/over-fetches the indices, hanging the addrgen (#455).
+            scale_vl : 1'b0,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req.vtype,
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
@@ -613,6 +617,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           operand_request_push[MaskM] = !pe_req.vm;
 
           // Store indexed
+          // Store indexed
           // TODO: add vstart support here
           operand_request[SlideAddrGenA] = '{
             id       : pe_req.id,
@@ -621,7 +626,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv     : pe_req.conversion_vs2,
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req.vl / NrLanes,
-            scale_vl : pe_req.scale_vl,
+            // See the load-indexed note above: the index-operand vl is already
+            // the index element count and must not be rescaled by the data SEW (#455).
+            scale_vl : 1'b0,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req.vtype,
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
