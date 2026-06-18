@@ -844,6 +844,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
+                    // A masked vmerge (vm=0) writes a full vector, so its vd
+                    // must not overlap the mask source v0. vmv.v.v (vm=1) is
+                    // exempt. (#460)
+                    if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                      illegal_insn = 1'b1;
                     // With a normal vmv.v.v, copy input eew to output
                     // to avoid unnecessary reshuffles
                     if (insn.varith_type.vm) begin
@@ -1120,6 +1125,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.x does not use vs2
+                    // Masked vmerge vd must not overlap the mask source v0. (#460)
+                    if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                      illegal_insn = 1'b1;
                   end
                   6'b100000: ara_req.op = ara_pkg::VSADDU;
                   6'b100001: ara_req.op = ara_pkg::VSADD;
@@ -1320,6 +1328,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.i does not use vs2
+                    // Masked vmerge vd must not overlap the mask source v0. (#460)
+                    if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                      illegal_insn = 1'b1;
                   end
                   6'b100000: ara_req.op = ara_pkg::VSADDU;
                   6'b100001: ara_req.op = ara_pkg::VSADD;
@@ -2670,7 +2681,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       // This instruction ignores LMUL checks
                       skip_lmul_checks  = 1'b1;
                     end
-                    6'b010111: ara_req.op = ara_pkg::VMERGE;
+                    6'b010111: begin
+                      ara_req.op = ara_pkg::VMERGE;
+                      // Masked vfmerge vd must not overlap the mask source v0;
+                      // vfmv.v.f (vm=1) is exempt. (#460)
+                      if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                        illegal_insn = 1'b1;
+                    end
                     6'b011000: begin
                       ara_req.op = ara_pkg::VMFEQ;
                       ara_req.use_vd_op  = 1'b1;
