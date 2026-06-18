@@ -1667,7 +1667,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     case (insn.varith_type.rs1)
                       5'b00010: begin // VZEXT.VF8
                         ara_req.conversion_vs2 = OpQueueConversionZExt8;
-                        ara_req.eew_vs2        = eew_q[insn.varith_type.rs2];
+                        // The source is 1/8 the destination width. VF8 is only legal
+                        // at SEW=e64, so the source elements are always EW8. Using the
+                        // tracked eew_q here was wrong: a stale eew (e.g. e16) makes the
+                        // ZExt8 opqueue conversion (which only handles EW8) fall through,
+                        // leaving the operand unconverted. (#452)
+                        ara_req.eew_vs2        = EW8;
                         ara_req.cvt_resize     = CVT_WIDE;
                         ara_req.emul           = csr_vtype_q.vlmul;
                         lmul_vs2               = prev_lmul(prev_lmul(prev_lmul(csr_vtype_q.vlmul)));
@@ -1679,7 +1684,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b00011: begin // VSEXT.VF8
                         ara_req.conversion_vs2 = OpQueueConversionSExt8;
-                        ara_req.eew_vs2        = eew_q[insn.varith_type.rs2];
+                        // See VZEXT.VF8 above: source is always EW8 (VF8 needs e64). (#452)
+                        ara_req.eew_vs2        = EW8;
                         ara_req.cvt_resize     = CVT_WIDE;
                         ara_req.emul           = csr_vtype_q.vlmul;
                         lmul_vs2               = prev_lmul(prev_lmul(prev_lmul(csr_vtype_q.vlmul)));
