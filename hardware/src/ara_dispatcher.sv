@@ -3706,38 +3706,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Update the EEW
     if (ara_req_valid_d && ara_req.use_vd && ara_req_ready_i) begin
+      automatic int unsigned regs_per_emul;
+      automatic int unsigned regs_to_tag;
+      automatic logic        is_seg_mem_op;
       unique case (ara_req.emul)
-        LMUL_1: begin
-          for (int i = 0; i < 1; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        LMUL_2: begin
-          for (int i = 0; i < 2; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        LMUL_4: begin
-          for (int i = 0; i < 4; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        LMUL_8: begin
-          for (int i = 0; i < 8; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        default: begin // EMUL < 1
-          for (int i = 0; i < 1; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
+        LMUL_2:  regs_per_emul = 2;
+        LMUL_4:  regs_per_emul = 4;
+        LMUL_8:  regs_per_emul = 8;
+        default: regs_per_emul = 1; // LMUL_1 and EMUL < 1
       endcase
+      // Segment loads/stores write (nf+1) groups of EMUL consecutive registers
+      // (vd, vd+EMUL, ...). Without tagging them all, vd+1..vd+nf keep the
+      // reset-default EW8 and a later read triggers a spurious on-read reshuffle
+      // that byte-packs the data (#453).
+      is_seg_mem_op = (ara_req.op inside {VLE, VLSE, VLXE, VSE, VSSE, VSXE})
+                   && (ara_req.nf != 3'b000);
+      regs_to_tag = is_seg_mem_op ? regs_per_emul * (int'(ara_req.nf) + 1)
+                                  : regs_per_emul;
+      for (int i = 0; i < 32; i++) begin
+        if (i < regs_to_tag) begin
+          eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
+          eew_valid_d[ara_req.vd + i] = 1'b1;
+        end
+      end
     end
 
     // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
