@@ -249,7 +249,13 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     for (int lane = 0; lane < NrLanes; lane++) begin
       // Acknowledge alu operand
       for (int operand_fu = 0; operand_fu < NrMaskFUnits; operand_fu++) begin
-        masku_operand_ready_o[lane][2 + operand_fu] = (masku_fu_e'(operand_fu) == masku_fu_i) && masku_operand_alu_ready_i[lane];
+        // VID does not consume an ALU operand, but the lanes can still push ALU
+        // data into the operand path. If it is never acknowledged, the producing
+        // lane stalls forever and the mask unit deadlocks. Drain it during VID.
+        if (vinsn_issue_i.op == VID)
+          masku_operand_ready_o[lane][2 + operand_fu] = 1'b1;
+        else
+          masku_operand_ready_o[lane][2 + operand_fu] = (masku_fu_e'(operand_fu) == masku_fu_i) && masku_operand_alu_ready_i[lane];
       end
       // Acknowledge vd operands
       masku_operand_ready_o[lane][1] = masku_operand_vd_lane_ready[lane];
