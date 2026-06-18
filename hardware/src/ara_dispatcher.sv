@@ -1497,6 +1497,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.req_ready  = 1'b0;
                     acc_resp_o.resp_valid = 1'b0;
 
+                    // VWXUNARY0 (vmv.x.s, vcpop.m, vfirst.m) do not read vs1:
+                    // the rs1 field encodes the sub-opcode, not a vector register.
+                    // Leaving use_vs1 asserted (the OPMVV default) makes the main
+                    // sequencer detect a spurious hazard against whatever register
+                    // number happens to sit in the rs1 field.
+                    ara_req.use_vs1 = 1'b0;
+
                     case (insn.varith_type.rs1)
                       5'b00000: begin
                         ara_req.op      = ara_pkg::VMVXS;
