@@ -515,10 +515,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         word_lane_ptr_d = '0;
         // Raise an error if necessary
         if (idx_op_error_q) begin
-          // In this case, we always get EEW-misaligned exceptions
+          // An indexed element whose effective address is misaligned to its
+          // EEW raises a load/store address-misaligned exception (RVV spec),
+          // reporting the faulting effective address in [ms]tval - not an
+          // illegal-instruction exception with tval=0 as before. (#457)
           addrgen_exception_o.valid = 1'b1;
-          addrgen_exception_o.cause = riscv::ILLEGAL_INSTR;
-          addrgen_exception_o.tval  = '0;
+          addrgen_exception_o.cause = is_load(pe_req_q.op) ? riscv::LD_ADDR_MISALIGNED
+                                                           : riscv::ST_ADDR_MISALIGNED;
+          addrgen_exception_o.tval  = idx_final_vaddr_q;
         end
         // Propagate the exception from the MMU (if any)
         // NOTE: this would override idx_op_error_q
@@ -543,10 +547,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       end
     endcase
 
-    // Immediately kill the load/store if the instruction was illegal
+    // Immediately kill the load/store if the addrgen detected a fault
+    // (illegal access or an element address-misaligned exception). Both must
+    // drain the load/store unit so the faulting instruction retires. (#457)
     if (addrgen_exception_o.valid && addrgen_ack_o) begin
-      addrgen_illegal_load_o  =  is_load(pe_req_q.op) && (addrgen_exception_o.cause == riscv::ILLEGAL_INSTR);
-      addrgen_illegal_store_o = !is_load(pe_req_q.op) && (addrgen_exception_o.cause == riscv::ILLEGAL_INSTR);
+      addrgen_illegal_load_o  =  is_load(pe_req_q.op) &&
+        (addrgen_exception_o.cause inside {riscv::ILLEGAL_INSTR, riscv::LD_ADDR_MISALIGNED});
+      addrgen_illegal_store_o = !is_load(pe_req_q.op) &&
+        (addrgen_exception_o.cause inside {riscv::ILLEGAL_INSTR, riscv::ST_ADDR_MISALIGNED});
     end
   end : addr_generation
 
