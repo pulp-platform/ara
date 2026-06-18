@@ -1142,6 +1142,25 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
               vrgat_req_fifo_push = 1'b1;
               // Increase the number of elements to write
               vcompress_cnt_d = vcompress_cnt_q + 1;
+              // #450: tag the LAST selected element's FIFO entry as the terminator.
+              // The terminator carries both vcompress_last_idx (so the masku
+              // completes) and is_last_req (so the lane VRGATHER FSM returns to
+              // IDLE). Previously these only rode the last *input* element, which
+              // is never pushed when trailing elements are unselected -> hang.
+              // A selected element is the last one iff no mask bit is set in
+              // (vrgat_cnt, vl). The whole mask is in masku_operand_alu_seq when
+              // vl fits in one word; for larger vl keep the legacy behavior.
+              if (vinsn_issue.vl <= NrLanes*DataWidth) begin
+                automatic logic more_after;
+                more_after = 1'b0;
+                for (int unsigned i = 0; i < NrLanes*DataWidth; i++)
+                  if ((i > vrgat_cnt_q) && (i < vinsn_issue.vl))
+                    more_after |= masku_operand_alu_seq[i];
+                if (!more_after) begin
+                  vcompress_last_idx_d    = 1'b1;
+                  vrgat_req_is_last_req_d = 1'b1;
+                end
+              end
             end
           end
         end
