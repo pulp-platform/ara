@@ -533,7 +533,14 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            vstart : vfu_operation_d.vstart,
+            // The mask is bit-packed (NrLanes*ELEN bits per VRF row) and fetched
+            // with eew=EW64, so the operand requester adds `vstart` directly to
+            // the row address (vstart >> (EW64-EW64)). The element-scaled
+            // vfu_operation_d.vstart (= vstart/NrLanes) over-counts and skips
+            // mask rows that still hold active bits, dropping masked elements
+            // with vstart >= NrLanes (e.g. segment-load micro-ops). Use the
+            // bit-packed mask-row index instead. (#462)
+            vstart : pe_req.vstart / (NrLanes * ELEN),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             target_fu : ALU_SLDU,
             conv      : OpQueueConversionNone,
@@ -603,7 +610,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            vstart : vfu_operation_d.vstart,
+            // Bit-packed mask row index, see the VFU_LoadUnit note above. (#462)
+            vstart : pe_req.vstart / (NrLanes * ELEN),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             target_fu : ALU_SLDU,
             conv      : OpQueueConversionNone,
