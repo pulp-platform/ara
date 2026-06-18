@@ -858,6 +858,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // VCPOP, VFIRST: mask the current slice and feed the popc or lzc unit
         [VCPOP:VFIRST] : begin
           vcpop_operand = (!vinsn_issue.vm) ? masku_operand_alu_seq & masku_operand_m_seq : masku_operand_alu_seq;
+          // #446: do not count/scan mask bits past the valid element range.
+          // issue_cnt_q + in_ready_cnt_q*delta_elm_q reconstructs the element
+          // count at the start of the current word, i.e. the last valid index.
+          for (int unsigned i = 0; i < NrLanes*DataWidth; i++)
+            if (i >= (vlen_t'(issue_cnt_q) + (vlen_t'(in_ready_cnt_q) * vlen_t'(delta_elm_q))))
+              vcpop_operand[i] = 1'b0;
         end
         default:;
       endcase
