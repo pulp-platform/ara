@@ -733,9 +733,17 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 operand_request[MaskM].vl += 1;
 
               // SLIDEUP only uses mask bits whose indices are > stride
-              // Don't send the previous (unused) ones to the MASKU
-              if (pe_req.stride >= NrLanes * 64)
-                operand_request[MaskM].vstart += ((pe_req.stride >> NrLanes * ELEN) << NrLanes * ELEN) / 8;
+              // Don't send the previous (unused) ones to the MASKU.
+              // The mask is bit-packed: one VRF row across all lanes holds
+              // NrLanes*ELEN mask bits. The MaskM operand is fetched with
+              // eew=EW64, so the operand_requester adds `vstart` directly to the
+              // VRF row address (vstart >> (EW64-EW64) == vstart). Advance by the
+              // number of whole mask rows that lie entirely below the stride.
+              // The original code shifted by the value NrLanes*ELEN (=256) instead
+              // of $clog2(NrLanes*ELEN), and worked in bytes, both of which zeroed
+              // or mis-scaled the skip, so the MASKU read mask bits 0..stride-1. (#459)
+              if (pe_req.stride >= NrLanes * ELEN)
+                operand_request[MaskM].vstart += pe_req.stride / (NrLanes * ELEN);
             end
             VSLIDEDOWN: begin
               // Since this request goes outside of the lane, we might need to request an
