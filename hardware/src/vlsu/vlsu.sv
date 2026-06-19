@@ -195,6 +195,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .ldu_axi_addrgen_req_ready_i(ldu_axi_addrgen_req_ready  ),
     .stu_axi_addrgen_req_ready_i(stu_axi_addrgen_req_ready  ),
     .lsu_ex_flush_i             (lsu_ex_flush_i             ),
+    // Interface with the Mask unit (peek-only; #456)
+    .mask_i                     (mask_i                     ),
+    .mask_valid_i               (mask_valid_i               ),
 
     // CSR input
     .en_ld_st_translation_i,
