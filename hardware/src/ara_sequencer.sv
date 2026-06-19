@@ -233,8 +233,15 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     vid_t vid;
     logic valid;
   } vreg_access_t;
-  vreg_access_t [31:0] read_list_d, read_list_q;
+  // Writes: only the last writer of each register matters, since writes to the
+  // same register are serialized by the WAW hazard.
   vreg_access_t [31:0] write_list_d, write_list_q;
+  // Reads: a per-register bitmask of *every* in-flight instruction currently
+  // reading the register (bit i == instruction id i is a reader). Tracking all
+  // readers - not just the last one - is required for correct WAR hazards under
+  // Ara's out-of-order retirement: a later writer must wait for all earlier
+  // readers to retire, otherwise a slow reader could observe the new value (#434).
+  logic [31:0][NrVInsn-1:0] read_mask_d, read_mask_q;
 
   // This function determines the VFU responsible for handling this operation.
   function automatic vfu_e vfu(ara_op_e op`ifndef SYNTHESIS = VADD `endif);
@@ -356,7 +363,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     // Default assignments
     state_d               = state_q;
     pe_vinsn_running_d    = pe_vinsn_running_q;
-    read_list_d           = read_list_q;
+    read_mask_d           = read_mask_q;
     write_list_d          = write_list_q;
     global_hazard_table_d = global_hazard_table_o;
 
@@ -376,7 +383,8 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
 
     // Update vector register's access list
     for (int unsigned v = 0; v < 32; v++) begin
-      read_list_d[v].valid &= vinsn_running_q[read_list_q[v].vid] ;
+      // Drop readers/writers that have retired
+      read_mask_d[v]        &= vinsn_running_q;
       write_list_d[v].valid &= vinsn_running_q[write_list_q[v].vid];
     end
 
@@ -416,11 +424,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
             if (!ara_req_i.vm) pe_req_d.hazard_vm[write_list_d[VMASK].vid] |=
               write_list_d[VMASK].valid;
 
-            // WAR
+            // WAR - wait for *all* in-flight readers of vd, not only the last
+            // one, so a later writer cannot overtake a slow earlier reader (#434)
             if (ara_req_i.use_vd) begin
-              pe_req_d.hazard_vs1[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-              pe_req_d.hazard_vs2[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
-              pe_req_d.hazard_vm[read_list_d[ara_req_i.vd].vid] |= read_list_d[ara_req_i.vd].valid;
+              pe_req_d.hazard_vs1 |= read_mask_d[ara_req_i.vd];
+              pe_req_d.hazard_vs2 |= read_mask_d[ara_req_i.vd];
+              pe_req_d.hazard_vm  |= read_mask_d[ara_req_i.vd];
             end
 
             // WAW
@@ -519,10 +528,11 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
               // Mark that this vector instruction is writing to vector vd
               if (ara_req_i.use_vd) write_list_d[ara_req_i.vd] = '{vid: vinsn_id_n, valid: 1'b1};
 
-              // Mark that this loop is reading vs
-              if (ara_req_i.use_vs1) read_list_d[ara_req_i.vs1] = '{vid: vinsn_id_n, valid: 1'b1};
-              if (ara_req_i.use_vs2) read_list_d[ara_req_i.vs2] = '{vid: vinsn_id_n, valid: 1'b1};
-              if (!ara_req_i.vm) read_list_d[VMASK]             = '{vid: vinsn_id_n, valid: 1'b1};
+              // Mark that this loop is reading vs (set this reader's bit; keep
+              // the bits of any other instructions still reading the register)
+              if (ara_req_i.use_vs1) read_mask_d[ara_req_i.vs1][vinsn_id_n] = 1'b1;
+              if (ara_req_i.use_vs2) read_mask_d[ara_req_i.vs2][vinsn_id_n] = 1'b1;
+              if (!ara_req_i.vm)     read_mask_d[VMASK][vinsn_id_n]         = 1'b1;
             end
           end else ara_req_ready_o = 1'b0; // Wait until the PEs are ready
         end
@@ -581,7 +591,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     if (!rst_ni) begin
       state_q <= IDLE;
 
-      read_list_q  <= '0;
+      read_mask_q  <= '0;
       write_list_q <= '0;
 
       pe_req_o       <= '0;
@@ -596,7 +606,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
     end else begin
       state_q <= state_d;
 
-      read_list_q  <= read_list_d;
+      read_mask_q  <= read_mask_d;
       write_list_q <= write_list_d;
 
       pe_req_o       <= pe_req_d;
