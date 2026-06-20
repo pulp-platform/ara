@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+ - Add `vlxe_sew_eew` app: Spike-vs-Ara differential probe for the indexed SEW!=EEW hang (#455)
+ - Add `vslideup_mask` app: Spike-vs-Ara differential probe for the large-stride masked vslideup bug (#459)
+ - Add `vle_vstart_mask`/`vse_vstart_mask2`/`vlseg_mask` apps: differential probes for the masked memory op `vstart >= NrLanes` bug (#462)
+
 ### Fixed
 
+ - Fix indexed load/store hang/stuck-valid when data SEW != index EEW by not rescaling the index fetch length (#455)
+ - Skip the correct number of whole mask rows for `vslideup` with a large stride, fixing the MASKU reading mask bits `0..stride-1` instead of the active window above the stride (#459)
+ - Use the bit-packed mask-row index for the masked load/store mask operand, fixing masked memory ops with `vstart >= NrLanes` (notably segment-load micro-ops) that dropped active elements (#462)
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
  - Stall Ara and wait for ara_idle upon CSR write/read
