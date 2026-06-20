@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+ - Add `vredsum_deadlock` app: differential reproducer for the reduction deadlock (#451)
+ - Add `vmfeq_route` app: differential reproducer for the FP-compare mask-routing desync (#447)
+
 ### Fixed
 
+ - Use non-computational FPU latency for floating-point comparisons, fixing a mask-routing desync (#447)
+ - Start integer reductions only when the VALU result queue is empty, fixing a `vredsum` deadlock (#451)
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
  - Stall Ara and wait for ara_idle upon CSR write/read
