@@ -226,13 +226,14 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   // Sits on the AR/R load path, between addrgen and the AXI cut. Does not
   // touch AW/W/B (store path bypasses it entirely).
   prefetch_buffer #(
-    .AxiAddrWidth(AxiAddrWidth),
-    .AxiDataWidth(AxiDataWidth),
-    .axi_ar_t    (axi_ar_t    ),
-    .axi_r_t     (axi_r_t     ),
-    .pe_req_t    (pe_req_t    ),
-    .stride_t    (elen_t      ),
-    .id_t        (vid_t       )
+    .AxiAddrWidth(AxiAddrWidth      ),
+    .AxiDataWidth(AxiDataWidth      ),
+    .axi_ar_t    (axi_ar_t          ),
+    .axi_r_t     (axi_r_t           ),
+    .pe_req_t    (pe_req_t          ),
+    .stride_t    (elen_t            ),
+    .size_t      (axi_pkg::size_t   ),
+    .id_t        (vid_t             )
   ) i_prefetch_buffer (
     .clk_i         (clk_i            ),
     .rst_ni        (rst_ni           ),

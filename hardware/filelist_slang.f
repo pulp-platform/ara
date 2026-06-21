@@ -435,6 +435,7 @@
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/vstu.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_classifier.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_predictor.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_addr_fifo.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_data_buffer.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_r_router.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_rob.sv

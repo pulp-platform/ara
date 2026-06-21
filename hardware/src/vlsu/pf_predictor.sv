@@ -6,6 +6,13 @@
 // cancel algebraically, so vstart needs no special-casing here (only vl's
 // own extremes -- 0 and VLMAX -- are real boundary cases).
 //
+// size_i/size_o: forwarded as-is alongside the predicted address, latched
+// in the same cycle as new_insn. This module never re-derives size from
+// pe_req_i itself -- pf_classifier already computed it once, and reading
+// pe_req fields in two different places for two different outputs is
+// exactly the kind of thing that drifts apart silently when one branch
+// gets edited later and the other doesn't.
+//
 // Holds at most one pending prediction via a valid/ready handshake (the
 // "1-deep skid register" pf_rob's AR arbitration assumes its caller has):
 // the predictive AR can lose arbitration to real traffic for an unbounded
@@ -19,6 +26,7 @@ module pf_predictor #(
     parameter type pe_req_t = logic,
     parameter type stride_t = logic,
     parameter type addr_t   = logic,
+    parameter type size_t   = logic,
     parameter type id_t     = logic
   ) (
     input  logic    clk_i,
@@ -28,10 +36,12 @@ module pf_predictor #(
     input  logic    pe_req_valid_i,
     input  logic    prefetchable_i,
     input  stride_t byte_stride_i,
+    input  size_t   size_i,
 
     output logic    predict_valid_o,
     input  logic    predict_ready_i,
-    output addr_t   predicted_addr_o
+    output addr_t   predicted_addr_o,
+    output size_t   predicted_size_o
   );
 
   // addrgen can hold pe_req_valid_i/pe_req_i stable across many cycles while
@@ -57,9 +67,11 @@ module pf_predictor #(
 
   logic  pending_valid_q;
   addr_t pending_addr_q;
+  size_t pending_size_q;
 
   assign predict_valid_o  = pending_valid_q;
   assign predicted_addr_o = pending_addr_q;
+  assign predicted_size_o = pending_size_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -67,12 +79,14 @@ module pf_predictor #(
       last_id_valid_q <= 1'b0;
       pending_valid_q <= 1'b0;
       pending_addr_q  <= '0;
+      pending_size_q  <= '0;
     end else begin
       if (new_insn) begin
         last_id_q       <= pe_req_i.id;
         last_id_valid_q <= 1'b1;
         pending_valid_q <= 1'b1;
         pending_addr_q  <= addr_t'(predicted_addr_wide);
+        pending_size_q  <= size_i;
       end else if (pending_valid_q && predict_ready_i) begin
         pending_valid_q <= 1'b0;
       end
