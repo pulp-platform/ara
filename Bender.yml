@@ -28,6 +28,7 @@ sources:
     # Packages
     - hardware/include/rvv_pkg.sv
     - hardware/include/ara_pkg.sv
+    - hardware/include/pf_pkg.sv
 
     # Sources
     # Level 0
@@ -53,6 +54,9 @@ sources:
     - hardware/src/vlsu/addrgen.sv
     - hardware/src/vlsu/vldu.sv
     - hardware/src/vlsu/vstu.sv
+    - hardware/src/vlsu/pf_data_buffer.sv
+    - hardware/src/vlsu/pf_rob.sv
+    - hardware/src/vlsu/prefetch_buffer.sv
     # Level 2
     - hardware/src/lane/operand_queues_stage.sv
     - hardware/src/lane/valu.sv

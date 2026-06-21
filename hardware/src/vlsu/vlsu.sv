@@ -223,11 +223,13 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   //  Prefetch Buffer  //
   //////////////////////
 
-  // Phase 0: pure passthrough on the AR/R load path, sitting between addrgen
-  // and the AXI cut. Does not touch AW/W/B (store path bypasses it entirely).
+  // Sits on the AR/R load path, between addrgen and the AXI cut. Does not
+  // touch AW/W/B (store path bypasses it entirely).
   prefetch_buffer #(
-    .axi_ar_t(axi_ar_t),
-    .axi_r_t (axi_r_t )
+    .AxiAddrWidth(AxiAddrWidth),
+    .AxiDataWidth(AxiDataWidth),
+    .axi_ar_t    (axi_ar_t    ),
+    .axi_r_t     (axi_r_t     )
   ) i_prefetch_buffer (
     .clk_i         (clk_i            ),
     .rst_ni        (rst_ni           ),
