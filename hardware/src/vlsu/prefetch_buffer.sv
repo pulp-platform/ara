@@ -229,7 +229,7 @@ module prefetch_buffer import pf_pkg::*; import axi_pkg::*; #(
   );
 
   // ---------------------------------------------------------------------
-  // 5.6: data buffer. alloc_* (Phase 3, IN_FLIGHT) is still unconnected.
+  // 5.6: data buffer. Two states only (empty/valid) -- see pf_data_buffer.sv.
   // ---------------------------------------------------------------------
   pf_data_buffer #(
     .Depth (DataBufDepth),
@@ -245,9 +245,6 @@ module prefetch_buffer import pf_pkg::*; import axi_pkg::*; #(
     .lookup_size_i (lookup_size ),
     .lookup_state_o(lookup_state),
     .lookup_data_o (lookup_data ),
-    .alloc_valid_i (1'b0        ),
-    .alloc_addr_i  ('0          ),
-    .alloc_size_i  ('0          ),
     .fill_valid_i  (fill_valid  ),
     .fill_addr_i   (fill_addr   ),
     .fill_size_i   (fill_size   ),

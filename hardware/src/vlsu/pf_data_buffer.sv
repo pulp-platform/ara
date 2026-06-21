@@ -1,8 +1,13 @@
 // Description:
 // Fully-associative prefetch data buffer (Sec. 5.6 of the prefetcher
-// design). Phase 2b: real storage, but only EMPTY/VALID are reachable --
-// IN_FLIGHT (Phase 3) has no producer yet, since alloc_valid_i is still
-// unconnected at the prefetch_buffer.sv top level.
+// design). Entries are only ever {empty, valid} -- there is no
+// "in-flight" entry state. An address with a predictive AR outstanding
+// but no R data yet is simply not in this buffer at all; a query against
+// it reports EMPTY, the same as an address that was never requested, and
+// falls through the existing miss path with no extra branch. Counting how
+// many predictive ARs are outstanding (for throttling) is a separate,
+// address-agnostic concern that belongs in its own counter, not in this
+// state machine -- see pf_predictor.sv / the throttle stage above it.
 //
 // Entry is {addr, size, data, state}, not just {addr, data, state}: a hit
 // requires addr == query_addr AND size == query_size. Address-only
@@ -31,12 +36,6 @@ module pf_data_buffer import pf_pkg::*; #(
     input  size_t           lookup_size_i,
     output pf_entry_state_e lookup_state_o,
     output data_t            lookup_data_o,
-
-    // Reserve an in-flight slot for a newly-issued prefetch AR. Unused
-    // until Phase 3 -- nothing drives this port yet.
-    input  logic  alloc_valid_i,
-    input  addr_t alloc_addr_i,
-    input  size_t alloc_size_i,
 
     // Fill a slot once its prefetch R data arrives (pf_r_router, id=1,
     // already gated on RESP_OKAY upstream of this port).
