@@ -411,6 +411,7 @@
 -I/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/include
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/include/rvv_pkg.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/include/ara_pkg.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/include/pf_pkg.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/segment_sequencer.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/ctrl_registers.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/cva6_accel_first_pass_decoder.sv
@@ -432,6 +433,12 @@
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/addrgen.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/vldu.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/vstu.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_classifier.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_predictor.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_data_buffer.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_r_router.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/pf_rob.sv
+/Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/vlsu/prefetch_buffer.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/lane/operand_queues_stage.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/lane/valu.sv
 /Users/catherineye/Library/CloudStorage/OneDrive-UniversityofWaterloo/uw/ra/ECE499/WORKSPACE/ara/hardware/src/lane/vmfpu.sv

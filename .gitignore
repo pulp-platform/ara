@@ -1,4 +1,6 @@
 .slang/local/
+hardware/.DS_Store
+hardware/src/.DS_Store
 
 work-dpi/
 dw*
