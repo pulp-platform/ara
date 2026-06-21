@@ -152,6 +152,16 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   logic             ldu_axi_addrgen_req_ready;
   logic             stu_axi_addrgen_req_ready;
 
+  // AR: addrgen -> prefetch_buffer
+  axi_ar_t pf_axi_ar;
+  logic    pf_axi_ar_valid;
+  logic    pf_axi_ar_ready;
+
+  // R: prefetch_buffer -> vldu
+  axi_r_t pf_axi_r;
+  logic   pf_axi_r_valid;
+  logic   pf_axi_r_ready;
+
   addrgen #(
     .NrLanes     (NrLanes     ),
     .VLEN        (VLEN        ),
@@ -170,9 +180,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .axi_aw_o                   (axi_req.aw                 ),
     .axi_aw_valid_o             (axi_req.aw_valid           ),
     .axi_aw_ready_i             (axi_resp.aw_ready          ),
-    .axi_ar_o                   (axi_req.ar                 ),
-    .axi_ar_valid_o             (axi_req.ar_valid           ),
-    .axi_ar_ready_i             (axi_resp.ar_ready          ),
+    .axi_ar_o                   (pf_axi_ar                  ),
+    .axi_ar_valid_o             (pf_axi_ar_valid            ),
+    .axi_ar_ready_i             (pf_axi_ar_ready            ),
     // Interface with dispatcher
     .core_st_pending_i          (core_st_pending_i          ),
     // Interface with the sequencer
@@ -209,6 +219,36 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .mmu_exception_i
   );
 
+  //////////////////////
+  //  Prefetch Buffer  //
+  //////////////////////
+
+  // Phase 0: pure passthrough on the AR/R load path, sitting between addrgen
+  // and the AXI cut. Does not touch AW/W/B (store path bypasses it entirely).
+  prefetch_buffer #(
+    .axi_ar_t(axi_ar_t),
+    .axi_r_t (axi_r_t )
+  ) i_prefetch_buffer (
+    .clk_i         (clk_i            ),
+    .rst_ni        (rst_ni           ),
+    // AR: from addrgen
+    .axi_ar_i      (pf_axi_ar        ),
+    .axi_ar_valid_i(pf_axi_ar_valid  ),
+    .axi_ar_ready_o(pf_axi_ar_ready  ),
+    // AR: to the AXI cut
+    .axi_ar_o      (axi_req.ar       ),
+    .axi_ar_valid_o(axi_req.ar_valid ),
+    .axi_ar_ready_i(axi_resp.ar_ready),
+    // R: from the AXI cut
+    .axi_r_i       (axi_resp.r       ),
+    .axi_r_valid_i (axi_resp.r_valid ),
+    .axi_r_ready_o (axi_req.r_ready  ),
+    // R: to vldu
+    .axi_r_o       (pf_axi_r         ),
+    .axi_r_valid_o (pf_axi_r_valid   ),
+    .axi_r_ready_i (pf_axi_r_ready   )
+  );
+
   ////////////////////////
   //  Vector Load Unit  //
   ////////////////////////
@@ -226,9 +266,9 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .clk_i                  (clk_i                     ),
     .rst_ni                 (rst_ni                    ),
     // AXI Memory Interface
-    .axi_r_i                (axi_resp.r                ),
-    .axi_r_valid_i          (axi_resp.r_valid          ),
-    .axi_r_ready_o          (axi_req.r_ready           ),
+    .axi_r_i                (pf_axi_r                  ),
+    .axi_r_valid_i          (pf_axi_r_valid            ),
+    .axi_r_ready_o          (pf_axi_r_ready            ),
     // Interface with the dispatcher
     .load_complete_o        (load_complete             ),
     // Interface with the main sequencer
