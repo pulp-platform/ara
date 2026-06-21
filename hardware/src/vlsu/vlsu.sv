@@ -229,10 +229,18 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .axi_ar_t    (axi_ar_t    ),
-    .axi_r_t     (axi_r_t     )
+    .axi_r_t     (axi_r_t     ),
+    .pe_req_t    (pe_req_t    ),
+    .stride_t    (elen_t      ),
+    .id_t        (vid_t       )
   ) i_prefetch_buffer (
     .clk_i         (clk_i            ),
     .rst_ni        (rst_ni           ),
+    // Instruction stream: stride/EEW/vl live only here, not on the AXI
+    // channels below (same reason addrgen's own metadata FIFO carries
+    // neither).
+    .pe_req_i      (pe_req_i         ),
+    .pe_req_valid_i(pe_req_valid_i   ),
     // AR: from addrgen
     .axi_ar_i      (pf_axi_ar        ),
     .axi_ar_valid_i(pf_axi_ar_valid  ),

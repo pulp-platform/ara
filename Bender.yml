@@ -54,7 +54,10 @@ sources:
     - hardware/src/vlsu/addrgen.sv
     - hardware/src/vlsu/vldu.sv
     - hardware/src/vlsu/vstu.sv
+    - hardware/src/vlsu/pf_classifier.sv
+    - hardware/src/vlsu/pf_predictor.sv
     - hardware/src/vlsu/pf_data_buffer.sv
+    - hardware/src/vlsu/pf_r_router.sv
     - hardware/src/vlsu/pf_rob.sv
     - hardware/src/vlsu/prefetch_buffer.sv
     # Level 2
