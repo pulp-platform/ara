@@ -1224,7 +1224,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b001110: begin
                     ara_req.op            = ara_pkg::VSLIDEUP;
-                    ara_req.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+                    // vslideup.vi/vslidedown.vi take an UNSIGNED 5-bit immediate
+                    // (V-spec 16.3.1/16.3.2); it must be zero-extended, not sign-extended.
+                    ara_req.stride        = {{ELEN{1'b0}}, insn.varith_type.rs1};
                     ara_req.eew_vs2       = csr_vtype_q.vsew;
                     // Encode vslideup/vslide1up on the use_scalar_op field
                     ara_req.use_scalar_op = 1'b0;
@@ -1236,7 +1238,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b001111: begin
                     ara_req.op            = ara_pkg::VSLIDEDOWN;
-                    ara_req.stride        = {{ELEN{insn.varith_type.rs1[19]}}, insn.varith_type.rs1};
+                    // Unsigned 5-bit immediate (V-spec 16.3.2): zero-extend it.
+                    ara_req.stride        = {{ELEN{1'b0}}, insn.varith_type.rs1};
                     ara_req.eew_vs2       = csr_vtype_q.vsew;
                     // Encode vslidedown/vslide1down on the use_scalar_op field
                     ara_req.use_scalar_op = 1'b0;
