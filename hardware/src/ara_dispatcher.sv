@@ -267,14 +267,26 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
   // NP2 Slide support
   logic is_stride_np2;
-  logic [idx_width(idx_width(VLENB << 3)):0] sldu_popc;
+  logic [idx_width(idx_width(8*NrLanes)):0] sldu_popc;
 
-  // Is the stride power of two?
+  // The SLDU's p2_stride_gen only resolves the WITHIN-CHUNK portion of the slide
+  // offset (it is idx_width(8*NrLanes) bits wide, matching one VRF chunk); the
+  // chunk-level portion of the stride is handled by the slide operand addressing.
+  // is_stride_np2 must therefore be computed on exactly that within-chunk offset
+  // (element stride truncated to the generator width). Computing it on the full
+  // stride wrongly sends pure chunk-shift offsets (whose low bits are zero, e.g.
+  // vslidedown by 48/96, or a sign-extended .vi imm >= 16) into the NP2 path,
+  // where p2_stride_gen reports popcount 0 and SLIDE_NP2_RUN's popc == 1 exit is
+  // never reached, hanging the slide unit forever.
+  logic [idx_width(8*NrLanes)-1:0] sldu_stride_chunk;
+  assign sldu_stride_chunk = (ara_req.stride >> csr_vtype_q.vsew);
+
+  // Is the within-chunk stride a power of two?
   popcount #(
-    .INPUT_WIDTH (idx_width(VLENB << 3))
+    .INPUT_WIDTH (idx_width(8*NrLanes))
   ) i_np2_stride (
-    .data_i    (ara_req.stride[idx_width(VLENB << 3)-1:0]  ),
-    .popcount_o(sldu_popc                                  )
+    .data_i    (sldu_stride_chunk),
+    .popcount_o(sldu_popc        )
   );
 
   assign is_stride_np2 = sldu_popc > 1;
