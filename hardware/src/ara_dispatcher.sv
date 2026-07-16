@@ -1510,7 +1510,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                         ara_req.op      = ara_pkg::VFIRST;
                         ara_req.eew_vs2 = eew_q[ara_req.vs2];
                       end
-                      default :;
+                      default: illegal_insn = 1'b1;
                     endcase
 
                     ara_req.use_vd     = 1'b0;
