@@ -1264,7 +1264,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // VID does not require any operand, while VRGATHER/VCOMPRESS's ALU operand is just preprocessed to get the indices.
       // Therefore, VRGATHER/VCOMPRESS's operand are special. Only the vd operand works in the MASKU ALU.
       if (!result_queue_full && (&masku_operand_alu_valid || vinsn_issue.op inside {VID,[VRGATHER:VCOMPRESS]})
-                             && (&masku_operand_vd_valid  || (!vinsn_issue.use_vd_op && !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]})))
+                             // FIX (vrgather OOB hang): an out-of-range VRGATHER/VRGATHEREI16 index reads 0
+                             // (RVV 1.0 §16.4) and the masku never requests vd data for it, so the original
+                             // &masku_operand_vd_valid gate waited forever. Waive vd-valid when the index is OOB.
+                             && (&masku_operand_vd_valid  || (!vinsn_issue.use_vd_op && !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]}))
+                                                          || (vrgat_idx_oor_q && (vinsn_issue.op inside {VRGATHER,VRGATHEREI16})))
                              && (&masku_operand_m_valid   || vinsn_issue.vm || vinsn_issue.op inside {[VMADC:VMSBC]})
                              && (!vrgat_idx_fifo_empty    || !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]}))) begin
 
