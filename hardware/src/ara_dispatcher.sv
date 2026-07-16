@@ -931,18 +931,27 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
                 // Instructions with an integer LMUL have extra constraints on the registers they can
                 // access.
-                unique case (ara_req.emul)
-                  LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
-                  LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
-                  default:;
-                endcase
+                if (ara_req.op inside {VWREDSUMU, VWREDSUM}) begin
+                  unique case (csr_vtype_q.vlmul)
+                    LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    default:;
+                  endcase
+                end else begin
+                  unique case (ara_req.emul)
+                    LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 ||
+                          (insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
+                          (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 ||
+                          (insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
+                          (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 ||
+                          (insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
+                          (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    default:;
+                  endcase
+                end
 
                 // Instruction is invalid if the vtype is invalid
                 if (csr_vtype_q.vill) illegal_insn = 1'b1;
