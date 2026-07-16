@@ -243,6 +243,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   // Running instructions
   logic [NrVInsn-1:0] vinsn_done_d, vinsn_done_q;
   logic [NrVInsn-1:0] vinsn_running_d, vinsn_running_q;
+  // Per-vinsn flag: running vrgather/vrgatherei16/vcompress that use the
+  // ad-hoc MaskB channel.
+  logic [NrVInsn-1:0] vinsn_uses_maskb_adhoc_d, vinsn_uses_maskb_adhoc_q;
+  logic               any_maskb_adhoc_running;
+  assign any_maskb_adhoc_running = |(vinsn_running_q & vinsn_uses_maskb_adhoc_q);
 
   // VFU operation
   vfu_operation_t vfu_operation_d;
@@ -265,6 +270,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   always_comb begin: sequencer
     // Running loops
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
+    // Maintain the maskb-adhoc bitmap; bits go inert as vinsn_running clears.
+    vinsn_uses_maskb_adhoc_d = vinsn_uses_maskb_adhoc_q;
 
     // Ready to accept a new request, by default
     pe_req_ready = 1'b1;
@@ -314,8 +321,13 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_valid_o[MaskM]);
         end
         VFU_None : begin
-          // VRGATHER/VCOMPRESS use the MaskB opqueue with non-traditional request scheme
-          pe_req_ready = !(operand_request_valid_o[MaskB]) && ((vrgat_state_q == IDLE) && !masku_vrgat_req_valid_q);
+          // Bar VFU_None acceptance while a vrgather/vcompress is still
+          // running in this lane, closing the window where vmv.x.s could grab
+          // MaskB before masku_vrgat_req_valid_q propagates.
+          pe_req_ready = !(operand_request_valid_o[MaskB])
+                      && (vrgat_state_q == IDLE)
+                      && !masku_vrgat_req_valid_q
+                      && !any_maskb_adhoc_running;
         end
         default:;
       endcase
@@ -363,6 +375,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
       // Mark the vector instruction as running
       vinsn_running_d[pe_req.id] = (vfu_operation_d.vfu != VFU_None) ? 1'b1 : 1'b0;
+      // Record whether this vinsn uses the ad-hoc MaskB channel.
+      vinsn_uses_maskb_adhoc_d[pe_req.id] = (pe_req.op inside {[VRGATHER:VCOMPRESS]});
 
       // Mute request if the instruction runs in the lane and the vl is zero.
       // Exception: during a reduction, all the lanes must cooperate anyway.
@@ -956,6 +970,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     if (!rst_ni) begin
       vinsn_done_q    <= '0;
       vinsn_running_q <= '0;
+      vinsn_uses_maskb_adhoc_q <= '0;
 
       vfu_operation_o       <= '0;
       vfu_operation_valid_o <= 1'b0;
@@ -968,6 +983,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     end else begin
       vinsn_done_q    <= vinsn_done_d;
       vinsn_running_q <= vinsn_running_d;
+      vinsn_uses_maskb_adhoc_q <= vinsn_uses_maskb_adhoc_d;
 
       vfu_operation_o       <= vfu_operation_d;
       vfu_operation_valid_o <= vfu_operation_valid_d;
