@@ -556,15 +556,16 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     for (int lane = 0; lane < NrLanes; lane++) begin
       // Valid address request if the address fifo is not empty and if the valid is not masked
       masku_vrgat_req_valid_o[lane] = ~vrgat_req_fifo_empty & ~vrgat_req_valid_mask_q[lane];
-      // Mask the next valid on this lane if the lane is handshaking
-      vrgat_req_valid_mask_d[lane] = masku_vrgat_req_ready_i[lane];
+      // Mask the next valid on this lane once it has actually handshaked (valid and ready), held until the request pops
+      if (masku_vrgat_req_valid_o[lane] & masku_vrgat_req_ready_i[lane])
+        vrgat_req_valid_mask_d[lane] = 1'b1;
     end
 
-    // Don't mask if all the lanes have handshaked
-    if (&masku_vrgat_req_ready_i) vrgat_req_valid_mask_d = '0;
-
-    // Pop the current address if all the lanes have handshaked it
-    if (&(masku_vrgat_req_ready_i | vrgat_req_valid_mask_q) && ~vrgat_req_fifo_empty) vrgat_req_fifo_pop = 1'b1;
+    // Pop the current address once every lane has handshaked it, then release the mask for the next request
+    if (&vrgat_req_valid_mask_d && ~vrgat_req_fifo_empty) begin
+      vrgat_req_fifo_pop     = 1'b1;
+      vrgat_req_valid_mask_d = '0;
+    end
   end
 
   // Overflow after 16-bits
