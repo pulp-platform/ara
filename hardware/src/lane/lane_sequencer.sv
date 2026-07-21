@@ -312,6 +312,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             operand_request_valid_o [MulFPUB] ||
             operand_request_valid_o[MaskB] ||
             operand_request_valid_o[MaskM]);
+          if (pe_req.use_vd_op)
+            pe_req_ready &= (vrgat_state_q == IDLE);
         end
         VFU_None : begin
           // VRGATHER/VCOMPRESS use the MaskB opqueue with non-traditional request scheme
