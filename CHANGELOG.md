@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Force cheshire's sim scripts re-generation
  - Fix u-boot to support RVV-linux
  - Fixed src emul check for vector integer extension operation
+ - Fix vrgather deadlock when the lanes accept the broadcast index request on different cycles
 
 ### Added
 
