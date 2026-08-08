@@ -786,8 +786,12 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
       if (is_reduction(vinsn_commit.op)) alu_red_complete_d = 1'b1;
 
       // Initialize counters and alu state if needed by the next instruction
-      // After a reduction, the next instructions starts after the reduction commits
-      if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)) begin
+      // After a reduction, the next instructions starts after the reduction commits.
+      // Only enter the reduction-init state once the ALU result queue has drained:
+      // starting a new reduction while results are still queued deadlocks the unit,
+      // because the reduction datapath and the result queue contend for the same state.
+      if (is_reduction(vinsn_queue_q.vinsn[vinsn_queue_d.issue_pnt].op) && (vinsn_queue_d.issue_cnt != '0)
+          && (result_queue_cnt_d == '0)) begin
         // Initialize reduction-related sequential elements
         first_op_d              = 1'b1;
         reduction_rx_cnt_d      = reduction_rx_cnt_init(NrLanes, lane_id_i);

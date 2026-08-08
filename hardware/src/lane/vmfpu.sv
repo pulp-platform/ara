@@ -208,6 +208,12 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       [VFREDMIN:VFREDMAX]:    fpu_latency = LatFNonComp;
       [VFCVTXUF:VFCVTFF]:     fpu_latency = LatFConv;
       [VFMIN:VFSGNJX]:        fpu_latency = LatFNonComp;
+      // FP comparisons are non-computational FPU ops (CVFPU NONCOMP group),
+      // like VFMIN..VFSGNJX above. Without this case they fall through to the
+      // arithmetic (sew-based) latency, which mis-aligns the mask-routing tag
+      // under pipeline pressure and sends the comparison result to the VRF
+      // instead of the mask unit.
+      [VMFEQ:VMFGE]:          fpu_latency = LatFNonComp;
       default: begin
         case (sew)
           EW64:    fpu_latency = LatFCompEW64;
