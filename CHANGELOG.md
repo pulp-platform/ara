@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fix u-boot to support RVV-linux
  - Fixed src emul check for vector integer extension operation
  - Fix VSTU queue overrun due to pointer comparison
+ - Fix shuffle suppression to not suppress reshuffle if destination is 1) totally overwritten 2) used as a source 3) needs to be reshuffled
 
 ### Added
 

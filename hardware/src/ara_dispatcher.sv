@@ -3628,10 +3628,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // This operation is costly when occurs, so avoid it if possible
       if ( ara_req_valid && !acc_resp_o.exception.valid ) begin
         automatic rvv_instruction_t insn = rvv_instruction_t'(instr.instr);
+        automatic logic full_vd_overwrite;
+        automatic logic old_vd_is_source;
 
         // Is the instruction an in-lane one and could it be subject to reshuffling?
         in_lane_op = ara_req.op inside {[VADD:VMERGE]} || ara_req.op inside {[VREDSUM:VMSBC]} ||
                      ara_req.op inside {[VMANDNOT:VMXNOR]} || ara_req.op inside {[VMVXS:VSLIDEDOWN]};
+        full_vd_overwrite = csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew));
+        old_vd_is_source = ara_req.use_vd_op ||
+                           (ara_req.use_vs1 && (insn.varith_type.rs1 == insn.varith_type.rd)) ||
+                           (ara_req.use_vs2 && (insn.varith_type.rs2 == insn.varith_type.rd));
         // Annotate which registers need a reshuffle -> |vs1|vs2|vd|
         // Optimization: reshuffle vs1 and vs2 only if the operation is strictly in-lane
         // Optimization: reshuffle vd only if we are not overwriting the whole vector register!
@@ -3640,7 +3646,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // same for every reg.
         reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && ((csr_vstart_q != '0) || !is_same_eew))),
                            ara_req.use_vs2 && (ara_req.eew_vs2    != eew_q[ara_req.vs2]) && eew_valid_q[ara_req.vs2] && in_lane_op,
-                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
+                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && (!full_vd_overwrite || old_vd_is_source)};
         // Mask out requests if they refer to the same register!
         reshuffle_req_d &= {
           (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
