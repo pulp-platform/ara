@@ -10,6 +10,10 @@ def_args_iconv2d     ?= "112 7"
 def_args_fconv2d     ?= "112 7"
 def_args_fconv3d     ?= "112 7"
 def_args_dtype-conv3d?= "112 7 float64"
+# Matrix size
+def_args_gemv 			 ?= "256"
+# vector size
+def_args_faxpy 			 ?= "4096"
 # Vector size
 def_args_fdotproduct ?= "512"
 # Vector size

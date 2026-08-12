@@ -52,7 +52,7 @@ veril_top      ?= ara_tb_verilator
 top_level      ?= ara_tb
 # Questa version
 ifeq ($(vcd_dump), 1)
-  questa_version ?= 2019.3
+  questa_version ?= 2021.3
 else
   questa_version ?= 2021.3
 endif
