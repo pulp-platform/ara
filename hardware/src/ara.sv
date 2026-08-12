@@ -681,4 +681,9 @@ module ara import ara_pkg::*; #(
   if (VLEN != 2**$clog2(VLEN))
     $error("[ara] The vector length must be a power of two.");
 
+  // Each vector register occupies vlenb / NrLanes / 8 addresses per lane, where
+  // the 8 is the lane datapath width in bytes. That stride must be non-zero.
+  if (VLEN < 64 * NrLanes)
+    $error("[ara] VLEN must be greater than or equal to 64 * NrLanes.");
+
 endmodule : ara
