@@ -61,13 +61,15 @@ gold64 = a * v64x + v64y
 # gold16 = a * v16x + v16y
 
 # Print information on file
-print(".section .host,\"aw\",@progbits")
+# Everything goes into .data: Ara's linker script (common/arch.link.ld) has no
+# .host or .vector output section, and .data is already ALIGN(8*nr_lanes).
+# Vectors are aligned to NR_LANES*8 = AxiWideBeWidth; scalars keep 8.
+print(".section .data,\"aw\",@progbits")
 emit("vsize", np.array(vsize, dtype=np.uint64))
 emit("a", np.array(a, dtype=np.float64))
-emit("gold64", np.array(gold64, dtype=np.float64));
+emit("gold64", np.array(gold64, dtype=np.float64), 'NR_LANES*8');
 # emit("gold32", np.array(gold32, dtype=np.float32));
 # emit("gold16", gold16, 'NR_LANES*8');
-print(".section .vector,\"aw\",@progbits")
 emit("v64x", v64x, 'NR_LANES*8')
 emit("v64y", v64y, 'NR_LANES*8')
 # emit("v32x", v32a, 'NR_LANES*8')

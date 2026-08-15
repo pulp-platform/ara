@@ -68,7 +68,7 @@ int main() {
   printf("\n");
   printf("\n");
 
-#ifdef VCD_DUMP
+#if defined(NETLIST) || defined(VCD_DUMP)
   // Measure only the full-size matmul
   for (uint64_t s = M; s <= M; s *= 2) {
 #else

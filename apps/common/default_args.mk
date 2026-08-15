@@ -1,8 +1,12 @@
 # Default app parameters
+#
+# Sizes tagged "VCD" must stay at or above the stated minimum: the dump window
+# is expressed in kernel loop iterations, and below it the stop trigger never
+# fires. See POWER_MEASUREMENT.md R6.
 
 # Matrix sizes
 def_args_imatmul     ?= "128 128 128"
-def_args_fmatmul     ?= "128 128 128"
+def_args_fmatmul     ?= "128 128 128"   # VCD: 128
 def_args_dtype-matmul?= "float64 128 128 128"
 def_args_fmatmul-loop?= "128 128 128"
 # Matrix size, filter size
@@ -11,11 +15,11 @@ def_args_fconv2d     ?= "112 7"
 def_args_fconv3d     ?= "112 7"
 def_args_dtype-conv3d?= "112 7 float64"
 # Matrix size
-def_args_gemv 			 ?= "256"
+def_args_gemv 			 ?= "256"        		# VCD: 256
 # vector size
-def_args_faxpy 			 ?= "4096"
+def_args_faxpy 			 ?= "65536"      		# VCD: 16384
 # Vector size
-def_args_fdotproduct ?= "512"
+def_args_fdotproduct ?= "16384"     	 	# VCD: 16384
 # Vector size
 def_args_dotproduct  ?= "512"
 # Matrix padded size 0, matrix padded size 1, onlyvec

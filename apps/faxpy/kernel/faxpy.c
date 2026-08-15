@@ -58,12 +58,15 @@ void faxpy_v64b_unrl(const double a, const double *x, const double *y,
   do {
     n++;
 
-    // Works when size is 5120 elements
 #ifdef VCD_DUMP
-    if (n == 2)
-      event_trigger = +1;     // start VCD window
+    // Unrolled x2: one `n` consumes 2 * VLMAX = 2 * LMUL * VLEN / SEW,
+    // i.e. 1024 elements for VLEN = 4096. `n` is 1-based and the stop is
+    // checked at the top of the body, so the 5..13 window dumps 8192
+    // elements and requires avl >= 13 * 1024 = 13312.
     if (n == 5)
-      event_trigger = -1;     // start VCD window
+      *(volatile int64_t *)&event_trigger = +1;
+    if (n == 13)
+      *(volatile int64_t *)&event_trigger = -1;
 #endif
     // Set the vl
     asm volatile("vsetvli %0, %1, e64, m8, ta, ma" : "=r"(vl) : "r"(avl));

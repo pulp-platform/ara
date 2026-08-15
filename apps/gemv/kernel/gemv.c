@@ -31,10 +31,13 @@ void gemv_v64b_m4(double *a, double* b, double* c, int M, int M_core, int N) {
     for (int col=0; col < N; col+=2) {
 
 #ifdef VCD_DUMP
-      if (col == 4)
-        event_trigger = +1;     // start VCD window
+      // Each inner iteration does 2 * vl FMAs, vl = VLMAX = LMUL * VLEN / SEW
+      // = 256 for m4 and VLEN = 4096, so 512 FMAs. The 16..48 window covers
+      // 16 iterations = 8192 FMAs and requires N > 48 and M_core >= 256.
+      if (col == 16)
+        *(volatile int64_t *)&event_trigger = +1;
       if (col == 48)
-        event_trigger = -1;     // start VCD window
+        *(volatile int64_t *)&event_trigger = -1;
 #endif
 
       // Load chunk a

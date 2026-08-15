@@ -67,8 +67,27 @@ double fdotp_v64b(const double *a, const double *b, size_t avl) {
 
   // Clean the accumulator
   asm volatile("vmv.s.x v0, zero");
+
+#ifdef VCD_DUMP
+  // One stripmine iteration consumes VLMAX = LMUL * VLEN / SEW
+  // = 8 * VLEN / 64 elements, i.e. 512 elements for VLEN = 4096.
+  // The trigger below is checked at the top of the loop body, so the stop
+  // condition needs one more iteration than its value to be reached: the
+  // 8..24 window requires at least 25 iterations, i.e. avl >= 12800.
+  int vcd_iter = 0;
+#endif
+
   // Stripmine and accumulate a partial reduced vector
   for (; avl > 0; avl -= vl) {
+#ifdef VCD_DUMP
+    // Start dumping VCD (skip the prologue)
+    if (vcd_iter == 8)
+      *(volatile int64_t *)&event_trigger = +1;
+    // Stop dumping VCD, after 16 steady-state iterations (8..23)
+    if (vcd_iter == 24)
+      *(volatile int64_t *)&event_trigger = -1;
+    vcd_iter++;
+#endif
     asm volatile("vsetvli %0, %1, e64, m8, ta, ma" : "=r"(vl) : "r"(avl));
     // Load chunk a and b
     asm volatile("vle64.v v8,  (%0)" ::"r"(a_));
@@ -87,10 +106,107 @@ double fdotp_v64b(const double *a, const double *b, size_t avl) {
   // Reduce and return
   asm volatile("vfredusum.vs v0, v24, v0");
   asm volatile("vfmv.f.s %0, v0" : "=f"(red));
+
+  // // VCD dump does not include reduction, so we also need to measure the utilization roofline without reduction
+  // asm volatile("vfmv.f.s %0, v24" : "=f"(red));
+
   return red;
 
 #endif
 }
+
+// 64-bit dot-product: a * b
+// m8 allows only for partial register re-allocation with factor-2 unrolling
+double fdotp_v64b_m8_unrl(const double *a, const double *b, unsigned int avl) {
+  const unsigned int orig_avl = avl;
+  unsigned int vl;
+
+  double red;
+
+#ifdef VCD_DUMP
+  int vcd_iter = 0;
+#endif
+
+  // Stripmine and accumulate a partial reduced vector
+  do {
+#ifdef VCD_DUMP
+    // Three stages per iteration, so one iteration consumes 3 * VLMAX = 1536
+    // elements for VLEN = 4096. The 3..8 window is 5 iterations = 7680 elements and requires avl >= 13824.
+    if (vcd_iter == 3)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (vcd_iter == 8)
+      *(volatile int64_t *)&event_trigger = -1;
+    vcd_iter++;
+#endif
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e64, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle64.v v8,  (%0)" ::"r"(a));
+    asm volatile("vle64.v v16, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    if (avl == orig_avl) {
+      asm volatile("vfmul.vv v24, v8, v16");
+    } else {
+      asm volatile("vfmacc.vv v24, v8, v16");
+    }
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+
+    if (avl <= 0)
+      break;
+
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e64, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle64.v v0, (%0)" ::"r"(a));
+    asm volatile("vle64.v v8, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    asm volatile("vfmacc.vv v24, v0, v8");
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+
+    if (avl <= 0)
+      break;
+
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e64, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle64.v v16, (%0)" ::"r"(a));
+    asm volatile("vle64.v v0, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    asm volatile("vfmacc.vv v24, v0, v16");
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+  } while (avl > 0);
+
+  // Clean the accumulator
+  asm volatile("vmv.s.x v0, zero");
+
+  // // Reduce and return
+  // asm volatile("vfredusum.vs v0, v24, v0");
+  // asm volatile("vfmv.f.s %0, v0" : "=f"(red));
+
+  // VCD dump does not include reduction, so we also need to measure the utilization roofline without reduction
+  asm volatile("vfmv.f.s %0, v24" : "=f"(red));
+
+  return red;
+}
+
 
 // 32-bit dot-product: a * b
 float fdotp_v32b(const float *a, const float *b, size_t avl) {

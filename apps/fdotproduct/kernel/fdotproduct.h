@@ -25,11 +25,16 @@
 #include "riscv_vector.h"
 
 double fdotp_v64b(const double *a, const double *b, size_t avl);
+double fdotp_v64b_m8_unrl(const double *a, const double *b, unsigned int avl);
 float fdotp_v32b(const float *a, const float *b, size_t avl);
 _Float16 fdotp_v16b(const _Float16 *a, const _Float16 *b, size_t avl);
 
 double fdotp_s64b(const double *a, const double *b, size_t avl);
 float fdotp_s32b(const float *a, const float *b, size_t avl);
 _Float16 fdotp_s16b(const _Float16 *a, const _Float16 *b, size_t avl);
+
+// SoC-level event-trigger register (0xD0000018), used to start and stop the
+// VCD dump from SW. See ara_tb.sv, `ifdef VCD_DUMP.
+extern int64_t event_trigger;
 
 #endif

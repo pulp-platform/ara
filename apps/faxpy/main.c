@@ -73,7 +73,11 @@ int main() {
 
   uint64_t runtime_s, runtime_v;
 
-  for (uint64_t avl = vsize/2; avl <= vsize; avl *= 2) {
+#ifndef NETLIST
+  for (uint64_t avl = 8; avl <= vsize; avl *= 2) {
+#else
+  for (uint64_t avl = vsize; avl <= vsize; avl *= 2) {
+#endif
     printf("Calulating 64b faxpy with vectors with length = %lu\n", avl);
     start_timer();
     // faxpy_v64b(a, v64x, v64y, avl);

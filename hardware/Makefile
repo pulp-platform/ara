@@ -159,17 +159,48 @@ $(buildpath)/compile_$(config).tcl: $(config_file) Makefile ../Bender.yml $(shel
 	if [ `cat $(buildpath)/transcript | grep "\*\* Error" | wc -l` -ne 0 ]; then mv $(buildpath)/compile_$(config).tcl $(buildpath)/compile_$(config).tcl.ERROR; fi
 
 # Simulation
+# Script sourced by vsim. Override it to skip the default wave/log setup, e.g.
+# `do_file=../scripts/run_gatesim.tcl` for gate-level runs.
+do_file ?= ../scripts/run$(ideal).tcl
+
 .PHONY: sim
 sim: compile
 	cd $(buildpath) && \
-	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do ../scripts/run$(ideal).tcl
+	$(questa_cmd) vsim $(questa_args) $(library).$(top_level) -do $(do_file)
+# On a VCD run the testbench calls $finish as soon as the dump window closes,
+# so the program never reaches tohost and there is no status line to check.
+ifneq ($(vcd_dump),1)
 	./scripts/return_status.sh $(buildpath)/transcript
+endif
 
 .PHONY: simc
 simc: compile
 	cd $(buildpath) && \
 	$(questa_cmd) vsim -c $(questa_args) $(library).$(top_level) -do "run -a"
+# On a VCD run the testbench calls $finish as soon as the dump window closes,
+# so the program never reaches tohost and there is no status line to check.
+ifneq ($(vcd_dump),1)
 	./scripts/return_status.sh $(buildpath)/transcript
+endif
+
+# VCD dump window in ns; override on the command line, e.g. VCD_START=10000 VCD_END=15000
+VCD_START ?= 0
+VCD_END   ?= -1
+VCD_PATH  ?= $(abspath $(ROOT_DIR)/vcd/last_sim.vcd)
+# Scope recorded in the VCD. It must match the -strip_path given to PrimeTime's
+# read_vcd (see gf22/synopsys/scripts/ara_system/power_analysis.tcl).
+VCD_SCOPE ?= /$(top_level)/dut/i_ara_soc/i_system
+
+# NOTE: no return_status.sh here. The simulation is deliberately cut short at
+# VCD_END, so the "Core Test *** SUCCESS ***" line is normally not reached.
+# Use `make sim`/`simc` to check functional correctness.
+.PHONY: sim-vcd
+sim-vcd: compile
+	cd $(buildpath) && \
+	$(questa_cmd) vsim -c $(questa_args) $(library).$(top_level) \
+	  -do "set VCD_START $(VCD_START); set VCD_END $(VCD_END); set VCD_FILE $(VCD_PATH); set VCD_SCOPE $(VCD_SCOPE); do ../scripts/run_vcd.tcl"
+	@test -s $(VCD_PATH) || { echo "ERROR: no VCD was produced at $(VCD_PATH)"; exit 1; }
+	@echo "VCD written to $(VCD_PATH) ($$(du -h $(VCD_PATH) | cut -f1))"
 
 # RISC-V Tests simulation
 APPS_DIR := $(abspath $(ROOT_DIR)/../apps)

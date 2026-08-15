@@ -68,7 +68,11 @@ int main() {
   printf("\n");
   printf("\n");
 
+#ifndef NETLIST
   for (uint64_t s = 4; s <= M_ROW; s *= 2) {
+#else
+  for (uint64_t s = M_ROW; s <= M_ROW; s *= 2) {
+#endif
     printf("\n");
     printf("------------------------------------------------------------\n");
     printf("Calculating a (%d x %d) x %d matrix vector multiplication...\n", s,
