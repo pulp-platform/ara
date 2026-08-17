@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+ - Add `vmv_x_s_hazard` app: regression reproducer for the VWXUNARY0 vs1 hazard (#436)
+ - Add `vlseg_eew` app: Spike-vs-Ara differential probe for the segment-load EEW tracker bug (#453)
+ - Add `vzext_vf8` app: Spike-vs-Ara differential probe for the vzext/vsext.vf8 source-width bug (#452)
+ - Add `vmerge_v0_illegal` app: Spike-vs-Ara trap probe for the masked vmerge vd=v0 legality check (#460)
+
 ### Fixed
 
+ - Clear `use_vs1` for VWXUNARY0 (`vmv.x.s`, `vcpop.m`, `vfirst.m`) to avoid a spurious vs1 hazard (#436)
+ - Tag all destination registers of segment loads/stores in the EEW tracker, fixing corrupted vd+1..vd+nf read-back (#453)
+ - Force the `vsext.vf8`/`vzext.vf8` source element width to EW8 instead of the tracked eew, fixing a wrong result when the source register's last-written eew was not the 1/8-width view (#452)
+ - Raise illegal-instruction for a masked `vmerge`/`vfmerge` whose destination is `v0` (overlaps the mask source), matching the RVV vd/v0 overlap rule; `vmv.v.*`/`vfmv.v.f` (vm=1) stay legal (#460)
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
  - Stall Ara and wait for ara_idle upon CSR write/read

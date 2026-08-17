@@ -844,6 +844,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.v does not use vs2
+                    // A masked vmerge (vm=0) writes a full vector, so its vd
+                    // must not overlap the mask source v0. vmv.v.v (vm=1) is
+                    // exempt. (#460)
+                    if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                      illegal_insn = 1'b1;
                     // With a normal vmv.v.v, copy input eew to output
                     // to avoid unnecessary reshuffles
                     if (insn.varith_type.vm) begin
@@ -1120,6 +1125,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.x does not use vs2
+                    // Masked vmerge vd must not overlap the mask source v0. (#460)
+                    if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                      illegal_insn = 1'b1;
                   end
                   6'b100000: ara_req.op = ara_pkg::VSADDU;
                   6'b100001: ara_req.op = ara_pkg::VSADD;
@@ -1320,6 +1328,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   6'b010111: begin
                     ara_req.op      = ara_pkg::VMERGE;
                     ara_req.use_vs2 = !insn.varith_type.vm; // vmv.v.i does not use vs2
+                    // Masked vmerge vd must not overlap the mask source v0. (#460)
+                    if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                      illegal_insn = 1'b1;
                   end
                   6'b100000: ara_req.op = ara_pkg::VSADDU;
                   6'b100001: ara_req.op = ara_pkg::VSADD;
@@ -1497,6 +1508,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     acc_resp_o.req_ready  = 1'b0;
                     acc_resp_o.resp_valid = 1'b0;
 
+                    // VWXUNARY0 (vmv.x.s, vcpop.m, vfirst.m) do not read vs1:
+                    // the rs1 field encodes the sub-opcode, not a vector register.
+                    // Leaving use_vs1 asserted (the OPMVV default) makes the main
+                    // sequencer detect a spurious hazard against whatever register
+                    // number happens to sit in the rs1 field.
+                    ara_req.use_vs1 = 1'b0;
+
                     case (insn.varith_type.rs1)
                       5'b00000: begin
                         ara_req.op      = ara_pkg::VMVXS;
@@ -1660,7 +1678,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     case (insn.varith_type.rs1)
                       5'b00010: begin // VZEXT.VF8
                         ara_req.conversion_vs2 = OpQueueConversionZExt8;
-                        ara_req.eew_vs2        = eew_q[insn.varith_type.rs2];
+                        // The source is 1/8 the destination width. VF8 is only legal
+                        // at SEW=e64, so the source elements are always EW8. Using the
+                        // tracked eew_q here was wrong: a stale eew (e.g. e16) makes the
+                        // ZExt8 opqueue conversion (which only handles EW8) fall through,
+                        // leaving the operand unconverted. (#452)
+                        ara_req.eew_vs2        = EW8;
                         ara_req.cvt_resize     = CVT_WIDE;
                         ara_req.emul           = csr_vtype_q.vlmul;
                         lmul_vs2               = prev_lmul(prev_lmul(prev_lmul(csr_vtype_q.vlmul)));
@@ -1672,7 +1695,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       end
                       5'b00011: begin // VSEXT.VF8
                         ara_req.conversion_vs2 = OpQueueConversionSExt8;
-                        ara_req.eew_vs2        = eew_q[insn.varith_type.rs2];
+                        // See VZEXT.VF8 above: source is always EW8 (VF8 needs e64). (#452)
+                        ara_req.eew_vs2        = EW8;
                         ara_req.cvt_resize     = CVT_WIDE;
                         ara_req.emul           = csr_vtype_q.vlmul;
                         lmul_vs2               = prev_lmul(prev_lmul(prev_lmul(csr_vtype_q.vlmul)));
@@ -2657,7 +2681,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       // This instruction ignores LMUL checks
                       skip_lmul_checks  = 1'b1;
                     end
-                    6'b010111: ara_req.op = ara_pkg::VMERGE;
+                    6'b010111: begin
+                      ara_req.op = ara_pkg::VMERGE;
+                      // Masked vfmerge vd must not overlap the mask source v0;
+                      // vfmv.v.f (vm=1) is exempt. (#460)
+                      if (!insn.varith_type.vm && insn.varith_type.rd == 5'd0)
+                        illegal_insn = 1'b1;
+                    end
                     6'b011000: begin
                       ara_req.op = ara_pkg::VMFEQ;
                       ara_req.use_vd_op  = 1'b1;
@@ -3699,38 +3729,29 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
 
     // Update the EEW
     if (ara_req_valid_d && ara_req.use_vd && ara_req_ready_i) begin
+      automatic int unsigned regs_per_emul;
+      automatic int unsigned regs_to_tag;
+      automatic logic        is_seg_mem_op;
       unique case (ara_req.emul)
-        LMUL_1: begin
-          for (int i = 0; i < 1; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        LMUL_2: begin
-          for (int i = 0; i < 2; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        LMUL_4: begin
-          for (int i = 0; i < 4; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        LMUL_8: begin
-          for (int i = 0; i < 8; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
-        default: begin // EMUL < 1
-          for (int i = 0; i < 1; i++) begin
-            eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
-            eew_valid_d[ara_req.vd + i] = 1'b1;
-          end
-        end
+        LMUL_2:  regs_per_emul = 2;
+        LMUL_4:  regs_per_emul = 4;
+        LMUL_8:  regs_per_emul = 8;
+        default: regs_per_emul = 1; // LMUL_1 and EMUL < 1
       endcase
+      // Segment loads/stores write (nf+1) groups of EMUL consecutive registers
+      // (vd, vd+EMUL, ...). Without tagging them all, vd+1..vd+nf keep the
+      // reset-default EW8 and a later read triggers a spurious on-read reshuffle
+      // that byte-packs the data (#453).
+      is_seg_mem_op = (ara_req.op inside {VLE, VLSE, VLXE, VSE, VSSE, VSXE})
+                   && (ara_req.nf != 3'b000);
+      regs_to_tag = is_seg_mem_op ? regs_per_emul * (int'(ara_req.nf) + 1)
+                                  : regs_per_emul;
+      for (int i = 0; i < 32; i++) begin
+        if (i < regs_to_tag) begin
+          eew_d[ara_req.vd + i]       = ara_req.vtype.vsew;
+          eew_valid_d[ara_req.vd + i] = 1'b1;
+        end
+      end
     end
 
     // Any valid non-config instruction is a NOP if vl == 0, with some exceptions,
