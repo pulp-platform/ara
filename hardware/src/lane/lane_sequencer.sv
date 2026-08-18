@@ -533,7 +533,14 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            vstart : vfu_operation_d.vstart,
+            // The mask is bit-packed (NrLanes*ELEN bits per VRF row) and fetched
+            // with eew=EW64, so the operand requester adds `vstart` directly to
+            // the row address (vstart >> (EW64-EW64)). The element-scaled
+            // vfu_operation_d.vstart (= vstart/NrLanes) over-counts and skips
+            // mask rows that still hold active bits, dropping masked elements
+            // with vstart >= NrLanes (e.g. segment-load micro-ops). Use the
+            // bit-packed mask-row index instead. (#462)
+            vstart : pe_req.vstart / (NrLanes * ELEN),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             target_fu : ALU_SLDU,
             conv      : OpQueueConversionNone,
@@ -554,7 +561,11 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv     : pe_req.conversion_vs2,
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req.vl / NrLanes,
-            scale_vl : pe_req.scale_vl,
+            // The index-operand vl above is already the index element count.
+            // Do not let the operand requester rescale it by the data SEW
+            // (vl<<vsew>>eew), which only matches when SEW==EEW and otherwise
+            // under-/over-fetches the indices, hanging the addrgen (#455).
+            scale_vl : 1'b0,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req.vtype,
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
@@ -599,7 +610,8 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             eew    : EW64,
             vtype  : pe_req.vtype,
             vl     : pe_req.vl / NrLanes / ELEN,
-            vstart : vfu_operation_d.vstart,
+            // Bit-packed mask row index, see the VFU_LoadUnit note above. (#462)
+            vstart : pe_req.vstart / (NrLanes * ELEN),
             hazard : pe_req.hazard_vm | pe_req.hazard_vd,
             target_fu : ALU_SLDU,
             conv      : OpQueueConversionNone,
@@ -613,6 +625,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           operand_request_push[MaskM] = !pe_req.vm;
 
           // Store indexed
+          // Store indexed
           // TODO: add vstart support here
           operand_request[SlideAddrGenA] = '{
             id       : pe_req.id,
@@ -621,7 +634,9 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
             conv     : pe_req.conversion_vs2,
             target_fu: MFPU_ADDRGEN,
             vl       : pe_req.vl / NrLanes,
-            scale_vl : pe_req.scale_vl,
+            // See the load-indexed note above: the index-operand vl is already
+            // the index element count and must not be rescaled by the data SEW (#455).
+            scale_vl : 1'b0,
             vstart   : vfu_operation_d.vstart,
             vtype    : pe_req.vtype,
             hazard   : pe_req.hazard_vs2 | pe_req.hazard_vd,
@@ -726,9 +741,17 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
                 operand_request[MaskM].vl += 1;
 
               // SLIDEUP only uses mask bits whose indices are > stride
-              // Don't send the previous (unused) ones to the MASKU
-              if (pe_req.stride >= NrLanes * 64)
-                operand_request[MaskM].vstart += ((pe_req.stride >> NrLanes * ELEN) << NrLanes * ELEN) / 8;
+              // Don't send the previous (unused) ones to the MASKU.
+              // The mask is bit-packed: one VRF row across all lanes holds
+              // NrLanes*ELEN mask bits. The MaskM operand is fetched with
+              // eew=EW64, so the operand_requester adds `vstart` directly to the
+              // VRF row address (vstart >> (EW64-EW64) == vstart). Advance by the
+              // number of whole mask rows that lie entirely below the stride.
+              // The original code shifted by the value NrLanes*ELEN (=256) instead
+              // of $clog2(NrLanes*ELEN), and worked in bytes, both of which zeroed
+              // or mis-scaled the skip, so the MASKU read mask bits 0..stride-1. (#459)
+              if (pe_req.stride >= NrLanes * ELEN)
+                operand_request[MaskM].vstart += pe_req.stride / (NrLanes * ELEN);
             end
             VSLIDEDOWN: begin
               // Since this request goes outside of the lane, we might need to request an
