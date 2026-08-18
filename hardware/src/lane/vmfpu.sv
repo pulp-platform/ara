@@ -338,17 +338,17 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
                       ~vmul_simd_in_valid[vinsn_issue_q.vtype.vsew];
 
   `FFLARNC(vmul_simd_op_a_q, vinsn_issue_q.use_scalar_op ? scalar_op : mfpu_operand_i[0],
-    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni)
   `FFLARNC(vmul_simd_op_b_q, mfpu_operand_i[1],
-    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni)
   `FFLARNC(vmul_simd_op_c_q, mfpu_operand_i[2],
-    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni)
   `FFLARNC(vmul_simd_mask_q, mask_i,
-    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni)
   `FFLARNC(vmul_simd_op_q, vinsn_issue_q.op,
-    gate_ff_en, gate_ff_clr, ara_op_e'('0), clk_i_gated, rst_ni);
+    gate_ff_en, gate_ff_clr, ara_op_e'('0), clk_i_gated, rst_ni)
   `FFLARNC(vmul_simd_in_valid_q, vmul_simd_in_valid,
-    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni);
+    gate_ff_en, gate_ff_clr, '0, clk_i_gated, rst_ni)
 
   for (genvar i = 0; i < 4; i++) begin
 `ifdef GF22
@@ -617,7 +617,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
   // Inform the lane SLDU/ADDRGEN arbiter that this reduction is over
   logic fpu_red_complete_d;
-  `FF(fpu_red_complete_o, fpu_red_complete_d, 1'b0, clk_i, rst_ni);
+  `FF(fpu_red_complete_o, fpu_red_complete_d, 1'b0, clk_i, rst_ni)
 
   // Signal to indicate the state of the MFPU
   typedef enum logic [2:0] {
@@ -849,7 +849,7 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       EnableVectors: 1'b1,
       EnableNanBox : 1'b1,
       FpFmtMask    : {RVVF(FPUSupport), RVVD(FPUSupport), RVVH(FPUSupport), RVVB(FPUSupport), RVVHA(FPUSupport), RVVBA(FPUSupport)},
-      IntFmtMask   : {logic'(RVVB(FPUSupport) || RVVBA(FPUSupport)), 1'b1, 1'b1, 1'b1}
+      IntFmtMask   : {RVVB(FPUSupport) || RVVBA(FPUSupport), 1'b1, 1'b1, 1'b1}
     };
 
     // Implementation (number of registers etc)
@@ -1154,10 +1154,10 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       assign vfpu_flag_mask_d[0]= vfpu_simd_mask;
       for (genvar i = 0; i < LatFNonComp; i++) begin
 
-        `FF(operand_a_d[i+1], operand_a_d[i], '0, clk_i, rst_ni);
+        `FF(operand_a_d[i+1], operand_a_d[i], '0, clk_i, rst_ni)
 
-        `FF(vfpu_flag_mask_d[i+1], vfpu_flag_mask_d[i],'0,clk_i,rst_ni);
-        end
+        `FF(vfpu_flag_mask_d[i+1], vfpu_flag_mask_d[i],'0,clk_i,rst_ni)
+      end
 
       assign operand_a_delay = operand_a_d[LatFNonComp];
       assign vfpu_flag_mask  = vfpu_flag_mask_d[LatFNonComp];
@@ -1200,6 +1200,13 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
     assign   fp_rm_process = vinsn_processing_q.fp_rm;
 
     always_comb begin: fpu_result_processing_p
+      // Default the vfrec7/vfrsqrt7 scratch arrays (avoids inferred latches)
+      vfrec7_out_e16   = '{default: '0};
+      vfrec7_out_e32   = '{default: '0};
+      vfrec7_out_e64   = '{default: '0};
+      vfrsqrt7_out_e16 = '{default: '0};
+      vfrsqrt7_out_e32 = '{default: '0};
+      vfrsqrt7_out_e64 = '{default: '0};
 
       if (FPExtSupport) begin
 
@@ -1385,6 +1392,8 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
 
     narrowing_select_in_d  = narrowing_select_in_q;
     narrowing_select_out_d = narrowing_select_out_q;
+    narrowing_shuffled_result = '0;
+    narrowing_shuffle_be      = '0;
 
     // Inform our status to the lane controller
     mfpu_ready_o      = !vinsn_queue_full;

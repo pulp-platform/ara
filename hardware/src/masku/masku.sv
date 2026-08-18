@@ -673,6 +673,12 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   // Information about which is the target FU of the request
   assign masku_operand_fu = (vinsn_issue.op inside {[VMFEQ:VMFGE]}) ? MaskFUMFpu : MaskFUAlu;
 
+  // VRGATHER/VCOMPRESS element buffers (kept at module scope to remain visible in waveforms)
+  // Buffer for the current element
+  logic [NrLanes*DataWidth-1:0] vrgat_res;
+  // Buffer for the current element
+  logic [DataWidth-1:0]         vrgat_buf;
+
   always_comb begin
     // Tail-agnostic bus
     alu_result          = '1;
@@ -687,6 +693,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     vcpop_operand = '0;
 
     vrgat_m_seq_bit = 1'b0;
+
+    // Default the VRGATHER/VCOMPRESS buffers (avoids inferred latches)
+    vrgat_res = '1;
+    vrgat_buf = '0;
 
     // The result mask should be created here since the output is a non-mask vector
     be_viota_seq_d = be_viota_seq_q;
@@ -802,11 +812,6 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // This operation writes vsew-bit elements with vtype.vsew encoding
         // The vd source can have a different encoding (it gets deshuffled in the masku_operand stage)
         [VRGATHER:VCOMPRESS]: begin
-          // Buffer for the current element
-          logic [NrLanes*DataWidth-1:0] vrgat_res;
-          // Buffer for the current element
-          logic [DataWidth-1:0] vrgat_buf;
-
           // Extract the correct elements
           vrgat_res = '1; // Default assignment
           vrgat_buf = masku_operand_vd_seq[vrgat_req_idx_q[idx_width(NrLanes*ELENB/8)-1:0] * 64 +: 64]; // Default assignment

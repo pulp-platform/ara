@@ -970,7 +970,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   // Generate an error
                   idx_op_error_d          = 1'b1;
                   // Forward next vstart info to the dispatcher
-                  addrgen_exception_vstart_d  = (addrgen_req.len - axi_addrgen_q.len) >> axi_addrgen_q.vew - 1;
+                  addrgen_exception_vstart_d  = (addrgen_req.len - axi_addrgen_q.len) >> (axi_addrgen_q.vew - 1);
                   addrgen_req_ready       = 1'b1;
                   axi_addrgen_state_d     = AXI_ADDRGEN_IDLE;
                 end : eew_misaligned_error

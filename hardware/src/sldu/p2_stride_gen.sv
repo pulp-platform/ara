@@ -37,10 +37,10 @@ module p2_stride_gen import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   assign valid_o = ~next_stride_zero_q;
   assign spare_stride_d = next_stride;
 
-  `FFL(             popc_q,              popc_d, ff_en, '0);
-  `FFL(next_stride_first_q, next_stride_first_d, ff_en, '0);
-  `FFL( next_stride_zero_q,  next_stride_zero_d, ff_en, '0);
-  `FFL(     spare_stride_q,      spare_stride_d, ff_en, '0);
+  `FFL(             popc_q,              popc_d, ff_en, '0)
+  `FFL(next_stride_first_q, next_stride_first_d, ff_en, '0)
+  `FFL( next_stride_zero_q,  next_stride_zero_d, ff_en, '0)
+  `FFL(     spare_stride_q,      spare_stride_d, ff_en, '0)
 
   // Is the stride power of two?
   popcount #(

@@ -109,7 +109,7 @@ module vlsu import ara_pkg::*; import rvv_pkg::*; #(
   logic stu_current_burst_exception, ldu_current_burst_exception;
   assign lsu_current_burst_exception_o = stu_current_burst_exception | ldu_current_burst_exception;
 
-  `FF(lsu_ex_flush_done_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni);
+  `FF(lsu_ex_flush_done_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni)
 
   ///////////////////
   //  Definitions  //

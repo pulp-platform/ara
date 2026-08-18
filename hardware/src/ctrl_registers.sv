@@ -95,7 +95,7 @@ module ctrl_registers #(
     .reg_q_o    ({hw_cnt_en, event_trigger, dram_end_address, dram_base_address, exit})
   );
 
-  `FF(wr_active_q, wr_active_d, '0);
+  `FF(wr_active_q, wr_active_d, '0)
 
   /////////////////
   //   Signals   //
@@ -105,6 +105,6 @@ module ctrl_registers #(
   assign event_trigger_o  = event_trigger;
   assign dram_base_addr_o = dram_base_address;
   assign dram_end_addr_o  = dram_end_address;
-  assign exit_o           = {exit, logic'(|wr_active_q[7:0])};
+  assign exit_o           = {exit, |wr_active_q[7:0]};
 
 endmodule : ctrl_registers

@@ -341,7 +341,7 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
   logic running_mask_insn_d, running_mask_insn_q;
 
   logic lsu_current_burst_exception_q;
-  `FF(lsu_current_burst_exception_q, lsu_current_burst_exception_i, 1'b0, clk_i, rst_ni);
+  `FF(lsu_current_burst_exception_q, lsu_current_burst_exception_i, 1'b0, clk_i, rst_ni)
 
   // pe_req_ready_i comes from all the lanes
   // It is deasserted if the current request is stuck

@@ -52,7 +52,7 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   `include "common_cells/registers.svh"
 
   // STU exception support
-  `FF(lsu_ex_flush_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni);
+  `FF(lsu_ex_flush_o, lsu_ex_flush_i, 1'b0, clk_i, rst_ni)
 
   ////////////////////////////
   //  Register the request  //
@@ -72,6 +72,12 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
   pe_req_t pe_req;
   logic    pe_req_valid;
   logic    pe_req_ready;
+
+  // VSLIDEDOWN stride helpers (kept at module scope to remain visible in waveforms)
+  // Extra elements to ask, because of the stride
+  logic [$clog2(8*NrLanes)-1:0] extra_stride;
+  // Need one bit more than vl, since we will also add the stride contribution
+  logic [$bits(pe_req.vl):0]    vl_tot;
 
   fall_through_register #(
     .T(pe_req_t)
@@ -278,6 +284,10 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     // Make no requests to the operand requester
     operand_request    = '0;
     operand_request_push = '0;
+
+    // Default the slide unit stride helpers (avoids inferred latches)
+    extra_stride = '0;
+    vl_tot       = '0;
 
     // Make no requests to the lane's VFUs
     vfu_operation_d       = '0;
@@ -662,11 +672,6 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
               (pe_req.vl - pe_req.stride + NrLanes - 1) / NrLanes;
             end
             VSLIDEDOWN: begin
-              // Extra elements to ask, because of the stride
-              logic [$clog2(8*NrLanes)-1:0] extra_stride;
-              // Need one bit more than vl, since we will also add the stride contribution
-              logic [$bits(pe_req.vl):0] vl_tot;
-
               // We need to trim full words from the start of the vector that are not used
               // as operands by the slide unit.
               operand_request[SlideAddrGenA].vstart = pe_req.stride / NrLanes;
@@ -744,18 +749,16 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
           // todo:
 
           // Mask logical and integer comparisons
-          operand_request[AluA] = '{
-            id      : pe_req.id,
-            vs      : pe_req.vs1,
-            scale_vl: pe_req.scale_vl,
-            vtype   : pe_req.vtype,
-            vstart  : vfu_operation_d.vstart,
-            hazard  : pe_req.hazard_vs1 | pe_req.hazard_vd,
-            target_fu : ALU_SLDU,
-            conv      : OpQueueConversionNone,
-            cvt_resize: CVT_SAME,
-            default : '0
-          };
+          operand_request[AluA] = '0;
+          operand_request[AluA].id         = pe_req.id;
+          operand_request[AluA].vs         = pe_req.vs1;
+          operand_request[AluA].scale_vl   = pe_req.scale_vl;
+          operand_request[AluA].vtype      = pe_req.vtype;
+          operand_request[AluA].vstart     = vfu_operation_d.vstart;
+          operand_request[AluA].hazard     = pe_req.hazard_vs1 | pe_req.hazard_vd;
+          operand_request[AluA].target_fu  = ALU_SLDU;
+          operand_request[AluA].conv       = OpQueueConversionNone;
+          operand_request[AluA].cvt_resize = CVT_SAME;
           // Since this request goes outside of the lane, we might need to request an
           // extra operand regardless of whether it is valid in this lane or not.
 
@@ -858,18 +861,16 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
 
           // Vd register to provide correct mask undisturbed policy at bit-level
           // This is can be a mask or normal register
-          operand_request[MaskB] = '{
-            id      : pe_req.id,
-            vs      : pe_req.vd,
-            scale_vl: pe_req.scale_vl,
-            vtype   : pe_req.vtype,
-            vstart  : vfu_operation_d.vstart,
-            hazard  : pe_req.hazard_vd,
-            target_fu : ALU_SLDU,
-            conv      : OpQueueConversionNone,
-            cvt_resize: CVT_SAME,
-            default : '0
-          };
+          operand_request[MaskB] = '0;
+          operand_request[MaskB].id         = pe_req.id;
+          operand_request[MaskB].vs         = pe_req.vd;
+          operand_request[MaskB].scale_vl   = pe_req.scale_vl;
+          operand_request[MaskB].vtype      = pe_req.vtype;
+          operand_request[MaskB].vstart     = vfu_operation_d.vstart;
+          operand_request[MaskB].hazard     = pe_req.hazard_vd;
+          operand_request[MaskB].target_fu  = ALU_SLDU;
+          operand_request[MaskB].conv       = OpQueueConversionNone;
+          operand_request[MaskB].cvt_resize = CVT_SAME;
           // vl and eew depend on the real eew on which we are working on
           if (pe_req.op inside {VIOTA,VID}) begin
             // Non-mask layout
@@ -938,16 +939,14 @@ module lane_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::
     // VRGATHER and VCOMPRESS access the opreq with ad-hoc requests
     if (vrgat_state_q == REQUESTING) begin
       // Here, we are sure the MaskB operand_request is free
-      operand_request[MaskB] = '{
-        vs         : masku_vrgat_req_q.vs,
-        eew        : masku_vrgat_req_q.eew,
-        scale_vl   : 1'b0,
-        cvt_resize : pe_req.cvt_resize,
-        vl         : 1,
-        vstart     : masku_vrgat_req_q.idx,
-        hazard     : '0,
-        default    : '0
-      };
+      operand_request[MaskB] = '0;
+      operand_request[MaskB].vs         = masku_vrgat_req_q.vs;
+      operand_request[MaskB].eew        = masku_vrgat_req_q.eew;
+      operand_request[MaskB].scale_vl   = 1'b0;
+      operand_request[MaskB].cvt_resize = pe_req.cvt_resize;
+      operand_request[MaskB].vl         = 1;
+      operand_request[MaskB].vstart     = masku_vrgat_req_q.idx;
+      operand_request[MaskB].hazard     = '0;
       operand_request_push[MaskB] = masku_vrgat_req_ready_d;
     end
   end: sequencer

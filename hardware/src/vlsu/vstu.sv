@@ -250,6 +250,7 @@ module vstu import ara_pkg::*; import rvv_pkg::*; #(
     vinsn_valid_bytes = '0;
     axi_valid_bytes    = '0;
     valid_bytes = '0;
+    vrf_eff_write_bytes = '0;
 
     // Maintain state
     vinsn_queue_d = vinsn_queue_q;

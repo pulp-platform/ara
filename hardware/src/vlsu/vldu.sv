@@ -290,6 +290,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
     seq_word_wr_offset_d = seq_word_wr_offset_q;
     first_payload_byte_d = first_payload_byte_q;
     vrf_word_byte_cnt_d  = vrf_word_byte_cnt_q;
+    vrf_word_start_byte  = '0;
 
     // Vector instructions currently running
     vinsn_running_d = vinsn_running_q & pe_vinsn_running_i;
@@ -421,7 +422,7 @@ module vldu import ara_pkg::*; import rvv_pkg::*; #(
         vrf_word_byte_pnt_d   = '0;
         vrf_word_byte_cnt_d   = '0;
         // Account for the results that were issued
-        if (seq_word_wr_offset_q) begin
+        if (seq_word_wr_offset_q != '0) begin
           vrf_eff_write_bytes = (NrLanes * DataWidthB);
         end else begin
           // First payload of the vector instruction
