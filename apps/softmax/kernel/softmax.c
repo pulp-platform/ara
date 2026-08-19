@@ -22,6 +22,7 @@
 #include "riscv_vector.h"
 
 #include "../softmax/lib/exp.h"
+#include "../softmax/lib/exp_asm.h"
 
 // Our fdiv cannot receive any X in input
 // The following macro is just a trick and should NOT be used
@@ -209,5 +210,78 @@ void softmax_vec(const float *i, const float *o, uint64_t channels,
     // Reset channel pointers
     __i = _i;
     __o = _o;
+  }
+}
+
+// Hand-assembly port of softmax_vec. Same three-pass structure, but with fixed
+// vector IDs so the exp constants can be hoisted out of the strip-mine loop
+// (see lib/exp_asm.h) instead of being rebuilt once per channel.
+//
+// Register map:
+//   v1 = load window     v2 = max        v3 = den        v4 = work (x - max)
+//   v10 = exp result     v0/v6..v11 = exp temps          v16..v29 = exp consts
+void softmax_vec_asm(const float *i, const float *o, uint64_t channels,
+                     uint64_t innerSize) {
+
+#ifdef RESET_VREGS
+  volatile int temp;
+  asm volatile("vsetvli %0, zero, e32, m8, ta, ma" : "=r"(temp));
+  asm volatile("vmv.v.i  v0, 0");
+  asm volatile("vmv.v.i  v8, 0");
+  asm volatile("vmv.v.i v16, 0");
+  asm volatile("vmv.v.i v24, 0");
+#endif
+
+  // Broadcast the exp constants once, at VLMAX. They are loop-invariant; later
+  // strips read only their active lanes.
+  size_t vlmax;
+  asm volatile("vsetvli %0, zero, e32, m1, ta, ma" : "=r"(vlmax));
+  VEXP_CONST_INIT();
+
+  size_t avl = innerSize;
+  // Stripmining base pointers (advance along the inner dimension)
+  const float *_i = i;
+  float *_o = (float *)o;
+
+  while (avl > 0) {
+    size_t vl;
+    asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // ---- Pass 1: max along the channel dimension (max stays in the VRF) ----
+    const float *__i = _i;
+    asm volatile("vle32.v v2, (%0)" ::"r"(__i)); // max = ch0
+    __i += innerSize;
+    for (uint64_t ch = 1; ch < channels; ++ch) {
+      asm volatile("vle32.v v1, (%0)" ::"r"(__i));
+      asm volatile("vfmax.vv v2, v2, v1");
+      __i += innerSize;
+    }
+
+    // ---- Pass 2: exp(x - max), store numerator, accumulate denominator ----
+    asm volatile("vmv.v.i v3, 0"); // den = 0.0f
+    __i = _i;
+    float *__o = _o;
+    for (uint64_t ch = 0; ch < channels; ++ch) {
+      asm volatile("vle32.v v1, (%0)" ::"r"(__i));
+      asm volatile("vfsub.vv v4, v1, v2");  // work = in - max
+      VEXP_F32M1(v10, v4);                  // v10 = exp(work)
+      asm volatile("vfadd.vv v3, v3, v10"); // den += exp (VRF)
+      asm volatile("vse32.v v10, (%0)" ::"r"(__o));
+      __i += innerSize;
+      __o += innerSize;
+    }
+
+    // ---- Pass 3: divide by the sum ----
+    __o = _o;
+    for (uint64_t ch = 0; ch < channels; ++ch) {
+      asm volatile("vle32.v v1, (%0)" ::"r"(__o));
+      asm volatile("vfdiv.vv v1, v1, v3");
+      asm volatile("vse32.v v1, (%0)" ::"r"(__o));
+      __o += innerSize;
+    }
+
+    avl -= vl;
+    _i += vl;
+    _o += vl;
   }
 }

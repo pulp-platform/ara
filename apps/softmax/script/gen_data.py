@@ -43,22 +43,24 @@ if len(sys.argv) == 3:
   channels = int(sys.argv[1])
   innerSize = int(sys.argv[2])
 else:
-  print("Error. Give me two arguments: the number of channels and the inner size.")
-  sys.exit()
+  print("Error. Give me two arguments: the number of channels and the inner size.",
+        file=sys.stderr)
+  sys.exit(1)
 
 # Vector of samples
 i = rand_matrix(channels * innerSize, np.float32).astype(np.float32)
 
-# Results buffer
+# Result buffers. Zero-filled so that any region a kernel fails to write shows
+# up as 0.0 in the check instead of silently matching stale input data.
 buf = np.zeros(channels * innerSize, dtype=np.float32)
 o_s = np.zeros(channels * innerSize, dtype=np.float32)
-o_g = np.zeros(channels * innerSize, dtype=np.float32)
+o_v = np.zeros(channels * innerSize, dtype=np.float32)
 
 # Create the file
 print(".section .data,\"aw\",@progbits")
 emit("channels", np.array(channels, dtype=np.uint64))
 emit("innerSize", np.array(innerSize, dtype=np.uint64))
-emit("i", i, 'NR_LANES*4')
-emit("buf", i, 'NR_LANES*4')
-emit("o_s", i, 'NR_LANES*4')
-emit("o_v", i, 'NR_LANES*4')
+emit("i", i, 'NR_LANES*8')
+emit("buf", buf, 'NR_LANES*8')
+emit("o_s", o_s, 'NR_LANES*8')
+emit("o_v", o_v, 'NR_LANES*8')

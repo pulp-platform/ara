@@ -31,6 +31,9 @@
 #include "printf.h"
 #endif
 
+// Check the result against the golden output
+#define CHECK 1
+
 // Define Matrix dimensions:
 // o = i ° f, with i=[MxN], f=[FxF], o=[MxN]
 // The filter is a square matrix, and F is odd
@@ -79,32 +82,45 @@ int main() {
   printf("\n");
   printf("\n");
 
-  // Call the main kernel, and measure cycles
-  start_timer();
-  if (F == 3)
-    fconv2d_3x3(o, i, f, M, N, F);
-  else if (F == 7)
-    fconv2d_7x7(o, i, f, M, N, F);
-  else
-    printf("Error: the filter size is different from 3 or 5 or 7.\n");
-  stop_timer();
+  int error = 0;
+  int64_t runtime;
 
-  // Performance metrics
-  int64_t runtime = get_timer();
-  float performance = 2.0 * F * F * M * N / runtime;
-  float utilization = 100 * performance / (2.0 * NR_LANES);
+  // Sweep the number of output rows. The small sizes warm up the I-cache, so
+  // only the last, full-size iteration is worth quoting. Every swept size must
+  // be a multiple of the kernel's 4-row output block, so M must be divisible
+  // by 16 (M = 112 for def_args_fconv2d).
+  for (int64_t rows = M / 4; rows <= M; rows *= 2) {
+    printf("Calculating a %ldx%ld convolution with a %ldx%ld filter...\n", rows,
+           N, F, F);
+    start_timer();
+    if (F == 3)
+      fconv2d_3x3(o, i, f, rows, N, F);
+    else if (F == 7)
+      fconv2d_7x7(o, i, f, rows, N, F);
+    else
+      printf("Error: the filter size is different from 3 or 5 or 7.\n");
+    stop_timer();
 
-  printf("The execution took %d cycles.\n", runtime);
-  printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n",
-         performance, utilization);
+    // Performance metrics
+    runtime = get_timer();
+    float performance = 2.0 * F * F * rows * N / runtime;
+    float utilization = 100 * performance / (2.0 * NR_LANES);
 
-  // Verify correctness
-  printf("Verifying result...\n");
-  int error = verify_matrix(o, golden_o, M, N, THRESHOLD);
-  if (error != 0) {
-    printf("Fail.\n");
-  } else {
-    printf("Passed.\n");
+    printf("The execution took %ld cycles.\n", runtime);
+    printf("The performance is %f DPFLOP/cycle (%f%% utilization).\n",
+           performance, utilization);
+  }
+
+  if (CHECK) {
+    // golden_o is the reference at the full size, which is what the last sweep
+    // iteration left in o.
+    printf("Verifying result...\n");
+    error = verify_matrix(o, golden_o, M, N, THRESHOLD);
+    if (error != 0) {
+      printf("Fail.\n");
+    } else {
+      printf("Passed.\n");
+    }
   }
 
   return error;

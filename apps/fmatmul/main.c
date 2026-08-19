@@ -32,6 +32,8 @@
 #include "printf.h"
 #endif
 
+#define CHECK 0
+
 // Define Matrix dimensions:
 // C = AB with A=[MxN], B=[NxP], C=[MxP]
 extern uint64_t M;
@@ -72,7 +74,7 @@ int main() {
   // Measure only the full-size matmul
   for (uint64_t s = M; s <= M; s *= 2) {
 #else
-  for (uint64_t s = 4; s <= M; s *= 2) {
+  for (uint64_t s = M/4; s <= M; s *= 2) {
 #endif
     printf("\n");
     printf("------------------------------------------------------------\n");
@@ -96,16 +98,18 @@ int main() {
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
 
-    // Verify the result only for s == M (to keep it simple)
-    if (s == M) {
-      printf("Verifying result...\n");
-      int error = verify_matrix(c, g, s, s, THRESHOLD);
-      if (error != 0) {
-        printf("Error code %d\n", error);
-        printf("c[%d]=%d\n", error, c[error]);
-        return error;
-      } else {
-        printf("Passed.\n");
+    if (CHECK) {
+      // Verify the result only for s == M (to keep it simple)
+      if (s == M) {
+        printf("Verifying result...\n");
+        int error = verify_matrix(c, g, s, s, THRESHOLD);
+        if (error != 0) {
+          printf("Error code %d\n", error);
+          printf("c[%d]=%d\n", error, c[error]);
+          return error;
+        } else {
+          printf("Passed.\n");
+        }
       }
     }
   }

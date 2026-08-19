@@ -25,4 +25,7 @@ void softmax(const float *i, const float *o, const float *buf,
 void softmax_vec(const float *i, const float *o, uint64_t channels,
                  uint64_t innerSize);
 
+void softmax_vec_asm(const float *i, const float *o, uint64_t channels,
+                     uint64_t innerSize);
+
 #endif
