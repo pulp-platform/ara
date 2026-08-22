@@ -176,8 +176,13 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           end
 
           // Wait for an answer from Ara's backend
-          if (ara_resp_valid_i) begin            // If exception, stop the execution
+          if (ara_resp_valid_i) begin
+            // If exception, stop the execution and forward it to CVA6
             if (ara_resp_i.exception.valid) begin
+              ara_req_valid_o = 1'b0;
+              segment_cnt_en  = 1'b0;
+              ara_resp_d      = ara_resp_i;
+              state_d         = SEGMENT_MICRO_OPS_END;
             // If no exception, continue with the micro ops
             end else begin
               // If over - stop in the next cycle
@@ -195,8 +200,12 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           ara_resp_valid_o = 1'b0;
           // Stop injecting micro instructions
           ara_req_valid_o  = 1'b0;
-          // Wait for idle to give the final load/store_complete
-          if (ara_idle_i && ara_req_ready_i) begin
+          // A previously issued micro operation can still report an exception
+          if (ara_resp_valid_i && ara_resp_i.exception.valid) begin
+            ara_resp_d = ara_resp_i;
+            state_d    = SEGMENT_MICRO_OPS_END;
+          // Otherwise, wait for idle to give the final load/store_complete
+          end else if (ara_idle_i && ara_req_ready_i) begin
             state_d = SEGMENT_MICRO_OPS_END;
           end
         end
