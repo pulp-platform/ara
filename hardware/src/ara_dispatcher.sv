@@ -3394,16 +3394,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       acc_resp_o.result = csr_vstart_q;
                     end
                     riscv::CSR_VXRM: begin
-                      csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[16:15]);
+                      csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[1:0]);
                       acc_resp_o.result = vlen_t'(csr_vxrm_q);
                     end
                     riscv::CSR_VXSAT: begin
-                      csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[15]);
+                      csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[0]);
                       acc_resp_o.result = vlen_t'(csr_vxsat_q);
                     end
                     riscv::CSR_VCSR: begin
-                      csr_vxrm_d            = vxrm_t'(  acc_req_i.rs1[17:16]  );
-                      csr_vxsat_d           = vxsat_e'( acc_req_i.rs1[15]    );
+                      csr_vxrm_d            = vxrm_t'(  acc_req_i.rs1[2:1] );
+                      csr_vxsat_d           = vxsat_e'( acc_req_i.rs1[0]   );
                       acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
                     end
                     default: illegal_insn = 1'b1;
@@ -3432,16 +3432,16 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       else illegal_insn = 1'b1;
                     end
                     riscv::CSR_VXRM: begin
-                      csr_vxrm_d            = csr_vxrm_q | vxrm_t'(acc_req_i.rs1[16:15]);
+                      csr_vxrm_d            = csr_vxrm_q | vxrm_t'(acc_req_i.rs1[1:0]);
                       acc_resp_o.result = vlen_t'(csr_vxrm_q);
                     end
                     riscv::CSR_VXSAT: begin
-                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[15]);
+                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
                       acc_resp_o.result = vlen_t'(csr_vxsat_q);
                     end
                     riscv::CSR_VCSR: begin
-                      csr_vxrm_d            = csr_vxrm_q  | vxrm_t'(acc_req_i.rs1[17:16]);
-                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[15]);
+                      csr_vxrm_d            = csr_vxrm_q  | vxrm_t'(acc_req_i.rs1[2:1]);
+                      csr_vxsat_d           = csr_vxsat_q | vxsat_e'(acc_req_i.rs1[0]);
                       acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
                     end
                     default: illegal_insn = 1'b1;
