@@ -3474,11 +3474,11 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       acc_resp_o.result = csr_vxsat_q;
                     end
                     riscv::CSR_VXRM: begin
-                      csr_vxrm_d           = csr_vxrm_q & ~vxsat_e'(acc_req_i.rs1[1:0]);
+                      csr_vxrm_d           = csr_vxrm_q & ~vxrm_t'(acc_req_i.rs1[1:0]);
                       acc_resp_o.result = csr_vxrm_q;
                     end
                     riscv::CSR_VCSR: begin
-                      csr_vxrm_d            = csr_vxrm_q  & ~vxsat_e'(acc_req_i.rs1[2:1]);
+                      csr_vxrm_d            = csr_vxrm_q  & ~vxrm_t'(acc_req_i.rs1[2:1]);
                       csr_vxsat_d           = csr_vxsat_q & ~vxsat_e'(acc_req_i.rs1[0]);
                       acc_resp_o.result = vlen_t'(  { csr_vxrm_q, csr_vxsat_q } );
                     end
@@ -3578,7 +3578,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       acc_resp_o.result = csr_vxsat_q;
                     end
                     riscv::CSR_VXRM: begin
-                      csr_vxrm_d           = csr_vxrm_q & ~vxsat_e'(acc_req_i.rs1[1:0]);
+                      csr_vxrm_d           = csr_vxrm_q & ~vxrm_t'(acc_req_i.rs1[1:0]);
                       acc_resp_o.result = csr_vxrm_q;
                     end
                     riscv::CSR_VCSR: begin
