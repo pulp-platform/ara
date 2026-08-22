@@ -3073,6 +3073,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
               ara_req_valid  = 1'b1;
 
               // Maximum vector length. VLMAX = nf * VLEN / EW8.
+              ara_req.vstart    <<= ara_req.vtype.vsew;
               ara_req.vtype.vsew = EW8;
               unique case (insn.vmem_type.nf)
                 3'd0: begin
