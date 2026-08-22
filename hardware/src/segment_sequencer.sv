@@ -179,8 +179,10 @@ module segment_sequencer import ara_pkg::*; import rvv_pkg::*; #(
           if (ara_resp_valid_i) begin
             // If exception, stop the execution and forward it to CVA6
             if (ara_resp_i.exception.valid) begin
-              ara_resp_d = ara_resp_i;
-              state_d    = SEGMENT_MICRO_OPS_END;
+              ara_req_valid_o = 1'b0;
+              segment_cnt_en  = 1'b0;
+              ara_resp_d      = ara_resp_i;
+              state_d         = SEGMENT_MICRO_OPS_END;
             // If no exception, continue with the micro ops
             end else begin
               // If over - stop in the next cycle
