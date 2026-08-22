@@ -3505,7 +3505,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       // logic [19:15] rs1; So, LSB is [15]
                       csr_vxrm_d            = vxrm_t'(acc_req_i.rs1[2:1]);
                       csr_vxsat_d           = vxsat_e'(acc_req_i.rs1[0]);
-                      acc_resp_o.result = csr_vxsat_q;
+                      acc_resp_o.result = vlen_t'({csr_vxrm_q, csr_vxsat_q});
                     end
                     default: illegal_insn = 1'b1;
                   endcase
