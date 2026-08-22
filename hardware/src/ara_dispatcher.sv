@@ -89,7 +89,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // Converts between the XLEN-bit vtype CSR and its internal representation
   function automatic vtype_t vtype_xlen(xlen_t xlen);
     vtype_xlen = '{
-      vill  : xlen[CVA6Cfg.XLEN-1],
+      vill  : xlen[CVA6Cfg.XLEN-1] | (|xlen[CVA6Cfg.XLEN-2:8]),
       vma   : xlen[7],
       vta   : xlen[6],
       vsew  : vew_e'(xlen[5:3]),
@@ -637,12 +637,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 end else if (insn.vsetivli_type.func2 == 2'b11) begin // vsetivli
                   csr_vtype_d = vtype_xlen(xlen_t'(insn.vsetivli_type.zimm10));
                 end else if (insn.vsetvl_type.func7 == 7'b100_0000) begin // vsetvl
-                  csr_vtype_d = vtype_xlen(xlen_t'(acc_req_i.rs2[7:0]));
+                  csr_vtype_d = vtype_xlen(acc_req_i.rs2);
                 end else
                   illegal_insn = 1'b1;
 
                 // Check whether the updated vtype makes sense
-                if ((csr_vtype_d.vsew > rvv_pkg::vew_e'($clog2(ELENB))) || // SEW <= ELEN
+                if (csr_vtype_d.vill ||
+                    (csr_vtype_d.vsew > rvv_pkg::vew_e'($clog2(ELENB))) || // SEW <= ELEN
                     (csr_vtype_d.vlmul == LMUL_RSVD) ||                    // reserved value
                     // LMUL >= SEW/ELEN
                     (signed'($clog2(ELENB)) + signed'(csr_vtype_d.vlmul) < signed'(csr_vtype_d.vsew))) begin
