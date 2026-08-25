@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+ - Add `vlxe_misalign_cause` app: Spike-vs-Ara trap probe for the indexed-misalignment exception class/tval (#457)
+ - Add `vlxe_masked_misalign` app: Spike-vs-Ara trap probe for the masked-off misaligned indexed element (#456)
+ - Add `rar_retire_hazard` app: Spike-vs-Ara differential reproducer for the read-after-read out-of-order-retire hazard (#434)
+
 ### Fixed
 
+ - Report `LD/ST_ADDR_MISALIGNED` with the faulting effective address (instead of `ILLEGAL_INSTR` with tval=0) for indexed memory elements misaligned to their EEW (#457)
+ - Do not raise a misalignment exception for a *masked-off* element of a masked indexed load/store: the address generator now peeks the mask and, when the whole vector fits in a single mask chunk, aligns the masked-off element's address down and lets the load/store unit's byte strobes drop it (#456)
+ - Track *all* in-flight readers of each vector register (per-register bitmask) in the main sequencer's read table instead of only the last one, so a writer builds a WAR hazard against every pending reader. This prevents a later writer from overtaking a slow earlier reader under Ara's out-of-order retirement (#434)
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
  - Stall Ara and wait for ara_idle upon CSR write/read

@@ -22,6 +22,8 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     parameter  type         exception_t  = logic,
     // Dependant parameters. DO NOT CHANGE!
     localparam type         axi_addr_t   = logic [AxiAddrWidth-1:0],
+    localparam int unsigned MaskStrbWidth = $bits(elen_t)/8,
+    localparam type         strb_t       = logic [MaskStrbWidth-1:0],
     localparam type         vlen_t       = logic[$clog2(VLEN+1)-1:0]
   ) (
     input  logic                           clk_i,
@@ -71,7 +73,13 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
     input  logic             [NrLanes-1:0] addrgen_operand_valid_i,
     output logic                           addrgen_operand_ready_o,
     // Indexed LSU exception support
-    input  logic                           lsu_ex_flush_i
+    input  logic                           lsu_ex_flush_i,
+    // Interface with the Mask unit (peek-only).
+    // The load/store units own the mask handshake (ready/ack). The addrgen only
+    // reads the mask to decide whether a misaligned *indexed* element is
+    // masked-off (see #456): a masked-off element must not raise an exception.
+    input  strb_t            [NrLanes-1:0] mask_i,
+    input  logic             [NrLanes-1:0] mask_valid_i
   );
 
   localparam unsigned DataWidth = $bits(elen_t);
@@ -515,10 +523,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         word_lane_ptr_d = '0;
         // Raise an error if necessary
         if (idx_op_error_q) begin
-          // In this case, we always get EEW-misaligned exceptions
+          // An indexed element whose effective address is misaligned to its
+          // EEW raises a load/store address-misaligned exception (RVV spec),
+          // reporting the faulting effective address in [ms]tval - not an
+          // illegal-instruction exception with tval=0 as before. (#457)
           addrgen_exception_o.valid = 1'b1;
-          addrgen_exception_o.cause = riscv::ILLEGAL_INSTR;
-          addrgen_exception_o.tval  = '0;
+          addrgen_exception_o.cause = is_load(pe_req_q.op) ? riscv::LD_ADDR_MISALIGNED
+                                                           : riscv::ST_ADDR_MISALIGNED;
+          addrgen_exception_o.tval  = idx_final_vaddr_q;
         end
         // Propagate the exception from the MMU (if any)
         // NOTE: this would override idx_op_error_q
@@ -543,10 +555,14 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
       end
     endcase
 
-    // Immediately kill the load/store if the instruction was illegal
+    // Immediately kill the load/store if the addrgen detected a fault
+    // (illegal access or an element address-misaligned exception). Both must
+    // drain the load/store unit so the faulting instruction retires. (#457)
     if (addrgen_exception_o.valid && addrgen_ack_o) begin
-      addrgen_illegal_load_o  =  is_load(pe_req_q.op) && (addrgen_exception_o.cause == riscv::ILLEGAL_INSTR);
-      addrgen_illegal_store_o = !is_load(pe_req_q.op) && (addrgen_exception_o.cause == riscv::ILLEGAL_INSTR);
+      addrgen_illegal_load_o  =  is_load(pe_req_q.op) &&
+        (addrgen_exception_o.cause inside {riscv::ILLEGAL_INSTR, riscv::LD_ADDR_MISALIGNED});
+      addrgen_illegal_store_o = !is_load(pe_req_q.op) &&
+        (addrgen_exception_o.cause inside {riscv::ILLEGAL_INSTR, riscv::ST_ADDR_MISALIGNED});
     end
   end : addr_generation
 
@@ -809,6 +825,56 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
         automatic logic [12:0] num_bytes; // Cannot consume more than 4 KiB
         automatic vlen_t remaining_bytes;
 
+        // Indexed masked-off misalignment handling (#456)
+        // -----------------------------------------------
+        // For a masked indexed access, an element whose own mask bit is 0 must
+        // not raise a misalignment exception (RVV: masked-off elements generate
+        // neither exceptions nor architectural accesses). The addrgen does not
+        // own the mask stream, so it can only resolve this when the whole vector
+        // fits within a single mask chunk (vl <= elements-per-chunk); otherwise
+        // it keeps the conservative (trapping) behaviour, avoiding any regression.
+        // For a masked-off misaligned element we align the address down and emit
+        // a normal beat: the load/store unit's mask already zeroes its byte
+        // strobes, exactly as it does for any other masked-off element, so the
+        // VLDU/VSTU element accounting stays in sync.
+        automatic logic       idx_misalign;
+        automatic vlen_t       idx_elem_per_chunk;
+        automatic logic        idx_single_chunk;
+        automatic vlen_t       idx_cur_elem;
+        automatic int unsigned idx_seq_byte;
+        automatic logic [$clog2(8*MaxNrLanes)-1:0] idx_vrf_byte;
+        automatic int unsigned idx_mask_lane;
+        automatic logic        idx_mask_bit;
+        automatic logic        idx_mask_valid_elem;
+        automatic logic        idx_suppress;
+        automatic logic        idx_stall_mask;
+        automatic logic        idx_trap;
+        automatic axi_addr_t   idx_eff_vaddr;
+
+        idx_misalign       = is_addr_error(idx_final_vaddr_q, axi_addrgen_q.vew[1:0]);
+        idx_elem_per_chunk = vlen_t'((NrLanes * 8) >> axi_addrgen_q.vew);
+        idx_single_chunk   = (pe_req_q.vl <= idx_elem_per_chunk);
+        idx_cur_elem       = pe_req_q.vl - (axi_addrgen_q.len >> axi_addrgen_q.vew);
+        idx_seq_byte       = idx_cur_elem << axi_addrgen_q.vew;
+        idx_vrf_byte       = shuffle_index(idx_seq_byte, NrLanes, rvv_pkg::vew_e'(axi_addrgen_q.vew));
+        // The mask bit for this element lives in one specific lane. Only that
+        // lane's mask beat needs to be valid: requiring *all* lanes
+        // (&mask_valid_i) deadlocks whenever vl does not span every lane (e.g.
+        // vl < NrLanes), because idle lanes never produce a mask beat.
+        idx_mask_lane      = idx_vrf_byte >> 3;
+        idx_mask_valid_elem = mask_valid_i[idx_mask_lane];
+        idx_mask_bit       = mask_i[idx_mask_lane][idx_vrf_byte[2:0]];
+        // Suppress the exception only when we are certain the element is masked-off
+        idx_suppress       = idx_misalign && !pe_req_q.vm && idx_single_chunk && idx_mask_valid_elem && !idx_mask_bit;
+        // Wait for this element's (single-chunk) mask lane before deciding
+        idx_stall_mask     = idx_misalign && !pe_req_q.vm && idx_single_chunk && !idx_mask_valid_elem;
+        // Trap on a genuine (unmasked, or undecidable multi-chunk) misalignment
+        idx_trap           = idx_misalign && !idx_suppress && !idx_stall_mask;
+        // Address actually issued: aligned-down for a masked-off misaligned element
+        idx_eff_vaddr      = idx_suppress
+                           ? (idx_final_vaddr_q & ~((axi_addr_t'(1) << axi_addrgen_q.vew) - 1))
+                           : idx_final_vaddr_q;
+
         // Pre-calculate the next_2page_msb. This should not require much energy if the addr
         // has zeroes in the upper positions.
         next_2page_msb_d = aligned_next_start_addr_q[AxiAddrWidth-1:12] + 1;
@@ -966,7 +1032,12 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                 // Check if the virtual address generates an exception
                 // NOTE: we can do this even before address translation, since the
                 //       page offset (2^12) is the same for both physical and virtual addresses
-                if (is_addr_error(idx_final_vaddr_q, axi_addrgen_q.vew[1:0])) begin : eew_misaligned_error
+                if (idx_stall_mask) begin : wait_for_mask
+                  // Masked indexed element is misaligned but the (single-chunk)
+                  // mask is not available yet: stall until we can tell whether
+                  // this element is masked-off. Do not issue or acknowledge.
+                end : wait_for_mask
+                else if (idx_trap) begin : eew_misaligned_error
                   // Generate an error
                   idx_op_error_d          = 1'b1;
                   // Forward next vstart info to the dispatcher
@@ -975,8 +1046,9 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   axi_addrgen_state_d     = AXI_ADDRGEN_IDLE;
                 end : eew_misaligned_error
                 else begin : aligned_vaddress
-                  // Mux target address
-                  idx_final_paddr = (en_ld_st_translation_i) ? mmu_paddr_i : idx_final_vaddr_q;
+                  // Mux target address (use the aligned-down address for a
+                  // masked-off misaligned element, see #456)
+                  idx_final_paddr = (en_ld_st_translation_i) ? mmu_paddr_i : idx_eff_vaddr;
 
                   // AR Channel
                   if (axi_addrgen_q.is_load) begin
@@ -1065,7 +1137,7 @@ module addrgen import ara_pkg::*; import rvv_pkg::*; #(
                   // Check if the virtual address generates an exception
                   // NOTE: we can do this even before address translation, since the
                   //       page offset (2^12) is the same for both physical and virtual addresses
-                  if (!is_addr_error(idx_final_vaddr_q, axi_addrgen_q.vew[1:0])) begin : aligned_vaddress
+                  if (!idx_trap && !idx_stall_mask) begin : aligned_vaddress
                     // We consumed a word
                     idx_vaddr_ready_d = 1'b1;
 
