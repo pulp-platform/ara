@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+ - Add `vid_drain_deadlock` app: differential reproducer for the mask-unit VID drain bug (#448)
+ - Add `vid_m4_hang` app: regression reproducer for the vid.v LMUL=4 hang (#437, closed by the #448 fix)
+ - Add `vcpop_vl` app: Spike-vs-Ara differential probe for the vcpop VL-trim bug (#446)
+ - Add `vcompress_sweep` app: self-checking regression test for the vcompress completion hang (#450)
+
 ### Fixed
 
+ - Trim `vcpop.m`/`vfirst.m` operand to the active element range, fixing wrong counts when vl < VLMAX (#446)
+ - Tag the last selected vcompress element as the terminator (last_idx/is_last_req), fixing a hang when trailing elements are unselected (#450)
+ - Drain ALU operands in the mask unit during `vid.v` to avoid a lane deadlock (#448, also closes #437)
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
  - Stall Ara and wait for ara_idle upon CSR write/read
