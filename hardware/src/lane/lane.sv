@@ -19,6 +19,8 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     parameter  fpext_support_e        FPExtSupport          = FPExtSupportEnable,
     // Support for fixed-point data types
     parameter  fixpt_support_e        FixPtSupport          = FixedPointEnable,
+    // Support for crypto extension
+    parameter  crypto_support_e       CryptoSupport         = CryptoSupportNone,
     // To please Verilator
     parameter  int           unsigned pe_req_t_bits         = 0,
     parameter  int           unsigned pe_resp_t_bits        = 0,
@@ -498,6 +500,7 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     .FPUSupport     (FPUSupport     ),
     .FPExtSupport   (FPExtSupport   ),
     .FixPtSupport   (FixPtSupport   ),
+    .CryptoSupport  (CryptoSupport  ),
     .vaddr_t        (vaddr_t        ),
     .vfu_operation_t(vfu_operation_t)
   ) i_vfus (

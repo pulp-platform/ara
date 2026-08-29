@@ -9,6 +9,7 @@
 module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
     // Support for fixed-point data types
     parameter  fixpt_support_e FixPtSupport = FixedPointEnable,
+    parameter  crypto_support_e CryptoSupport = CryptoSupportNone,
     // Dependant parameters. DO NOT CHANGE!
     localparam int    unsigned DataWidth    = $bits(elen_t),
     localparam int    unsigned StrbWidth    = DataWidth/8,
@@ -74,6 +75,118 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
   logic [7:0] less;
   logic [7:0] equal;
 
+  function automatic logic [7:0] bit_reverse8(logic [7:0] x);
+    for (int i = 0; i < 8; i++) bit_reverse8[i] = x[7-i];
+  endfunction
+
+  function automatic logic [7:0] popcount8(logic [7:0] x);
+    logic [7:0] count;
+    count = '0;
+    for (int i = 0; i < 8; i++) count += x[i];
+    return count;
+  endfunction
+
+  function automatic logic [15:0] popcount16(logic [15:0] x);
+    logic [15:0] count;
+    count = '0;
+    for (int i = 0; i < 16; i++) count += x[i];
+    return count;
+  endfunction
+
+  function automatic logic [31:0] popcount32(logic [31:0] x);
+    logic [31:0] count;
+    count = '0;
+    for (int i = 0; i < 32; i++) count += x[i];
+    return count;
+  endfunction
+
+  function automatic logic [63:0] popcount64(logic [63:0] x);
+    logic [63:0] count;
+    count = '0;
+    for (int i = 0; i < 64; i++) count += x[i];
+    return count;
+  endfunction
+
+  function automatic logic [7:0] clz8(logic [7:0] x);
+    logic [7:0] count;
+    count = 8;
+    for (int i = 0; i < 8; i++)
+      if (count == 8 && x[7-i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [15:0] clz16(logic [15:0] x);
+    logic [15:0] count;
+    count = 16;
+    for (int i = 0; i < 16; i++)
+      if (count == 16 && x[15-i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [31:0] clz32(logic [31:0] x);
+    logic [31:0] count;
+    count = 32;
+    for (int i = 0; i < 32; i++)
+      if (count == 32 && x[31-i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [63:0] clz64(logic [63:0] x);
+    logic [63:0] count;
+    count = 64;
+    for (int i = 0; i < 64; i++)
+      if (count == 64 && x[63-i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [7:0] ctz8(logic [7:0] x);
+    logic [7:0] count;
+    count = 8;
+    for (int i = 0; i < 8; i++)
+      if (count == 8 && x[i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [15:0] ctz16(logic [15:0] x);
+    logic [15:0] count;
+    count = 16;
+    for (int i = 0; i < 16; i++)
+      if (count == 16 && x[i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [31:0] ctz32(logic [31:0] x);
+    logic [31:0] count;
+    count = 32;
+    for (int i = 0; i < 32; i++)
+      if (count == 32 && x[i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
+  function automatic logic [63:0] ctz64(logic [63:0] x);
+    logic [63:0] count;
+    count = 64;
+    for (int i = 0; i < 64; i++)
+      if (count == 64 && x[i]) begin
+        count = i;
+      end
+    return count;
+  endfunction
+
   always_comb begin: p_comparison
     // Default assignment
     less  = '0;
@@ -121,6 +234,124 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
         VAND, VREDAND: res = operand_a_i & operand_b_i;
         VOR, VREDOR  : res = operand_a_i | operand_b_i;
         VXOR, VREDXOR: res = operand_a_i ^ operand_b_i;
+
+        // Zvkb: AND-NOT
+        VANDN: if (Zvkb(CryptoSupport)) begin
+          res = ~operand_a_i & operand_b_i;
+        end
+
+        // Zvkb: Rotate left
+        VROL: if (Zvkb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) begin
+                automatic logic [2:0] sh = opa.w8[b][2:0];
+                res.w8[b] = (opb.w8[b] << sh) | (opb.w8[b] >> (3'd0 - sh));
+              end
+            EW16: for (int b = 0; b < 4; b++) begin
+                automatic logic [3:0] sh = opa.w16[b][3:0];
+                res.w16[b] = (opb.w16[b] << sh) | (opb.w16[b] >> (4'd0 - sh));
+              end
+            EW32: for (int b = 0; b < 2; b++) begin
+                automatic logic [4:0] sh = opa.w32[b][4:0];
+                res.w32[b] = (opb.w32[b] << sh) | (opb.w32[b] >> (5'd0 - sh));
+              end
+            EW64: for (int b = 0; b < 1; b++) begin
+                automatic logic [5:0] sh = opa.w64[b][5:0];
+                res.w64[b] = (opb.w64[b] << sh) | (opb.w64[b] >> (6'd0 - sh));
+              end
+          endcase
+        end
+
+        // Zvkb: Rotate right
+        VROR: if (Zvkb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) begin
+                automatic logic [2:0] sh = opa.w8[b][2:0];
+                res.w8[b] = (opb.w8[b] >> sh) | (opb.w8[b] << (3'd0 - sh));
+              end
+            EW16: for (int b = 0; b < 4; b++) begin
+                automatic logic [3:0] sh = opa.w16[b][3:0];
+                res.w16[b] = (opb.w16[b] >> sh) | (opb.w16[b] << (4'd0 - sh));
+              end
+            EW32: for (int b = 0; b < 2; b++) begin
+                automatic logic [4:0] sh = opa.w32[b][4:0];
+                res.w32[b] = (opb.w32[b] >> sh) | (opb.w32[b] << (5'd0 - sh));
+              end
+            EW64: for (int b = 0; b < 1; b++) begin
+                automatic logic [5:0] sh = opa.w64[b][5:0];
+                res.w64[b] = (opb.w64[b] >> sh) | (opb.w64[b] << (6'd0 - sh));
+              end
+          endcase
+        end
+
+        // Zvkb: Bit-reverse within bytes
+        VBREV8: if (Zvkb(CryptoSupport)) begin
+          for (int b = 0; b < 8; b++)
+            for (int i = 0; i < 8; i++)
+              res.w8[b][i] = opb.w8[b][7-i];
+        end
+
+        // Zvbb: Full bit-reverse within elements
+        VBREV: if (Zvbb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8[b] = bit_reverse8(opb.w8[b]);
+            EW16: for (int b = 0; b < 4; b++) begin
+                res.w8[2*b]   = bit_reverse8(opb.w8[2*b+1]);
+                res.w8[2*b+1] = bit_reverse8(opb.w8[2*b]);
+              end
+            EW32: for (int b = 0; b < 2; b++)
+                for (int i = 0; i < 4; i++)
+                  res.w8[4*b+i] = bit_reverse8(opb.w8[4*b+3-i]);
+            EW64: for (int i = 0; i < 8; i++)
+                res.w8[i] = bit_reverse8(opb.w8[7-i]);
+          endcase
+        end
+
+        // Zvbb: Count leading zeros
+        VCLZ: if (Zvbb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8[b] = clz8(opb.w8[b]);
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = clz16(opb.w16[b]);
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = clz32(opb.w32[b]);
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = clz64(opb.w64[b]);
+          endcase
+        end
+
+        // Zvbb: Count trailing zeros
+        VCTZ: if (Zvbb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8[b] = ctz8(opb.w8[b]);
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = ctz16(opb.w16[b]);
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = ctz32(opb.w32[b]);
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = ctz64(opb.w64[b]);
+          endcase
+        end
+
+        // Zvbb: Population count per element
+        VCPOPV: if (Zvbb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : for (int b = 0; b < 8; b++) res.w8[b] = popcount8(opb.w8[b]);
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = popcount16(opb.w16[b]);
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = popcount32(opb.w32[b]);
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = popcount64(opb.w64[b]);
+          endcase
+        end
+
+        // Zvkb: Byte-reverse within elements (endian swap)
+        VREV8: if (Zvkb(CryptoSupport)) begin
+          unique case (vew_i)
+            EW8 : res = opb; // no-op for single-byte elements
+            EW16: for (int b = 0; b < 4; b++) begin
+                res.w8[2*b]   = opb.w8[2*b+1];
+                res.w8[2*b+1] = opb.w8[2*b];
+              end
+            EW32: for (int b = 0; b < 2; b++)
+                for (int i = 0; i < 4; i++)
+                  res.w8[4*b+i] = opb.w8[4*b+3-i];
+            EW64: for (int i = 0; i < 8; i++)
+                res.w8[i] = opb.w8[7-i];
+          endcase
+        end
 
         // Mask logical operations
         VMAND   : res = operand_a_i & operand_b_i;
@@ -372,6 +603,13 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
             EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] << opa.w16[b][3:0];
             EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] << opa.w32[b][4:0];
             EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] << opa.w64[b][5:0];
+          endcase
+        VWSLL: if (Zvbb(CryptoSupport)) unique case (vew_i)
+            EW16: for (int b = 0; b < 4; b++) res.w16[b] = opb.w16[b] << opa.w16[b][3:0];
+            // The shift amount is masked with (2 * SEW) - 1, where SEW is the source width.
+            EW32: for (int b = 0; b < 2; b++) res.w32[b] = opb.w32[b] << opa.w32[b][4:0];
+            EW64: for (int b = 0; b < 1; b++) res.w64[b] = opb.w64[b] << opa.w64[b][5:0];
+            default:;
           endcase
         VSRL: unique case (vew_i)
             EW8 : for (int b = 0; b < 8; b++) res.w8 [b] = opb.w8 [b] >> opa.w8 [b][2:0];

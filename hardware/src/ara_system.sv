@@ -18,6 +18,8 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     parameter fixpt_support_e                   FixPtSupport       = FixedPointEnable,
     // Support for segment memory operations
     parameter seg_support_e                     SegSupport         = SegSupportEnable,
+    // Support for crypto extension
+    parameter crypto_support_e                  CryptoSupport      = CryptoSupportNone,
     // Ariane configuration
     parameter config_pkg::cva6_cfg_t            CVA6Cfg            = cva6_config_pkg::cva6_cfg,
     // CVA6-related parameters
@@ -228,6 +230,7 @@ module ara_system import axi_pkg::*; import ara_pkg::*; #(
     .FPExtSupport      (FPExtSupport      ),
     .FixPtSupport      (FixPtSupport      ),
     .SegSupport        (SegSupport        ),
+    .CryptoSupport     (CryptoSupport     ),
     .CVA6Cfg           (CVA6Cfg           ),
     .exception_t       (exception_t       ),
     .accelerator_req_t (accelerator_req_t ),

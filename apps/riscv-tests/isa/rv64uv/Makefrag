@@ -180,6 +180,8 @@ rv64uv_sc_tests = vaadd \
                   vle_vse_hazards \
                   vfrec7 \
                   vfrsqrt7 \
+                  zvkb \
+                  zvbb \
                   vrgather \
                   vcompress
 

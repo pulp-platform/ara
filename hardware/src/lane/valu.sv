@@ -12,6 +12,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
     parameter  int    unsigned VLEN            = 0,
     // Support for fixed-point data types
     parameter  fixpt_support_e FixPtSupport    = FixedPointEnable,
+    // Support for crypto extension
+    parameter  crypto_support_e CryptoSupport  = CryptoSupportNone,
     // Type used to address vector register file elements
     parameter  type            vaddr_t         = logic,
     parameter  type            vfu_operation_t = logic,
@@ -380,7 +382,8 @@ module valu import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::idx_width;
   assign alu_vxsat_d = alu_vxsat;
 
   simd_alu #(
-    .FixPtSupport      (FixPtSupport                                                    )
+    .FixPtSupport      (FixPtSupport                                                    ),
+    .CryptoSupport     (CryptoSupport                                                   )
   ) i_simd_alu (
     .operand_a_i       (alu_operand_a                                                   ),
     .operand_b_i       (alu_operand_b                                                   ),
