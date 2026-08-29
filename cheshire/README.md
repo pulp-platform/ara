@@ -4,12 +4,33 @@ Ara can be synthesized on a VCU128 FPGA and boot Linux through the Cheshire SoC.
 
 Our entry point is to generate a custom `add_sources.vcu128.tcl` file with specific Ara targets, copy this file into the Cheshire directory, and then use the default Cheshire compile flow, which will use our provided TCL file
 
-## How to Use
+## Requirements
+From Cheshire's [web documentation](https://pulp-platform.github.io/cheshire/gs/#dependencies), ensure you have the next dependencies:
 
-Ara should be instantiated as a submodule of Cheshire. This means that the Ara repo should be downloaded through `bender checkout` from the Cheshire directory. Then, Ara's path can be retrived using `bender path ara`.
+- GNU make >= 3.82
+- CMake >= 3.24.0
+- Python >= 3.11
+- Bender >= 0.27.1
+- RISCV GCC >= 11.2.0
+
+> [!TIP]
+> Check [Bender](https://github.com/pulp-platform/bender) repository to install it
+
+For Python dependencies, it is highly recommended to create a virtual environment and install all packages listed in `requirements.txt`
 
 ```bash
-git clone git@github.com:pulp-platform/cheshire.git
+python3 -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+## How to Use
+
+Ara should be instantiated as a submodule of Cheshire. This means that the Ara repo should be downloaded through `bender checkout` from the Cheshire directory, more specifically, the `mp/ara-pulp-v2` branch, which includes the CVA6 connected to the Ara. Then, Ara's path can be retrived using `bender path ara`.
+
+```bash
+git clone --branch=mp/ara-pulp-v2 https://github.com/pulp-platform/cheshire.git
 cd cheshire
 git checkout ${COMMIT}
 bender checkout
@@ -18,6 +39,10 @@ cd ${ARA_ROOT}
 ```
 
 ## FPGA and OS flow
+
+> [!WARNING]
+> Ensure that your `$PATH` variable includes ONLY those binaries listed above as well as default system's binaries. Your `$PATH` should look something like follows:
+> `/path/to/RISCV>=11.2.0:/path/to/bender:/path/to/cmake>= 3.24.0/:/path/to/python>= 3.11:/bin:/usr/bin:etc`
 
 ### LINUX-RVV Kernels
 Compile kernels to be run on the FPGA under Linux (this will also install the buildroot toolchain)
@@ -39,6 +64,8 @@ cd ${ARA_ROOT}/cheshire/sw
 make linux-img
 
 # Generate Cheshire's Linux img
+export VIVADO="/path/to/Vivado/20XX.X/bin/vivado"
+
 cd ${ARA_ROOT}/cheshire
 make ara-chs-image
 ```
@@ -64,7 +91,7 @@ cd ${ARA_ROOT}/cheshire
 make ara-chs-xilinx-program
 ```
 
-For more information, see Cheshire's documentation (https://pulp-platform.github.io/cheshire/tg/xilinx).
+Every output will be in `cheshire/target/xilinx` directory. For more information, see Cheshire's documentation (https://pulp-platform.github.io/cheshire/tg/xilinx).
 
 ### Example
 

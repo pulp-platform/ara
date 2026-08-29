@@ -1,0 +1,28 @@
+# University Institute of Applied Microelectronics (https://www.iuma.ulpgc.es/)
+# Author: Jorge López Viera
+# Created: 20/05/2026
+# This file includes the Python's dependencies for
+# both the Cheshire and Ara
+
+requests
+hjson
+mako
+pyyaml
+tabulate
+yapf
+mkdocs
+mkdocs-material
+markdown-grid-tables
+tclint==0.4.2
+flatdict>=4.1.0
+setuptools==80
+peakrdl>=1.5.0
+peakrdl-rawheader>=0.2.3
+dataclasses
+gitpython
+jsonref
+jsonschema
+yamlfmt
+numpy
+matplotlib
+scikit-learn
