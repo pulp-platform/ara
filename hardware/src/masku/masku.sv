@@ -220,6 +220,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
   logic  [$clog2(VfirstParallelism)-1:0]          vfirst_count;
   logic  [$clog2(VLEN)-1:0]              vfirst_count_d, vfirst_count_q;
   logic                                  vfirst_empty;
+  // VFIRST no longer terminates as soon as it finds the first set bit, so it
+  // needs to remember that it already found one.
+  logic                                  vfirst_found_d, vfirst_found_q;
   // counter to keep track of how many slices of the vcpop_operand have been processed
   logic [VcpopParallelism-1:0]                    vcpop_slice;
   logic [VfirstParallelism-1:0]                  vfirst_slice;
@@ -904,6 +907,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     popcount_d        = popcount_q;
     vfirst_count_d    = vfirst_count_q;
+    vfirst_found_d    = vfirst_found_q;
 
     mask_queue_d           = mask_queue_q;
     mask_queue_valid_d     = mask_queue_valid_q;
@@ -1289,8 +1293,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // unconditional accumulate lost exactly one count per skipped slice and
         // vfirst.m under-reported by floor(idx/VfirstParallelism): a set bit at
         // index 16 was reported as 15, 100 as 94, 255 as 240.
-        vfirst_count_d = vfirst_empty ? vfirst_count_q + VfirstParallelism
-                                      : vfirst_count_q + vfirst_count;
+        // Stop accumulating once the first set bit has been seen: VFIRST no
+        // longer aborts the instruction at that point (see below), so the
+        // remaining slices must not move the index.
+        if (!vfirst_found_q) begin
+          vfirst_count_d = vfirst_empty ? vfirst_count_q + VfirstParallelism
+                                        : vfirst_count_q + vfirst_count;
+          vfirst_found_d = ~vfirst_empty;
+        end
 
         // Bump MASKU ALU state
         found_one_d = found_one;
@@ -1311,7 +1321,15 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         // Request new input (by completing ready-valid handshake) once all slices have been processed
         // Alu input is accessed in different widths
         // VRGATHER and VCOMPRESS handle the ALU operand for the index generation before the MASKU ALU gets the operands
-        if ((((in_ready_cnt_q == in_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]})) || (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
+        // The `|| (!vfirst_empty && op == VFIRST)` term used to acknowledge the
+        // ALU operand word here the moment VFIRST found its bit, and the
+        // companion term at the out_scalar_valid site below then ended the
+        // instruction -- leaving the operand words the lanes were still
+        // delivering for the rest of that vl stranded in the per-lane MASKU
+        // operand queue, where the next mask instruction consumed them as its
+        // own input. VFIRST now runs to completion like VCPOP, so the ack is
+        // driven by the slice threshold alone.
+        if ((((in_ready_cnt_q == in_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VRGATHER:VCOMPRESS]}))) begin
           in_ready_cnt_clr = 1'b1;
           if (vinsn_issue.op != VID) begin
             masku_operand_alu_ready = '1;
@@ -1319,7 +1337,9 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         // Mask is always accessed at bit level
         // VMADC, VMSBC handle masks in the mask queue
-        if ((((in_m_ready_cnt_q == in_m_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VMADC:VMSBC]})) || (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
+        // Same VFIRST early-ack term removed here; this one stranded the *mask*
+        // operand of a masked vfirst.m.
+        if ((((in_m_ready_cnt_q == in_m_ready_threshold_q) || (issue_cnt_d == '0)) && !(vinsn_issue.op inside {[VMADC:VMSBC]}))) begin
           in_m_ready_cnt_clr = 1'b1;
           if (!vinsn_issue.vm) begin
             masku_operand_m_ready = '1;
@@ -1343,8 +1363,11 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
 
         // The scalar result is valid for write back at the end of the operation.
-        // VFIRST can also interrupt the operation in advance when the 1 is found.
-        if (issue_cnt_d == '0 || (!vfirst_empty && (vinsn_issue.op == VFIRST))) begin
+        // VFIRST used to interrupt the operation in advance when the 1 was
+        // found. It no longer does -- vfirst_found_q carries "the answer is
+        // already latched", so the remaining slices are consumed (and therefore
+        // acknowledged) instead of being left in the operand queue.
+        if (issue_cnt_d == '0) begin
           // Assert valid scalar output
           out_scalar_valid = vd_scalar(vinsn_issue.op);
         end
@@ -1386,7 +1409,10 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
 
     // The scalar result has been sent to and acknowledged by the dispatcher
     if (out_scalar_valid) begin
-      result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : ((vfirst_empty) ? -1 : vfirst_count_d);
+      // "No set bit anywhere in vl" is now vfirst_found_d, not "the slice we
+      // happened to stop on was empty" -- with the early exit gone, the last
+      // slice of a successful vfirst.m is normally empty.
+      result_scalar_d = (vinsn_issue.op == VCPOP) ? popcount_d : ((!vfirst_found_d) ? -1 : vfirst_count_d);
       result_scalar_valid_d = '1;
 
       // The instruction is over
@@ -1502,6 +1528,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       // Reset the popcount and vfirst_count
       popcount_d     = '0;
       vfirst_count_d = '0;
+      vfirst_found_d = '0;
     end
 
     //////////////////////////////
@@ -1604,6 +1631,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
           end
           VFIRST: begin
             vfirst_count_d = '0;
+            vfirst_found_d = '0;
 
             // Mask to scalar
             delta_elm_d = VfirstParallelism;
@@ -1653,6 +1681,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       result_final_gnt_q      <= '0;
       popcount_q              <= '0;
       vfirst_count_q          <= '0;
+      vfirst_found_q          <= '0;
       delta_elm_q             <= '0;
       in_ready_threshold_q    <= '0;
       in_m_ready_threshold_q  <= '0;
@@ -1677,6 +1706,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
       result_final_gnt_q      <= result_final_gnt_d;
       popcount_q              <= popcount_d;
       vfirst_count_q          <= vfirst_count_d;
+      vfirst_found_q          <= vfirst_found_d;
       delta_elm_q             <= delta_elm_d;
       in_ready_threshold_q    <= in_ready_threshold_d;
       in_m_ready_threshold_q  <= in_m_ready_threshold_d;
