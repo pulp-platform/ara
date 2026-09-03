@@ -1283,7 +1283,14 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
         end
         // Write the scalar accumulator
         popcount_d = popcount_q + popcount;
-        vfirst_count_d = vfirst_count_q + vfirst_count;
+        // An all-zero slice must advance the index by VfirstParallelism.
+        // common_cells' lzc asserts empty_o and returns cnt_o = WIDTH-1 (not
+        // WIDTH) for an all-zero input (see its header comment), so the
+        // unconditional accumulate lost exactly one count per skipped slice and
+        // vfirst.m under-reported by floor(idx/VfirstParallelism): a set bit at
+        // index 16 was reported as 15, 100 as 94, 255 as 240.
+        vfirst_count_d = vfirst_empty ? vfirst_count_q + VfirstParallelism
+                                      : vfirst_count_q + vfirst_count;
 
         // Bump MASKU ALU state
         found_one_d = found_one;
