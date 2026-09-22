@@ -1,0 +1,85 @@
+{
+  "basicInfo": {
+    "licensing": "Open-source (Solderpad Hardware License v0.51)",
+    "targetFpgaOrAsic": "ASIC, VCU118, VCU128",
+    "designLanguage": "SystemVerilog"
+  },
+  "systemLevelFeatures": {
+    "couplingType": "Tightly-coupled",
+    "dataTypes": "INT8-64, FP16-64",
+    "isa": "RISC-V",
+    "peakOpsPerCycle": "2 - 16 lanes (1 FPU each). On FPGA: 2 lanes = 2 DP ops / cycle",
+    "interfaces": "CV-X-IF, AXI",
+    "supportedOperations": "RISC-V vector extension RVV 1.0",
+    "compilerSupport": "OpenSource RISC-V toolchain (GCC or LLVM)",
+    "externalMemoryRequired": "optional; L2 / DDR",
+    "cacheOrScratchpad": "AXI compliant: Cache + Scratchpad"
+  },
+  "architecture": {
+    "type": "Von Neumann, SMP",
+    "numClockDomains": 1,
+    "controlInterface": {
+      "isaExtension": "RISC-V V v1.0",
+      "memoryMapped": "No",
+      "protocol": "CV-X-IF + MMU + coherence IF"
+    },
+    "memoryInterface": {
+      "interfaceProtocol": "AXI4",
+      "hierarchyLevel": "L2 (CVA6 L1 bypassed)",
+      "cached": null,
+      "iommu": null
+    },
+    "interrupts": "Yes"
+  },
+  "microarchitecture": {
+    "parametrization": {
+      "parametricNumUnits": "No",
+      "parametricConfig": "Yes (# Vector Lanes, Vector Register Length)"
+    },
+    "programmability": {
+      "programmableCores": "Yes (CVA6)",
+      "isaExtension": "RISC-V (RV64 GCV)"
+    }
+  },
+  "software": {
+    "compiler": {
+      "requiresSpecializedCompiler": "No (RISC-V compatible)",
+      "supportedCompilers": null
+    },
+    "hardwareAbstractionLayer": {
+      "halFunctions": null
+    },
+    "highLevelApi": {
+      "hasHighLevelApi": "Yes (C intrinsics)",
+      "sdkRepository": null,
+      "hasDomainSpecificCompiler": null
+    }
+  },
+  "integration": {
+    "ipDistribution": {
+      "manifestType": "Bender.yml",
+      "standaloneSimulation": "Yes",
+      "standaloneSimulationSwRequirements": "QuestaSim or Verilator",
+      "integrationDocsOrExamples": "Yes"
+    },
+    "synthesis": {
+      "isSynthesizable": "Yes",
+      "fpgaSynthesisExamples": "Yes",
+      "asicSynthesisExamples": "Yes (proprietary)"
+    },
+    "simulation": {
+      "closedSourceSimulation": "Yes (QuestaSim)",
+      "openSourceSimulation": "Yes (Verilator)"
+    },
+    "evaluation": {
+      "ppaResultsAvailable": "Yes"
+    }
+  },
+  "physicalImplementation": {
+    "asicArea": {
+      "numGates": "1.7 MGE (2 lanes) – 12.8 MGE (16 lanes)",
+      "onChipInternalMemorySize": null,
+      "targetClockFrequency": ">1 GHz (GF22nm), crit. path ca. 40 FO4 gates"
+    }
+  }
+}
