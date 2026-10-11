@@ -110,6 +110,17 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   endfunction : next_lmul
 
+  // A mask-producing instruction writes one register, which may overlap a source register group
+  // only at the group's lowest-numbered register (RVV 1.0, section 5.2).
+  function automatic logic mask_vd_overlaps(logic [4:0] vd, logic [4:0] vs, vlmul_e lmul);
+    unique case (lmul)
+      LMUL_2 : mask_vd_overlaps = (vd & 5'b11110) == vs && vd != vs;
+      LMUL_4 : mask_vd_overlaps = (vd & 5'b11100) == vs && vd != vs;
+      LMUL_8 : mask_vd_overlaps = (vd & 5'b11000) == vs && vd != vs;
+      default: mask_vd_overlaps = 1'b0;
+    endcase
+  endfunction : mask_vd_overlaps
+
   // Calculates prev(lmul)
   function automatic vlmul_e prev_lmul(vlmul_e lmul);
     unique case (lmul)
@@ -744,25 +755,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req.op        = ara_pkg::VMADC;
-
-                    // Check whether we can access vs1 and vs2
-                    unique case (ara_req.emul)
-                      LMUL_2:
-                        if (((insn.varith_type.rs1 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) ||
-                            ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001)))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if (((insn.varith_type.rs1 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) ||
-                            ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if (((insn.varith_type.rs1 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) ||
-                            ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)))
-                          illegal_insn = 1'b1;
-                      default:
-                        if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
-                            (insn.varith_type.rs2 == insn.varith_type.rd)) illegal_insn = 1'b1;
-                    endcase
                   end
                   6'b010010: begin
                     ara_req.op = ara_pkg::VSBC;
@@ -773,25 +765,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010011: begin
                     ara_req.op        = ara_pkg::VMSBC;
-
-                    // Check whether we can access vs1 and vs2
-                    unique case (ara_req.emul)
-                      LMUL_2:
-                        if (((insn.varith_type.rs1 & 5'b00001) == (insn.varith_type.rd & 5'b00001)) ||
-                            ((insn.varith_type.rs2 & 5'b00001) == ( insn.varith_type.rd & 5'b00001)))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if (((insn.varith_type.rs1 & 5'b00011) == (insn.varith_type.rd & 5'b00011)) ||
-                            ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011)))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if (((insn.varith_type.rs1 & 5'b00111) == (insn.varith_type.rd & 5'b00111)) ||
-                            ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111)))
-                          illegal_insn = 1'b1;
-                      default:
-                        if ((insn.varith_type.rs1 == insn.varith_type.rd) ||
-                            (insn.varith_type.rs2 == insn.varith_type.rd)) illegal_insn = 1'b1;
-                    endcase
                   end
                   6'b011000: begin
                     ara_req.op         = ara_pkg::VMSEQ;
@@ -934,15 +907,25 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 unique case (ara_req.emul)
                   LMUL_2: if ((insn.varith_type.rs1 & 5'b00001) != 5'b00000 ||
                         (insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00001) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   LMUL_4: if ((insn.varith_type.rs1 & 5'b00011) != 5'b00000 ||
                         (insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00011) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   LMUL_8: if ((insn.varith_type.rs1 & 5'b00111) != 5'b00000 ||
                         (insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00111) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   default:;
                 endcase
+
+                // A mask destination may overlap a source group only at its lowest register.
+                if (ara_req.op inside {[VMFEQ:VMSBC]} &&
+                    (mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs2, csr_vtype_q.vlmul) ||
+                     ara_req.use_vs1 && mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs1,
+                                                         csr_vtype_q.vlmul)))
+                  illegal_insn = 1'b1;
 
                 // Instruction is invalid if the vtype is invalid
                 if (csr_vtype_q.vill) illegal_insn = 1'b1;
@@ -1012,20 +995,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req.op        = ara_pkg::VMADC;
-
-                    // Check whether we can access vs1 and vs2
-                    unique case (ara_req.emul)
-                      LMUL_2:
-                        if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))
-                          illegal_insn = 1'b1;
-                      default: if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
-                    endcase
                   end
                   6'b010010: begin
                     ara_req.op = ara_pkg::VSBC;
@@ -1038,20 +1007,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010011: begin
                     ara_req.op        = ara_pkg::VMSBC;
-
-                    // Check whether we can access vs1 and vs2
-                    unique case (ara_req.emul)
-                      LMUL_2:
-                        if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))
-                          illegal_insn = 1'b1;
-                      default: if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
-                    endcase
                   end
                   6'b011000: begin
                     ara_req.op         = ara_pkg::VMSEQ;
@@ -1182,13 +1137,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // access.
                 unique case (ara_req.emul)
                   LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00001) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00011) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00111) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   default:;
                 endcase
+
+                // A mask destination may overlap a source group only at its lowest register.
+                if (ara_req.op inside {[VMFEQ:VMSBC]} &&
+                    (mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs2, csr_vtype_q.vlmul) ||
+                     ara_req.use_vs1 && mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs1,
+                                                         csr_vtype_q.vlmul)))
+                  illegal_insn = 1'b1;
 
                 // Instruction is invalid if the vtype is invalid
                 if (csr_vtype_q.vill) illegal_insn = 1'b1;
@@ -1254,20 +1219,6 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   6'b010001: begin
                     ara_req.op        = ara_pkg::VMADC;
-
-                    // Check whether we can access vs1 and vs2
-                    unique case (ara_req.emul)
-                      LMUL_2:
-                        if ((insn.varith_type.rs2 & 5'b00001) == (insn.varith_type.rd & 5'b00001))
-                          illegal_insn = 1'b1;
-                      LMUL_4:
-                        if ((insn.varith_type.rs2 & 5'b00011) == (insn.varith_type.rd & 5'b00011))
-                          illegal_insn = 1'b1;
-                      LMUL_8:
-                        if ((insn.varith_type.rs2 & 5'b00111) == (insn.varith_type.rd & 5'b00111))
-                          illegal_insn = 1'b1;
-                      default: if (insn.varith_type.rs2 == insn.varith_type.rd) illegal_insn = 1'b1;
-                    endcase
                   end
                   6'b011000: begin
                     ara_req.op         = ara_pkg::VMSEQ;
@@ -1421,13 +1372,23 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                 // access.
                 unique case (ara_req.emul)
                   LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00001) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00011) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000 ||
-                        (insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                        ((insn.varith_type.rd & 5'b00111) != 5'b00000 &&
+                         !(ara_req.op inside {[VMSEQ:VMSBC]}))) illegal_insn = 1'b1;
                   default:;
                 endcase
+
+                // A mask destination may overlap a source group only at its lowest register.
+                if (ara_req.op inside {[VMFEQ:VMSBC]} &&
+                    (mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs2, csr_vtype_q.vlmul) ||
+                     ara_req.use_vs1 && mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs1,
+                                                         csr_vtype_q.vlmul)))
+                  illegal_insn = 1'b1;
 
                 // Instruction is invalid if the vtype is invalid
                 if (csr_vtype_q.vill) illegal_insn = 1'b1;
@@ -1885,6 +1846,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   end
                   default: illegal_insn = 1'b1;
                 endcase
+
+                // A mask register operand is one register whatever LMUL is.
+                if (ara_req.op inside {[VMSBF:VMSIF], [VMANDNOT:VMXNOR]}) skip_lmul_checks = 1'b1;
+                if (ara_req.op == VIOTA) lmul_vs2 = LMUL_1;
+                // A reduction's vd and vs1 hold one element; only vs2 is a register group.
+                if (ara_req.op inside {[VREDSUM:VREDMAX]}) begin
+                  skip_lmul_checks = 1'b1;
+                  unique case (lmul_vs2)
+                    LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                    LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                    default:;
+                  endcase
+                end
 
                 // Instructions with an integer LMUL have extra constraints on the registers they can
                 // access. These constraints can be different for the two source operands and the
@@ -2545,14 +2520,28 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     default: illegal_insn = 1'b1;
                   endcase
 
+                  // A reduction's vd and vs1 hold one element; vs2 is an LMUL group.
+                  if (ara_req.op inside {[VFREDUSUM:VFWREDOSUM]}) begin
+                    skip_lmul_checks = 1'b1;
+                    unique case (csr_vtype_q.vlmul)
+                      LMUL_2: if ((insn.varith_type.rs2 & 5'b00001) != 5'b00000) illegal_insn = 1'b1;
+                      LMUL_4: if ((insn.varith_type.rs2 & 5'b00011) != 5'b00000) illegal_insn = 1'b1;
+                      LMUL_8: if ((insn.varith_type.rs2 & 5'b00111) != 5'b00000) illegal_insn = 1'b1;
+                      default:;
+                    endcase
+                  end
+
                   // Instructions with an integer LMUL have extra constraints on the registers they
                   // can access. The constraints can be different for the two source operands and the
                   // destination register.
                   if (!skip_lmul_checks) begin
                     unique case (ara_req.emul)
-                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = ara_req.use_vd;
-                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = ara_req.use_vd;
-                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = ara_req.use_vd;
+                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000 &&
+                                   !(ara_req.op inside {[VMFEQ:VMFGE]})) illegal_insn = ara_req.use_vd;
+                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000 &&
+                                   !(ara_req.op inside {[VMFEQ:VMFGE]})) illegal_insn = ara_req.use_vd;
+                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000 &&
+                                   !(ara_req.op inside {[VMFEQ:VMFGE]})) illegal_insn = ara_req.use_vd;
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
@@ -2571,6 +2560,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       default:;
                     endcase
                   end
+
+                  // A mask destination may overlap a source group only at its lowest register.
+                  if (ara_req.op inside {[VMFEQ:VMSBC]} &&
+                      (mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs2, csr_vtype_q.vlmul) ||
+                       ara_req.use_vs1 && mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs1,
+                                                           csr_vtype_q.vlmul)))
+                    illegal_insn = 1'b1;
 
                   // Ara can support 8-bit float, 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
@@ -2844,9 +2840,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   // destination register.
                   if (!skip_lmul_checks) begin
                     unique case (ara_req.emul)
-                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000) illegal_insn = ara_req.use_vd;
-                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000) illegal_insn = ara_req.use_vd;
-                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000) illegal_insn = ara_req.use_vd;
+                      LMUL_2   : if ((insn.varith_type.rd & 5'b00001) != 5'b00000 &&
+                                   !(ara_req.op inside {[VMFEQ:VMFGE]})) illegal_insn = ara_req.use_vd;
+                      LMUL_4   : if ((insn.varith_type.rd & 5'b00011) != 5'b00000 &&
+                                   !(ara_req.op inside {[VMFEQ:VMFGE]})) illegal_insn = ara_req.use_vd;
+                      LMUL_8   : if ((insn.varith_type.rd & 5'b00111) != 5'b00000 &&
+                                   !(ara_req.op inside {[VMFEQ:VMFGE]})) illegal_insn = ara_req.use_vd;
                       LMUL_RSVD: illegal_insn = 1'b1;
                       default:;
                     endcase
@@ -2858,6 +2857,13 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                       default:;
                     endcase
                   end
+
+                  // A mask destination may overlap a source group only at its lowest register.
+                  if (ara_req.op inside {[VMFEQ:VMSBC]} &&
+                      (mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs2, csr_vtype_q.vlmul) ||
+                       ara_req.use_vs1 && mask_vd_overlaps(insn.varith_type.rd, insn.varith_type.rs1,
+                                                           csr_vtype_q.vlmul)))
+                    illegal_insn = 1'b1;
 
                   // Ara can support 16-bit float, 32-bit float, 64-bit float.
                   // Ara cannot support instructions who operates on more than 64 bits.
@@ -2992,6 +2998,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // For memory operations: EMUL = LMUL * (EEW / SEW)
             // EEW is encoded in the instruction
             ara_req.emul = vlmul_e'(csr_vtype_q.vlmul + (ara_req.vtype.vsew - csr_vtype_q.vsew));
+            // vlm.v and vsm.v access one mask register whatever LMUL is
+            if (insn.vmem_type.mop == 2'b00 && insn.vmem_type.rs2 == 5'b01011) ara_req.emul = LMUL_1;
 
             // Exception if EMUL > 8 or < 1/8
             unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
@@ -3236,6 +3244,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // For memory operations: EMUL = LMUL * (EEW / SEW)
             // EEW is encoded in the instruction
             ara_req.emul = vlmul_e'(csr_vtype_q.vlmul + (ara_req.vtype.vsew - csr_vtype_q.vsew));
+            // vlm.v and vsm.v access one mask register whatever LMUL is
+            if (insn.vmem_type.mop == 2'b00 && insn.vmem_type.rs2 == 5'b01011) ara_req.emul = LMUL_1;
 
             // Exception if EMUL > 8 or < 1/8
             unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
