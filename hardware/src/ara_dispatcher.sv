@@ -1942,9 +1942,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2 = csr_vtype_q.vsew;
                     // Request will need reshuffling
                     ara_req.scale_vl = 1'b1;
-                    // If stride > vl, the vslideup has no effects
-                    if (|ara_req.stride[$bits(ara_req.stride)-1:$bits(csr_vl_q)] ||
-                      (vlen_t'(ara_req.stride) >= csr_vl_q)) null_vslideup = 1'b1;
+                    // vd[0] gets the scalar even when vl == 1, so this is never a null slide
                   end
                   6'b001111: begin // vslide1down
                     ara_req.op      = ara_pkg::VSLIDEDOWN;
@@ -2638,9 +2636,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                     ara_req.eew_vs2  = csr_vtype_q.vsew;
                     // Request will need reshuffling
                     ara_req.scale_vl = 1'b1;
-                    // If stride > vl, the vslideup has no effects
-                    if (|ara_req.stride[$bits(ara_req.stride)-1:$bits(csr_vl_q)] ||
-                      (vlen_t'(ara_req.stride) >= csr_vl_q)) null_vslideup = 1'b1;
+                    // vd[0] gets the scalar even when vl == 1, so this is never a null slide
                     end
                     6'b001111: begin // vfslide1down
                       ara_req.op     = ara_pkg::VSLIDEDOWN;
