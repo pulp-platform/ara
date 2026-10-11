@@ -2128,6 +2128,18 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
                   default: illegal_insn = 1'b1;
                 endcase
 
+                // A widening .vx/.wx instruction uses only the low SEW bits of rs1, extended like a
+                // vs1 element; the lanes replicate the scalar at the wider destination EEW.
+                if (ara_req.conversion_vs1 inside {OpQueueConversionZExt2, OpQueueConversionSExt2}) begin
+                  automatic logic sext = ara_req.conversion_vs1 == OpQueueConversionSExt2;
+                  unique case (csr_vtype_q.vsew)
+                    EW8 : ara_req.scalar_op = {{56{sext & acc_req_i.rs1[ 7]}}, acc_req_i.rs1[ 7:0]};
+                    EW16: ara_req.scalar_op = {{48{sext & acc_req_i.rs1[15]}}, acc_req_i.rs1[15:0]};
+                    EW32: ara_req.scalar_op = {{32{sext & acc_req_i.rs1[31]}}, acc_req_i.rs1[31:0]};
+                    default:;
+                  endcase
+                end
+
                 // Instructions with an integer LMUL have extra constraints on the registers they can
                 // access. The constraints can be different for the two source operands and the
                 // destination register.
