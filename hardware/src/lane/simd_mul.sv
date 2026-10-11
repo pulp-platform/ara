@@ -156,7 +156,8 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
       assign mul_res.w128[l] =
       $signed({opa.w64[l][63] & signed_a, opa.w64[l]}) * $signed({opb.w64[l][63] & signed_b, opb.w64[l]});
       if (FixPtSupport == FixedPointEnable)
-        assign vxsat.w64[l] = (op == VSMUL) ? result_o[(l+1)*64-1] ^ mul_res.w128[l][127] : '0;
+        assign vxsat.w64[l] = (op == VSMUL) ? (opa.w64[l] == {1'b1, {63{1'b0}}} &&
+                                             opb.w64[l] == {1'b1, {63{1'b0}}}) : '0;
       else
         assign vxsat.w64[l] = '0;
     end : gen_mul
@@ -193,13 +194,17 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
         end
         default: result_o = '0;
       endcase
+      // vsmul overflows only for (-2^(SEW-1))^2, which saturates to 2^(SEW-1)-1
+      if (op == VSMUL)
+        for (int l = 0; l < 1; l++) if (vxsat.w64[l]) result_o[64*l +: 64] = {1'b0, {63{1'b1}}};
     end
   end : gen_p_mul_ew64 else if (ElementWidth == EW32) begin: gen_p_mul_ew32
     for (genvar l = 0; l < 2; l++) begin: gen_mul
       assign mul_res.w64[l] =
       $signed({opa.w32[l][31] & signed_a, opa.w32[l]}) * $signed({opb.w32[l][31] & signed_b, opb.w32[l]});
       if (FixPtSupport == FixedPointEnable)
-        assign vxsat.w32[l] = (op == VSMUL) ? result_o[(l+1)*32-1] ^ mul_res.w64[l][63] : '0;
+        assign vxsat.w32[l] = (op == VSMUL) ? (opa.w32[l] == {1'b1, {31{1'b0}}} &&
+                                             opb.w32[l] == {1'b1, {31{1'b0}}}) : '0;
       else
         assign vxsat.w32[l] = '0;
     end: gen_mul
@@ -231,13 +236,17 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
           end
         default: result_o = '0;
       endcase
+      // vsmul overflows only for (-2^(SEW-1))^2, which saturates to 2^(SEW-1)-1
+      if (op == VSMUL)
+        for (int l = 0; l < 2; l++) if (vxsat.w32[l]) result_o[32*l +: 32] = {1'b0, {31{1'b1}}};
     end
   end : gen_p_mul_ew32 else if (ElementWidth == EW16) begin: gen_p_mul_ew16
     for (genvar l = 0; l < 4; l++) begin: gen_mul
       assign mul_res.w32[l] =
       $signed({opa.w16[l][15] & signed_a, opa.w16[l]}) * $signed({opb.w16[l] [15] & signed_b, opb.w16[l]});
       if (FixPtSupport == FixedPointEnable)
-        assign vxsat.w16[l] = (op == VSMUL) ? result_o[(l+1)*16-1] ^ mul_res.w32[l][31] : '0;
+        assign vxsat.w16[l] = (op == VSMUL) ? (opa.w16[l] == {1'b1, {15{1'b0}}} &&
+                                             opb.w16[l] == {1'b1, {15{1'b0}}}) : '0;
       else
         assign vxsat.w16[l] = '0;
     end : gen_mul
@@ -269,13 +278,17 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
           end
         default: result_o = '0;
       endcase
+      // vsmul overflows only for (-2^(SEW-1))^2, which saturates to 2^(SEW-1)-1
+      if (op == VSMUL)
+        for (int l = 0; l < 4; l++) if (vxsat.w16[l]) result_o[16*l +: 16] = {1'b0, {15{1'b1}}};
     end
   end : gen_p_mul_ew16 else if (ElementWidth == EW8) begin: gen_p_mul_ew8
     for (genvar l = 0; l < 8; l++) begin: gen_mul
       assign mul_res.w16[l] =
       $signed({opa.w8[l][7] & signed_a, opa.w8[l]}) * $signed({opb.w8[l][7] & signed_b, opb.w8[l]});
       if (FixPtSupport == FixedPointEnable)
-        assign vxsat.w8[l] = (op == VSMUL) ? result_o[(l+1)*8-1] ^ mul_res.w16[l][15] : '0;
+        assign vxsat.w8[l] = (op == VSMUL) ? (opa.w8[l] == {1'b1, {7{1'b0}}} &&
+                                             opb.w8[l] == {1'b1, {7{1'b0}}}) : '0;
       else
         assign vxsat.w8[l] = '0;
     end : gen_mul
@@ -305,6 +318,9 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
         VNMSUB: for (int l = 0; l < 8; l++) result_o[8*l +: 8] = -mul_res.w16[l][7:0] + opc.w8[l];
         default: result_o = '0;
       endcase
+      // vsmul overflows only for (-2^(SEW-1))^2, which saturates to 2^(SEW-1)-1
+      if (op == VSMUL)
+        for (int l = 0; l < 8; l++) if (vxsat.w8[l]) result_o[8*l +: 8] = {1'b0, {7{1'b1}}};
     end
   end : gen_p_mul_ew8 else begin: gen_p_mul_error
     $error("[simd_vmul] Invalid ElementWidth.");
