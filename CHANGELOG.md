@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+ - Fix the `vssra`/`vssrl`/`vnclip`/`vnclipu` rounding increment, the `vssrl` shift amount and `vnclip`/`vnclipu` saturation (#506)
  - Fix dump vtrace script for vsetvli instructions without x0 (ideal dispatcher)
  - Fix Pathfinder and FFT performance
  - Stall Ara and wait for ara_idle upon CSR write/read

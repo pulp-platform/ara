@@ -423,56 +423,70 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
           endcase
         VSSRL: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
-                automatic logic [8:0] srl = opb.w8 [b] >> opa.w8 [b];
+                automatic logic [8:0] srl = opb.w8[b] >> opa.w8[b][2:0];
                 res.w8[b] = srl + rm[b];
               end
             EW16: for (int b = 0; b < 4; b++) begin
-                automatic logic [16:0] srl = opb.w16[b] >> opa.w16[b];
+                automatic logic [16:0] srl = opb.w16[b] >> opa.w16[b][3:0];
                 res.w16[b] = srl + rm[b];
               end
             EW32: for (int b = 0; b < 2; b++) begin
-                automatic logic [32:0] srl = opb.w32[b] >> opa.w32[b];
+                automatic logic [32:0] srl = opb.w32[b] >> opa.w32[b][4:0];
                 res.w32[b] = srl + rm[b];
               end
             EW64: for (int b = 0; b < 1; b++) begin
-                automatic logic [64:0] srl = opb.w64[b] >> opa.w64[b];
+                automatic logic [64:0] srl = opb.w64[b] >> opa.w64[b][5:0];
                 res.w64[b] = srl + rm[b];
               end
           endcase
 
         // Fixed point clip instructions
+        // Narrowing clips: round the 2*SEW source, then saturate to SEW. vxsat marks the bytes
+        // of the destination element.
         VNCLIP: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8 : for (int b = 0; b < 4; b++) begin
-                automatic logic [15:0] clip = $signed(opb.w16[b]) >>> opa.w16[b][3:0];
-                vxsat.w8[b]   = |clip[15:8];
-                res.w8 [2*b + narrowing_select_i] = ($signed(opb.w16[b]) >>> opa.w16[b][3:0]) + rm[b];
+                automatic logic signed [15:0] clip = ($signed(opb.w16[b]) >>> opa.w16[b][3:0]) +
+                    $signed({1'b0, rm[b]});
+                automatic logic hi = clip > 16'sd127;
+                automatic logic lo = clip < -16'sd128;
+                res.w8[2*b + narrowing_select_i]   = hi ? 8'h7f : lo ? 8'h80 : clip[7:0];
+                vxsat.w8[2*b + narrowing_select_i] = {1{hi | lo}};
               end
             EW16: for (int b = 0; b < 2; b++) begin
-                automatic logic [31:0] clip = $signed(opb.w32[b]) >>> opa.w32[b][4:0];
-                vxsat.w8[b]   = |clip[31:16];
-                res.w16[2*b + narrowing_select_i] = ($signed(opb.w32[b]) >>> opa.w32[b][4:0]) + rm[b];
+                automatic logic signed [31:0] clip = ($signed(opb.w32[b]) >>> opa.w32[b][4:0]) +
+                    $signed({1'b0, rm[b]});
+                automatic logic hi = clip > 32'sd32767;
+                automatic logic lo = clip < -32'sd32768;
+                res.w16[2*b + narrowing_select_i]   = hi ? 16'h7fff : lo ? 16'h8000 : clip[15:0];
+                vxsat.w16[2*b + narrowing_select_i] = {2{hi | lo}};
               end
             EW32: for (int b = 0; b < 1; b++) begin
-                automatic logic [63:0] clip = $signed(opb.w64[b]) >>> opa.w64[b][5:0];
-                vxsat.w8[b]   = |clip[63:32];
-                res.w32[2*b + narrowing_select_i] = ($signed(opb.w64[b]) >>> opa.w64[b][5:0]) + rm[b];
+                automatic logic signed [63:0] clip = ($signed(opb.w64[b]) >>> opa.w64[b][5:0]) +
+                    $signed({1'b0, rm[b]});
+                automatic logic hi = clip > 64'sd2147483647;
+                automatic logic lo = clip < -64'sd2147483648;
+                res.w32[2*b + narrowing_select_i]   = hi ? 32'h7fffffff : lo ? 32'h80000000 : clip[31:0];
+                vxsat.w32[2*b + narrowing_select_i] = {4{hi | lo}};
               end
           endcase
         VNCLIPU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8 : for (int b = 0; b < 4; b++) begin
-                automatic logic [15:0] clipu = opb.w16[b] >> opa.w16[b][3:0];
-                vxsat.w8[b]   = |clipu[15:8];
-                res.w8 [2*b + narrowing_select_i] = (opb.w16[b] >> opa.w16[b][3:0]) + rm[b];
+                automatic logic [16:0] clip = (opb.w16[b] >> opa.w16[b][3:0]) + rm[b];
+                automatic logic hi = clip > 17'd255;
+                res.w8[2*b + narrowing_select_i]   = hi ? 8'hff : clip[7:0];
+                vxsat.w8[2*b + narrowing_select_i] = {1{hi}};
               end
             EW16: for (int b = 0; b < 2; b++) begin
-                automatic logic [31:0] clipu = opb.w32[b] >> opa.w32[b][4:0];
-                vxsat.w8[b]   = |clipu[31:16];
-                res.w16[2*b + narrowing_select_i] = (opb.w32[b] >> opa.w32[b][4:0]) + rm[b];
+                automatic logic [32:0] clip = (opb.w32[b] >> opa.w32[b][4:0]) + rm[b];
+                automatic logic hi = clip > 33'd65535;
+                res.w16[2*b + narrowing_select_i]   = hi ? 16'hffff : clip[15:0];
+                vxsat.w16[2*b + narrowing_select_i] = {2{hi}};
               end
             EW32: for (int b = 0; b < 1; b++) begin
-                automatic logic [63:0] clipu = opb.w64[b] >> opa.w64[b][5:0];
-                vxsat.w8[b]   = |clipu[63:32];
-                res.w32[2*b + narrowing_select_i] = (opb.w64[b] >> opa.w64[b][5:0]) + rm[b];
+                automatic logic [64:0] clip = (opb.w64[b] >> opa.w64[b][5:0]) + rm[b];
+                automatic logic hi = clip > 65'd4294967295;
+                res.w32[2*b + narrowing_select_i]   = hi ? 32'hffffffff : clip[31:0];
+                vxsat.w32[2*b + narrowing_select_i] = {4{hi}};
               end
           endcase
 
