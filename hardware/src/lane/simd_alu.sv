@@ -185,44 +185,52 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
           endcase
         VAADD, VAADDU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
-              automatic logic [ 8:0] sum = opa.w8 [b] + opb.w8 [b];
+              automatic logic [ 8:0] sum = (op_i == VAADDU) ?
+                  {1'b0, opa.w8[b]} + {1'b0, opb.w8[b]} :
+                  {opa.w8[b][7], opa.w8[b]} + {opb.w8[b][7], opb.w8[b]};
                 unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
-                res.w8[b] = (op_i == VAADDU) ? sum[8:1] + r : {sum[7], sum[7:1]} + r;
+                res.w8[b] = sum[8:1] + r;
               end
             EW16: for (int b = 0; b < 4; b++) begin
-                automatic logic [16:0] sum = opa.w16[b] + opb.w16[b];
+                automatic logic [16:0] sum = (op_i == VAADDU) ?
+                  {1'b0, opa.w16[b]} + {1'b0, opb.w16[b]} :
+                  {opa.w16[b][15], opa.w16[b]} + {opb.w16[b][15], opb.w16[b]};
                 unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
-                res.w16[b] = (op_i == VAADDU) ? sum[16:1] + r : {sum[15], sum[15:1]} + r;
+                res.w16[b] = sum[16:1] + r;
               end
             EW32: for (int b = 0; b < 2; b++) begin
-                automatic logic [32:0] sum = opa.w32[b] + opb.w32[b];
+                automatic logic [32:0] sum = (op_i == VAADDU) ?
+                  {1'b0, opa.w32[b]} + {1'b0, opb.w32[b]} :
+                  {opa.w32[b][31], opa.w32[b]} + {opb.w32[b][31], opb.w32[b]};
                 unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
-                res.w32[b] = (op_i == VAADDU) ? sum[32:1] + r : {sum[31], sum[31:1]} + r;
+                res.w32[b] = sum[32:1] + r;
               end
             EW64: for (int b = 0; b < 1; b++) begin
-                automatic logic [64:0] sum = opa.w64[b] + opb.w64[b];
+                automatic logic [64:0] sum = (op_i == VAADDU) ?
+                  {1'b0, opa.w64[b]} + {1'b0, opb.w64[b]} :
+                  {opa.w64[b][63], opa.w64[b]} + {opb.w64[b][63], opb.w64[b]};
                 unique case (vxrm)
                   2'b00: r = sum[0];
                   2'b01: r = &sum[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sum[1] & (sum[0]!=0);
                 endcase
-                res.w64[b] = (op_i == VAADDU) ? sum[64:1] + r : {sum[63], sum[63:1]} + r;
+                res.w64[b] = sum[64:1] + r;
               end
           endcase
         VADD, VADC, VMADC, VREDSUM, VWREDSUMU, VWREDSUM: unique case (vew_i)
@@ -325,44 +333,52 @@ module simd_alu import ara_pkg::*; import rvv_pkg::*; #(
           endcase
         VASUB, VASUBU: if (FixPtSupport == FixedPointEnable) unique case (vew_i)
             EW8: for (int b = 0; b < 8; b++) begin
-                automatic logic [ 8:0] sub = opb.w8 [b] - opa.w8 [b];
+                automatic logic [ 8:0] sub = (op_i == VASUBU) ?
+                  {1'b0, opb.w8[b]} - {1'b0, opa.w8[b]} :
+                  {opb.w8[b][7], opb.w8[b]} - {opa.w8[b][7], opa.w8[b]};
                 unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w8[b] = (op_i == VASUBU) ? (sub[7:0] >> 1) + r : ($signed(sub[7:0]) >>> 1) + r;
+                res.w8[b] = sub[8:1] + r;
               end
             EW16: for (int b = 0; b < 4; b++) begin
-                automatic logic [ 16:0] sub = opb.w16[b] - opa.w16[b];
+                automatic logic [16:0] sub = (op_i == VASUBU) ?
+                  {1'b0, opb.w16[b]} - {1'b0, opa.w16[b]} :
+                  {opb.w16[b][15], opb.w16[b]} - {opa.w16[b][15], opa.w16[b]};
                 unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w16[b] = (op_i == VASUBU) ? (sub[15:0] >> 1) + r : ($signed(sub[15:0]) >>> 1) + r;
+                res.w16[b] = sub[16:1] + r;
               end
             EW32: for (int b = 0; b < 2; b++) begin
-                automatic logic [ 32:0] sub = opb.w32[b] - opa.w32[b];
+                automatic logic [32:0] sub = (op_i == VASUBU) ?
+                  {1'b0, opb.w32[b]} - {1'b0, opa.w32[b]} :
+                  {opb.w32[b][31], opb.w32[b]} - {opa.w32[b][31], opa.w32[b]};
                 unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w32[b] = (op_i == VASUBU) ? (sub[31:0] >> 1) + r : ($signed(sub[31:0]) >>> 1) + r;
+                res.w32[b] = sub[32:1] + r;
               end
             EW64: for (int b = 0; b < 1; b++) begin
-                automatic logic [ 64:0] sub = opb.w64[b] - opa.w64[b];
+                automatic logic [64:0] sub = (op_i == VASUBU) ?
+                  {1'b0, opb.w64[b]} - {1'b0, opa.w64[b]} :
+                  {opb.w64[b][63], opb.w64[b]} - {opa.w64[b][63], opa.w64[b]};
                 unique case (vxrm)
                   2'b00: r = sub[0];
                   2'b01: r = &sub[1:0];
                   2'b10: r = 1'b0;
                   2'b11: r = !sub[1] & (sub[0]!=0);
                 endcase
-                res.w64[b] = (op_i == VASUBU) ? (sub[63:0] >> 1) + r : ($signed(sub[63:0]) >>> 1) + r;
+                res.w64[b] = sub[64:1] + r;
               end
           endcase
 
