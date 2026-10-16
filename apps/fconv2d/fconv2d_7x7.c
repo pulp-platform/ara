@@ -299,6 +299,14 @@ void fconv2d_7x7_block(double *o, double *i, double *f, int64_t R, int64_t C,
   // outside of this loop) (We keep F rows outside because of the unrolling by
   // 2, just for easeness)
   for (int j = 0; j < ((R + F - 1) - 2 * F) / 2; ++j) {
+#ifdef VCD_DUMP
+    // VCD window: iterations j = 3..4, 4 output rows (needs M >= 20)
+    if (j == 3)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (j == 5)
+      *(volatile int64_t *)&event_trigger = -1;
+#endif
+
     // Work on F output rows
 
     //////////////

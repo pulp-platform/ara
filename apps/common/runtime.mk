@@ -96,7 +96,9 @@ endif
 ifeq ($(netlist),1)
 ENV_DEFINES += -DNETLIST=1
 endif
-MAKE_DEFINES = -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen)
+# Result checking in the kernels (check=0 skips it)
+check ?= 1
+MAKE_DEFINES = -DNR_LANES=$(nr_lanes) -DVLEN=$(vlen) -DCHECK=$(check)
 DEFINES += $(ENV_DEFINES) $(MAKE_DEFINES)
 
 # Common flags

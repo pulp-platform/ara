@@ -31,6 +31,12 @@ APPS += $(patsubst $(APPS_DIR)/%/main.cpp,%,$(shell find $(APPS_DIR) -name "main
 # Don't automatically compile the benchmark app, which is only a wrapper around the other apps
 BINARIES := $(filter-out bin/benchmarks bin/rivec-bmarks% bin/_%, $(addprefix bin/,$(APPS)))
 
+# Precision tokens (FP64/FP32/FP16) in def_args_* become -D<TOK>=1
+define app_prec_defines_template
+bin/$1 bin/$1.%: ENV_DEFINES += $(patsubst %,-D%=1,$(filter FP64 FP32 FP16,$(subst ",,$(def_args_$1))))
+endef
+$(foreach app,$(APPS),$(eval $(call app_prec_defines_template,$(app))))
+
 CVA6_EXTENSIONS := rv64ui rv64uc rv64um rv64uf rv64ud rv64si
 # Atomics are messy, since there is currently no memory region capable of handling them
 # CVA6_EXTENSIONS := rv64ua

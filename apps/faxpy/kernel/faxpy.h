@@ -29,6 +29,10 @@ extern int64_t event_trigger;
 
 void faxpy_v64b(const double a, const double *x, const double *y, size_t avl);
 void faxpy_v64b_unrl(const double a, const double *x, const double *y, size_t avl);
+void faxpy_v32b(const float a, const float *x, const float *y, size_t avl);
+void faxpy_v32b_unrl(const float a, const float *x, const float *y, size_t avl);
+void faxpy_v16b(const _Float16 a, const _Float16 *x, const _Float16 *y, size_t avl);
+void faxpy_v16b_unrl(const _Float16 a, const _Float16 *x, const _Float16 *y, size_t avl);
 
 // void faxpy_s64b(const double a, const double *x, const double *y, size_t avl);
 

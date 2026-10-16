@@ -17,8 +17,12 @@
 // Author: Matteo Perotti <mperotti@iis.ee.ethz.ch>
 
 #include "cos.h"
+#include "cos_hoist.h"
 
-void cos_1xf64_bmark(double *angles, double *results, size_t len) {
+// VCD window trigger
+extern int64_t event_trigger;
+
+void cos_1xf64_intr_bmark(double *angles, double *results, size_t len) {
 
   size_t avl = len;
   vfloat64m1_t cos_vec, res_vec;
@@ -46,7 +50,7 @@ void cos_1xf64_bmark(double *angles, double *results, size_t len) {
 #endif
 }
 
-void cos_2xf32_bmark(float *angles, float *results, size_t len) {
+void cos_2xf32_intr_bmark(float *angles, float *results, size_t len) {
 
   size_t avl = len;
   vfloat32m1_t cos_vec, res_vec;
@@ -72,4 +76,61 @@ void cos_2xf32_bmark(float *angles, float *results, size_t len) {
   // Stop dumping VCD
   event_trigger = -1;
 #endif
+}
+
+// Constants hoisted out of the loop (cos_hoist.h)
+void cos_1xf64_bmark(double *angles, double *results, size_t len) {
+  size_t avl = len, vlmax;
+  asm volatile("vsetvli %0, zero, e64, m1, ta, ma" : "=r"(vlmax));
+  VCOS_CONST_INIT_F64();
+#ifdef VCD_DUMP
+  size_t strip = 0;
+#endif
+  while (avl > 0) {
+#ifdef VCD_DUMP
+    // VCD window: strips 25..32 (needs len > 32 * VLMAX)
+    strip++;
+    if (strip == 25)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (strip == 33)
+      *(volatile int64_t *)&event_trigger = -1;
+#endif
+
+    size_t vl;
+    asm volatile("vsetvli %0, %1, e64, m1, ta, ma" : "=r"(vl) : "r"(avl));
+    asm volatile("vle64.v v1, (%0)" ::"r"(angles));
+    VCOS_F64M1(v2, v1);
+    asm volatile("vse64.v v2, (%0)" ::"r"(results) : "memory");
+    angles += vl;
+    results += vl;
+    avl -= vl;
+  }
+}
+
+void cos_2xf32_bmark(float *angles, float *results, size_t len) {
+  size_t avl = len, vlmax;
+  asm volatile("vsetvli %0, zero, e32, m1, ta, ma" : "=r"(vlmax));
+  VCOS_CONST_INIT_F32();
+#ifdef VCD_DUMP
+  size_t strip = 0;
+#endif
+  while (avl > 0) {
+#ifdef VCD_DUMP
+    // VCD window: strips 13..16 (needs len > 16 * VLMAX)
+    strip++;
+    if (strip == 13)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (strip == 17)
+      *(volatile int64_t *)&event_trigger = -1;
+#endif
+
+    size_t vl;
+    asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+    asm volatile("vle32.v v1, (%0)" ::"r"(angles));
+    VCOS_F32M1(v2, v1);
+    asm volatile("vse32.v v2, (%0)" ::"r"(results) : "memory");
+    angles += vl;
+    results += vl;
+    avl -= vl;
+  }
 }

@@ -1,0 +1,357 @@
+// Copyright 2020 ETH Zurich and University of Bologna.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: Matteo Perotti
+
+// e16 version of fconv2d_3x3.c
+
+#include "fconv2d.h"
+
+// Compute n_ output columns (row strides use the full C)
+static void fconv2d16_3x3_impl(_Float16 *o, _Float16 *i, _Float16 *f, int64_t R,
+                             int64_t C, int64_t n_, int64_t F);
+
+// Tile the columns if an input row does not fit in one m2 group
+// (chunks of vlmax - F + 1 columns, rounded down to a multiple of NR_LANES)
+void fconv2d16_3x3(_Float16 *o, _Float16 *i, _Float16 *f, int64_t R, int64_t C,
+                 int64_t F) {
+  int64_t vl_in;
+  asm volatile("vsetvli %0, %1, e16, m2, ta, ma" : "=r"(vl_in) : "r"(C + F - 1));
+
+  if (vl_in == C + F - 1) {
+    fconv2d16_3x3_impl(o, i, f, R, C, C, F);
+  } else {
+    int64_t chunk = (vl_in - (F - 1)) & ~((int64_t)NR_LANES - 1);
+    for (int64_t col = 0; col < C; col += chunk)
+      fconv2d16_3x3_impl(o + col, i + col, f, R, C, MIN(C - col, chunk), F);
+  }
+}
+
+static void fconv2d16_3x3_impl(_Float16 *o, _Float16 *i, _Float16 *f, int64_t R,
+                             int64_t C, int64_t n_, int64_t F) {
+  // We work on 4 rows of the output matrix at once
+  int64_t block_size_o = 4;
+  // We work on block_size_o + F - 1 rows of the input matrix at once
+
+  // First iteration round, r = 0
+  _Float16 *i_ = i;
+  _Float16 *o_ = o;
+
+  // Preload the first two input rows -> This is not needed in the other rounds
+  fconv2d16_vec_4xC_slice_preload_3x3(i_, C, n_, F);
+  // The first F-1 rows have already been loaded by
+  // fconv2d16_vec_4xC_slice_preload_3x3()
+  _Float16 *i__ = i_ + (F - 1) * (C + F - 1);
+  fconv2d16_vec_4xC_3x3(o_, i__, f, C, n_, F);
+  // Re-use some of the already-loaded input rows
+  fconv2d16_vec_4xC_slice_move_3x3(n_, F);
+
+  i_ = i + block_size_o * (C + F - 1);
+  i__ = i_ + (F - 1) * (C + F - 1);
+
+  int64_t ldi = (C + F - 1) << 1;
+  int64_t ldf = F << 1;
+
+  // Temporary variables
+  _Float16 t0, t1, t2;
+  // Helper variables
+  _Float16 *f_;
+  f_ = f;
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0);" : "+&r"(f_), "=&f"(t2));
+
+  // Iterate over the output rows
+  for (int64_t r = block_size_o; r < R; r += block_size_o) {
+
+    // The first F-1 rows have already been loaded by
+    // fconv2d16_vec_4xC_slice_init()
+
+    _Float16 t3, t4, t5;
+
+    // Fetch C + F - 1 elements (padding included)
+    asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_ + F - 1));
+    f_ = f;
+
+    // Fetch the first column of the filter, and start calculating its
+    // contribution on the four output rows (v0, v2, v4, v6)
+
+    // Fetch 4 + F - 1 - 2 rows of the input matrix
+    // Compute on C + F - 1 elements, instead of C elements, to cover the
+    // latency of the load instructions
+    asm volatile("vmv.v.v v8, v16");
+    asm volatile("vle16.v v12, (%0); add %0, %0, %1" : "+&r"(i__) : "r"(ldi));
+    asm volatile("vfmul.vf v0, v8, %0" ::"f"(t0));
+
+    asm volatile("vmv.v.v v10, v18");
+    asm volatile("vfmul.vf v2, v10, %0" ::"f"(t0));
+    asm volatile("vle16.v v14, (%0); add %0, %0, %1" : "+&r"(i__) : "r"(ldi));
+    asm volatile("vfmacc.vf v0, %0, v10" ::"f"(t1));
+
+    asm volatile("vfmacc.vf v2, %0, v12" ::"f"(t1));
+    asm volatile("vle16.v v16, (%0); add %0, %0, %1" : "+&r"(i__) : "r"(ldi));
+    asm volatile("vfmacc.vf v0, %0, v12" ::"f"(t2));
+    asm volatile("vslidedown.vi v20, v8,  1");
+    asm volatile("vfmul.vf v4, v12, %0" ::"f"(t0));
+
+    asm volatile("vle16.v v18, (%0); add %0, %0, %1" : "+&r"(i__) : "r"(ldi));
+
+    asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_));
+
+    asm volatile("vfmul.vf v6, v14, %0" ::"f"(t0));
+    asm volatile("vslidedown.vi v22, v10, 1");
+    asm volatile("vfmacc.vf v4, %0, v14" ::"f"(t1));
+    asm volatile("vfmacc.vf v2, %0, v14" ::"f"(t2));
+    asm volatile("vslidedown.vi v24, v12, 1");
+
+    asm volatile("vfmacc.vf v6, %0, v16" ::"f"(t1));
+    asm volatile("vfmacc.vf v4, %0, v16" ::"f"(t2));
+
+    asm volatile("vslidedown.vi v26, v14, 1");
+
+    asm volatile("vfmacc.vf v6, %0, v18" ::"f"(t2));
+
+    f_ = f + 1;
+    // Fetch the middle column of the filter, and start calculating its
+    // contributions on the output rows To do so, slide down the input rows by
+    // one
+    asm volatile("flh %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&f"(t3)
+                 : "r"(ldf));
+    asm volatile("flh %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&f"(t4)
+                 : "r"(ldf));
+    asm volatile("flh %1, (%0);" : "+&r"(f_), "=&f"(t5));
+
+    asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t3));
+
+    asm volatile("vfmacc.vf v0, %0, v22" ::"f"(t4));
+    asm volatile("vslidedown.vi v28, v16, 1");
+    asm volatile("vfmacc.vf v2, %0, v22" ::"f"(t3));
+
+    i_ = i + (r + block_size_o) * (C + F - 1);
+    asm volatile("vfmacc.vf v0, %0, v24" ::"f"(t5));
+    asm volatile("vslidedown.vi v30, v18, 1");
+    asm volatile("vfmacc.vf v2, %0, v24" ::"f"(t4));
+    asm volatile("vfmacc.vf v4, %0, v24" ::"f"(t3));
+    asm volatile("vslidedown.vi v20, v8,  2");
+
+    asm volatile("vfmacc.vf v2, %0, v26" ::"f"(t5));
+    asm volatile("vfmacc.vf v4, %0, v26" ::"f"(t4));
+    asm volatile("vslidedown.vi v22, v10, 2");
+    asm volatile("vfmacc.vf v6, %0, v26" ::"f"(t3));
+    i__ = i_ + (F - 1) * (C + F - 1);
+
+    asm volatile("vfmacc.vf v4, %0, v28" ::"f"(t5));
+    f_ = f + 2;
+    asm volatile("flh %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&f"(t3)
+                 : "r"(ldf));
+    asm volatile("vfmacc.vf v6, %0, v28" ::"f"(t4));
+    asm volatile("vslidedown.vi v24, v12, 2");
+
+    asm volatile("vfmacc.vf v6, %0, v30" ::"f"(t5));
+    asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t3));
+    asm volatile("vslidedown.vi v26, v14, 2");
+
+    // Repeat for the last filter column, and then store the output rows
+    asm volatile("flh %1, (%0); add %0, %0, %2"
+                 : "+&r"(f_), "=&f"(t4)
+                 : "r"(ldf));
+    asm volatile("flh %1, (%0);" : "+&r"(f_), "=&f"(t5));
+
+    asm volatile("vfmacc.vf v0, %0, v22" ::"f"(t4));
+    o_ = o + r * C;
+
+    // Compute on C elements
+    int64_t ldo = C << 1;
+    asm volatile("vfmacc.vf v2, %0, v22" ::"f"(t3));
+    asm volatile("vslidedown.vi v28, v16, 2");
+
+    asm volatile("vfmacc.vf v0, %0, v24" ::"f"(t5));
+    asm volatile("vfmacc.vf v2, %0, v24" ::"f"(t4));
+    asm volatile("vslidedown.vi v30, v18, 2");
+    asm volatile("vse16.v  v0, (%0); add %0, %0, %1" : "+&r"(o_) : "r"(ldo));
+    asm volatile("vfmacc.vf v4, %0, v24" ::"f"(t3));
+
+    asm volatile("vfmacc.vf v2, %0, v26" ::"f"(t5));
+    asm volatile("vse16.v  v2, (%0); add %0, %0, %1" : "+&r"(o_) : "r"(ldo));
+    asm volatile("vfmacc.vf v4, %0, v26" ::"f"(t4));
+    asm volatile("vfmacc.vf v6, %0, v26" ::"f"(t3));
+
+    asm volatile("vfmacc.vf v4, %0, v28" ::"f"(t5));
+    asm volatile("vse16.v  v4, (%0); add %0, %0, %1" : "+&r"(o_) : "r"(ldo));
+    asm volatile("vfmacc.vf v6, %0, v28" ::"f"(t4));
+
+    asm volatile("vfmacc.vf v6, %0, v30" ::"f"(t5));
+    asm volatile("vse16.v  v6, (%0);" : "+r"(o_));
+  }
+}
+
+// Load 4 rows of the output matrix
+void fconv2d16_vec_4xC_slice_preload_3x3(_Float16 *i, int64_t C, int64_t n_,
+                                       int64_t F) {
+  // Helper variables
+  int64_t ldi = (C + F - 1) << 1;
+
+  // Set the vector configuration
+  asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_ + F - 1));
+  // Fetch the first floor(F/2) + 1 input rows
+  asm volatile("vle16.v v8,  (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
+  asm volatile("vle16.v v10, (%0); add %0, %0, %1" : "+r"(i));
+}
+
+// Calculate 4 output matrix rows
+void fconv2d16_vec_4xC_3x3(_Float16 *o, _Float16 *i, _Float16 *f, int64_t C,
+                         int64_t n_, int64_t F) {
+
+  // Temporary variables
+  _Float16 t0, t1, t2;
+
+  // Helper variables
+  int64_t ldo = C << 1;
+  int64_t ldi = (C + F - 1) << 1;
+  int64_t ldf = F << 1;
+  _Float16 *f_;
+
+  // Fetch C + F - 1 elements (padding included)
+  asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_ + F - 1));
+  f_ = f;
+  // Fetch the first column of the filter, and start calculating its
+  // contribution on the four output rows (v0, v2, v4, v6)
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0);" : "+&r"(f_), "=&f"(t2));
+
+  // Fetch 4 + F - 1 - 2 rows of the input matrix
+  // Compute on C + F - 1 elements, instead of C elements, to cover the latency
+  // of the load instructions
+  asm volatile("vle16.v v12, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
+  asm volatile("vfmul.vf v0, v8, %0" ::"f"(t0));
+
+  asm volatile("vfmul.vf v2, v10, %0" ::"f"(t0));
+  asm volatile("vle16.v v14, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
+  asm volatile("vfmacc.vf v0, %0, v10" ::"f"(t1));
+
+  asm volatile("vfmacc.vf v2, %0, v12" ::"f"(t1));
+  asm volatile("vle16.v v16, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
+  asm volatile("vfmacc.vf v0, %0, v12" ::"f"(t2));
+  asm volatile("vslidedown.vi v20, v8,  1");
+  asm volatile("vfmul.vf v4, v12, %0" ::"f"(t0));
+
+  asm volatile("vle16.v v18, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
+
+  asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_));
+
+  asm volatile("vfmul.vf v6, v14, %0" ::"f"(t0));
+  asm volatile("vfmacc.vf v4, %0, v14" ::"f"(t1));
+  asm volatile("vslidedown.vi v22, v10, 1");
+  asm volatile("vfmacc.vf v2, %0, v14" ::"f"(t2));
+
+  asm volatile("vfmacc.vf v6, %0, v16" ::"f"(t1));
+  asm volatile("vfmacc.vf v4, %0, v16" ::"f"(t2));
+
+  asm volatile("vslidedown.vi v24, v12, 1");
+  asm volatile("vfmacc.vf v6, %0, v18" ::"f"(t2));
+
+  f_ = f + 1;
+  // Fetch the middle column of the filter, and start calculating its
+  // contributions on the output rows To do so, slide down the input rows by one
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0);" : "+&r"(f_), "=&f"(t2));
+
+  asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v0, %0, v22" ::"f"(t1));
+  asm volatile("vslidedown.vi v26, v14, 1");
+  asm volatile("vfmacc.vf v2, %0, v22" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v0, %0, v24" ::"f"(t2));
+  asm volatile("vfmacc.vf v2, %0, v24" ::"f"(t1));
+  asm volatile("vslidedown.vi v28, v16, 1");
+  asm volatile("vfmacc.vf v4, %0, v24" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v2, %0, v26" ::"f"(t2));
+  asm volatile("vfmacc.vf v4, %0, v26" ::"f"(t1));
+  asm volatile("vslidedown.vi v30, v18, 1");
+  asm volatile("vfmacc.vf v6, %0, v26" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v4, %0, v28" ::"f"(t2));
+  asm volatile("vslidedown.vi v20, v8,  2");
+  asm volatile("vfmacc.vf v6, %0, v28" ::"f"(t1));
+
+  asm volatile("vfmacc.vf v6, %0, v30" ::"f"(t2));
+  asm volatile("vslidedown.vi v22, v10, 2");
+
+  f_ = f + 2;
+  // Repeat for the last filter column, and then store the output rows
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t0)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0); add %0, %0, %2"
+               : "+&r"(f_), "=&f"(t1)
+               : "r"(ldf));
+  asm volatile("flh %1, (%0);" : "+&r"(f_), "=&f"(t2));
+
+  asm volatile("vfmacc.vf v0, %0, v20" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v0, %0, v22" ::"f"(t1));
+  asm volatile("vslidedown.vi v24, v12, 2");
+  asm volatile("vfmacc.vf v2, %0, v22" ::"f"(t0));
+
+  // Compute on C elements
+
+  asm volatile("vfmacc.vf v0, %0, v24" ::"f"(t2));
+  asm volatile("vse16.v  v0, (%0); add %0, %0, %1" : "+&r"(o) : "r"(ldo));
+  asm volatile("vslidedown.vi v26, v14, 2");
+  asm volatile("vfmacc.vf v2, %0, v24" ::"f"(t1));
+  asm volatile("vfmacc.vf v4, %0, v24" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v2, %0, v26" ::"f"(t2));
+  asm volatile("vse16.v  v2, (%0); add %0, %0, %1" : "+&r"(o) : "r"(ldo));
+  asm volatile("vslidedown.vi v28, v16, 2");
+  asm volatile("vfmacc.vf v4, %0, v26" ::"f"(t1));
+  asm volatile("vfmacc.vf v6, %0, v26" ::"f"(t0));
+
+  asm volatile("vfmacc.vf v4, %0, v28" ::"f"(t2));
+  asm volatile("vslidedown.vi v30, v18, 2");
+  asm volatile("vse16.v  v4, (%0); add %0, %0, %1" : "+&r"(o) : "r"(ldo));
+  asm volatile("vfmacc.vf v6, %0, v28" ::"f"(t1));
+
+  asm volatile("vfmacc.vf v6, %0, v30" ::"f"(t2));
+  asm volatile("vse16.v  v6, (%0);" : "+r"(o));
+}
+
+void fconv2d16_vec_4xC_slice_move_3x3(int64_t n_, int64_t F) {
+  // Move n_+F-1 elements
+  asm volatile("vsetvli zero, %0, e16, m2, ta, ma" ::"r"(n_ + F - 1));
+  // Move the last floor(F/2) + 1 input rows
+  asm volatile("vmv.v.v v8, v16");
+  asm volatile("vmv.v.v v10, v18");
+}

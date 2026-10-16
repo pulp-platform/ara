@@ -27,7 +27,9 @@
 double fdotp_v64b(const double *a, const double *b, size_t avl);
 double fdotp_v64b_m8_unrl(const double *a, const double *b, unsigned int avl);
 float fdotp_v32b(const float *a, const float *b, size_t avl);
+float fdotp_v32b_m8_unrl(const float *a, const float *b, unsigned int avl);
 _Float16 fdotp_v16b(const _Float16 *a, const _Float16 *b, size_t avl);
+_Float16 fdotp_v16b_m8_unrl(const _Float16 *a, const _Float16 *b, unsigned int avl);
 
 double fdotp_s64b(const double *a, const double *b, size_t avl);
 float fdotp_s32b(const float *a, const float *b, size_t avl);

@@ -19,7 +19,6 @@
 
 import numpy as np
 import random
-from functools import reduce
 import sys
 
 def emit(name, array, alignment='8'):
@@ -33,51 +32,48 @@ def emit(name, array, alignment='8'):
       s += "%02x" % bs[i+3-n]
     print("    .word 0x%s" % s)
 
-# Vector length
-if len(sys.argv) > 1:
-  vsize = int(sys.argv[1])
-else:
-  # Default: no stripmine
-  vsize = 64
+# Args: vector length, then FP64/FP32/FP16 tokens
+PRECISIONS = ("FP64", "FP32", "FP16")
+args = sys.argv[1:]
+prec = set(a.upper() for a in args if a.upper() in PRECISIONS)
+nums = [a for a in args if a.upper() not in PRECISIONS]
+if not prec:
+  sys.stderr.write("Error. Give me at least one precision: %s.\n" % "/".join(PRECISIONS))
+  sys.exit(1)
 
-avl64 = int(vsize)
-avl32 = int(vsize)
-avl16 = int(vsize)
+# Vector length (default: no stripmine)
+vsize = int(nums[0]) if nums else 64
 
-# Create the vectors
-v64a = np.random.rand(avl64).astype(np.float64)
-v64b = np.random.rand(avl64).astype(np.float64)
-v32a = np.random.rand(avl32).astype(np.float32)
-v32b = np.random.rand(avl32).astype(np.float32)
-v16a = np.random.rand(avl16).astype(np.float16)
-v16b = np.random.rand(avl16).astype(np.float16)
-
-# Create the golden output
-gold64 = reduce(lambda a, b: a+b, np.multiply(v64a, v64b))
-gold32 = reduce(lambda a, b: a+b, np.multiply(v32a, v32b))
-gold16 = reduce(lambda a, b: a+b, np.multiply(v16a, v16b))
-gold16 = np.array([gold16, gold16])
-
-# Create the empty result vectors
-res64 = 0
-res32 = 0
-res16 = 0
-
-# Print information on file
 print(".section .data,\"aw\",@progbits")
 emit("vsize", np.array(vsize, dtype=np.uint64))
-emit("v64a", v64a, 'NR_LANES*8')
-emit("v64b", v64b, 'NR_LANES*8')
-emit("v32a", v32a, 'NR_LANES*8')
-emit("v32b", v32b, 'NR_LANES*8')
-emit("v16a", v16a, 'NR_LANES*8')
-emit("v16b", v16b, 'NR_LANES*8')
-emit("gold64", np.array(gold64, dtype=np.float64));
-emit("gold32", np.array(gold32, dtype=np.float32));
-emit("gold16", gold16, 'NR_LANES*8');
-emit("res64_v", np.array(res64, dtype=np.float64));
-emit("res32_v", np.array(res32, dtype=np.float32));
-emit("res16_v", np.array(res16, dtype=np.float32));
-emit("res64_s", np.array(res64, dtype=np.float64));
-emit("res32_s", np.array(res32, dtype=np.float32));
-emit("res16_s", np.array(res16, dtype=np.float32));
+
+# Golden sums in float64, rounded once (an fp16 running sum stalls at 2048)
+if "FP64" in prec:
+  v64a = np.random.rand(vsize).astype(np.float64)
+  v64b = np.random.rand(vsize).astype(np.float64)
+  emit("v64a", v64a, 'NR_LANES*8')
+  emit("v64b", v64b, 'NR_LANES*8')
+  emit("gold64", np.array(np.dot(v64a, v64b), dtype=np.float64))
+  emit("res64_v", np.array(0, dtype=np.float64))
+  emit("res64_s", np.array(0, dtype=np.float64))
+
+if "FP32" in prec:
+  v32a = np.random.rand(vsize).astype(np.float32)
+  v32b = np.random.rand(vsize).astype(np.float32)
+  emit("v32a", v32a, 'NR_LANES*8')
+  emit("v32b", v32b, 'NR_LANES*8')
+  emit("gold32", np.array(np.dot(v32a.astype(np.float64), v32b.astype(np.float64)), dtype=np.float32))
+  emit("res32_v", np.array(0, dtype=np.float32))
+  emit("res32_s", np.array(0, dtype=np.float32))
+
+if "FP16" in prec:
+  v16a = np.random.rand(vsize).astype(np.float16)
+  v16b = np.random.rand(vsize).astype(np.float16)
+  emit("v16a", v16a, 'NR_LANES*8')
+  emit("v16b", v16b, 'NR_LANES*8')
+  # Duplicated to fill a whole .word (main.c reads the first)
+  gold16 = np.float16(np.dot(v16a.astype(np.float64), v16b.astype(np.float64)))
+  emit("gold16", np.array([gold16, gold16]), 'NR_LANES*8')
+  # float32-sized for the same reason
+  emit("res16_v", np.array(0, dtype=np.float32))
+  emit("res16_s", np.array(0, dtype=np.float32))

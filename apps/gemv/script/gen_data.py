@@ -19,7 +19,6 @@
 
 import numpy as np
 import random
-from functools import reduce
 import sys
 
 def emit(name, array, alignment='8'):
@@ -33,32 +32,37 @@ def emit(name, array, alignment='8'):
       s += "%02x" % bs[i+3-n]
     print("    .word 0x%s" % s)
 
-# Vector length
-if len(sys.argv) > 1:
-  vsize = int(sys.argv[1])
+# Args: M_ROW [M_COL] (default square), then FP64/FP32/FP16 tokens
+# res[M_COL] = vec[M_ROW] * mat[M_ROW][M_COL]
+PRECISIONS = ("FP64", "FP32", "FP16")
+args = sys.argv[1:]
+prec = set(a.upper() for a in args if a.upper() in PRECISIONS)
+nums = [a for a in args if a.upper() not in PRECISIONS]
+if not prec:
+  sys.stderr.write("Error. Give me at least one precision: %s.\n" % "/".join(PRECISIONS))
+  sys.exit(1)
+if len(nums) > 1:
+  M_ROW, M_COL = int(nums[0]), int(nums[1])
+elif len(nums) == 1:
+  M_ROW = M_COL = int(nums[0])
 else:
   # Default: no stripmine
-  vsize = 64
-
-avl64 = int(vsize)
-
-# Create the matrix
-matrix64 = np.random.rand(avl64, avl64).astype(np.float64)
-
-# Create the vector
-vector64 = np.random.rand(avl64).astype(np.float64)
-
-# Create the golden output
-gold64 = vector64 @ matrix64
-
-# Create the empty result vectors
-result64 = np.zeros(avl64, dtype=np.float64)
+  M_ROW = M_COL = 64
 
 # Print information on file
 print(".section .l2,\"aw\",@progbits")
-emit("M_ROW", np.array(vsize, dtype=np.uint64))
-emit("V_LEN", np.array(vsize, dtype=np.uint64))
-emit("gold64", gold64.astype(np.float64), 'NR_LANES*8')
-emit("mat64", matrix64, 'NR_LANES*8')
-emit("vec64", vector64, 'NR_LANES*8')
-emit("res64", result64, 'NR_LANES*8')
+emit("M_ROW", np.array(M_ROW, dtype=np.uint64))
+emit("M_COL", np.array(M_COL, dtype=np.uint64))
+
+# The golden output is computed in float64 and rounded once
+for tag, dtype in (("64", np.float64), ("32", np.float32), ("16", np.float16)):
+  if "FP" + tag not in prec:
+    continue
+  matrix = np.random.rand(M_ROW, M_COL).astype(dtype)
+  vector = np.random.rand(M_ROW).astype(dtype)
+  gold = (vector.astype(np.float64) @ matrix.astype(np.float64)).astype(dtype)
+  result = np.zeros(M_COL, dtype=dtype)
+  emit("gold" + tag, gold, 'NR_LANES*8')
+  emit("mat" + tag, matrix, 'NR_LANES*8')
+  emit("vec" + tag, vector, 'NR_LANES*8')
+  emit("res" + tag, result, 'NR_LANES*8')

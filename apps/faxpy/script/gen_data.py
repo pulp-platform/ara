@@ -19,7 +19,6 @@
 
 import numpy as np
 import random
-from functools import reduce
 import sys
 
 def emit(name, array, alignment='8'):
@@ -27,52 +26,40 @@ def emit(name, array, alignment='8'):
   print(".balign " + alignment)
   print("%s:" % name)
   bs = array.tobytes()
+  # Pad to whole .words (a lone fp16 scalar is 2 bytes)
+  bs += b"\x00" * (-len(bs) % 4)
   for i in range(0, len(bs), 4):
     s = ""
     for n in range(4):
       s += "%02x" % bs[i+3-n]
     print("    .word 0x%s" % s)
 
-# Vector length
-if len(sys.argv) > 1:
-  vsize = int(sys.argv[1])
-else:
-  # Default: no stripmine
-  vsize = 64
+# Args: vector length, then FP64/FP32/FP16 tokens
+PRECISIONS = ("FP64", "FP32", "FP16")
+args = sys.argv[1:]
+prec = set(a.upper() for a in args if a.upper() in PRECISIONS)
+nums = [a for a in args if a.upper() not in PRECISIONS]
+if not prec:
+  sys.stderr.write("Error. Give me at least one precision: %s.\n" % "/".join(PRECISIONS))
+  sys.exit(1)
 
-avl64 = int(vsize)
-# avl32 = int(vsize)
-# avl16 = int(vsize)
+# Vector length (default: no stripmine)
+vsize = int(nums[0]) if nums else 64
 
-# Create the vectors
-v64x = np.random.rand(avl64).astype(np.float64)
-v64y = np.random.rand(avl64).astype(np.float64)
-# v32x = np.random.rand(avl32).astype(np.float32)
-# v32y = np.random.rand(avl32).astype(np.float32)
-# v16x = np.random.rand(avl16).astype(np.float16)
-# v16y = np.random.rand(avl16).astype(np.float16)
-
-# Create the scalar number a
-a = np.random.rand(1).astype(np.float64)
-
-# Create the golden output
-gold64 = a * v64x + v64y
-# gold32 = a * v32x + v32y
-# gold16 = a * v16x + v16y
-
-# Print information on file
 # Everything goes into .data: Ara's linker script (common/arch.link.ld) has no
 # .host or .vector output section, and .data is already ALIGN(8*nr_lanes).
 # Vectors are aligned to NR_LANES*8 = AxiWideBeWidth; scalars keep 8.
 print(".section .data,\"aw\",@progbits")
 emit("vsize", np.array(vsize, dtype=np.uint64))
-emit("a", np.array(a, dtype=np.float64))
-emit("gold64", np.array(gold64, dtype=np.float64), 'NR_LANES*8');
-# emit("gold32", np.array(gold32, dtype=np.float32));
-# emit("gold16", gold16, 'NR_LANES*8');
-emit("v64x", v64x, 'NR_LANES*8')
-emit("v64y", v64y, 'NR_LANES*8')
-# emit("v32x", v32a, 'NR_LANES*8')
-# emit("v32y", v32b, 'NR_LANES*8')
-# emit("v16x", v16a, 'NR_LANES*8')
-# emit("v16y", v16b, 'NR_LANES*8')
+
+# Per precision: scalar a, golden, x, y (golden is unfused, vfmacc fused)
+for tag, dtype in (("64", np.float64), ("32", np.float32), ("16", np.float16)):
+  if "FP" + tag not in prec:
+    continue
+  x = np.random.rand(vsize).astype(dtype)
+  y = np.random.rand(vsize).astype(dtype)
+  a = np.random.rand(1).astype(dtype)
+  emit("a" + tag, a)
+  emit("gold" + tag, (a * x + y).astype(dtype), 'NR_LANES*8')
+  emit("v%sx" % tag, x, 'NR_LANES*8')
+  emit("v%sy" % tag, y, 'NR_LANES*8')

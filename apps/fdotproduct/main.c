@@ -34,42 +34,52 @@
 
 // Threshold for FP comparisons
 #define THRESHOLD_64b 0.0000000001
-#define THRESHOLD_32b 0.0001
-#define THRESHOLD_16b 1
+#define THRESHOLD_32b 0.01
+// FP16 is checked with a relative threshold (its ulp grows with the sum)
+#define REL_THRESHOLD_16b 0.01
 
 // Run also the scalar benchmark
 #define SCALAR 0
 
-// Check the vector results against golden vectors
-#define CHECK 0
+// Check the vector results against golden vectors (check=0 in make disables it)
+#ifndef CHECK
+#define CHECK 1
+#endif
 
 // Whether to use the unrolling fdotp kernel
 #define UNROLL 1
 
-// Macro to check similarity between two fp-values, wrt a threshold
-#define fp_check(a, b, threshold) ((((a - b) < 0) ? b - a : a - b) < threshold)
+#if FP16
+static inline int rel_check(double a, double b, double rel) {
+  double d = a - b, m = b < 0 ? -b : b;
+  return (d < 0 ? -d : d) <= rel * m;
+}
+#endif
+
+#if !(FP64 || FP32 || FP16)
+#error "No precision selected: add e.g. FP64 to def_args_fdotproduct in common/default_args.mk"
+#endif
 
 // Vector size (Byte)
 extern uint64_t vsize;
-// Input vectors
+#if FP64
 extern double v64a[] __attribute__((aligned(64 * NR_LANES), section(".l2")));
 extern double v64b[] __attribute__((aligned(64 * NR_LANES), section(".l2")));
-
-#ifndef NETLIST
+extern double gold64;
+extern double res64_v, res64_s;
+#endif
+#if FP32
 extern float v32a[] __attribute__((aligned(64 * NR_LANES), section(".l2")));
 extern float v32b[] __attribute__((aligned(64 * NR_LANES), section(".l2")));
+extern float gold32;
+extern float res32_v, res32_s;
+#endif
+#if FP16
 extern _Float16 v16a[] __attribute__((aligned(64 * NR_LANES), section(".l2")));
 extern _Float16 v16b[] __attribute__((aligned(64 * NR_LANES), section(".l2")));
-#endif
-
-// Golden outputs
-extern double gold64;
-extern float gold32;
 extern _Float16 gold16;
-// Output vectors
-extern double res64_v, res64_s;
-extern float res32_v, res32_s;
 extern _Float16 res16_v, res16_s;
+#endif
 
 int main() {
   printf("\n");
@@ -80,9 +90,12 @@ int main() {
   printf("\n");
 
   uint64_t runtime_s, runtime_v;
+  (void)runtime_s;
 
+  // The first point (4) warms the I-cache
+#if FP64
 #ifndef NETLIST
-  for (uint64_t avl = 8; avl <= vsize; avl *= 2) {
+  for (uint64_t avl = 4; avl <= vsize; avl *= 2) {
 #else
   for (uint64_t avl = vsize; avl <= vsize; avl *= 2) {
 #endif
@@ -102,9 +115,10 @@ int main() {
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
     float performance = 2.0 * avl / runtime_v;
-    float utilization = 100 * performance / (2.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(64);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("fdotproduct", 64, avl, runtime_v, performance);
 
     if (SCALAR) {
       start_timer();
@@ -114,14 +128,14 @@ int main() {
       printf("Scalar runtime: %ld\n", runtime_s);
     }
 
-    if (CHECK) {
+    if (CHECK && avl == vsize) {
       if (SCALAR) {
         printf("Checking results: v = %f, s = %f\n", res64_v, res64_s);
         if (!similarity_check(res64_v, res64_s, THRESHOLD_64b)) {
           printf("Error: v = %f, s = %f\n", res64_v, res64_s);
           return -1;
         }
-      } else if (avl == vsize) {
+      } else {
         // gold64 is the dot product over the WHOLE vector, so it is only a
         // valid reference for the full-length iteration.
         printf("Checking results: v = %f, gold = %f\n", res64_v, gold64);
@@ -132,21 +146,30 @@ int main() {
       }
     }
   }
+#endif // FP64
 
+#if FP32
 #ifndef NETLIST
-  for (uint64_t avl = 8; avl <= vsize; avl *= 2) {
+  for (uint64_t avl = 4; avl <= vsize; avl *= 2) {
+#else
+  for (uint64_t avl = vsize; avl <= vsize; avl *= 2) {
+#endif
     printf("Calulating 32b dotp with vectors with length = %lu\n", avl);
     start_timer();
-    res32_v = fdotp_v32b(v32a, v32b, avl);
+    if (UNROLL)
+      res32_v = fdotp_v32b_m8_unrl(v32a, v32b, avl);
+    else
+      res32_v = fdotp_v32b(v32a, v32b, avl);
     stop_timer();
 
     // Metrics - Vector core execution
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
     float performance = 2.0 * avl / runtime_v;
-    float utilization = 100 * performance / (4.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(32);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("fdotproduct", 32, avl, runtime_v, performance);
 
     if (SCALAR) {
       start_timer();
@@ -156,16 +179,14 @@ int main() {
       printf("Scalar runtime: %ld\n", runtime_s);
     }
 
-    if (CHECK) {
+    if (CHECK && avl == vsize) {
       if (SCALAR) {
         printf("Checking results: v = %f, s = %f\n", res32_v, res32_s);
         if (!similarity_check(res32_v, res32_s, THRESHOLD_32b)) {
           printf("Error: v = %f, s = %f\n", res32_v, res32_s);
           return -1;
         }
-      } else if (avl == vsize) {
-        // gold32 is the dot product over the WHOLE vector, so it is only a
-        // valid reference for the full-length iteration.
+      } else {
         printf("Checking results: v = %f, gold = %f\n", res32_v, gold32);
         if (!similarity_check(res32_v, gold32, THRESHOLD_32b)) {
           printf("Error: v = %f, gold = %f\n", res32_v, gold32);
@@ -174,21 +195,30 @@ int main() {
       }
     }
   }
+#endif // FP32
 
-  for (uint64_t avl = 8; avl <= vsize; avl *= 2) {
-    // Dotp
+#if FP16
+#ifndef NETLIST
+  for (uint64_t avl = 4; avl <= vsize; avl *= 2) {
+#else
+  for (uint64_t avl = vsize; avl <= vsize; avl *= 2) {
+#endif
     printf("Calulating 16b dotp with vectors with length = %lu\n", avl);
     start_timer();
-    res16_v = fdotp_v16b(v16a, v16b, avl);
+    if (UNROLL)
+      res16_v = fdotp_v16b_m8_unrl(v16a, v16b, avl);
+    else
+      res16_v = fdotp_v16b(v16a, v16b, avl);
     stop_timer();
 
     // Metrics - Vector core execution
     runtime_v = get_timer();
     printf("Vector runtime: %ld\n", runtime_v);
     float performance = 2.0 * avl / runtime_v;
-    float utilization = 100 * performance / (8.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(16);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("fdotproduct", 16, avl, runtime_v, performance);
 
     if (SCALAR) {
       start_timer();
@@ -198,21 +228,19 @@ int main() {
       printf("Scalar runtime: %ld\n", runtime_s);
     }
 
-    if (CHECK) {
+    if (CHECK && avl == vsize) {
       if (SCALAR) {
         printf("Checking results: v = %x, s = %x\n", *((uint16_t *)&res16_v),
                *((uint16_t *)&res16_s));
-        if (!similarity_check(res16_v, res16_s, THRESHOLD_16b)) {
+        if (!rel_check(res16_v, res16_s, REL_THRESHOLD_16b)) {
           printf("Error: v = %x, s = %x\n", *((uint16_t *)&res16_v),
                  *((uint16_t *)&res16_s));
           return -1;
         }
-      } else if (avl == vsize) {
-        // gold16 is the dot product over the WHOLE vector, so it is only a
-        // valid reference for the full-length iteration.
+      } else {
         printf("Checking results: v = %x, gold = %x\n", *((uint16_t *)&res16_v),
                *((uint16_t *)&gold16));
-        if (!similarity_check(res16_v, gold16, THRESHOLD_16b)) {
+        if (!rel_check(res16_v, gold16, REL_THRESHOLD_16b)) {
           printf("Error: v = %x, gold = %x\n", *((uint16_t *)&res16_v),
                  *((uint16_t *)&gold16));
           return -1;
@@ -220,7 +248,7 @@ int main() {
       }
     }
   }
-#endif
+#endif // FP16
 
   printf("SUCCESS.\n");
 

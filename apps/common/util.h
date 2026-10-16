@@ -48,6 +48,16 @@
 #define FABS(x) ((x < 0) ? -x : x)
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
 
+// Peak FLOP/cycle at element width sew: 64/sew FMAs per lane and cycle
+#define PEAK_FLOP_CYCLE(sew) (2.0 * (64 / (sew)) * NR_LANES)
+
+// One [SWEEP] line per sweep point for scripts/perf_eval (perf in FLOP/cycle)
+#define PRINT_SWEEP(kernel, sew, size, cycles, perf)                           \
+  printf("[SWEEP] kernel=%s sew=%d lanes=%d size=%ld cycles=%ld "               \
+         "flop_cycle=%f util=%f\n",                                            \
+         (kernel), (int)(sew), (int)NR_LANES, (long)(size), (long)(cycles),    \
+         (float)(perf), (float)(100 * (perf) / PEAK_FLOP_CYCLE(sew)))
+
 // Floating-point similarity check with threshold
 int similarity_check(double a, double b, double threshold);
 int similarity_check_32b(float a, float b, float threshold);

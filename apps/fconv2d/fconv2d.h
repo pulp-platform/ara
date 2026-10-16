@@ -25,19 +25,49 @@
 void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
                  int64_t F);
 void fconv2d_vec_4xC_slice_init_3x3(double *o, int64_t C);
-void fconv2d_vec_4xC_slice_preload_3x3(double *i, int64_t C, int64_t F);
-void fconv2d_vec_4xC_slice_move_3x3(int64_t C, int64_t F);
-void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C, int64_t F);
+void fconv2d_vec_4xC_slice_preload_3x3(double *i, int64_t C, int64_t n_,
+                                       int64_t F);
+void fconv2d_vec_4xC_slice_move_3x3(int64_t n_, int64_t F);
+void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
+                         int64_t n_, int64_t F);
 
 void fconv2d_7x7(double *o, double *i, double *f, int64_t R, int64_t C,
                  int64_t F);
 void fconv2d_7x7_block(double *o, double *i, double *f, int64_t R, int64_t C,
                        int64_t n_, int64_t F);
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+// e32 kernels
+void fconv2d32_3x3(float *o, float *i, float *f, int64_t R, int64_t C,
+                 int64_t F);
+void fconv2d32_vec_4xC_slice_init_3x3(float *o, int64_t C);
+void fconv2d32_vec_4xC_slice_preload_3x3(float *i, int64_t C, int64_t n_,
+                                       int64_t F);
+void fconv2d32_vec_4xC_slice_move_3x3(int64_t n_, int64_t F);
+void fconv2d32_vec_4xC_3x3(float *o, float *i, float *f, int64_t C,
+                         int64_t n_, int64_t F);
 
-// Threshold for FP numbers comparison during the final check
-#define THRESHOLD 0.000000000001
-// #define THRESHOLD 0
+void fconv2d32_7x7(float *o, float *i, float *f, int64_t R, int64_t C,
+                 int64_t F);
+void fconv2d32_7x7_block(float *o, float *i, float *f, int64_t R, int64_t C,
+                       int64_t n_, int64_t F);
+
+// e16 kernels
+void fconv2d16_3x3(_Float16 *o, _Float16 *i, _Float16 *f, int64_t R, int64_t C,
+                 int64_t F);
+void fconv2d16_vec_4xC_slice_init_3x3(_Float16 *o, int64_t C);
+void fconv2d16_vec_4xC_slice_preload_3x3(_Float16 *i, int64_t C, int64_t n_,
+                                       int64_t F);
+void fconv2d16_vec_4xC_slice_move_3x3(int64_t n_, int64_t F);
+void fconv2d16_vec_4xC_3x3(_Float16 *o, _Float16 *i, _Float16 *f, int64_t C,
+                         int64_t n_, int64_t F);
+
+void fconv2d16_7x7(_Float16 *o, _Float16 *i, _Float16 *f, int64_t R, int64_t C,
+                 int64_t F);
+void fconv2d16_7x7_block(_Float16 *o, _Float16 *i, _Float16 *f, int64_t R, int64_t C,
+                       int64_t n_, int64_t F);
+
+extern int64_t event_trigger;
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #endif

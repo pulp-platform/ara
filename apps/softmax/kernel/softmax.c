@@ -24,6 +24,9 @@
 #include "../softmax/lib/exp.h"
 #include "../softmax/lib/exp_asm.h"
 
+// VCD window trigger
+extern int64_t event_trigger;
+
 // Our fdiv cannot receive any X in input
 // The following macro is just a trick and should NOT be used
 #define RESET_VREGS
@@ -220,6 +223,7 @@ void softmax_vec(const float *i, const float *o, uint64_t channels,
 // Register map:
 //   v1 = load window     v2 = max        v3 = den        v4 = work (x - max)
 //   v10 = exp result     v0/v6..v11 = exp temps          v16..v29 = exp consts
+//   v12 = 1/den
 void softmax_vec_asm(const float *i, const float *o, uint64_t channels,
                      uint64_t innerSize) {
 
@@ -243,7 +247,20 @@ void softmax_vec_asm(const float *i, const float *o, uint64_t channels,
   const float *_i = i;
   float *_o = (float *)o;
 
+  // Strip counter for the VCD window
+  unsigned int strip = 0;
+
   while (avl > 0) {
+    strip++;
+
+#ifdef VCD_DUMP
+    // VCD window: strip 5 (needs innerSize > 5 * VLMAX)
+    if (strip == 5)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (strip == 6)
+      *(volatile int64_t *)&event_trigger = -1;
+#endif
+
     size_t vl;
     asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
 
@@ -271,11 +288,12 @@ void softmax_vec_asm(const float *i, const float *o, uint64_t channels,
       __o += innerSize;
     }
 
-    // ---- Pass 3: divide by the sum ----
+    // ---- Pass 3: scale by 1/sum (one reciprocal per strip) ----
+    asm volatile("vfrdiv.vf v12, v3, %0" ::"f"((float)1.0)); // recip = 1/den
     __o = _o;
     for (uint64_t ch = 0; ch < channels; ++ch) {
       asm volatile("vle32.v v1, (%0)" ::"r"(__o));
-      asm volatile("vfdiv.vv v1, v1, v3");
+      asm volatile("vfmul.vv v1, v1, v12"); // out *= recip
       asm volatile("vse32.v v1, (%0)" ::"r"(__o));
       __o += innerSize;
     }

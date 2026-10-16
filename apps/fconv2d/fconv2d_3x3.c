@@ -18,8 +18,28 @@
 
 #include "fconv2d.h"
 
+// Compute n_ output columns (row strides use the full C)
+static void fconv2d_3x3_impl(double *o, double *i, double *f, int64_t R,
+                             int64_t C, int64_t n_, int64_t F);
+
+// Tile the columns if an input row does not fit in one m2 group
+// (chunks of vlmax - F + 1 columns, rounded down to a multiple of NR_LANES)
 void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
                  int64_t F) {
+  int64_t vl_in;
+  asm volatile("vsetvli %0, %1, e64, m2, ta, ma" : "=r"(vl_in) : "r"(C + F - 1));
+
+  if (vl_in == C + F - 1) {
+    fconv2d_3x3_impl(o, i, f, R, C, C, F);
+  } else {
+    int64_t chunk = (vl_in - (F - 1)) & ~((int64_t)NR_LANES - 1);
+    for (int64_t col = 0; col < C; col += chunk)
+      fconv2d_3x3_impl(o + col, i + col, f, R, C, MIN(C - col, chunk), F);
+  }
+}
+
+static void fconv2d_3x3_impl(double *o, double *i, double *f, int64_t R,
+                             int64_t C, int64_t n_, int64_t F) {
   // We work on 4 rows of the output matrix at once
   int64_t block_size_o = 4;
   // We work on block_size_o + F - 1 rows of the input matrix at once
@@ -29,13 +49,13 @@ void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
   double *o_ = o;
 
   // Preload the first two input rows -> This is not needed in the other rounds
-  fconv2d_vec_4xC_slice_preload_3x3(i_, C, F);
+  fconv2d_vec_4xC_slice_preload_3x3(i_, C, n_, F);
   // The first F-1 rows have already been loaded by
   // fconv2d_vec_4xC_slice_preload_3x3()
   double *i__ = i_ + (F - 1) * (C + F - 1);
-  fconv2d_vec_4xC_3x3(o_, i__, f, C, F);
+  fconv2d_vec_4xC_3x3(o_, i__, f, C, n_, F);
   // Re-use some of the already-loaded input rows
-  fconv2d_vec_4xC_slice_move_3x3(C, F);
+  fconv2d_vec_4xC_slice_move_3x3(n_, F);
 
   i_ = i + block_size_o * (C + F - 1);
   i__ = i_ + (F - 1) * (C + F - 1);
@@ -65,7 +85,7 @@ void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
     double t3, t4, t5;
 
     // Fetch C + F - 1 elements (padding included)
-    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
+    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_ + F - 1));
     f_ = f;
 
     // Fetch the first column of the filter, and start calculating its
@@ -91,7 +111,7 @@ void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
 
     asm volatile("vle64.v v18, (%0); add %0, %0, %1" : "+&r"(i__) : "r"(ldi));
 
-    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
+    asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_));
 
     asm volatile("vfmul.vf v6, v14, %0" ::"f"(t0));
     asm volatile("vslidedown.vi v22, v10, 1");
@@ -184,12 +204,13 @@ void fconv2d_3x3(double *o, double *i, double *f, int64_t R, int64_t C,
 }
 
 // Load 4 rows of the output matrix
-void fconv2d_vec_4xC_slice_preload_3x3(double *i, int64_t C, int64_t F) {
+void fconv2d_vec_4xC_slice_preload_3x3(double *i, int64_t C, int64_t n_,
+                                       int64_t F) {
   // Helper variables
   int64_t ldi = (C + F - 1) << 3;
 
   // Set the vector configuration
-  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_ + F - 1));
   // Fetch the first floor(F/2) + 1 input rows
   asm volatile("vle64.v v8,  (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
   asm volatile("vle64.v v10, (%0); add %0, %0, %1" : "+r"(i));
@@ -197,7 +218,7 @@ void fconv2d_vec_4xC_slice_preload_3x3(double *i, int64_t C, int64_t F) {
 
 // Calculate 4 output matrix rows
 void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
-                         int64_t F) {
+                         int64_t n_, int64_t F) {
 
   // Temporary variables
   double t0, t1, t2;
@@ -209,7 +230,7 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
   double *f_;
 
   // Fetch C + F - 1 elements (padding included)
-  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_ + F - 1));
   f_ = f;
   // Fetch the first column of the filter, and start calculating its
   // contribution on the four output rows (v0, v2, v4, v6)
@@ -239,7 +260,7 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
 
   asm volatile("vle64.v v18, (%0); add %0, %0, %1" : "+&r"(i) : "r"(ldi));
 
-  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C));
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_));
 
   asm volatile("vfmul.vf v6, v14, %0" ::"f"(t0));
   asm volatile("vfmacc.vf v4, %0, v14" ::"f"(t1));
@@ -325,9 +346,9 @@ void fconv2d_vec_4xC_3x3(double *o, double *i, double *f, int64_t C,
   asm volatile("vse64.v  v6, (%0);" : "+r"(o));
 }
 
-void fconv2d_vec_4xC_slice_move_3x3(int64_t C, int64_t F) {
-  // Move C+F-1 elements
-  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(C + F - 1));
+void fconv2d_vec_4xC_slice_move_3x3(int64_t n_, int64_t F) {
+  // Move n_+F-1 elements
+  asm volatile("vsetvli zero, %0, e64, m2, ta, ma" ::"r"(n_ + F - 1));
   // Move the last floor(F/2) + 1 input rows
   asm volatile("vmv.v.v v8, v16");
   asm volatile("vmv.v.v v10, v18");

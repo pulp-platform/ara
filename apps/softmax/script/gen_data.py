@@ -39,13 +39,15 @@ def rand_matrix(N, dtype):
 ## SCRIPT ##
 ############
 
-if len(sys.argv) == 3:
-  channels = int(sys.argv[1])
-  innerSize = int(sys.argv[2])
-else:
-  print("Error. Give me two arguments: the number of channels and the inner size.",
+# Arguments: channels innerSize FP32 (softmax is FP32 only)
+args = sys.argv[1:]
+nums = [a for a in args if a.upper() != "FP32"]
+if "FP32" not in (a.upper() for a in args) or len(nums) != 2:
+  print("Error. Give me the number of channels, the inner size and FP32.",
         file=sys.stderr)
   sys.exit(1)
+channels = int(nums[0])
+innerSize = int(nums[1])
 
 # Vector of samples
 i = rand_matrix(channels * innerSize, np.float32).astype(np.float32)

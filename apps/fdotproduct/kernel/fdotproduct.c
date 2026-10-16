@@ -197,12 +197,198 @@ double fdotp_v64b_m8_unrl(const double *a, const double *b, unsigned int avl) {
   // Clean the accumulator
   asm volatile("vmv.s.x v0, zero");
 
-  // // Reduce and return
-  // asm volatile("vfredusum.vs v0, v24, v0");
-  // asm volatile("vfmv.f.s %0, v0" : "=f"(red));
-
-  // VCD dump does not include reduction, so we also need to measure the utilization roofline without reduction
+#ifdef VCD_DUMP
+  // Skip the reduction in the VCD run
   asm volatile("vfmv.f.s %0, v24" : "=f"(red));
+#else
+  // Reduce and return
+  asm volatile("vfredusum.vs v0, v24, v0");
+  asm volatile("vfmv.f.s %0, v0" : "=f"(red));
+#endif
+
+  return red;
+}
+
+// 32-bit dot-product: a * b
+float fdotp_v32b_m8_unrl(const float *a, const float *b, unsigned int avl) {
+  const unsigned int orig_avl = avl;
+  unsigned int vl;
+
+  float red;
+
+#ifdef VCD_DUMP
+  int vcd_iter = 0;
+#endif
+
+  // Stripmine and accumulate a partial reduced vector
+  do {
+#ifdef VCD_DUMP
+    // VCD window: iterations 3..7 (needs avl > 8 * 3 * VLMAX)
+    if (vcd_iter == 3)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (vcd_iter == 8)
+      *(volatile int64_t *)&event_trigger = -1;
+    vcd_iter++;
+#endif
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e32, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle32.v v8,  (%0)" ::"r"(a));
+    asm volatile("vle32.v v16, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    if (avl == orig_avl) {
+      asm volatile("vfmul.vv v24, v8, v16");
+    } else {
+      asm volatile("vfmacc.vv v24, v8, v16");
+    }
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+
+    if (avl <= 0)
+      break;
+
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e32, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle32.v v0, (%0)" ::"r"(a));
+    asm volatile("vle32.v v8, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    asm volatile("vfmacc.vv v24, v0, v8");
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+
+    if (avl <= 0)
+      break;
+
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e32, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle32.v v16, (%0)" ::"r"(a));
+    asm volatile("vle32.v v0, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    asm volatile("vfmacc.vv v24, v0, v16");
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+  } while (avl > 0);
+
+  // Clean the accumulator
+  asm volatile("vmv.s.x v0, zero");
+
+#ifdef VCD_DUMP
+  // Skip the reduction in the VCD run
+  asm volatile("vfmv.f.s %0, v24" : "=f"(red));
+#else
+  // Reduce and return
+  asm volatile("vfredusum.vs v0, v24, v0");
+  asm volatile("vfmv.f.s %0, v0" : "=f"(red));
+#endif
+
+  return red;
+}
+
+// 16-bit dot-product: a * b
+_Float16 fdotp_v16b_m8_unrl(const _Float16 *a, const _Float16 *b, unsigned int avl) {
+  const unsigned int orig_avl = avl;
+  unsigned int vl;
+
+  _Float16 red;
+
+#ifdef VCD_DUMP
+  int vcd_iter = 0;
+#endif
+
+  // Stripmine and accumulate a partial reduced vector
+  do {
+#ifdef VCD_DUMP
+    // VCD window: iterations 3..7 (needs avl > 8 * 3 * VLMAX)
+    if (vcd_iter == 3)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (vcd_iter == 8)
+      *(volatile int64_t *)&event_trigger = -1;
+    vcd_iter++;
+#endif
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e16, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle16.v v8,  (%0)" ::"r"(a));
+    asm volatile("vle16.v v16, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    if (avl == orig_avl) {
+      asm volatile("vfmul.vv v24, v8, v16");
+    } else {
+      asm volatile("vfmacc.vv v24, v8, v16");
+    }
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+
+    if (avl <= 0)
+      break;
+
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e16, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle16.v v0, (%0)" ::"r"(a));
+    asm volatile("vle16.v v8, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    asm volatile("vfmacc.vv v24, v0, v8");
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+
+    if (avl <= 0)
+      break;
+
+    // Set the vl
+    asm volatile("vsetvli %0, %1, e16, m8, ta, ma" : "=r"(vl) : "r"(avl));
+
+    // Load chunk a and b
+    asm volatile("vle16.v v16, (%0)" ::"r"(a));
+    asm volatile("vle16.v v0, (%0)" ::"r"(b));
+
+    // Multiply and accumulate
+    asm volatile("vfmacc.vv v24, v0, v16");
+
+    // Bump pointers
+    a += vl;
+    b += vl;
+    avl -= vl;
+  } while (avl > 0);
+
+  // Clean the accumulator
+  asm volatile("vmv.s.x v0, zero");
+
+#ifdef VCD_DUMP
+  // Skip the reduction in the VCD run
+  asm volatile("vfmv.f.s %0, v24" : "=f"(red));
+#else
+  // Reduce and return
+  asm volatile("vfredusum.vs v0, v24, v0");
+  asm volatile("vfmv.f.s %0, v0" : "=f"(red));
+#endif
 
   return red;
 }

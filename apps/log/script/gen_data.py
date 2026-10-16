@@ -39,32 +39,28 @@ def rand_matrix(N, dtype):
 ## SCRIPT ##
 ############
 
-if len(sys.argv) == 2:
-  N_f64 = int(sys.argv[1])
-  N_f32 = 2 * N_f64
-else:
-  print("Error. Give me one argument: the number of vector elements.")
-  sys.exit()
-
-# Vector of samples
-args_f64 = rand_matrix(N_f64, np.float64).astype(np.float64)
-args_f32 = rand_matrix(N_f32, np.float32).astype(np.float32)
-
-# Results buffer
-results_f64 = np.zeros(N_f64, dtype=np.float64)
-results_f32 = np.zeros(N_f32, dtype=np.float32)
-
-# Gold results
-gold_results_f64 = np.log(args_f64, dtype=np.float64)
-gold_results_f32 = np.log(args_f32, dtype=np.float32)
+# Arguments: element count and FP64 and/or FP32 (same count for each)
+PRECISIONS = ("FP64", "FP32")
+args = sys.argv[1:]
+prec = set(a.upper() for a in args if a.upper() in PRECISIONS)
+nums = [a for a in args if a.upper() not in PRECISIONS]
+if not prec:
+  sys.stderr.write("Error. Give me at least one precision: %s.\n" % "/".join(PRECISIONS))
+  sys.exit(1)
+if not nums:
+  sys.stderr.write("Error. Give me the number of vector elements.\n")
+  sys.exit(1)
+N = int(nums[0])
 
 # Create the file
 print(".section .data,\"aw\",@progbits")
-emit("N_f64", np.array(N_f64, dtype=np.uint64))
-emit("args_f64", args_f64, 'NR_LANES*4')
-emit("results_f64", results_f64, 'NR_LANES*4')
-emit("gold_results_f64", gold_results_f64, 'NR_LANES*4')
-emit("N_f32", np.array(N_f32, dtype=np.uint32))
-emit("args_f32", args_f32, 'NR_LANES*4')
-emit("results_f32", results_f32, 'NR_LANES*4')
-emit("gold_results_f32", gold_results_f32, 'NR_LANES*4')
+
+# Align the arrays to NR_LANES*8 (AxiWideBeWidth)
+for tag, dtype in (("f64", np.float64), ("f32", np.float32)):
+  if "FP" + tag[1:] not in prec:
+    continue
+  args = rand_matrix(N, dtype).astype(dtype)
+  emit("N_" + tag, np.array(N, dtype=np.uint64))
+  emit("args_" + tag, args, 'NR_LANES*8')
+  emit("results_" + tag, np.zeros(N, dtype=dtype), 'NR_LANES*8')
+  emit("gold_results_" + tag, np.log(args, dtype=dtype), 'NR_LANES*8')

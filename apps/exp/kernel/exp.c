@@ -34,8 +34,12 @@
 */
 
 #include "exp.h"
+#include "exp_hoist.h"
 
-void exp_1xf64_bmark(double *exponents, double *results, size_t len) {
+// VCD window trigger
+extern int64_t event_trigger;
+
+void exp_1xf64_intr_bmark(double *exponents, double *results, size_t len) {
 
   size_t avl = len;
   vfloat64m1_t exp_vec, res_vec;
@@ -63,7 +67,7 @@ void exp_1xf64_bmark(double *exponents, double *results, size_t len) {
 #endif
 }
 
-void exp_2xf32_bmark(float *exponents, float *results, size_t len) {
+void exp_2xf32_intr_bmark(float *exponents, float *results, size_t len) {
 
   size_t avl = len;
   vfloat32m1_t exp_vec, res_vec;
@@ -245,3 +249,60 @@ void exp_1xf64_asm_bmark(double *exponents, double *results, size_t len) {
     asm("vsll.vv v18, v18, v19" ::: "v18");
     asm("vfmul.vv v5, v5, v18"  ::: "v5");
 */
+
+// Constants hoisted out of the loop (exp_hoist.h)
+void exp_1xf64_bmark(double *exponents, double *results, size_t len) {
+  size_t avl = len, vlmax;
+  asm volatile("vsetvli %0, zero, e64, m1, ta, ma" : "=r"(vlmax));
+  VEXP_CONST_INIT_F64();
+#ifdef VCD_DUMP
+  size_t strip = 0;
+#endif
+  while (avl > 0) {
+#ifdef VCD_DUMP
+    // VCD window: strips 25..32 (needs len > 32 * VLMAX)
+    strip++;
+    if (strip == 25)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (strip == 33)
+      *(volatile int64_t *)&event_trigger = -1;
+#endif
+
+    size_t vl;
+    asm volatile("vsetvli %0, %1, e64, m1, ta, ma" : "=r"(vl) : "r"(avl));
+    asm volatile("vle64.v v1, (%0)" ::"r"(exponents));
+    VEXP_F64M1(v2, v1);
+    asm volatile("vse64.v v2, (%0)" ::"r"(results) : "memory");
+    exponents += vl;
+    results += vl;
+    avl -= vl;
+  }
+}
+
+void exp_2xf32_bmark(float *exponents, float *results, size_t len) {
+  size_t avl = len, vlmax;
+  asm volatile("vsetvli %0, zero, e32, m1, ta, ma" : "=r"(vlmax));
+  VEXP_CONST_INIT_F32();
+#ifdef VCD_DUMP
+  size_t strip = 0;
+#endif
+  while (avl > 0) {
+#ifdef VCD_DUMP
+    // VCD window: strips 13..16 (needs len > 16 * VLMAX)
+    strip++;
+    if (strip == 13)
+      *(volatile int64_t *)&event_trigger = +1;
+    if (strip == 17)
+      *(volatile int64_t *)&event_trigger = -1;
+#endif
+
+    size_t vl;
+    asm volatile("vsetvli %0, %1, e32, m1, ta, ma" : "=r"(vl) : "r"(avl));
+    asm volatile("vle32.v v1, (%0)" ::"r"(exponents));
+    VEXP_F32M1(v2, v1);
+    asm volatile("vse32.v v2, (%0)" ::"r"(results) : "memory");
+    exponents += vl;
+    results += vl;
+    avl -= vl;
+  }
+}
