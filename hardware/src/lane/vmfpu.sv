@@ -208,6 +208,9 @@ module vmfpu import ara_pkg::*; import rvv_pkg::*; import fpnew_pkg::*;
       [VFREDMIN:VFREDMAX]:    fpu_latency = LatFNonComp;
       [VFCVTXUF:VFCVTFF]:     fpu_latency = LatFConv;
       [VFMIN:VFSGNJX]:        fpu_latency = LatFNonComp;
+      // Compares run in fpnew's NONCOMP group; the FMA latency would let them
+      // overtake an earlier FMA result
+      [VMFEQ:VMFGE]:          fpu_latency = LatFNonComp;
       default: begin
         case (sew)
           EW64:    fpu_latency = LatFCompEW64;
