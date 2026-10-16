@@ -35,7 +35,11 @@ module ara_tb;
   localparam VLEN = 0;
   `endif
 
+  `ifdef TCK
+  localparam ClockPeriod  = `TCK;
+  `else
   localparam ClockPeriod  = 0.74ns;
+  `endif
   // Axi response delay [ps]
   localparam int unsigned AxiRespDelay = 200;
 
