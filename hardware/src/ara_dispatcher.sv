@@ -3001,8 +3001,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // vlm.v and vsm.v access one mask register whatever LMUL is
             if (insn.vmem_type.mop == 2'b00 && insn.vmem_type.rs2 == 5'b01011) ara_req.emul = LMUL_1;
 
-            // Exception if EMUL > 8 or < 1/8
-            unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
+            // Exception if EMUL > 8 or < 1/8 (not for vlm.v/vsm.v: their EMUL is 1 whatever LMUL is, and
+            // comparing it with a fractional LMUL flagged e.g. vlm.v at e16 mf4 as illegal)
+            unique case ((insn.vmem_type.mop == 2'b00 && insn.vmem_type.rs2 == 5'b01011)
+                         ? 2'b00 : {csr_vtype_q.vlmul[2], ara_req.emul[2]})
               // The new emul is lower than the previous lmul
               2'b01: begin
                 // But the new eew is greater than vsew
@@ -3247,8 +3249,10 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
             // vlm.v and vsm.v access one mask register whatever LMUL is
             if (insn.vmem_type.mop == 2'b00 && insn.vmem_type.rs2 == 5'b01011) ara_req.emul = LMUL_1;
 
-            // Exception if EMUL > 8 or < 1/8
-            unique case ({csr_vtype_q.vlmul[2], ara_req.emul[2]})
+            // Exception if EMUL > 8 or < 1/8 (not for vlm.v/vsm.v: their EMUL is 1 whatever LMUL is, and
+            // comparing it with a fractional LMUL flagged e.g. vlm.v at e16 mf4 as illegal)
+            unique case ((insn.vmem_type.mop == 2'b00 && insn.vmem_type.rs2 == 5'b01011)
+                         ? 2'b00 : {csr_vtype_q.vlmul[2], ara_req.emul[2]})
               // The new emul is lower than the previous lmul
               2'b01: begin
                 // But the new eew is greater than vsew
