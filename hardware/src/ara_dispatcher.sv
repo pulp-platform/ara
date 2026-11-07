@@ -132,6 +132,27 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     endcase
   endfunction : prev_prev_ew
 
+  // Physical registers occupied by an EMUL, including fractional groups.
+  function automatic logic [3:0] physical_regs(vlmul_e lmul);
+    unique case (lmul)
+      LMUL_2: physical_regs = 4'd2;
+      LMUL_4: physical_regs = 4'd4;
+      LMUL_8: physical_regs = 4'd8;
+      default: physical_regs = 4'd1;
+    endcase
+  endfunction : physical_regs
+
+  // Match the six integer-extension selectors. The original CPU request stays
+  // stable while RESHUFFLE holds req_ready low, so this also selects its limit.
+  function automatic vlmul_e extension_source_lmul(vlmul_e lmul, logic [4:0] selector);
+    unique case (selector)
+      5'b00010, 5'b00011: extension_source_lmul = prev_lmul(prev_lmul(prev_lmul(lmul)));
+      5'b00100, 5'b00101: extension_source_lmul = prev_lmul(prev_lmul(lmul));
+      5'b00110, 5'b00111: extension_source_lmul = prev_lmul(lmul);
+      default: extension_source_lmul = LMUL_RSVD;
+    endcase
+  endfunction : extension_source_lmul
+
   /////////////////////////
   //  Backend interface  //
   /////////////////////////
@@ -159,11 +180,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   // operations, or injecting a reshuffling uop.
   // IDLE can happen, for example, once the vlmul has changed.
   // RESHUFFLE can happen when an instruction writes a register with != EEW
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     NORMAL_OPERATION,
     WAIT_IDLE,
     WAIT_IDLE_FLUSH,
-    RESHUFFLE
+    RESHUFFLE,
+    OVERLAP_WAIT_ACCEPT,
+    OVERLAP_WAIT_BUSY,
+    OVERLAP_WAIT_DONE
   } state_e;
   state_e state_d, state_q, state_qq;
   // state_qq is the previous state signal. Useful to know from which state we come from.
@@ -257,6 +281,9 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   logic null_vslideup;
   // Does the selected reg group for the selected EMUL have same EEW encoding?
   logic is_same_eew;
+  logic is_integer_extension;
+  vlmul_e extension_emul;
+  logic [3:0] extension_src_regs, extension_dst_regs;
 
   // Pipeline the VLSU's load and store complete signals, for timing reasons
   logic load_complete, load_complete_q;
@@ -371,6 +398,8 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
   elen_t vfmvfs_result;
 
   always_comb begin: p_decoder
+    automatic rvv_instruction_t extension_insn = rvv_instruction_t'(instr.instr);
+
     // Default values
     csr_vstart_d     = csr_vstart_q;
     csr_vl_d         = csr_vl_q;
@@ -380,6 +409,14 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
     eew_valid_d  = eew_valid_q;
     lmul_vs2     = csr_vtype_q.vlmul;
     lmul_vs1     = csr_vtype_q.vlmul;
+    is_integer_extension = (instr.itype.opcode == riscv::OpcodeVec) &&
+      (extension_insn.varith_type.func3 == OPMVV) &&
+      (extension_insn.varith_type.func6 == 6'b010010) &&
+      (extension_insn.varith_type.rs1 inside {5'b00010, 5'b00011, 5'b00100,
+                                            5'b00101, 5'b00110, 5'b00111});
+    extension_emul = extension_source_lmul(csr_vtype_q.vlmul, extension_insn.varith_type.rs1);
+    extension_src_regs = physical_regs(extension_emul);
+    extension_dst_regs = physical_regs(csr_vtype_q.vlmul);
 
     reshuffle_req_d     = reshuffle_req_q;
     eew_old_buffer_d    = eew_old_buffer_q;
@@ -466,6 +503,20 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       // Is Ara idle?
       WAIT_IDLE: begin
         if (ara_idle_i) state_d = NORMAL_OPERATION;
+      end
+
+      // The output request register adds a cycle between CPU acknowledgement
+      // and backend acceptance. Observe that real handshake before waiting for
+      // a busy backend and then for completion of all writes under the same ID.
+      OVERLAP_WAIT_ACCEPT: begin
+        if (ara_req_valid_o && ara_req_ready_i && ara_req_o.fill_agnostic)
+          state_d = OVERLAP_WAIT_BUSY;
+      end
+      OVERLAP_WAIT_BUSY: begin
+        if (!ara_idle_i) state_d = OVERLAP_WAIT_DONE;
+      end
+      OVERLAP_WAIT_DONE: begin
+        if (ara_idle_i && !ara_req_valid_o) state_d = NORMAL_OPERATION;
       end
 
       // Wait for idle and then flush the stu-related pipes.
@@ -3624,6 +3675,34 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         acc_resp_o.exception.tval  = instr;
       end
 
+      // An extension with no body is a NOP before any new reshuffle/fill action.
+      // The existing final NOP handling still acknowledges it and clears vstart.
+      if (is_integer_extension && (csr_vstart_q >= csr_vl_q) &&
+          !acc_resp_o.exception.valid) begin
+        ara_req_valid = 1'b0;
+        reshuffle_req_d = '0;
+      end
+
+      if (ara_req_valid && !acc_resp_o.exception.valid && is_integer_extension) begin
+        // RVV permits mixed-EEW widening overlap only in the highest part of
+        // the destination and with a source EMUL of at least one register.
+        // Other reserved overlap encodings retain the existing decoder policy.
+        ara_req.fill_agnostic = (csr_vstart_q == '0) && (csr_vl_q != '0) &&
+          !extension_emul[2] && (extension_emul != LMUL_RSVD) &&
+          (ara_req.vm || (ara_req.vd != VMASK)) &&
+          (ara_req.eew_vs2 != ara_req.vtype.vsew) &&
+          ((int'(ara_req.vd) + int'(extension_dst_regs)) <= 32) &&
+          (int'(ara_req.vs2) == int'(ara_req.vd) + int'(extension_dst_regs) -
+                                int'(extension_src_regs));
+        // Drain both the backend and the registered request. This protects even
+        // a lane with no active source reads from an older late destination load.
+        if (ara_req.fill_agnostic && (!ara_idle_i || ara_req_valid_o)) begin
+          ara_req_valid = 1'b0;
+          acc_resp_o.req_ready = 1'b0;
+          acc_resp_o.resp_valid = 1'b0;
+        end
+      end
+
       // Check if we need to reshuffle our vector registers involved in the operation
       // This operation is costly when occurs, so avoid it if possible
       if ( ara_req_valid && !acc_resp_o.exception.valid ) begin
@@ -3640,7 +3719,7 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // same for every reg.
         reshuffle_req_d = {ara_req.use_vs1 && (ara_req.eew_vs1    != eew_q[ara_req.vs1]) && eew_valid_q[ara_req.vs1] && (in_lane_op || (is_vstore && ((csr_vstart_q != '0) || !is_same_eew))),
                            ara_req.use_vs2 && (ara_req.eew_vs2    != eew_q[ara_req.vs2]) && eew_valid_q[ara_req.vs2] && in_lane_op,
-                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew)))};
+                           ara_req.use_vd  && (ara_req.vtype.vsew != eew_q[ara_req.vd ]) && eew_valid_q[ara_req.vd ] && !(csr_vstart_q == 0 && (csr_vl_q == ((VLENB << ara_req.emul[1:0]) >> ara_req.vtype.vsew))) && !ara_req.fill_agnostic};
         // Mask out requests if they refer to the same register!
         reshuffle_req_d &= {
           (insn.varith_type.rs1 != insn.varith_type.rs2) && (insn.varith_type.rs1 != insn.varith_type.rd),
@@ -3695,6 +3774,12 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
         // Reshuffle
         state_d = RESHUFFLE;
       end
+
+      // CPU response/token occur only for the original extension. Completion
+      // waits below are internal and never replay that request or response.
+      if (ara_req.fill_agnostic && ara_req_valid && acc_resp_o.req_ready &&
+          acc_resp_o.resp_valid && !acc_resp_o.exception.valid)
+        state_d = OVERLAP_WAIT_ACCEPT;
     end
 
     // Update the EEW

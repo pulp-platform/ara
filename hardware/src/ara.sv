@@ -150,6 +150,9 @@ module ara import ara_pkg::*; #(
     // Resizing of FP conversions
     resize_e cvt_resize;
 
+    // Legal mixed-EEW overlap: write inactive elements and tails as all ones.
+    logic fill_agnostic;
+
     // Vector machine metadata
     vlen_t vl;
     vlen_t vstart;
