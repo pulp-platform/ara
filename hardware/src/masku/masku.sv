@@ -124,6 +124,7 @@ module masku import ara_pkg::*; import rvv_pkg::*; #(
     // Control logic
     .masku_fu_i                    (            masku_operand_fu ),
     .vinsn_issue_i                 (                 vinsn_issue ),
+    .vinsn_issue_valid_i            (           vinsn_issue_valid ),
     .vrf_pnt_i                     (                   vrf_pnt_q ),
     // Operands coming from lanes
     .masku_operand_valid_i         (       masku_operand_valid_i ),

@@ -31,6 +31,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     // Control logic
     input masku_fu_e                        masku_fu_i,    // signal deciding from which functional unit the result should be taken from
     input pe_req_t                          vinsn_issue_i,
+    input logic                             vinsn_issue_valid_i,
     input logic [idx_width(ELEN*NrLanes):0] vrf_pnt_i,
 
     // Operands and operand handshake signals coming from lanes
@@ -77,6 +78,12 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
   logic  [NrLanes-1:0] masku_operand_vd_lane_ready;
   logic  [NrLanes-1:0] masku_operand_vd_spill_valid;
   logic  [NrLanes-1:0] masku_operand_vd_spill_ready;
+  logic                masku_owns_vd;
+
+  // MaskB also returns CPU scalar moves. Only capture data while the active
+  // MASKU instruction uses it, including gather/compress's ad-hoc vs2 reads.
+  assign masku_owns_vd = vinsn_issue_valid_i && (vinsn_issue_i.vfu == VFU_MaskUnit) &&
+      (vinsn_issue_i.use_vd_op || (vinsn_issue_i.op inside {[VRGATHER:VCOMPRESS]}));
 
   elen_t [NrLanes-1:0] masku_operand_m_d;
   logic  [NrLanes-1:0] masku_operand_m_lane_valid;
@@ -159,7 +166,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
     masku_operand_vd_lane_valid = 1'b0;
     masku_operand_m_lane_valid  = 1'b0;
     for (int lane = 0; lane < NrLanes; lane++) begin
-      masku_operand_vd_lane_valid[lane] = masku_operand_valid_i[lane][1];
+      masku_operand_vd_lane_valid[lane] = masku_owns_vd && masku_operand_valid_i[lane][1];
       masku_operand_m_lane_valid[lane]  = masku_operand_valid_i[lane][0];
     end
   end
@@ -252,7 +259,7 @@ module masku_operands import ara_pkg::*; import rvv_pkg::*; #(
         masku_operand_ready_o[lane][2 + operand_fu] = (masku_fu_e'(operand_fu) == masku_fu_i) && masku_operand_alu_ready_i[lane];
       end
       // Acknowledge vd operands
-      masku_operand_ready_o[lane][1] = masku_operand_vd_lane_ready[lane];
+      masku_operand_ready_o[lane][1] = masku_owns_vd && masku_operand_vd_lane_ready[lane];
       // Acknowledge mask operand
       masku_operand_ready_o[lane][0] = masku_operand_m_lane_ready[lane];
     end
