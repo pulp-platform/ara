@@ -178,6 +178,9 @@ module lane import ara_pkg::*; import rvv_pkg::*; #(
     logic wide_fp_imm;            // Widen FP immediate (re-encoding)
     resize_e cvt_resize;    // Resizing of FP conversions
 
+    // Legal mixed-EEW overlap: write inactive elements and tails as all ones.
+    logic fill_agnostic;
+
     // Vector machine metadata
     vlen_t vl;
     vlen_t vstart;
