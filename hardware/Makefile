@@ -230,13 +230,13 @@ $(veril_library)/V$(veril_top): $(config_file) Makefile ../Bender.yml $(shell fi
 # Simulation
 .PHONY: simv
 simv:
-	$(veril_library)/V$(veril_top) $(if $(trace),-t,) -l ram,$(app_path)/$(app),elf
+	$(veril_library)/V$(veril_top) $(simv_args) $(if $(trace),-t,) -l ram,$(app_path)/$(app),elf
 
 .PHONY: riscv_tests_simv
 riscv_tests_simv: $(tests)
 
 $(tests): rv%: $(app_path)/rv%
-	$(veril_library)/V$(veril_top) $(if $(trace),-t,) -l ram,$<,elf &> $(buildpath)/$@.trace
+	$(veril_library)/V$(veril_top) $(simv_args) $(if $(trace),-t,) -l ram,$<,elf &> $(buildpath)/$@.trace
 
 # Lint
 .PHONY: lint spyglass/tmp/files
