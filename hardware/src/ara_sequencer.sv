@@ -561,8 +561,12 @@ module ara_sequencer import ara_pkg::*; import rvv_pkg::*; import cf_math_pkg::i
           ara_resp_o.fof_exception = addrgen_fof_exception_i;
         end
 
-        // Wait for the scalar result
-        if (!ara_req_i.use_vd && pe_scalar_resp_valid_i) begin
+        // MaskB is shared with MASKU: scalar moves must wait for its release.
+        // VCPOP/VFIRST return through a dedicated result path. Stores must only
+        // acknowledge address translation, even when they do not write vd.
+        if (pe_scalar_resp_valid_i &&
+            (((ara_req_i.op inside {VMVXS, VFMVFS}) && !running_mask_insn_q) ||
+             (ara_req_i.op inside {VCPOP, VFIRST}))) begin
           // Acknowledge the request
           state_d                = IDLE;
           ara_req_ready_o        = 1'b1;
