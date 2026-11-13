@@ -320,6 +320,10 @@ jobs:
       matrix:
         app:        [hello_world, imatmul, fmatmul, iconv2d, fconv2d, fconv3d, jacobi2d, dropout, fft, dwt, exp, softmax, dotproduct, fdotproduct, pathfinder, roi_align, lavamd]
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
+        include:
+          - app: active_vstart
+            ara_config: 2_lanes
+            simv_args: --term-after-cycles=10000000
     needs: ["compile-ara", "compile-apps"]
     steps:
     - uses: actions/checkout@v6
@@ -335,7 +339,7 @@ jobs:
         name: compile-apps-${{ matrix.ara_config }}
         path: apps/bin
     - name: Run test
-      run: config=${{ matrix.ara_config }} app=${{ matrix.app }} make -C hardware simv
+      run: config=${{ matrix.ara_config }} app=${{ matrix.app }} make -C hardware simv simv_args="${{ matrix.simv_args }}"
 
 ########################
 #  RISC-V Tests stage  #

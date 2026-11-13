@@ -3614,6 +3614,15 @@ module ara_dispatcher import ara_pkg::*; import rvv_pkg::*; #(
       if (ara_req_valid && (ara_req.op inside {VFREC7, VFRSQRT7}) && (FPExtSupport == FPExtSupportDisable))
         illegal_insn = 1'b1;
 
+      // Reject unsupported partial arithmetic execution (RVV 1.0 section 3.7).
+      // Keep the existing no-write path when vstart >= vl.
+      if (ara_req_valid && (csr_vstart_q != '0) && (csr_vstart_q < csr_vl_q) &&
+          (instr.itype.opcode == riscv::OpcodeVec) &&
+          (((instr.instr[31:26] == 6'b000000) &&
+            (instr.instr[14:12] inside {OPIVV, OPIVX, OPIVI})) ||
+           ((instr.instr[31:26] == 6'b010010) && (instr.instr[14:12] == OPMVV))))
+        illegal_insn = 1'b1;
+
       // Raise an illegal instruction exception
       if ( illegal_insn || illegal_insn_load || illegal_insn_store ) begin
         ara_req_valid            = 1'b0;
