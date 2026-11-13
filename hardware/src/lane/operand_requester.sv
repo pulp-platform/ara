@@ -253,6 +253,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
     // In case of a WAW with a previous instruction,
     // read once every two writes of the previous instruction
     logic is_widening;
+    // Ext4/8 can produce four/eight writes per read. Wait for their dependencies.
+    logic wait_ext_hazards;
     // One-bit counters
     logic [NrVInsn-1:0] waw_hazard_counter;
   } requester_metadata_t;
@@ -271,7 +273,8 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
 
     // Is there a hazard during this cycle?
     logic stall;
-    assign stall = |(requester_metadata_q.hazard & ~(vinsn_result_written_q &
+    assign stall = requester_metadata_q.wait_ext_hazards ? (|requester_metadata_q.hazard) :
+                   |(requester_metadata_q.hazard & ~(vinsn_result_written_q &
                    (~{NrVInsn{requester_metadata_q.is_widening}} | requester_metadata_q.waw_hazard_counter)));
 
     // Did we get a grant?
@@ -345,6 +348,10 @@ module operand_requester import ara_pkg::*; import rvv_pkg::*; #(
         vew         : operand_request_i[requester_index].eew,
         hazard      : operand_request_i[requester_index].hazard,
         is_widening : operand_request_i[requester_index].cvt_resize == CVT_WIDE,
+        wait_ext_hazards : operand_request_i[requester_index].cvt_resize == CVT_WIDE &&
+                          (operand_request_i[requester_index].conv inside {
+                            OpQueueConversionSExt4, OpQueueConversionZExt4,
+                            OpQueueConversionSExt8, OpQueueConversionZExt8}),
         default: '0
       };
       operand_queue_cmd_tmp = '{
