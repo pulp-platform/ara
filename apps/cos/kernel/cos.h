@@ -50,8 +50,6 @@ inline _MMR_f64 __cos_1xf64(_MMR_f64 x, size_t gvl) {
   _MMR_i64 _pi32_4 = _MM_SET_i64(4, gvl);
   _MMR_i64 _Zero = _MM_SET_i64(0, gvl);
 
-  _MMR_f64 xmm2 = _MM_SET_f64(0.0f, gvl);
-  _MMR_f64 xmm1;
   _MMR_f64 xmm3;
   _MMR_f64 y;
 
@@ -97,17 +95,9 @@ inline _MMR_f64 __cos_1xf64(_MMR_f64 x, size_t gvl) {
   _MMR_f64 _ps_minus_cephes_DP2 = _MM_SET_f64(-2.4187564849853515625E-4, gvl);
   _MMR_f64 _ps_minus_cephes_DP3 = _MM_SET_f64(-3.77489497744594108E-8, gvl);
 
-  xmm1 = _ps_minus_cephes_DP1;
-  xmm2 = _ps_minus_cephes_DP2;
-  xmm3 = _ps_minus_cephes_DP3;
-
-  xmm1 = _MM_MUL_f64(y, xmm1, gvl);
-  xmm2 = _MM_MUL_f64(y, xmm2, gvl);
-  xmm3 = _MM_MUL_f64(y, xmm3, gvl);
-
-  x = _MM_ADD_f64(x, xmm1, gvl);
-  x = _MM_ADD_f64(x, xmm2, gvl);
-  x = _MM_ADD_f64(x, xmm3, gvl);
+  x = _MM_MACC_f64(x, y, _ps_minus_cephes_DP1, gvl);
+  x = _MM_MACC_f64(x, y, _ps_minus_cephes_DP2, gvl);
+  x = _MM_MACC_f64(x, y, _ps_minus_cephes_DP3, gvl);
 
   /* Evaluate the first polynom  (0 <= x <= Pi/4) */
   _MMR_f64 _ps_coscof_p0 = _MM_SET_f64(2.443315711809948E-005, gvl);
@@ -116,19 +106,15 @@ inline _MMR_f64 __cos_1xf64(_MMR_f64 x, size_t gvl) {
   _MMR_f64 _ps_0p5 = _MM_SET_f64(0.5f, gvl);
 
   _MMR_f64 z;
-  _MMR_f64 tmp;
 
   y = _ps_coscof_p0;
   z = _MM_MUL_f64(x, x, gvl);
 
-  y = _MM_MUL_f64(y, z, gvl);
-  y = _MM_ADD_f64(y, _ps_coscof_p1, gvl);
-  y = _MM_MUL_f64(y, z, gvl);
-  y = _MM_ADD_f64(y, _ps_coscof_p2, gvl);
+  y = _MM_MADD_f64(y, z, _ps_coscof_p1, gvl);
+  y = _MM_MADD_f64(y, z, _ps_coscof_p2, gvl);
   y = _MM_MUL_f64(y, z, gvl);
   y = _MM_MUL_f64(y, z, gvl);
-  tmp = _MM_MUL_f64(z, _ps_0p5, gvl);
-  y = _MM_SUB_f64(y, tmp, gvl);
+  y = __riscv_vfnmsac_vv_f64m1(y, z, _ps_0p5, gvl);
   y = _MM_ADD_f64(y, _MM_SET_f64(1.0, gvl), gvl);
 
   /* Evaluate the second polynom  (Pi/4 <= x <= 0) */
@@ -139,13 +125,10 @@ inline _MMR_f64 __cos_1xf64(_MMR_f64 x, size_t gvl) {
   _MMR_f64 y2;
 
   y2 = _ps_sincof_p0;
+  y2 = _MM_MADD_f64(y2, z, _ps_sincof_p1, gvl);
+  y2 = _MM_MADD_f64(y2, z, _ps_sincof_p2, gvl);
   y2 = _MM_MUL_f64(y2, z, gvl);
-  y2 = _MM_ADD_f64(y2, _ps_sincof_p1, gvl);
-  y2 = _MM_MUL_f64(y2, z, gvl);
-  y2 = _MM_ADD_f64(y2, _ps_sincof_p2, gvl);
-  y2 = _MM_MUL_f64(y2, z, gvl);
-  y2 = _MM_MUL_f64(y2, x, gvl);
-  y2 = _MM_ADD_f64(y2, x, gvl);
+  y2 = _MM_MADD_f64(y2, x, x, gvl);
 
   /* select the correct result from the two polynoms */
   xmm3 = poly_mask;
@@ -173,8 +156,6 @@ inline _MMR_f32 __cos_2xf32(_MMR_f32 x, size_t gvl) {
   _MMR_i32 _pi32_4 = _MM_SET_i32(4, gvl);
   _MMR_i32 _Zero = _MM_SET_i32(0, gvl);
 
-  _MMR_f32 xmm2 = _MM_SET_f32(0.0f, gvl);
-  _MMR_f32 xmm1;
   _MMR_f32 xmm3;
   _MMR_f32 y;
 
@@ -220,17 +201,9 @@ inline _MMR_f32 __cos_2xf32(_MMR_f32 x, size_t gvl) {
   _MMR_f32 _ps_minus_cephes_DP2 = _MM_SET_f32(-2.4187564849853515625E-4, gvl);
   _MMR_f32 _ps_minus_cephes_DP3 = _MM_SET_f32(-3.77489497744594108E-8, gvl);
 
-  xmm1 = _ps_minus_cephes_DP1;
-  xmm2 = _ps_minus_cephes_DP2;
-  xmm3 = _ps_minus_cephes_DP3;
-
-  xmm1 = _MM_MUL_f32(y, xmm1, gvl);
-  xmm2 = _MM_MUL_f32(y, xmm2, gvl);
-  xmm3 = _MM_MUL_f32(y, xmm3, gvl);
-
-  x = _MM_ADD_f32(x, xmm1, gvl);
-  x = _MM_ADD_f32(x, xmm2, gvl);
-  x = _MM_ADD_f32(x, xmm3, gvl);
+  x = _MM_MACC_f32(x, y, _ps_minus_cephes_DP1, gvl);
+  x = _MM_MACC_f32(x, y, _ps_minus_cephes_DP2, gvl);
+  x = _MM_MACC_f32(x, y, _ps_minus_cephes_DP3, gvl);
 
   /* Evaluate the first polynom  (0 <= x <= Pi/4) */
   _MMR_f32 _ps_coscof_p0 = _MM_SET_f32(2.443315711809948E-005, gvl);
@@ -239,19 +212,15 @@ inline _MMR_f32 __cos_2xf32(_MMR_f32 x, size_t gvl) {
   _MMR_f32 _ps_0p5 = _MM_SET_f32(0.5f, gvl);
 
   _MMR_f32 z;
-  _MMR_f32 tmp;
 
   y = _ps_coscof_p0;
   z = _MM_MUL_f32(x, x, gvl);
 
-  y = _MM_MUL_f32(y, z, gvl);
-  y = _MM_ADD_f32(y, _ps_coscof_p1, gvl);
-  y = _MM_MUL_f32(y, z, gvl);
-  y = _MM_ADD_f32(y, _ps_coscof_p2, gvl);
+  y = _MM_MADD_f32(y, z, _ps_coscof_p1, gvl);
+  y = _MM_MADD_f32(y, z, _ps_coscof_p2, gvl);
   y = _MM_MUL_f32(y, z, gvl);
   y = _MM_MUL_f32(y, z, gvl);
-  tmp = _MM_MUL_f32(z, _ps_0p5, gvl);
-  y = _MM_SUB_f32(y, tmp, gvl);
+  y = __riscv_vfnmsac_vv_f32m1(y, z, _ps_0p5, gvl);
   y = _MM_ADD_f32(y, _MM_SET_f32(1.0, gvl), gvl);
 
   /* Evaluate the second polynom  (Pi/4 <= x <= 0) */
@@ -261,13 +230,10 @@ inline _MMR_f32 __cos_2xf32(_MMR_f32 x, size_t gvl) {
   _MMR_f32 y2;
 
   y2 = _ps_sincof_p0;
+  y2 = _MM_MADD_f32(y2, z, _ps_sincof_p1, gvl);
+  y2 = _MM_MADD_f32(y2, z, _ps_sincof_p2, gvl);
   y2 = _MM_MUL_f32(y2, z, gvl);
-  y2 = _MM_ADD_f32(y2, _ps_sincof_p1, gvl);
-  y2 = _MM_MUL_f32(y2, z, gvl);
-  y2 = _MM_ADD_f32(y2, _ps_sincof_p2, gvl);
-  y2 = _MM_MUL_f32(y2, z, gvl);
-  y2 = _MM_MUL_f32(y2, x, gvl);
-  y2 = _MM_ADD_f32(y2, x, gvl);
+  y2 = _MM_MADD_f32(y2, x, x, gvl);
 
   /* select the correct result from the two polynoms */
   xmm3 = poly_mask;

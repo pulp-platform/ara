@@ -28,6 +28,12 @@ def_args_cos         ?= "512"
 def_args_log         ?= "512"
 # Channels and Inner size
 def_args_softmax     ?= "3 256"
+# Rows and hidden size
+def_args_rmsnorm     ?= "8 1024"
+def_args_layernorm   ?= "8 1024"
+# Vector size
+def_args_swiglu      ?= "4096"
+def_args_geglu       ?= "4096"
 # Number of steps and width of the vector
 def_args_pathfinder  ?= "1 1024 64"
 # Batch_size, depth, height, width, n_boxes (in total), crop_h, crop_w
