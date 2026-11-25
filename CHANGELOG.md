@@ -82,6 +82,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add original RiVec benchmark and port to AraOS flow
  - Add fmatmul-loop application
  - Add high-performance patches to cheshire and opensbi for AraOS
+ - Add LLM kernels `rmsnorm`, `layernorm`, `swiglu` and `geglu` (FP32) and simulate them in the CI
 
 ### Changed
 
@@ -134,6 +135,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Switch to a better buildroot mirror
  - CI frees up space in the runner before building a toolchain
  - Update documentation
+ - Fuse the multiply-add pairs of `cos` (`vfmacc`, `vfmadd`, `vfnmsac`)
+ - Ignore the generated `apps/*/data.S`
 
 ## 3.0.0 - 2023-09-08
 

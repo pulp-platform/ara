@@ -1,2 +1,3 @@
 bin
 common/link.ld
+*/data.S
