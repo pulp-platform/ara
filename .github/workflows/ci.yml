@@ -674,7 +674,7 @@ jobs:
   clean-up:
     runs-on: ubuntu-22.04
     if: always()
-    needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
+    needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv", "benchmark", "check-clang-format"]
     steps:
       - uses: actions/checkout@v6
       - name: Delete artifacts
@@ -694,7 +694,7 @@ jobs:
       matrix:
         ara_config: [2_lanes, 4_lanes, 8_lanes, 16_lanes]
     if: always()
-    needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv"]
+    needs: ["simulate", "riscv-tests-spike", "riscv-tests-simv", "benchmark", "roofline"]
     steps:
       - uses: actions/checkout@v6
       - name: Delete artifacts
