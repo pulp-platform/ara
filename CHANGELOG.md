@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Fixed src emul check for vector integer extension operation
  - Fix VSTU queue overrun due to pointer comparison
  - Fix latency stall bug in vmfpu
+ - Fix the missing `x` factor in the `log` polynomial (FP64 and FP32)
+ - Check the imaginary parts of the `fft` result
+ - Fix the `axi_cut` parameter names in `ara_soc` for gate-level simulation
 
 ### Added
 
@@ -83,6 +86,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Add fmatmul-loop application
  - Add high-performance patches to cheshire and opensbi for AraOS
  - Add LLM kernels `rmsnorm`, `layernorm`, `swiglu` and `geglu` (FP32) and simulate them in the CI
+ - Simulate `log` in the CI
 
 ### Changed
 
@@ -137,6 +141,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
  - Update documentation
  - Fuse the multiply-add pairs of `cos` (`vfmacc`, `vfmadd`, `vfnmsac`)
  - Ignore the generated `apps/*/data.S`
+ - Tighten the result-check threshold of `cos`, `exp`, `log` and `fft` from 1 to 1e-4
 
 ## 3.0.0 - 2023-09-08
 

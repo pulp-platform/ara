@@ -55,7 +55,7 @@ signed short SwapTable[MAX_NFFT]
     __attribute__((aligned(32 * NR_LANES), section(".l2")));
 
 // Threshold for FP numbers comparison during the final check
-#define THRESHOLD 1
+#define THRESHOLD 1e-4
 
 int main() {
   printf("\n");
@@ -235,7 +235,8 @@ int main() {
       printf("Real part error at index %d\n", i);
       error = 1;
     }
-    if (!similarity_check(samples_reim[i], samples_copy[i][0], THRESHOLD)) {
+    if (!similarity_check(samples_reim[i + NFFT], samples_copy[i][1],
+                          THRESHOLD)) {
       printf("Img part error at index %d\n", i);
       error = 1;
     }
