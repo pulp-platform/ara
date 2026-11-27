@@ -3,7 +3,7 @@
 Two sweeps over thirteen kernels (fdotproduct, faxpy, cos, log, exp, softmax,
 rmsnorm, layernorm, swiglu, geglu, gemv, fconv2d, fmatmul):
 
-- **Timing sweep** (default, 26 jobs): utilization against elements/lane and
+- **Performance sweep** (default, 26 jobs): utilization against elements/lane and
   bytes/lane, with result checking compiled out.
 - **Verification sweep** (`--check`, 29 jobs): smaller sizes with result checking on.
   Each job still sweeps from size 4 but checks only the last (full) size;
@@ -20,17 +20,17 @@ scripts/perf_eval/run_all.sh --config 8_lanes --check --smoke
 # Verification sweep
 scripts/perf_eval/run_all.sh --config 8_lanes --check
 
-# Verification, then timing on the same HW build; the timing sweep is skipped if
+# Verification, then the performance sweep on the same HW build; it is skipped if
 # any check fails (hours; use tmux or nohup so it survives logout)
 scripts/perf_eval/run_all.sh --config 8_lanes --check-then-perf
 
-# ... or run the timing sweep even if a check fails
+# ... or run the performance sweep even if a check fails
 scripts/perf_eval/run_all.sh --config 8_lanes --check-then-perf --perf-anyway
 
 # Both sweeps at once: all ELFs first, then all jobs simulated together
 scripts/perf_eval/run_all.sh --config 8_lanes --check-and-perf
 
-# Timing sweep of 4 and 8 lanes in parallel
+# Performance sweep of 4 and 8 lanes in parallel
 scripts/perf_eval/run_all.sh --config 4_lanes >& run_4l.log &
 scripts/perf_eval/run_all.sh --config 8_lanes >& run_8l.log &
 ```
@@ -50,9 +50,9 @@ from `install/` (or `INSTALL_DIR`), as for any app build. Sizes come from
 |---|---|
 | `--config 8_lanes` | HW config `config/<cfg>.mk` (required): `2_lanes`, `4_lanes`, `8_lanes`, `16_lanes` |
 | `--set k=v` | override a config variable for both the HW and the kernels, repeatable: `nr_lanes`, `vlen` |
-| `--check` | verification sweep instead of the timing sweep |
-| `--check-then-perf` | verification sweep, then the timing sweep, on one HW compile; the timing sweep is skipped if any check fails |
-| `--perf-anyway` | with `--check-then-perf`: run the timing sweep even if verification fails |
+| `--check` | verification sweep instead of the performance sweep |
+| `--check-then-perf` | verification sweep, then the performance sweep, on one HW compile; the performance sweep is skipped if any check fails |
+| `--perf-anyway` | with `--check-then-perf`: run the performance sweep even if verification fails |
 | `--check-and-perf` | both sweeps on one HW compile: build all ELFs, then simulate all jobs together (`-j` is shared) |
 | `--each k=v1,v2` | repeat the whole run (HW compile and sweeps) once per value, in sequence, under one shared `<date>_<HHMM>` (e.g. `--each vlen=4096,8192`) |
 | `--only gemv,fmatmul:FP16` | run only these jobs: kernel, job name (e.g. `fconv2d3x3`), either with `:PREC` |
@@ -74,10 +74,10 @@ build with "ELF does not fit in L2".
 2. **HW compile** — fresh, once per launch, into `hardware/build_perf_<cfg>`;
    all jobs and both sweeps share it.
 3. **Build** — one ELF per job, one at a time (`check=1` for verification,
-   `check=0` for timing).
+   `check=0` for performance).
 4. **Simulate** — all jobs in parallel, each in its own directory.
 5. With `--check-then-perf`, steps 3-4 run for the verification sweep first,
-   then for the timing sweep. With `--check-and-perf`, step 3 runs for both
+   then for the performance sweep. With `--check-and-perf`, step 3 runs for both
    sweeps, then step 4 for all their jobs at once.
 6. With `--each`, all of the above repeats per value.
 
@@ -88,11 +88,11 @@ its `run.log` has no `Error` / `Fail` / `FAILED` line.
 
 | Sweep | Directory |
 |---|---|
-| timing | `results/perf_eval/<date>_<HHMM>/<cfg>/` |
+| performance | `results/perf_eval/<date>_<HHMM>/<cfg>/` |
 | verification | `results/verification/<date>_<HHMM>/<cfg>/` |
 
 `--check-then-perf`, `--check-and-perf` and `--each` use one `<date>_<HHMM>`
-for everything they run, so the timing numbers sit next to the verification
+for everything they run, so the performance numbers sit next to the verification
 run that validated them. `<cfg>` is the config plus every `--set`, sorted by
 variable name, e.g. `8_lanes_vlen4096`, whatever order the options are given in.
 
@@ -112,7 +112,7 @@ watch cat results/perf_eval/<run>/8_lanes/status.txt
 tail -f   results/perf_eval/<run>/8_lanes/gemv_FP32/run.log
 ```
 
-CSV columns: `check` is PASS/FAIL for verification jobs and `-` for timing jobs.
+CSV columns: `check` is PASS/FAIL for verification jobs and `-` for performance jobs.
 `size` is the swept dimension (vector length for fdotproduct, faxpy, cos, log,
 exp, swiglu, geglu; hidden size for rmsnorm, layernorm; columns for gemv; N for
 fconv2d; innerSize for softmax; P for fmatmul).
@@ -138,7 +138,7 @@ so smaller sweep points work on a dense prefix of the data.
 
 ## Change sizes
 
-Edit the tables in `scripts/perf_eval/jobs.py`: `_PERF` (timing: full and smoke
+Edit the tables in `scripts/perf_eval/jobs.py`: `_PERF` (performance: full and smoke
 sizes) and `_CHECK` (verification: check and smoke sizes).
 
 ## Checking outside the flow

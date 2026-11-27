@@ -4,7 +4,7 @@
 #
 # Author: Hong Pang <hopang@iis.ee.ethz.ch>
 #
-# Job tables of the timing sweep (perf) and the verification sweep (check),
+# Job tables of the performance sweep (perf) and the verification sweep (check),
 # and the config parsing shared by the other perf_eval scripts.
 #
 #   jobs.py list [--mode perf|check] [--smoke] [--only k:P,k,...]

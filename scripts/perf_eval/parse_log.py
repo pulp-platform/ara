@@ -63,7 +63,7 @@ def state(d):
 
 
 def verdict(d):
-  """PASS/FAIL for a checked (verification) job, '-' for a timing job."""
+  """PASS/FAIL for a checked (verification) job, '-' for a performance job."""
   f = os.path.join(d, 'check')
   if not os.path.isfile(f) or open(f).read().strip() != '1':
     return '-'

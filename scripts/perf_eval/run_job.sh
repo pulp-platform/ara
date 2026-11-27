@@ -10,7 +10,7 @@
 #   run_job.sh sim   <job_dir> <hw_build_dir> <timeout_s|0>
 #
 # <job_dir>/state holds: building | built | running | done | FAILED: <reason>
-# CHECK=1 builds with result checking (default: off, for timing).
+# CHECK=1 builds with result checking (default: off, for the performance sweep).
 
 set -uo pipefail
 

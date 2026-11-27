@@ -5,7 +5,7 @@
 # Author: Hong Pang <hopang@iis.ee.ethz.ch>
 #
 # Ara kernel sweeps: HW compile -> build ELFs -> parallel sims.
-# Timing sweep (default), verification sweep (--check), or both on one HW
+# Performance sweep (default), verification sweep (--check), or both on one HW
 # build (--check-then-perf, --check-and-perf). See README.md.
 
 set -uo pipefail
@@ -21,10 +21,10 @@ usage: run_all.sh --config <cfg> [options]
   --config <cfg>      HW config in config/<cfg>.mk (e.g. 8_lanes)
   --set k=v           override a config variable (nr_lanes, vlen), repeatable
                       (e.g. --set vlen=4096)
-  --check             functional verification sweep instead of the timing sweep
-  --check-then-perf   verification sweep, then the timing sweep, on one HW build
+  --check             functional verification sweep instead of the performance sweep
+  --check-then-perf   verification sweep, then the performance sweep, on one HW build
   --check-and-perf    both sweeps at once: build all ELFs, then simulate all jobs together
-  --perf-anyway       with --check-then-perf: run the timing sweep even if verification fails
+  --perf-anyway       with --check-then-perf: run the performance sweep even if verification fails
   --each k=v1,v2,...  repeat the whole run once per value, in sequence (e.g. --each vlen=4096,8192)
   --only <list>       comma list of kernel, job name, or either with :PREC
                       (e.g. gemv,fmatmul:FP16,fconv2d3x3)
@@ -206,7 +206,7 @@ if [[ -n $together ]]; then
   exit $status
 fi
 
-# One sweep after the other; a failed verification skips the perf sweep
+# One sweep after the other; a failed verification skips the performance sweep
 for m in "${modes[@]}"; do
   np=$par; (( np > 0 )) || np=$(njobs "$m")
   build_sweep "$m"
@@ -218,7 +218,7 @@ for m in "${modes[@]}"; do
     logf=${cfg_dirs[perf]}/run_all.log
     log "verification: ${cfg_dirs[check]} ($(grep -m1 '^# verification:' "${cfg_dirs[check]}/summary.csv" | cut -c3-))"
     if (( rc )) && [[ -z $perf_anyway ]]; then
-      log "verification failed: perf sweep skipped (--perf-anyway runs it regardless)"
+      log "verification failed: performance sweep skipped (--perf-anyway runs it regardless)"
       exit 1
     fi
   fi
