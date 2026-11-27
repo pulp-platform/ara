@@ -31,7 +31,7 @@
 #include "printf.h"
 #endif
 
-#define THRESHOLD 1
+#define THRESHOLD 1e-4
 
 #define CHECK
 

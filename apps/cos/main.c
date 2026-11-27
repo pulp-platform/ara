@@ -42,7 +42,7 @@ extern float angles_f32[] __attribute__((aligned(4 * NR_LANES)));
 extern float results_f32[] __attribute__((aligned(4 * NR_LANES)));
 extern float gold_results_f32[] __attribute__((aligned(4 * NR_LANES)));
 
-#define THRESHOLD 1
+#define THRESHOLD 1e-4
 
 #define CHECK
 
