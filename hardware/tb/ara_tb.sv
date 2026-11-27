@@ -35,12 +35,16 @@ module ara_tb;
   localparam VLEN = 0;
   `endif
 
+  `ifdef TCK
+  localparam ClockPeriod  = `TCK;
+  `else
   localparam ClockPeriod  = 1ns;
+  `endif
   // Axi response delay [ps]
   localparam int unsigned AxiRespDelay = 200;
 
   localparam AxiAddrWidth      = 64;
-  localparam AxiWideDataWidth  = 64 * NrLanes / 2;
+  localparam AxiWideDataWidth  = 64 * NrLanes;
   localparam AxiWideBeWidth    = AxiWideDataWidth / 8;
   localparam AxiWideByteOffset = $clog2(AxiWideBeWidth);
 

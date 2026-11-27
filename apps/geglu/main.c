@@ -44,6 +44,11 @@
 // exp (28 FLOP) + 3 vfmul, vfmadd (2), vfadd, vfmul, vfdiv
 #define GEGLU_FLOPS 36
 
+#if !(FP32)
+#error                                                                         \
+    "No precision selected: add FP32 to def_args_geglu in common/default_args.mk"
+#endif
+
 extern uint64_t N;
 extern float g[] __attribute__((aligned(4 * NR_LANES)));
 extern float u[] __attribute__((aligned(4 * NR_LANES)));
@@ -77,9 +82,10 @@ int main() {
     printf("The execution took %ld cycles.\n", runtime);
     float flop = (float)GEGLU_FLOPS * avl;
     float performance = flop / runtime;
-    float utilization = 100 * performance / (4.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(32);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("geglu", 32, avl, runtime, performance);
   }
 
   if (CHECK) {

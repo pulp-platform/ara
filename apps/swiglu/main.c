@@ -44,6 +44,11 @@
 // exp (28 FLOP) + vfneg, vfadd, vfmul, vfdiv
 #define SWIGLU_FLOPS 32
 
+#if !(FP32)
+#error                                                                         \
+    "No precision selected: add FP32 to def_args_swiglu in common/default_args.mk"
+#endif
+
 extern uint64_t N;
 extern float g[] __attribute__((aligned(4 * NR_LANES)));
 extern float u[] __attribute__((aligned(4 * NR_LANES)));
@@ -77,9 +82,10 @@ int main() {
     printf("The execution took %ld cycles.\n", runtime);
     float flop = (float)SWIGLU_FLOPS * avl;
     float performance = flop / runtime;
-    float utilization = 100 * performance / (4.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(32);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("swiglu", 32, avl, runtime, performance);
   }
 
   if (CHECK) {

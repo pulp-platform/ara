@@ -24,21 +24,8 @@
 void fmatmul(double *c, const double *a, const double *b,
              const unsigned long int M, const unsigned long int N,
              const unsigned long int P) {
-  if (M <= 4) {
-    fmatmul_4x4(c, a, b, M, N, P);
-  } else if (M <= 8) {
-    fmatmul_8x8(c, a, b, M, N, P);
-  } else if (M <= 64) {
-    fmatmul_16x16(c, a, b, M, N, P);
-  } else if (M <= 128) {
-    // Vector length is 64 elements. With an 8x8 matmul,
-    // we can use LMUL=2, having a vl of 128.
-    fmatmul_8x8(c, a, b, M, N, P);
-  } else {
-    // Vector length is 64 elements. With an 4x4 matmul,
-    // we can use LMUL=4, having a vl of 256.
-    fmatmul_4x4(c, a, b, M, N, P);
-  }
+  // 4x4 kernel (LMUL=4) for every size; M must be a multiple of 4
+  fmatmul_4x4(c, a, b, M, N, P);
 }
 
 // ---------------
@@ -108,12 +95,13 @@ void fmatmul_vec_4x4(double *c, const double *a, const double *b,
 
   while (n != N) {
 #ifdef VCD_DUMP
-    // Start dumping VCD
-    if (n == 8)
-      event_trigger = +1;
-    // Stop dumping VCD
+    // Body is unrolled x2: `n` steps by 2 and each iteration issues
+    // 2 * accumulators * vl = 2048 FMAs in every variant. The 4..12 window
+    // is 4 iterations = 8192 FMAs and requires N > 12.
+    if (n == 4)
+      *(volatile int64_t *)&event_trigger = +1;
     if (n == 12)
-      event_trigger = -1;
+      *(volatile int64_t *)&event_trigger = -1;
 #endif
 
     // Calculate pointer to the matrix A
@@ -242,12 +230,13 @@ void fmatmul_vec_8x8(double *c, const double *a, const double *b,
 
   while (n != N) {
 #ifdef VCD_DUMP
-    // Start dumping VCD
-    if (n == 8)
-      event_trigger = +1;
-    // Stop dumping VCD
+    // Body is unrolled x2: `n` steps by 2 and each iteration issues
+    // 2 * accumulators * vl = 2048 FMAs in every variant. The 4..12 window
+    // is 4 iterations = 8192 FMAs and requires N > 12.
+    if (n == 4)
+      *(volatile int64_t *)&event_trigger = +1;
     if (n == 12)
-      event_trigger = -1;
+      *(volatile int64_t *)&event_trigger = -1;
 #endif
 
     // Calculate pointer to the matrix A
@@ -420,12 +409,13 @@ void fmatmul_vec_16x16(double *c, const double *a, const double *b,
 
   while (n != N) {
 #ifdef VCD_DUMP
-    // Start dumping VCD
-    if (n == 8)
-      event_trigger = +1;
-    // Stop dumping VCD
+    // Body is unrolled x2: `n` steps by 2 and each iteration issues
+    // 2 * accumulators * vl = 2048 FMAs in every variant. The 4..12 window
+    // is 4 iterations = 8192 FMAs and requires N > 12.
+    if (n == 4)
+      *(volatile int64_t *)&event_trigger = +1;
     if (n == 12)
-      event_trigger = -1;
+      *(volatile int64_t *)&event_trigger = -1;
 #endif
 
     // Calculate pointer to the matrix A

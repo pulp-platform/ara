@@ -43,6 +43,11 @@
 
 #define EPS 1e-5f
 
+#if !(FP32)
+#error                                                                         \
+    "No precision selected: add FP32 to def_args_rmsnorm in common/default_args.mk"
+#endif
+
 extern uint64_t R;
 extern uint64_t D;
 extern float x[] __attribute__((aligned(4 * NR_LANES)));
@@ -82,9 +87,10 @@ int main() {
     // Per row: vfmacc (2), vfredusum over min(d, VLMAX), two vfmul
     float flop = (float)R * (4 * d + (d < vlmax ? d : vlmax));
     float performance = flop / runtime;
-    float utilization = 100 * performance / (4.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(32);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("rmsnorm", 32, d, runtime, performance);
   }
 
   if (CHECK) {

@@ -84,6 +84,7 @@ inline _MMR_f64 __log_1xf64(_MMR_f64 x, unsigned long int gvl) {
   y = _MM_MADD_f64(y, x, _MM_SET_f64(2.0000714765E-1, gvl), gvl);
   y = _MM_MADD_f64(y, x, _MM_SET_f64(-2.4999993993E-1, gvl), gvl);
   y = _MM_MADD_f64(y, x, _MM_SET_f64(3.3333331174E-1, gvl), gvl);
+  y = _MM_MUL_f64(y, x, gvl);
   y = _MM_MUL_f64(y, z, gvl);
   y = _MM_MACC_f64(y, e, _MM_SET_f64(-2.12194440e-4, gvl), gvl);
   tmp = _MM_MUL_f64(z, _MM_SET_f64(0.5f, gvl), gvl);
@@ -141,6 +142,7 @@ inline _MMR_f32 __log_2xf32(_MMR_f32 x, unsigned long int gvl) {
   y = _MM_MADD_f32(y, x, _MM_SET_f32(2.0000714765E-1, gvl), gvl);
   y = _MM_MADD_f32(y, x, _MM_SET_f32(-2.4999993993E-1, gvl), gvl);
   y = _MM_MADD_f32(y, x, _MM_SET_f32(3.3333331174E-1, gvl), gvl);
+  y = _MM_MUL_f32(y, x, gvl);
   y = _MM_MUL_f32(y, z, gvl);
   y = _MM_MACC_f32(y, e, _MM_SET_f32(-2.12194440e-4, gvl), gvl);
   tmp = _MM_MUL_f32(z, _MM_SET_f32(0.5f, gvl), gvl);

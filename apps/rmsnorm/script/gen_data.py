@@ -35,13 +35,16 @@ def emit(name, array, alignment='8'):
 ## SCRIPT ##
 ############
 
-# Arguments: rows hidden_size
+# Arguments: rows hidden_size FP32
 EPS = 1e-5
-if len(sys.argv) != 3:
-  print("Error. Give me the number of rows and the hidden size.", file=sys.stderr)
+args = sys.argv[1:]
+nums = [a for a in args if a.upper() != "FP32"]
+if "FP32" not in (a.upper() for a in args) or len(nums) != 2:
+  print("Error. Give me the number of rows, the hidden size and FP32.",
+        file=sys.stderr)
   sys.exit(1)
-R = int(sys.argv[1])
-D = int(sys.argv[2])
+R = int(nums[0])
+D = int(nums[1])
 
 x = np.random.randn(R, D).astype(np.float32)
 gamma = np.random.uniform(0.5, 1.5, D).astype(np.float32)

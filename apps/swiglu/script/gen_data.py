@@ -35,11 +35,13 @@ def emit(name, array, alignment='8'):
 ## SCRIPT ##
 ############
 
-# Arguments: vector length
-if len(sys.argv) != 2:
-  print("Error. Give me the vector length.", file=sys.stderr)
+# Arguments: vector length FP32
+args = sys.argv[1:]
+nums = [a for a in args if a.upper() != "FP32"]
+if "FP32" not in (a.upper() for a in args) or len(nums) != 1:
+  print("Error. Give me the vector length and FP32.", file=sys.stderr)
   sys.exit(1)
-N = int(sys.argv[1])
+N = int(nums[0])
 
 g = np.random.uniform(-4, 4, N).astype(np.float32)
 u = np.random.uniform(-4, 4, N).astype(np.float32)

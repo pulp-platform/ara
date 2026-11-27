@@ -1,17 +1,27 @@
 # Default app parameters
+#
+# FP64/FP32/FP16 tokens after the sizes select the precisions to build
+#
+# Sizes tagged "VCD" must stay at or above the stated minimum: the dump window
+# is expressed in kernel loop iterations, and below it the stop trigger never
+# fires.
 
 # Matrix sizes
 def_args_imatmul     ?= "128 128 128"
-def_args_fmatmul     ?= "128 128 128"
+def_args_fmatmul     ?= "128 128 128 FP64"   # VCD: 128
 def_args_dtype-matmul?= "float64 128 128 128"
 def_args_fmatmul-loop?= "128 128 128"
 # Matrix size, filter size
 def_args_iconv2d     ?= "112 7"
-def_args_fconv2d     ?= "112 7"
+def_args_fconv2d     ?= "112 112 7 FP64"	# M N F (F: 3 or 7; M, N: multiples of 4)
 def_args_fconv3d     ?= "112 7"
 def_args_dtype-conv3d?= "112 7 float64"
+# Matrix size
+def_args_gemv 			 ?= "256 256 FP64"        		# VCD: 256
+# vector size
+def_args_faxpy 			 ?= "65536 FP64"      		# VCD: 16384
 # Vector size
-def_args_fdotproduct ?= "512"
+def_args_fdotproduct ?= "16384 FP64 FP32 FP16"     	 	# VCD: 16384
 # Vector size
 def_args_dotproduct  ?= "512"
 # Matrix padded size 0, matrix padded size 1, onlyvec
@@ -23,17 +33,17 @@ def_args_fft         ?= "64 float32"
 # Vector size
 def_args_dwt         ?= "512"
 # Vector size
-def_args_exp         ?= "128"
-def_args_cos         ?= "512"
-def_args_log         ?= "512"
+def_args_exp         ?= "128 FP64 FP32"
+def_args_cos         ?= "512 FP64 FP32"
+def_args_log         ?= "512 FP64 FP32"
 # Channels and Inner size
-def_args_softmax     ?= "3 256"
+def_args_softmax     ?= "3 256 FP32"
 # Rows and hidden size
-def_args_rmsnorm     ?= "8 1024"
-def_args_layernorm   ?= "8 1024"
+def_args_rmsnorm     ?= "8 1024 FP32"	# rows, hidden size | supports FP32 only
+def_args_layernorm   ?= "8 1024 FP32"	# rows, hidden size | supports FP32 only
 # Vector size
-def_args_swiglu      ?= "4096"
-def_args_geglu       ?= "4096"
+def_args_swiglu      ?= "4096 FP32"	# supports FP32 only
+def_args_geglu       ?= "4096 FP32"	# supports FP32 only
 # Number of steps and width of the vector
 def_args_pathfinder  ?= "1 1024 64"
 # Batch_size, depth, height, width, n_boxes (in total), crop_h, crop_w

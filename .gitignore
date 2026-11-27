@@ -24,6 +24,9 @@ build/
 trace_*
 mems
 *log
+# ...but not the log app
+!apps/log/
+!apps/log/**
 uart
 .bender
 .dvt
@@ -35,3 +38,6 @@ pyenv_ara/
 docs/build/
 docs/source/_templates/
 apps/_*
+# perf_eval sweep results and HW builds
+/results/
+build_perf_*/

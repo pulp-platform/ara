@@ -43,6 +43,11 @@
 
 #define EPS 1e-5f
 
+#if !(FP32)
+#error                                                                         \
+    "No precision selected: add FP32 to def_args_layernorm in common/default_args.mk"
+#endif
+
 extern uint64_t R;
 extern uint64_t D;
 extern float x[] __attribute__((aligned(4 * NR_LANES)));
@@ -84,9 +89,10 @@ int main() {
     // vfredusum over min(d, VLMAX)
     float flop = (float)R * (8 * d + 2 * (d < vlmax ? d : vlmax));
     float performance = flop / runtime;
-    float utilization = 100 * performance / (4.0 * NR_LANES);
+    float utilization = 100 * performance / PEAK_FLOP_CYCLE(32);
     printf("The performance is %f FLOP/cycle (%f%% utilization).\n",
            performance, utilization);
+    PRINT_SWEEP("layernorm", 32, d, runtime, performance);
   }
 
   if (CHECK) {
