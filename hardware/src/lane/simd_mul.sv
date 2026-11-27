@@ -255,7 +255,7 @@ module simd_mul import ara_pkg::*; import rvv_pkg::*; #(
             2'b10: r ='0;
             2'b11: for (int b=0; b<4; b++) r[b] = !mul_res.w32[b][15] & (mul_res.w32[b][14:0] != '0);
           endcase
-          for (int l = 0; l < 4; l++) result_o[16*l +: 16] = (op == VSMUL) ? (mul_res.w32[l] >> 16) + r[l] : mul_res.w32[l][15:0];
+          for (int l = 0; l < 4; l++) result_o[16*l +: 16] = (op == VSMUL) ? (mul_res.w32[l] >> 15) + r[l] : mul_res.w32[l][15:0];
         end
         VMULH,
         VMULHU,
