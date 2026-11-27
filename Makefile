@@ -188,7 +188,7 @@ rvv-bench:
 	git submodule update --init --recursive --checkout -- $(ROOT_DIR)/apps/rvv-bench \
 	&& cd apps \
 	&& cp rvv-bench/nolibc.h . \
-	&& rm -r rvv \
+	&& rm -rf rvv \
 	&& mkdir rvv \
 	&& cp rvv-bench/instructions/rvv/gen.S . \
 	&& cp rvv-bench/instructions/rvv/config.h rvv-bench/instructions/rvv/main.c rvv \
